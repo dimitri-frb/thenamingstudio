@@ -1,12 +1,8 @@
 @import "tailwindcss";
 
-/* Map the `dark:` variant to the Nocturne theme (not the OS preference). */
-@custom-variant dark (&:is([data-theme="nocturne"] *));
-
-/* Tailwind color tokens backed by CSS vars so every utility (text-ink/55,
-   from-accent, shadow-accent2/20, …) follows the active [data-theme]. */
+/* Tailwind color tokens backed by CSS vars (text-ink/55, from-accent, …). */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-serif: "Instrument Serif", "Source Serif Pro", Cambria, Georgia, serif;
   --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
   --color-ink: var(--c-ink);
@@ -15,34 +11,10 @@
   --color-accent3: var(--c-accent3);
 }
 
-/* ============================================================
-   THEMES — switch via data-theme on <html>
-   ============================================================ */
-
-/* 1) NOCTURNE — dark, techy SaaS (default) */
-:root,
-[data-theme="nocturne"] {
-  color-scheme: dark;
-  --c-ink: #f5f4ff;
-  --c-accent: #6366f1;
-  --c-accent2: #d946ef;
-  --c-accent3: #38bdf8;
-  --page: #07060d;
-  --surface-solid: #0d0b16;
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --mesh:
-    radial-gradient(50% 50% at 15% 10%, rgba(99, 102, 241, 0.22), transparent 60%),
-    radial-gradient(45% 45% at 85% 5%, rgba(217, 70, 239, 0.18), transparent 60%),
-    radial-gradient(60% 50% at 50% 100%, rgba(56, 189, 248, 0.12), transparent 60%);
-  --grain-opacity: 0;
-  --display-weight: 800;
-  --display-tracking: -0.02em;
-}
-
-/* 2) ATELIER — calm, editorial naming studio. Exact palette from the design
-   export: warm paper, terracotta/clay accent (oklch hue 35), Geist + Geist Mono. */
-[data-theme="atelier"] {
+/* ATELIER — the only theme. Calm, editorial naming studio.
+   Exact palette from the design export: warm paper, terracotta/clay accent
+   (oklch hue 35), warm-black ink, Geist + Instrument Serif + Geist Mono. */
+:root {
   color-scheme: light;
   --c-ink: oklch(0.2 0.012 60); /* warm near-black */
   --c-accent: oklch(0.58 0.14 35); /* terracotta / clay */
@@ -52,35 +24,11 @@
   --surface-solid: oklch(0.995 0.004 80); /* near-white card */
   --glass-bg: oklch(0.995 0.004 80 / 0.6);
   --glass-border: oklch(0.87 0.01 70); /* hairline rule */
-  --font-body: "Geist", ui-sans-serif, system-ui, sans-serif;
   --mesh:
     radial-gradient(60% 55% at 12% 8%, oklch(0.58 0.14 35 / 0.1), transparent 62%),
     radial-gradient(50% 50% at 88% 6%, oklch(0.72 0.13 30 / 0.1), transparent 60%),
     radial-gradient(70% 60% at 50% 100%, oklch(0.78 0.06 70 / 0.1), transparent 60%);
   --grain-opacity: 0.45;
-  --display-weight: 500;
-  --display-tracking: -0.01em;
-}
-
-/* 3) CARNIVAL — creative & arty. Bright pop colors, bold display. */
-[data-theme="carnival"] {
-  color-scheme: light;
-  --c-ink: #1b1430;
-  --c-accent: #7c3aed; /* electric violet */
-  --c-accent2: #ec4899; /* hot pink */
-  --c-accent3: #f59e0b; /* tangerine */
-  --page: #fbf5ff;
-  --surface-solid: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(27, 20, 48, 0.12);
-  --mesh:
-    radial-gradient(45% 45% at 10% 6%, rgba(124, 58, 237, 0.28), transparent 60%),
-    radial-gradient(45% 45% at 92% 4%, rgba(236, 72, 153, 0.26), transparent 58%),
-    radial-gradient(40% 40% at 78% 60%, rgba(245, 158, 11, 0.22), transparent 60%),
-    radial-gradient(55% 50% at 30% 100%, rgba(6, 182, 212, 0.2), transparent 60%);
-  --grain-opacity: 0;
-  --display-weight: 800;
-  --display-tracking: -0.03em;
 }
 
 html {
@@ -93,28 +41,20 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  transition: background 0.4s ease, color 0.4s ease;
 }
 
-/* Atelier uses Geist for body copy and Instrument Serif for headings. */
-[data-theme="atelier"] body {
-  font-family: var(--font-body);
-}
-[data-theme="atelier"] h1,
-[data-theme="atelier"] h2,
-[data-theme="atelier"] h3 {
+/* Headings are set in Instrument Serif. */
+h1, h2, h3 {
   font-family: var(--font-serif);
-  font-weight: 500 !important;
+  font-weight: 500;
   letter-spacing: -0.005em;
 }
 
-/* Ambient gradient mesh background (per theme) */
+/* Ambient mesh + paper grain (the handmade feel) */
 .mesh {
   position: relative;
   background: var(--mesh);
 }
-
-/* Paper grain — only visible in Atelier for the handmade feel */
 .mesh::before {
   content: "";
   position: fixed;
@@ -138,76 +78,23 @@ body {
 }
 
 @keyframes float-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .animate-in {
   animation: float-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-.shimmer {
-  background: linear-gradient(90deg, var(--glass-bg) 0%, var(--glass-border) 50%, var(--glass-bg) 100%);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s linear infinite;
 }
 
 ::selection {
   background: color-mix(in srgb, var(--color-accent2) 35%, transparent);
 }
 
-/* ---- Atelier: hand-drawn strokes that draw themselves in ---- */
+/* Hand-drawn strokes that draw themselves in */
 @keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
+  to { stroke-dashoffset: 0; }
 }
 .draw {
   stroke-dasharray: var(--len, 400);
   stroke-dashoffset: var(--len, 400);
   animation: draw 1.3s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.35s;
-}
-.ruled {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 2.35rem,
-    color-mix(in srgb, var(--color-ink) 16%, transparent) 2.35rem,
-    color-mix(in srgb, var(--color-ink) 16%, transparent) calc(2.35rem + 1px)
-  );
-}
-
-/* ---- Carnival: neo-brutalist blocks + marquee ---- */
-.nb {
-  border: 2px solid var(--color-ink);
-  box-shadow: 4px 4px 0 0 var(--color-ink);
-}
-.nb-lg {
-  border: 3px solid var(--color-ink);
-  box-shadow: 7px 7px 0 0 var(--color-ink);
-}
-.nb-press {
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
-}
-.nb-press:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 0 var(--color-ink);
-}
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-.marquee {
-  animation: marquee 22s linear infinite;
-  white-space: nowrap;
 }
