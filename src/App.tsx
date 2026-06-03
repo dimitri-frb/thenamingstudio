@@ -10,6 +10,7 @@ import {
 import { useVoice } from "./lib/useVoice";
 import { Results } from "./components/Results";
 import { Checkout } from "./components/Checkout";
+import { JourneyRail } from "./components/Journey";
 import { PLANS, eur, type PlanId } from "./lib/plans";
 
 type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
@@ -69,16 +70,22 @@ export default function App() {
     setResults([]);
   }
 
+  // Macro journey: 0=brief, 1=names. Paid steps (domain/trademark/brand book)
+  // stay ahead as inspiring locked milestones.
+  const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
+  const showJourney = screen !== "landing";
+
   return (
     <div className="min-h-screen mesh">
       <Header onLogo={restart} />
+      {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
           <Landing description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
         )}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
-          <Wizard step={screen}>
+          <Wizard>
             {screen === "vibe" && (
               <Step
                 index={1}
@@ -377,18 +384,10 @@ function Pricing({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
 }
 
 /* ---------------- Wizard shell ---------------- */
-function Wizard({ step, children }: { step: Screen; children: React.ReactNode }) {
-  const order: Screen[] = ["vibe", "types", "refine"];
-  const idx = order.indexOf(step);
-  const pct = ((idx + 1) / order.length) * 100;
+function Wizard({ children }: { children: React.ReactNode }) {
   return (
     <div className="pt-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8 h-1 w-full overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-all duration-500" style={{ width: `${pct}%` }} />
-        </div>
-        {children}
-      </div>
+      <div className="mx-auto max-w-2xl">{children}</div>
     </div>
   );
 }
