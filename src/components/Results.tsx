@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { TYPE_META, type Brief, type NameIdea } from "../lib/generate";
 import { eur, PLANS, type PlanId } from "../lib/plans";
 
@@ -8,6 +9,7 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
   results: NameIdea[]; brief: Brief; onMore: () => void; onRestart: () => void; onCheckout: (p: PlanId) => void;
 }) {
   const [favs, setFavs] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<NameIdea | null>(null);
   const free = results.slice(0, FREE_LIMIT);
   const locked = results.slice(FREE_LIMIT);
 
@@ -36,7 +38,7 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2">
         {free.map((n, i) => (
-          <NameCard key={n.name} idea={n} fav={favs.has(n.name)} onFav={() => toggleFav(n.name)} delay={i} />
+          <NameCard key={n.name} idea={n} fav={favs.has(n.name)} onFav={() => toggleFav(n.name)} onPick={() => setPicked(n)} delay={i} />
         ))}
       </div>
 
@@ -46,14 +48,24 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
       <div className="mt-16 text-center">
         <button onClick={onRestart} className="text-sm text-ink/40 transition hover:text-ink">← Start a new brief</button>
       </div>
+
+      {picked && <NamePopup idea={picked} onClose={() => setPicked(null)} onCheckout={onCheckout} />}
     </div>
   );
 }
 
-function NameCard({ idea, fav, onFav, delay }: { idea: NameIdea; fav: boolean; onFav: () => void; delay: number }) {
+function NameCard({ idea, fav, onFav, onPick, delay }: { idea: NameIdea; fav: boolean; onFav: () => void; onPick: () => void; delay: number }) {
   return (
-    <div className="group glass animate-in relative rounded-2xl p-5 transition hover:border-ink/20" style={{ animationDelay: `${delay * 50}ms` }}>
-      <button onClick={onFav} className={`absolute right-4 top-4 text-xl transition ${fav ? "text-accent2" : "text-ink/20 hover:text-ink/50"}`} aria-label="Save name">
+    <div
+      onClick={onPick}
+      className="group glass animate-in relative cursor-pointer rounded-2xl p-5 transition hover:border-ink/20 hover:-translate-y-0.5"
+      style={{ animationDelay: `${delay * 50}ms` }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onFav(); }}
+        className={`absolute right-4 top-4 text-xl transition ${fav ? "text-accent2" : "text-ink/20 hover:text-ink/50"}`}
+        aria-label="Save name"
+      >
         {fav ? "♥" : "♡"}
       </button>
 
@@ -70,7 +82,61 @@ function NameCard({ idea, fav, onFav, delay }: { idea: NameIdea; fav: boolean; o
 
       <AxisBars idea={idea} />
       <p className="mt-3 text-xs leading-relaxed text-ink/35">{idea.rationale}</p>
+      <p className="mt-3 text-xs font-medium text-accent2 opacity-0 transition group-hover:opacity-100">Choose this name →</p>
     </div>
+  );
+}
+
+/* "Amazing name! What do you want to do next?" — opens on name click. */
+function NamePopup({ idea, onClose, onCheckout }: { idea: NameIdea; onClose: () => void; onCheckout: (p: PlanId) => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [onClose]);
+
+  const actions: { icon: string; title: string; sub: string; plan: PlanId }[] = [
+    { icon: "🛡️", title: "Register it at INPI", sub: "Lock the trademark in France & the EU", plan: "launch" },
+    { icon: "🎨", title: "Create a logo", sub: "Logo & color directions, on brand", plan: "founder" },
+    { icon: "📖", title: "Design the brand", sub: "Full brand book — type, voice, palette", plan: "launch" },
+  ];
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="animate-in relative w-full max-w-md rounded-3xl border border-ink/10 [background:var(--surface-solid)] p-7 text-center shadow-2xl shadow-black/40">
+        <button onClick={onClose} className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-lg text-ink/40 transition hover:bg-ink/5 hover:text-ink" aria-label="Close">✕</button>
+
+        <span className="text-3xl">🎉</span>
+        <h3 className="mt-2 text-xl font-bold">Amazing name!</h3>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <span className="font-serif text-4xl">{idea.name}</span>
+        </div>
+        <p className="mt-1 text-sm text-ink/45">{idea.domain} · {TYPE_META[idea.type].label}</p>
+        <p className="mt-4 text-sm font-medium text-ink/70">What do you want to do next?</p>
+
+        <div className="mt-4 space-y-2.5 text-left">
+          {actions.map((a) => (
+            <button
+              key={a.title}
+              onClick={() => { onClose(); onCheckout(a.plan); }}
+              className="group flex w-full items-center gap-3 rounded-2xl border border-ink/10 bg-ink/[0.02] p-3.5 text-left transition hover:border-accent2/40 hover:bg-ink/5"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink/5 text-xl">{a.icon}</span>
+              <span className="flex-1">
+                <span className="block text-sm font-semibold">{a.title}</span>
+                <span className="block text-xs text-ink/45">{a.sub}</span>
+              </span>
+              <span className="text-ink/30 transition group-hover:translate-x-0.5 group-hover:text-accent2">→</span>
+            </button>
+          ))}
+        </div>
+
+        <button onClick={onClose} className="mt-4 text-xs text-ink/40 transition hover:text-ink">Maybe later — keep browsing</button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

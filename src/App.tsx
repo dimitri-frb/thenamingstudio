@@ -11,6 +11,8 @@ import { useVoice } from "./lib/useVoice";
 import { Results } from "./components/Results";
 import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
+import { LandingAtelier } from "./components/LandingAtelier";
+import { LandingCarnival } from "./components/LandingCarnival";
 import { PLANS, eur, type PlanId } from "./lib/plans";
 
 type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
@@ -92,7 +94,13 @@ export default function App() {
       <Header onLogo={restart} theme={theme} setTheme={setTheme} />
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
-        {screen === "landing" && (
+        {screen === "landing" && theme === "atelier" && (
+          <LandingAtelier description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
+        )}
+        {screen === "landing" && theme === "carnival" && (
+          <LandingCarnival description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
+        )}
+        {screen === "landing" && theme === "nocturne" && (
           <Landing description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
         )}
 
@@ -179,7 +187,7 @@ export default function App() {
           />
         )}
       </main>
-      {screen === "landing" && <Footer />}
+      {screen === "landing" && theme === "nocturne" && <Footer />}
 
       {checkout && <Checkout planId={checkout} onClose={() => setCheckout(null)} />}
     </div>
