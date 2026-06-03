@@ -13,6 +13,7 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { LandingCarnival } from "./components/LandingCarnival";
+import { FlowCarnival, GeneratingCarnival } from "./components/FlowCarnival";
 import { BrandMark, Wordmark } from "./components/Logo";
 import { PLANS, eur, type PlanId } from "./lib/plans";
 
@@ -105,7 +106,23 @@ export default function App() {
           <Landing description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
         )}
 
-        {(screen === "vibe" || screen === "types" || screen === "refine") && (
+        {(screen === "vibe" || screen === "types" || screen === "refine") && theme === "carnival" && (
+          <FlowCarnival
+            step={screen}
+            goTo={(s) => setScreen(s)}
+            run={run}
+            vibes={vibes}
+            setVibes={setVibes}
+            types={types}
+            setTypes={setTypes}
+            include={include}
+            setInclude={setInclude}
+            avoid={avoid}
+            setAvoid={setAvoid}
+          />
+        )}
+
+        {(screen === "vibe" || screen === "types" || screen === "refine") && theme !== "carnival" && (
           <Wizard>
             {screen === "vibe" && (
               <Step
@@ -176,7 +193,7 @@ export default function App() {
           </Wizard>
         )}
 
-        {screen === "generating" && <Generating description={description} />}
+        {screen === "generating" && (theme === "carnival" ? <GeneratingCarnival description={description} /> : <Generating description={description} />)}
 
         {screen === "results" && (
           <Results
