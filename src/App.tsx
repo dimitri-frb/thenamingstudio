@@ -9,6 +9,8 @@ import {
 } from "./lib/generate";
 import { useVoice } from "./lib/useVoice";
 import { Results } from "./components/Results";
+import { Checkout } from "./components/Checkout";
+import { PLANS, eur, type PlanId } from "./lib/plans";
 
 type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
 
@@ -42,6 +44,7 @@ export default function App() {
   const [include, setInclude] = useState("");
   const [avoid, setAvoid] = useState("");
   const [results, setResults] = useState<NameIdea[]>([]);
+  const [checkout, setCheckout] = useState<PlanId | null>(null);
 
   const brief: Brief = useMemo(
     () => ({ description, vibes, types, include, avoid }),
@@ -71,7 +74,7 @@ export default function App() {
       <Header onLogo={restart} />
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
-          <Landing description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} />
+          <Landing description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
         )}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
@@ -153,10 +156,13 @@ export default function App() {
             brief={brief}
             onMore={() => setResults(generateNames(brief, 60, String(performance.now())))}
             onRestart={restart}
+            onCheckout={setCheckout}
           />
         )}
       </main>
       {screen === "landing" && <Footer />}
+
+      {checkout && <Checkout planId={checkout} onClose={() => setCheckout(null)} />}
     </div>
   );
 }
@@ -180,7 +186,7 @@ function Header({ onLogo }: { onLogo: () => void }) {
 }
 
 /* ---------------- Landing ---------------- */
-function Landing({ description, setDescription, onNext }: { description: string; setDescription: (s: string) => void; onNext: () => void }) {
+function Landing({ description, setDescription, onNext, onCheckout }: { description: string; setDescription: (s: string) => void; onNext: () => void; onCheckout: (p: PlanId) => void }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const { supported, listening, error, toggle } = useVoice((t) => setDescription(t));
 
@@ -258,7 +264,7 @@ function Landing({ description, setDescription, onNext }: { description: string;
 
       <Process />
       <NameTypes />
-      <Pricing />
+      <Pricing onCheckout={onCheckout} />
     </div>
   );
 }
@@ -331,11 +337,11 @@ function NameTypes() {
 }
 
 /* ---------------- Pricing ---------------- */
-function Pricing() {
+function Pricing({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
   const tiers = [
-    { name: "Preview", price: "Free", tagline: "Find your shortlist", features: ["8 names across your chosen types", "4-axis brand-strength scores", "Domain availability hints"], cta: "You're here", highlight: false },
-    { name: "Founder", price: "€19", tagline: "Everything to decide", features: ["60+ names, unlimited regenerations", "Live domain search across TLDs", "INPI / EUIPO trademark conflict check 🇫🇷", "Logo & color directions"], cta: "Unlock Founder", highlight: true },
-    { name: "Launch", price: "€89", tagline: "Go from name to filed", features: ["Everything in Founder", "Domain registration handled", "Trademark filing with INPI", "Full brand book (PDF)"], cta: "Get Launch", highlight: false },
+    { id: null as PlanId | null, name: "Preview", price: "Free", tagline: "Find your shortlist", features: ["8 names across your chosen types", "4-axis brand-strength scores", "Domain availability hints"], cta: "You're here", highlight: false },
+    { id: "founder" as PlanId, name: PLANS.founder.name, price: eur(PLANS.founder.price), tagline: PLANS.founder.tagline, features: PLANS.founder.features, cta: "Unlock Founder", highlight: true },
+    { id: "launch" as PlanId, name: PLANS.launch.name, price: eur(PLANS.launch.price), tagline: PLANS.launch.tagline, features: PLANS.launch.features, cta: "Get Launch", highlight: false },
   ];
   return (
     <section id="pricing" className="mt-28">
@@ -356,7 +362,13 @@ function Pricing() {
                 <li key={f} className="flex gap-2 text-white/70"><span className="text-emerald-400">✓</span>{f}</li>
               ))}
             </ul>
-            <button className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold transition ${t.highlight ? "bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:brightness-110" : "border border-white/15 hover:bg-white/5"}`}>{t.cta}</button>
+            <button
+              onClick={() => t.id && onCheckout(t.id)}
+              disabled={!t.id}
+              className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold transition ${t.highlight ? "bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:brightness-110" : "border border-white/15 hover:bg-white/5"} ${!t.id ? "cursor-default opacity-60" : ""}`}
+            >
+              {t.cta}
+            </button>
           </div>
         ))}
       </div>

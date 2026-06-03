@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { TYPE_META, type Brief, type NameIdea } from "../lib/generate";
+import { eur, PLANS, type PlanId } from "../lib/plans";
 
 const FREE_LIMIT = 8;
 
-export function Results({ results, brief, onMore, onRestart }: {
-  results: NameIdea[]; brief: Brief; onMore: () => void; onRestart: () => void;
+export function Results({ results, brief, onMore, onRestart, onCheckout }: {
+  results: NameIdea[]; brief: Brief; onMore: () => void; onRestart: () => void; onCheckout: (p: PlanId) => void;
 }) {
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const free = results.slice(0, FREE_LIMIT);
@@ -39,8 +40,8 @@ export function Results({ results, brief, onMore, onRestart }: {
         ))}
       </div>
 
-      <Paywall lockedCount={locked.length} locked={locked} />
-      <BeyondNames />
+      <Paywall lockedCount={locked.length} locked={locked} onCheckout={onCheckout} />
+      <BeyondNames onCheckout={onCheckout} />
 
       <div className="mt-16 text-center">
         <button onClick={onRestart} className="text-sm text-white/40 transition hover:text-white">← Start a new brief</button>
@@ -105,7 +106,7 @@ function DomainBadge({ idea }: { idea: NameIdea }) {
   return <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs font-medium text-white/40">○ {idea.domain} taken</span>;
 }
 
-function Paywall({ lockedCount, locked }: { lockedCount: number; locked: NameIdea[] }) {
+function Paywall({ lockedCount, locked, onCheckout }: { lockedCount: number; locked: NameIdea[]; onCheckout: (p: PlanId) => void }) {
   const teaser = locked.slice(0, 6);
   return (
     <div className="relative mt-4">
@@ -123,7 +124,7 @@ function Paywall({ lockedCount, locked }: { lockedCount: number; locked: NameIde
           <span className="text-3xl">🔓</span>
           <h3 className="mt-3 text-2xl font-bold">Unlock {lockedCount}+ more names</h3>
           <p className="mt-2 text-sm text-white/55">Plus live domain search across every TLD and an INPI 🇫🇷 / EUIPO trademark conflict check — so you pick a name you can actually own.</p>
-          <button className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3.5 font-semibold shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110">Unlock Founder — €19</button>
+          <button onClick={() => onCheckout("founder")} className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3.5 font-semibold shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110">Unlock Founder — {eur(PLANS.founder.price)}</button>
           <p className="mt-2.5 text-xs text-white/35">One-time · instant access · no subscription</p>
         </div>
       </div>
@@ -131,11 +132,11 @@ function Paywall({ lockedCount, locked }: { lockedCount: number; locked: NameIde
   );
 }
 
-function BeyondNames() {
-  const cards = [
-    { icon: "🌐", title: "Domain search & registration", body: "Real-time availability across .com, .io, .fr and 400+ TLDs. Found the one? We register it for you.", tag: "Founder & Launch" },
-    { icon: "🛡️", title: "INPI trademark check & filing", body: "We screen your name against existing French & EU trademarks, flag conflicts, then file the deposit for you.", tag: "Launch" },
-    { icon: "📘", title: "Brand book", body: "Logo directions, color palette, typography and voice — a ready-to-share PDF to launch with confidence.", tag: "Launch" },
+function BeyondNames({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
+  const cards: { icon: string; title: string; body: string; tag: string; plan: PlanId }[] = [
+    { icon: "🌐", title: "Domain search & registration", body: "Real-time availability across .com, .io, .fr and 400+ TLDs. Found the one? We register it for you.", tag: "Founder & Launch", plan: "founder" },
+    { icon: "🛡️", title: "INPI trademark check & filing", body: "We screen your name against existing French & EU trademarks, flag conflicts, then file the deposit for you.", tag: "Launch", plan: "launch" },
+    { icon: "📘", title: "Brand book", body: "Logo directions, color palette, typography and voice — a ready-to-share PDF to launch with confidence.", tag: "Launch", plan: "launch" },
   ];
   return (
     <section className="mt-24">
@@ -143,12 +144,12 @@ function BeyondNames() {
       <p className="mt-2 text-center text-white/50">Brandr takes you all the way from idea to a brand you legally own.</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         {cards.map((c) => (
-          <div key={c.title} className="glass rounded-2xl p-6">
+          <button key={c.title} onClick={() => onCheckout(c.plan)} className="glass rounded-2xl p-6 text-left transition hover:border-white/20">
             <span className="text-3xl">{c.icon}</span>
             <h3 className="mt-3 font-semibold">{c.title}</h3>
             <p className="mt-1.5 text-sm text-white/50">{c.body}</p>
             <span className="mt-4 inline-block rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-white/40">{c.tag}</span>
-          </div>
+          </button>
         ))}
       </div>
     </section>
