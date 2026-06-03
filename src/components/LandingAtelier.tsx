@@ -1,4 +1,5 @@
-import { eur, PLANS, type PlanId } from "../lib/plans";
+import { eur } from "../lib/plans";
+import { OFFERS } from "./Paywall";
 
 // The home — a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
@@ -11,18 +12,18 @@ const STEPS = [
 ];
 
 type Cell = boolean | string;
-const PRICE_COLS = ["Preview", "Founder", "Launch"];
+// Free everything creative; pay only to "make it real" once you have a shortlist.
+const PRICE_COLS = ["The studio", "Reality check", "Name it + ship it"];
 const PRICE_ROWS: { f: string; vals: [Cell, Cell, Cell] }[] = [
-  { f: "Names", vals: ["8", "60+", "60+"] },
-  { f: "4-axis brand scores", vals: [true, true, true] },
-  { f: "Domain search", vals: [false, true, true] },
-  { f: "INPI / EUIPO check", vals: [false, true, true] },
-  { f: "Domain registered", vals: [false, false, true] },
-  { f: "Trademark filed", vals: [false, false, true] },
-  { f: "Brand book (PDF)", vals: [false, false, true] },
+  { f: "Full naming flow — brief → concepts → words → names", vals: [true, true, true] },
+  { f: "4-axis SMILE scoring", vals: [true, true, true] },
+  { f: "Scored shortlist & recommendation", vals: [true, true, true] },
+  { f: "🌐 Domain availability across registers", vals: [false, true, true] },
+  { f: "🇫🇷 INPI / EUIPO trademark check", vals: [false, true, true] },
+  { f: "📕 Full brand book (logo, colors, type, voice)", vals: [false, false, true] },
 ];
 
-export function LandingAtelier({ onNext, onTalk, canTalk, onCheckout }: { onNext: () => void; onTalk: () => void; canTalk: boolean; onCheckout: (p: PlanId) => void }) {
+export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
   return (
     <div className="animate-in">
       {/* hero */}
@@ -100,8 +101,8 @@ export function LandingAtelier({ onNext, onTalk, canTalk, onCheckout }: { onNext
               <tr className="border-b border-ink/25">
                 <th className="py-3 pr-4 font-normal text-ink/45"></th>
                 {PRICE_COLS.map((c, i) => (
-                  <th key={c} className={`px-4 py-3 text-center font-serif text-lg italic ${i === 1 ? "bg-accent/5 text-ink" : "text-ink/70"}`}>
-                    {c}{i === 1 && <span className="text-accent"> ★</span>}
+                  <th key={c} className={`px-4 py-3 text-center font-serif text-lg italic ${i === 2 ? "bg-accent/5 text-ink" : "text-ink/70"}`}>
+                    {c}{i === 2 && <span className="text-accent"> ★</span>}
                   </th>
                 ))}
               </tr>
@@ -111,7 +112,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk, onCheckout }: { onNext
                 <tr key={r.f}>
                   <td className="py-3 pr-4 text-ink/60">{r.f}</td>
                   {r.vals.map((v, i) => (
-                    <td key={i} className={`px-4 py-3 text-center ${i === 1 ? "bg-accent/5" : ""}`}>
+                    <td key={i} className={`px-4 py-3 text-center ${i === 2 ? "bg-accent/5" : ""}`}>
                       {typeof v === "string" ? <span className="font-medium text-ink/80">{v}</span> : v ? <span className="text-accent">✓</span> : <span className="text-ink/20">—</span>}
                     </td>
                   ))}
@@ -120,17 +121,18 @@ export function LandingAtelier({ onNext, onTalk, canTalk, onCheckout }: { onNext
               <tr className="border-t border-ink/25">
                 <td className="py-4 pr-4 font-serif text-lg italic">Price</td>
                 <td className="px-4 py-4 text-center font-serif text-xl">Free</td>
-                <td className="bg-accent/5 px-4 py-4 text-center font-serif text-xl">{eur(PLANS.founder.price)}</td>
-                <td className="px-4 py-4 text-center font-serif text-xl">{eur(PLANS.launch.price)}</td>
+                <td className="px-4 py-4 text-center font-serif text-xl">{eur(OFFERS.check.price)}</td>
+                <td className="bg-accent/5 px-4 py-4 text-center font-serif text-xl">
+                  {eur(OFFERS.bundle.price)} <span className="ml-1 font-mono text-xs text-ink/35 line-through">{eur(OFFERS.bundle.was)}</span>
+                </td>
               </tr>
               <tr>
                 <td className="pr-4"></td>
-                <td className="px-2 py-3 text-center font-mono text-xs uppercase tracking-wide text-ink/40">you're here</td>
-                <td className="bg-accent/5 px-2 py-3 text-center">
-                  <button onClick={() => onCheckout("founder")} className="rounded-md border border-ink/40 px-4 py-2 font-serif text-base italic transition hover:bg-ink/5">Choose →</button>
-                </td>
                 <td className="px-2 py-3 text-center">
-                  <button onClick={() => onCheckout("launch")} className="rounded-md border border-ink/40 px-4 py-2 font-serif text-base italic transition hover:bg-ink/5">Choose →</button>
+                  <button onClick={onNext} className="rounded-md border border-ink/40 px-4 py-2 font-serif text-base italic transition hover:bg-ink/5">Start free →</button>
+                </td>
+                <td colSpan={2} className="px-2 py-3 text-center font-mono text-xs uppercase tracking-wide text-ink/40">
+                  Unlocked after your shortlist — pay when you're sure
                 </td>
               </tr>
             </tbody>

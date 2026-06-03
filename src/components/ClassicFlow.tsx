@@ -4,6 +4,7 @@ import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive } from "./ConceptDeepDive";
 import { PublicVote } from "./PublicVote";
+import { Paywall, type Tier } from "./Paywall";
 
 // The "Classic flow" (Atelier) — the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -44,6 +45,13 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [comp, setComp] = useState<Comparison | null>(null);
   const [chosenFinal, setChosenFinal] = useState<string>("");
   const [voteOpen, setVoteOpen] = useState(false);
+
+  // Monetization — everything above is free; the comparison's INPI + domain
+  // checks are the paid "make it real" product. paid unlocks them; maybeLater
+  // lets them see the scored shortlist with those cells still locked.
+  const [paid, setPaid] = useState(false);
+  const [paidTier, setPaidTier] = useState<Tier | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -237,12 +245,25 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                   })}
                 </div>
                 <Nav onBack={() => goto(5)} canNext={starNames.size >= 2} nextLabel={`Compare ${starNames.size || ""} starred →`}
-                  onNext={() => generate("compare", async () => setComp(await naming.compare(brief, names.filter((n) => starNames.has(n.name)))), 7)} />
+                  onNext={async () => {
+                    await generate("compare", async () => setComp(await naming.compare(brief, names.filter((n) => starNames.has(n.name)))), 7);
+                    if (!paid) setPayOpen(true);
+                  }} />
               </Panel>
             )}
 
             {step === 7 && comp && (
               <Panel title={<>The <I>comparison</I> — scored, stress-tested.</>} hint="SMILE scoring, cross-language meaning, domain & trademark flags.">
+                {paid ? (
+                  <div className="-mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-700">
+                    <span>✓</span><span>Reality check complete — INPI trademark & domain availability verified for your shortlist.{paidTier === "bundle" && " Your brand book is on its way to your inbox."}</span>
+                  </div>
+                ) : (
+                  <div className="-mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+                    <span className="text-ink/70">🔒 INPI & domain availability are locked. Unlock the reality check to see what's actually free to take.</span>
+                    <button onClick={() => setPayOpen(true)} className="ml-auto shrink-0 rounded-lg bg-accent px-3.5 py-2 font-serif text-sm italic text-white transition hover:brightness-105">Unlock — €9 →</button>
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm">
                     <thead>
@@ -269,7 +290,11 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                             <td className="px-2 text-center font-semibold">{r.total}</td>
                             <td className="px-3 py-3 text-xs leading-relaxed text-ink/55">
                               <p>{r.verdict}</p>
-                              <p className="mt-1 text-ink/40">🌍 {r.negatives} · 🌐 {r.domain} · ⚖ {r.trademark}</p>
+                              {paid ? (
+                                <p className="mt-1 text-ink/45">🌍 {r.negatives} · 🌐 {r.domain} · ⚖️ {r.trademark}</p>
+                              ) : (
+                                <p className="mt-1 select-none text-ink/40">🌍 {r.negatives} · <span className="rounded bg-ink/10 px-6 text-transparent blur-[3px]">{r.domain}</span> · <span className="rounded bg-ink/10 px-6 text-transparent blur-[3px]">{r.trademark}</span></p>
+                              )}
                             </td>
                           </tr>
                         );
@@ -283,6 +308,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                   <p className="mt-2 text-sm leading-relaxed text-ink/70">{comp.why}</p>
                   <p className="mt-3 text-right font-serif text-sm italic text-ink/40">— the studio</p>
                 </div>
+
+                <ShareFriends names={comp.rows.map((r) => r.name)} onVote={() => setVoteOpen(true)} />
 
                 <Nav onBack={() => goto(6)} canNext nextLabel="Make the decision →"
                   onNext={() => { setChosenFinal(comp.recommended); goto(8); }} />
@@ -327,6 +354,41 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
           onClose={() => setVoteOpen(false)}
         />
       )}
+
+      {payOpen && comp && (
+        <Paywall
+          names={comp.rows.map((r) => r.name)}
+          onClose={() => setPayOpen(false)}
+          onMaybeLater={() => setPayOpen(false)}
+          onPaid={(tier) => { setPaid(true); setPaidTier(tier); setPayOpen(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// "Ask your friends" — share the shortlist for a gut-check (the Tinder-style
+// vote, or a prefilled WhatsApp / email / copyable link). Share intents only;
+// nothing is sent without the founder's own confirmation in their app.
+function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const link = "https://dimitri-frb.github.io/brandr/";
+  const msg = `Help me pick my company name 🙌 — my shortlist: ${names.slice(0, 6).join(", ")}. Vote here: ${link}`;
+  const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  const mail = `mailto:?subject=${encodeURIComponent("Help me name my company")}&body=${encodeURIComponent(msg)}`;
+  async function copy() {
+    try { await navigator.clipboard.writeText(msg); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { /* noop */ }
+  }
+  return (
+    <div className="mt-5 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
+      <p className="font-serif text-xl italic">Still unsure? Ask your friends.</p>
+      <p className="mt-1 text-sm text-ink/55">Share your shortlist and let people swipe through it, Tinder-style. The clear favourite usually rises fast.</p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <button onClick={onVote} className="rounded-xl bg-ink px-4 py-2.5 font-serif text-base italic text-[var(--page)] transition hover:opacity-90">Open the swipe vote →</button>
+        <a href={wa} target="_blank" rel="noreferrer" className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">WhatsApp</a>
+        <a href={mail} className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">Email</a>
+        <button onClick={copy} className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">{copied ? "Copied ✓" : "Copy link"}</button>
+      </div>
     </div>
   );
 }

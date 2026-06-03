@@ -85,7 +85,6 @@ export default function App() {
             onNext={() => setScreen("classic")}
             onTalk={() => setScreen("talk")}
             canTalk
-            onCheckout={setCheckout}
           />
         )}
 
