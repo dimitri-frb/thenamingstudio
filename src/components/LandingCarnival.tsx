@@ -117,7 +117,7 @@ export function LandingCarnival({ description, setDescription, onNext, onCheckou
       </section>
 
       <footer className="mt-24 border-t-2 border-ink py-8 text-center text-sm font-black uppercase tracking-wider text-ink/50">
-        © 2026 Brandr — Carnival · a V1 preview 🎉
+        © 2026 the naming atelier — Carnival · a V1 preview 🎉
       </footer>
     </div>
   );

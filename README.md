@@ -1,4 +1,4 @@
-# Brandr — name your company in minutes
+# the naming atelier — name your company in minutes
 
 **Live demo: https://dimitri-frb.github.io/brandr/**
 

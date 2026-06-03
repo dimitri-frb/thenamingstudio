@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { eur, PLANS, type PlanId } from "../lib/plans";
+import { BrandMark, Wordmark } from "./Logo";
 
 type Stage = "signup" | "payment" | "processing" | "success";
 
@@ -72,8 +73,8 @@ function OrderSummary({ planId, stage }: { planId: PlanId; stage: Stage }) {
     <div className="hidden flex-col justify-between bg-gradient-to-b from-accent2/10 via-accent/5 to-transparent p-7 sm:p-9 md:flex">
       <div>
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent to-accent2 font-black text-white">B</span>
-          <span className="font-bold tracking-tight">Brandr</span>
+          <BrandMark />
+          <Wordmark />
         </div>
 
         <p className="mt-8 text-sm text-ink/45">You're unlocking</p>
@@ -161,13 +162,13 @@ function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: 
       </form>
 
       <p className="mt-4 text-center text-xs text-ink/40">
-        {mode === "signup" ? "Already have an account? " : "New to Brandr? "}
+        {mode === "signup" ? "Already have an account? " : "New to the atelier? "}
         <button onClick={() => setMode(mode === "signup" ? "signin" : "signup")} className="font-medium text-accent2 hover:underline">
           {mode === "signup" ? "Sign in" : "Create one"}
         </button>
       </p>
       <p className="mt-3 text-center text-[11px] leading-relaxed text-ink/30">
-        By continuing you agree to Brandr's Terms & Privacy Policy.
+        By continuing you agree to the atelier's Terms & Privacy Policy.
       </p>
     </div>
   );

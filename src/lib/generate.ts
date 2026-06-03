@@ -1,4 +1,4 @@
-// Brandr name engine — a self-contained generator built around the team's
+// the naming atelier — name engine: a self-contained generator built around the team's
 // naming framework (see the Figma research): 9 name types, scored on 4 axes
 // (Intuitive / Visual / Sound / Emotional) plus a SMILE check.
 //

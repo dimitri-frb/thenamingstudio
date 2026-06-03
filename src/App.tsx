@@ -13,6 +13,7 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { LandingCarnival } from "./components/LandingCarnival";
+import { BrandMark, Wordmark } from "./components/Logo";
 import { PLANS, eur, type PlanId } from "./lib/plans";
 
 type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
@@ -199,8 +200,8 @@ function Header({ onLogo, theme, setTheme }: { onLogo: () => void; theme: ThemeI
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-5 py-6">
       <button onClick={onLogo} className="group flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent to-accent2 font-black text-white shadow-lg shadow-accent2/20">B</span>
-        <span className="text-lg font-bold tracking-tight">Brandr</span>
+        <BrandMark />
+        <Wordmark />
       </button>
       <div className="flex items-center gap-4 text-sm text-ink/60">
         <div className="hidden items-center gap-6 lg:flex">
@@ -500,7 +501,7 @@ function Generating({ description }: { description: string }) {
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
       <div className="relative h-20 w-20">
         <div className="absolute inset-0 animate-ping rounded-2xl bg-accent2/30" />
-        <div className="relative grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent2 text-white text-3xl font-black shadow-2xl shadow-accent2/30">B</div>
+        <BrandMark className="relative h-20 w-20 rounded-2xl shadow-2xl shadow-accent2/30" />
       </div>
       <p className="mt-8 text-xl font-semibold">{lines[i]}</p>
       <p className="mt-2 max-w-sm text-sm text-ink/40 line-clamp-1">"{description || "your idea"}"</p>
@@ -512,7 +513,7 @@ function Footer() {
   return (
     <footer className="mx-auto mt-20 w-full max-w-5xl border-t border-ink/10 px-5 py-10 text-sm text-ink/35">
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <span>© 2026 Brandr — a V1 preview.</span>
+        <span>© 2026 the naming atelier — a V1 preview.</span>
         <span>Domain & 🇫🇷 INPI trademark integrations · demo data</span>
       </div>
     </footer>
