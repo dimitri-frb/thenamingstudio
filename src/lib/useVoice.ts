@@ -20,6 +20,28 @@ interface SpeechRecognitionLike {
   onerror: ((e: { error: string }) => void) | null;
 }
 
+// --- Speech synthesis (the AI asking questions out loud) ---
+export function speak(text: string, onEnd?: () => void) {
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth) { onEnd?.(); return; }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02;
+    u.pitch = 1;
+    const v = synth.getVoices().find((x) => /Samantha|Google US English|Serena|female/i.test(x.name));
+    if (v) u.voice = v;
+    if (onEnd) u.onend = onEnd;
+    synth.speak(u);
+  } catch {
+    onEnd?.();
+  }
+}
+export function stopSpeaking() {
+  try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+}
+export const voiceSupported = () => typeof window !== "undefined" && !!getRecognition();
+
 function getRecognition(): SpeechRecognitionLike | null {
   const w = window as unknown as {
     SpeechRecognition?: new () => SpeechRecognitionLike;

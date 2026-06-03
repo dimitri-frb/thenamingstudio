@@ -12,10 +12,12 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { ClassicFlow } from "./components/ClassicFlow";
+import { Conversation } from "./components/Conversation";
 import { BrandMark, Wordmark } from "./components/Logo";
 import { type PlanId } from "./lib/plans";
+import { type Brief as StudioBrief } from "./lib/namingApi";
 
-type Screen = "landing" | "classic" | "vibe" | "types" | "refine" | "generating" | "results";
+type Screen = "landing" | "talk" | "classic" | "vibe" | "types" | "refine" | "generating" | "results";
 
 const VIBES: { key: Vibe; emoji: string; hint: string }[] = [
   { key: "Modern", emoji: "✨", hint: "clean, current" },
@@ -43,6 +45,7 @@ export default function App() {
   const [avoid, setAvoid] = useState("");
   const [results, setResults] = useState<NameIdea[]>([]);
   const [checkout, setCheckout] = useState<PlanId | null>(null);
+  const [seedBrief, setSeedBrief] = useState<StudioBrief | null>(null);
 
   const brief: Brief = useMemo(
     () => ({ description, vibes, types, include, avoid }),
@@ -65,6 +68,7 @@ export default function App() {
   function restart() {
     setScreen("landing");
     setResults([]);
+    setSeedBrief(null);
   }
 
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
@@ -76,11 +80,24 @@ export default function App() {
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
-          /* Local dev (logged into Claude) → real Classic flow. Static deploy → offline demo funnel. */
-          <LandingAtelier onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")} onCheckout={setCheckout} />
+          /* Local dev (logged into Claude) → real Classic flow + voice conversation. Static deploy → offline demo funnel. */
+          <LandingAtelier
+            onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")}
+            onTalk={() => setScreen("talk")}
+            canTalk={import.meta.env.DEV}
+            onCheckout={setCheckout}
+          />
         )}
 
-        {screen === "classic" && <ClassicFlow initialDoes={description} onRestart={restart} />}
+        {screen === "talk" && (
+          <Conversation
+            voiceFirst
+            onComplete={(b) => { setSeedBrief(b); setScreen("classic"); }}
+            onCancel={restart}
+          />
+        )}
+
+        {screen === "classic" && <ClassicFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
           <Wizard>

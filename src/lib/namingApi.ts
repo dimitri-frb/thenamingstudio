@@ -40,7 +40,13 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
   return data as T;
 }
 
+export interface Msg { role: "assistant" | "user"; text: string }
+export interface InterviewTurn { say: string; done: boolean; brief?: Brief }
+
+const EMPTY_BRIEF: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [] };
+
 export const naming = {
+  interview: (messages: Msg[]) => call<InterviewTurn>("interview", EMPTY_BRIEF, { messages }),
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   words: (brief: Brief, concepts: Concept[]) => call<{ words: Word[] }>("words", brief, { concepts }).then((d) => d.words),
   names: (brief: Brief, concepts: Concept[], words: Word[]) =>

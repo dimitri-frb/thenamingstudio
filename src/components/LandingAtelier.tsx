@@ -22,7 +22,7 @@ const PRICE_ROWS: { f: string; vals: [Cell, Cell, Cell] }[] = [
   { f: "Brand book (PDF)", vals: [false, false, true] },
 ];
 
-export function LandingAtelier({ onNext, onCheckout }: { onNext: () => void; onCheckout: (p: PlanId) => void }) {
+export function LandingAtelier({ onNext, onTalk, canTalk, onCheckout }: { onNext: () => void; onTalk: () => void; canTalk: boolean; onCheckout: (p: PlanId) => void }) {
   return (
     <div className="animate-in">
       {/* hero */}
@@ -55,6 +55,18 @@ export function LandingAtelier({ onNext, onCheckout }: { onNext: () => void; onC
             See how it works
           </a>
         </div>
+
+        {canTalk && (
+          <button
+            onClick={onTalk}
+            className="group mt-5 inline-flex items-center gap-2 font-serif text-lg italic text-ink/55 transition hover:text-accent"
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-full border border-ink/20 text-ink/60 transition group-hover:border-accent group-hover:text-accent">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
+            </span>
+            …or just talk it through
+          </button>
+        )}
 
         <p className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-mono text-xs uppercase tracking-widest text-ink/40">
           <span>10 steps</span>

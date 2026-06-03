@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type Word, type NameIdea, type Comparison } from "../lib/namingApi";
+import { useVoice } from "../lib/useVoice";
 
 // The "Classic flow" (Atelier) — the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -26,7 +27,7 @@ const LANES: { key: string; label: string; ex: string }[] = [
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [] };
 
-export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; onRestart: () => void }) {
+export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void }) {
   const [step, setStep] = useState(0);
   const [reached, setReached] = useState(0);
   const [brief, setBrief] = useState<Brief>({ ...empty, does: initialDoes || "" });
@@ -58,6 +59,17 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
     if (n.has(v)) n.delete(v); else if (n.size < max) n.add(v);
     setter(n);
   };
+
+  // Arrived from the voice conversation with a ready brief → skip the forms,
+  // generate concepts, and drop the founder straight into the creative steps.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || !seedBrief) return;
+    seeded.current = true;
+    setBrief(seedBrief);
+    generate("concepts", async () => setConcepts(await naming.concepts(seedBrief)), 4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedBrief]);
 
   return (
     <div className="mx-auto grid max-w-5xl gap-10 px-1 pt-8 lg:grid-cols-[200px_1fr]">
@@ -167,7 +179,7 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
             )}
 
             {step === 5 && (
-              <Panel title={<>Mine each territory for <I>words</I> that could become names.</>} hint="Star the words with a pulse. We'll build names from your favourites.">
+              <Panel title={<>Mine each territory for <I>words</I> that could become names.</>} hint="Your brand is based on your inspiration. Select the words that speak to you the most.">
                 <div className="flex flex-wrap gap-2">
                   {words.map((w) => {
                     const on = starWords.has(w.word);
@@ -186,25 +198,25 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
             )}
 
             {step === 6 && (
-              <Panel title={<>Candidate <I>names</I>. Star the ones with a pulse.</>} hint="Each carries a rationale and a pulse score. Star up to 8 for the comparison.">
+              <Panel title={<>{names.length} names. <I>Star the keepers.</I></>} hint="Each carries a rationale and a SMILE pulse. Star up to 8 for the comparison.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {names.map((n) => {
                     const on = starNames.has(n.name);
                     return (
                       <button key={n.name} onClick={() => toggle(starNames, n.name, setStarNames, 8)}
-                        className={`relative rounded-xl border p-4 text-left transition ${on ? "border-accent bg-accent/5" : "border-ink/15 hover:border-ink/30"}`}>
-                        <span className="absolute right-3 top-3 text-lg">{on ? "★" : "☆"}</span>
-                        <div className="flex items-baseline gap-2">
-                          <p className="font-serif text-2xl">{n.name}</p>
-                          <span className="text-xs font-semibold text-emerald-600">{n.score}</span>
+                        className={`relative rounded-2xl border p-4 text-left transition ${on ? "border-accent/40 bg-accent/[0.07]" : "border-ink/15 bg-[var(--surface-solid)] hover:border-ink/30"}`}>
+                        <span className={`absolute right-4 top-4 text-lg ${on ? "text-accent" : "text-ink/25"}`}>{on ? "★" : "☆"}</span>
+                        <p className="font-serif text-2xl leading-none">{n.name}</p>
+                        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-ink/40">{n.type}</p>
+                        <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{n.rationale}”</p>
+                        <div className="mt-3 flex items-center gap-2 border-t border-ink/10 pt-3 font-mono text-[10px] uppercase tracking-widest text-ink/40">
+                          <span>Smile</span><SmileDots score={n.score} />
                         </div>
-                        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-ink/35">{n.type}</p>
-                        <p className="mt-1.5 text-sm text-ink/55">{n.rationale}</p>
                       </button>
                     );
                   })}
                 </div>
-                <Nav onBack={() => goto(5)} canNext={starNames.size >= 2} nextLabel="Compare the shortlist →"
+                <Nav onBack={() => goto(5)} canNext={starNames.size >= 2} nextLabel={`Compare ${starNames.size || ""} starred →`}
                   onNext={() => generate("compare", async () => setComp(await naming.compare(brief, names.filter((n) => starNames.has(n.name)))), 7)} />
               </Panel>
             )}
@@ -307,17 +319,49 @@ function I({ children }: { children: React.ReactNode }) {
 }
 
 function Field({ label, value, onChange, placeholder, area }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; area?: boolean }) {
+  const { supported, listening, toggle } = useVoice((t) => onChange(t));
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-ink/60">{label}</span>
-      {area ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={2}
-          className="w-full resize-none rounded-xl border border-ink/20 bg-[var(--surface-solid)] px-4 py-3 outline-none transition placeholder:text-ink/25 focus:border-accent/50" />
-      ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-          className="w-full rounded-xl border border-ink/20 bg-[var(--surface-solid)] px-4 py-3 outline-none transition placeholder:text-ink/25 focus:border-accent/50" />
-      )}
+      <div className="relative">
+        {area ? (
+          <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={listening ? "Listening…" : placeholder} rows={2}
+            className="w-full resize-none rounded-xl border border-ink/20 bg-[var(--surface-solid)] px-4 py-3 pr-12 outline-none transition placeholder:text-ink/25 focus:border-accent/50" />
+        ) : (
+          <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={listening ? "Listening…" : placeholder}
+            className="w-full rounded-xl border border-ink/20 bg-[var(--surface-solid)] px-4 py-3 pr-12 outline-none transition placeholder:text-ink/25 focus:border-accent/50" />
+        )}
+        {supported && (
+          <button
+            type="button"
+            onClick={() => toggle(value)}
+            title={listening ? "Stop dictation" : "Answer with voice"}
+            className={`absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-lg border transition ${listening ? "border-accent bg-accent text-white" : "border-ink/15 text-ink/45 hover:border-ink/35 hover:text-ink"}`}
+          >
+            {listening ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : <MicGlyph />}
+          </button>
+        )}
+      </div>
     </label>
+  );
+}
+
+function SmileDots({ score }: { score: number }) {
+  const filled = Math.max(1, Math.min(5, Math.round((score / 100) * 5)));
+  return (
+    <span className="flex gap-0.5">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span key={i} className={`h-1.5 w-1.5 rounded-full ${i < filled ? "bg-accent" : "bg-ink/15"}`} />
+      ))}
+    </span>
+  );
+}
+
+function MicGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" />
+    </svg>
   );
 }
 
