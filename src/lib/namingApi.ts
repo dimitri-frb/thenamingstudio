@@ -18,21 +18,20 @@ export interface Brief {
 
 export interface Concept { title: string; blurb: string; lane: string }
 
-// A concept explored into an inspiring "world" the founder reacts to.
+// A concept explored into a "world" the founder feels out through a few quick
+// questions: which feeling, which line, which brands inspire them.
 export interface BrandRef { name: string; why: string }
-export interface Angle { title: string; note: string }
 export interface TerritoryWorld {
   title: string;
-  essence: string;   // the one-line soul of this direction
-  story: string;     // why it fits THIS brand
-  quotes: string[];  // 1-2 manifesto lines — how the brand would talk
-  brands: BrandRef[];// brands that already live here, each with a why
-  angles: Angle[];   // sub-territories to niche down into
+  blurb: string;       // one clear sentence on what this direction is
+  feelings: string[];  // ~5 single feeling words to choose from
+  quotes: string[];    // ~4 manifesto lines (the brand's voice) to choose from
+  brands: BrandRef[];  // ~5 brands that live here, each with a why
 }
 
-// "Your brand so far" — what the founder kept while exploring. Names are drawn
-// from this, not from a list of words.
-export interface Sketch { concepts: string[]; quotes: string[]; brands: string[]; angles: string[] }
+// "Your brand so far" — the answers the founder gave while exploring. Names are
+// drawn from this, not from a list of words.
+export interface Sketch { concepts: string[]; feelings: string[]; quotes: string[]; brands: string[] }
 
 export interface NameIdea { name: string; type: string; rationale: string; score: number }
 export interface CompareRow {

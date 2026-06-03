@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
-import { ConceptDeepDive } from "./ConceptDeepDive";
+import { ConceptDeepDive, type Selection } from "./ConceptDeepDive";
 import { PublicVote } from "./PublicVote";
 import { Paywall, type Tier } from "./Paywall";
 
@@ -39,9 +39,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [worlds, setWorlds] = useState<TerritoryWorld[]>([]);
-  const [keptQuotes, setKeptQuotes] = useState<Set<string>>(new Set());
-  const [keptBrands, setKeptBrands] = useState<Set<string>>(new Set());
-  const [keptAngles, setKeptAngles] = useState<Set<string>>(new Set());
+  const [sel, setSel] = useState<Record<string, Selection>>({});
   const [names, setNames] = useState<NameIdea[]>([]);
   const [starNames, setStarNames] = useState<Set<string>>(new Set());
   const [comp, setComp] = useState<Comparison | null>(null);
@@ -74,12 +72,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
     setter(n);
   };
 
-  const keptCount = keptQuotes.size + keptBrands.size + keptAngles.size;
-  const toggleKept = (kind: "quotes" | "brands" | "angles", value: string) => {
-    if (kind === "quotes") toggle(keptQuotes, value, setKeptQuotes);
-    else if (kind === "brands") toggle(keptBrands, value, setKeptBrands);
-    else toggle(keptAngles, value, setKeptAngles);
-  };
+  const exploredCount = Object.values(sel).filter((s) => s.feeling || s.quote || s.brands.length).length;
+  const selectFor = (concept: string, patch: Partial<Selection>) =>
+    setSel((s) => { const prev = s[concept] || { brands: [] }; return { ...s, [concept]: { ...prev, ...patch } }; });
 
   // Arrived from the voice conversation with a ready brief → skip the forms,
   // generate concepts, and drop the founder straight into the creative steps.
@@ -131,7 +126,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             <span className="hidden font-mono text-xs uppercase tracking-widest text-ink/45 sm:inline">{STEPS[step]}</span>
           </div>
           {(() => {
-            const c = step === 4 ? chosen.size : step === 5 ? keptCount : step === 6 ? starNames.size : null;
+            const c = step === 4 ? chosen.size : step === 5 ? exploredCount : step === 6 ? starNames.size : null;
             return c != null ? <span className="shrink-0 font-mono text-xs text-accent">★ {c}</span> : null;
           })()}
         </div>
@@ -219,15 +214,16 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             {step === 5 && (
               <ConceptDeepDive
                 worlds={worlds}
-                kept={{ quotes: keptQuotes, brands: keptBrands, angles: keptAngles }}
-                onToggle={toggleKept}
+                selections={sel}
+                onSelect={selectFor}
                 onBack={() => goto(4)}
                 onGenerate={() => generate("names", async () => {
+                  const entries = Object.entries(sel).filter(([, s]) => s.feeling || s.quote || s.brands.length);
                   const sketch = {
-                    concepts: concepts.filter((c) => chosen.has(c.title)).map((c) => c.title),
-                    quotes: [...keptQuotes],
-                    brands: [...keptBrands],
-                    angles: [...keptAngles],
+                    concepts: entries.length ? entries.map(([t]) => t) : worlds.map((w) => w.title),
+                    feelings: [...new Set(entries.map(([, s]) => s.feeling).filter(Boolean) as string[])],
+                    quotes: [...new Set(entries.map(([, s]) => s.quote).filter(Boolean) as string[])],
+                    brands: [...new Set(entries.flatMap(([, s]) => s.brands))],
                   };
                   setNames(await naming.names(brief, sketch));
                 }, 6)}

@@ -36,7 +36,6 @@ const FRAMES = [
   { t: "True north", b: "A dependable point of reference when everything else is noisy.", lane: "suggestive" },
   { t: "Playground", b: "Light, joyful, a place to experiment without fear.", lane: "playful" },
 ];
-const MOODS = ["intimate", "tactile", "unhurried", "literary", "honest", "bold", "warm", "precise", "playful", "quiet", "modern", "crafted"];
 const PRE = ["lumo", "nova", "vela", "kai", "ora", "sol", "wren", "halo", "vero", "atlas", "ember", "lyra"];
 const SUF = ["ly", "ora", "io", "wave", "lab", "mint", "flow", "loop", "craft", "field", "kit", "able"];
 
@@ -69,16 +68,7 @@ const BRANDS: { name: string; why: string }[] = [
   { name: "Duolingo", why: "a mascot with a personality of its own" },
   { name: "Rivian", why: "adventurous, optimistic, new-world" },
 ];
-const ANGLES: { title: string; note: string }[] = [
-  { title: "The insider", note: "Speak only to people already in the know." },
-  { title: "The rebel", note: "Position against the tired way it's always done." },
-  { title: "The craftsman", note: "Foreground care, detail, the human hand." },
-  { title: "The optimist", note: "Sell the brighter morning, not the problem." },
-  { title: "The minimalist", note: "Strip it to one idea, said once." },
-  { title: "The guide", note: "Be the calm expert who has your back." },
-  { title: "The challenger", note: "Name the enemy and rally people against it." },
-  { title: "The native", note: "Sound like you were born in this world, not visiting." },
-];
+const FEELINGS = ["warm", "bold", "calm", "playful", "premium", "honest", "modern", "crafted", "fearless", "quiet"];
 
 /* ---------------- phases ---------------- */
 export function localConcepts(brief: Brief): { concepts: Concept[] } {
@@ -94,25 +84,22 @@ export function localConcepts(brief: Brief): { concepts: Concept[] } {
   };
 }
 
-export function localExplore(brief: Brief, concept: Concept): TerritoryWorld {
-  const r = rng(hash(concept.title + brief.does));
-  const aud = brief.audience || "the people you serve";
-  const m1 = pick(r, MOODS), m2 = pick(r, MOODS);
+export function localExplore(_brief: Brief, concept: Concept): TerritoryWorld {
+  const r = rng(hash(concept.title + _brief.does));
   return {
     title: concept.title,
-    essence: `${cap(m1)}, ${m2}, and unmistakably yours.`,
-    story: `${concept.blurb} For ${aud}, this direction makes the brand feel ${pick(r, MOODS)} without ever trying too hard.`,
-    quotes: sample(r, QUOTES, 2),
-    brands: sample(r, BRANDS, 4),
-    angles: sample(r, ANGLES, 4),
+    blurb: concept.blurb,
+    feelings: sample(r, FEELINGS, 5),
+    quotes: sample(r, QUOTES, 4),
+    brands: sample(r, BRANDS, 5),
   };
 }
 
 export function localNames(brief: Brief, sketch: Sketch): { names: NameIdea[] } {
   const r = rng(hash(JSON.stringify(sketch) + brief.does + Math.floor(Math.random() * 1e6)));
   const lanes = (brief.lanes?.length ? brief.lanes : ["suggestive", "compound", "invented", "evocative"]);
-  // Seed words from the kept signals (concepts, angles, quotes) + the brief.
-  const fromSketch = [...(sketch?.concepts || []), ...(sketch?.angles || []), ...(sketch?.quotes || [])]
+  // Seed words from the answers (concepts, feelings, quotes) + the brief.
+  const fromSketch = [...(sketch?.concepts || []), ...(sketch?.feelings || []), ...(sketch?.quotes || [])]
     .join(" ").toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/)
     .filter((w) => w.length > 3 && !STOP.has(w));
   const seeds = [...new Set([...fromSketch, ...keywords(brief)])];
@@ -120,7 +107,7 @@ export function localNames(brief: Brief, sketch: Sketch): { names: NameIdea[] } 
   const out: NameIdea[] = [];
   const seen = new Set<string>();
   let guard = 0;
-  while (out.length < 24 && guard < 400) {
+  while (out.length < 12 && guard < 400) {
     guard++;
     const word = pick(r, pool);
     const lane = pick(r, lanes);
