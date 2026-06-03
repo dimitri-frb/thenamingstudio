@@ -1,5 +1,8 @@
 // Talks to the dev-server Claude bridge (/api/naming -> `claude -p`).
-// Each call runs a real model turn against the logged-in Claude account.
+// Each call runs a real model turn against the logged-in Claude account; when
+// the bridge isn't reachable (static GitHub Pages) it falls back to a
+// client-side studio (./localStudio) so the whole flow still works.
+import * as local from "./localStudio";
 
 export interface Brief {
   does: string;
@@ -30,20 +33,36 @@ export interface CompareRow {
 export interface Comparison { rows: CompareRow[]; recommended: string; why: string }
 
 async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<T> {
-  const res = await fetch("/api/naming", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ phase, brief, payload }),
-  });
-  const data = await res.json().catch(() => ({ error: "Bad response from the studio." }));
-  if (!res.ok || data.error) {
-    throw new Error(
-      data.error?.includes("ENOENT") || data.error?.includes("not found")
-        ? "Claude CLI not reachable. Run `npm run dev` locally where you're logged into Claude."
-        : data.error || `Request failed (${res.status})`,
-    );
+  // Try the real Claude bridge (local dev). On any failure — no bridge (static
+  // GitHub Pages), 404, model error — fall back to the client-side studio so the
+  // whole flow still works, just with demo-grade data.
+  try {
+    const res = await fetch("/api/naming", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phase, brief, payload }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (!data?.error) return data as T;
+    }
+  } catch {
+    /* offline / no bridge → fall through to local */
   }
-  return data as T;
+  await new Promise((r) => setTimeout(r, 500)); // tiny beat so the "thinking" state reads
+  return localFallback(phase, brief, payload) as T;
+}
+
+function localFallback(phase: string, brief: Brief, payload: any): unknown {
+  switch (phase) {
+    case "interview": return local.localInterview(payload?.messages || []);
+    case "concepts": return local.localConcepts(brief);
+    case "explore": return local.localExplore(brief, payload.concept);
+    case "names": return local.localNames(brief, payload.concepts || [], payload.words || []);
+    case "compare": return local.localCompare(brief, payload.names || []);
+    case "suggest": return local.localSuggest(brief, payload?.field || "");
+    default: return {};
+  }
 }
 
 export interface Msg { role: "assistant" | "user"; text: string }
@@ -56,6 +75,7 @@ export const naming = {
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   words: (brief: Brief, concepts: Concept[]) => call<{ words: Word[] }>("words", brief, { concepts }).then((d) => d.words),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
+  suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
   names: (brief: Brief, concepts: Concept[], words: Word[]) =>
     call<{ names: NameIdea[] }>("names", brief, { concepts, words }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),

@@ -80,11 +80,11 @@ export default function App() {
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
-          /* Local dev (logged into Claude) → real Classic flow + voice conversation. Static deploy → offline demo funnel. */
+          /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
           <LandingAtelier
-            onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")}
+            onNext={() => setScreen("classic")}
             onTalk={() => setScreen("talk")}
-            canTalk={import.meta.env.DEV}
+            canTalk
             onCheckout={setCheckout}
           />
         )}

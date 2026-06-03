@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type Word, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
+import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive } from "./ConceptDeepDive";
+import { PublicVote } from "./PublicVote";
 
 // The "Classic flow" (Atelier) — the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -41,6 +43,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [starNames, setStarNames] = useState<Set<string>>(new Set());
   const [comp, setComp] = useState<Comparison | null>(null);
   const [chosenFinal, setChosenFinal] = useState<string>("");
+  const [voteOpen, setVoteOpen] = useState(false);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,8 +100,23 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 
       {/* main */}
       <div className="min-w-0 pb-24">
-        <div className="mb-6 flex items-center justify-between font-mono text-xs uppercase tracking-[0.2em] text-ink/40">
-          <span>Step {String(step + 1).padStart(2, "0")} / 09 · {STEPS[step]}</span>
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            onClick={() => (step > 0 ? goto(step - 1) : onRestart())}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-ink/15 text-ink/50 transition hover:border-ink/35 hover:text-ink"
+            title={step > 0 ? "Back" : "Leave the studio"}
+          >←</button>
+          <div className="flex flex-1 items-center gap-2">
+            <span className="font-mono text-xs text-ink/45">{String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}</span>
+            <div className="flex flex-1 gap-1">
+              {STEPS.map((_, i) => <span key={i} className={`h-1 flex-1 rounded-full transition ${i < step ? "bg-accent/60" : i === step ? "bg-accent" : "bg-ink/12"}`} />)}
+            </div>
+            <span className="hidden font-mono text-xs uppercase tracking-widest text-ink/45 sm:inline">{STEPS[step]}</span>
+          </div>
+          {(() => {
+            const c = step === 4 ? chosen.size : step === 5 ? starWords.size : step === 6 ? starNames.size : null;
+            return c != null ? <span className="shrink-0 font-mono text-xs text-accent">★ {c}</span> : null;
+          })()}
         </div>
 
         {error && (
@@ -119,10 +137,10 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 
             {step === 1 && (
               <Panel title={<>Now the <I>brand</I> — who it's for and why it matters.</>} hint="What problem do you solve, for whom, and what makes your point of view defensible?">
-                <Field label="What problem does it solve?" value={brief.problem} onChange={(v) => set({ problem: v })} area placeholder="Founders spend weeks naming and settle for something generic." />
-                <Field label="Who is the target audience?" value={brief.audience} onChange={(v) => set({ audience: v })} placeholder="Startup founders & brand strategists. Time-pressed, often non-native English speakers." />
-                <Field label="What do they value?" value={brief.values} onChange={(v) => set({ values: v })} placeholder="Taste, speed, a defensible system — not a slot machine." />
-                <Field label="Unique value proposition" value={brief.uvp} onChange={(v) => set({ uvp: v })} placeholder="A naming studio in your pocket." />
+                <Field label="What problem does it solve?" value={brief.problem} onChange={(v) => set({ problem: v })} area placeholder="Founders spend weeks naming and settle for something generic." onSuggest={() => naming.suggest(brief, "problem")} />
+                <Field label="Who is the target audience?" value={brief.audience} onChange={(v) => set({ audience: v })} placeholder="Startup founders & brand strategists." onSuggest={() => naming.suggest(brief, "audience")} />
+                <Field label="What do they value?" value={brief.values} onChange={(v) => set({ values: v })} placeholder="Taste, speed, a defensible system." onSuggest={() => naming.suggest(brief, "values")} />
+                <Field label="Unique value proposition" value={brief.uvp} onChange={(v) => set({ uvp: v })} placeholder="A naming studio in your pocket." onSuggest={() => naming.suggest(brief, "uvp")} />
                 <Nav onBack={() => goto(0)} onNext={() => goto(2)} canNext={!!brief.problem.trim()} nextLabel="Next · Emotional value" />
               </Panel>
             )}
@@ -132,20 +150,22 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                 <ChipGroup label="Should signal" options={SIGNAL} selected={brief.signal} onToggle={(v) => set({ signal: toggleArr(brief.signal, v) })} />
                 <ChipGroup label="Should NOT signal" options={AVOID} selected={brief.avoid} onToggle={(v) => set({ avoid: toggleArr(brief.avoid, v) })} tone="avoid" />
                 <ChipGroup label="Tone / personality" options={TONE} selected={brief.tone} onToggle={(v) => set({ tone: toggleArr(brief.tone, v) })} />
-                <Nav onBack={() => goto(1)} onNext={() => goto(3)} canNext={brief.signal.length > 0} nextLabel="Next · Naming strategy" />
+                <Nav onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes(brief) }); goto(3); }} canNext={brief.signal.length > 0} nextLabel="Next · Naming strategy" />
               </Panel>
             )}
 
             {step === 3 && (
-              <Panel title={<>Choose the <I>naming lanes</I> we'll explore.</>} hint="Pick up to 4. The right strategy narrows the search before it starts.">
+              <Panel title={<>Choose the <I>naming lanes</I> we'll explore.</>} hint="We pre-selected the lanes that fit your brief — keep them, or pick your own (up to 4).">
                 <div className="grid gap-3 sm:grid-cols-3">
                   {LANES.map((l) => {
                     const on = brief.lanes.includes(l.key);
+                    const rec = recommendLanes(brief).includes(l.key);
                     return (
                       <button key={l.key} onClick={() => set({ lanes: toggleArr(brief.lanes, l.key, 4) })}
                         className={`relative rounded-xl border p-4 text-left transition ${on ? "border-accent bg-accent/5" : "border-ink/15 hover:border-ink/30"}`}>
                         {on && <Check />}
                         <p className="font-semibold">{l.label}</p>
+                        {rec && <span className="mt-1 inline-block rounded-full bg-accent/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-accent">recommended</span>}
                         <p className="mt-1 font-serif text-sm italic text-ink/45">{l.ex}</p>
                       </button>
                     );
@@ -285,15 +305,28 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                   <div className="mt-7 rounded-2xl border border-ink/15 p-6 text-center">
                     <p className="font-serif text-3xl">{chosenFinal}</p>
                     <p className="mt-2 text-sm text-ink/55">A fine choice. Next: secure the domain, run an INPI 🇫🇷 trademark check, and build the brand book.</p>
-                    <p className="mt-4 font-serif text-base italic text-ink/40">Feedback step (share with 3–5 friends) comes next — coming soon.</p>
                   </div>
                 )}
+                <div className="mt-7 flex items-center justify-center gap-3 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5 text-center">
+                  <div className="text-left">
+                    <p className="font-serif text-lg italic">Not sure? Get a gut-check.</p>
+                    <p className="text-sm text-ink/50">Swipe through your shortlist like a vote.</p>
+                  </div>
+                  <button onClick={() => setVoteOpen(true)} className="ml-auto rounded-xl border border-ink/30 px-4 py-2.5 font-serif text-base italic transition hover:bg-ink/5">Open the vote →</button>
+                </div>
                 <Nav onBack={() => goto(7)} onNext={onRestart} canNext nextLabel="Start a new session" />
               </Panel>
             )}
           </>
         )}
       </div>
+
+      {voteOpen && comp && (
+        <PublicVote
+          items={comp.rows.map((r) => ({ name: r.name, note: r.verdict, type: names.find((n) => n.name === r.name)?.type }))}
+          onClose={() => setVoteOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -318,11 +351,25 @@ function I({ children }: { children: React.ReactNode }) {
   return <span className="italic text-accent2">{children}</span>;
 }
 
-function Field({ label, value, onChange, placeholder, area }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; area?: boolean }) {
+function Field({ label, value, onChange, placeholder, area, onSuggest }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; area?: boolean; onSuggest?: () => Promise<string[]> }) {
   const { supported, listening, toggle } = useVoice((t) => onChange(t));
+  const [sugg, setSugg] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  async function suggest() {
+    if (busy || !onSuggest) return;
+    setBusy(true);
+    try { setSugg(await onSuggest()); } catch { /* noop */ } finally { setBusy(false); }
+  }
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-ink/60">{label}</span>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-sm font-medium text-ink/60">{label}</span>
+        {onSuggest && (
+          <button type="button" onClick={suggest} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-accent transition hover:opacity-70 disabled:opacity-40">
+            {busy ? "…" : "✨ Suggest"}
+          </button>
+        )}
+      </div>
       <div className="relative">
         {area ? (
           <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={listening ? "Listening…" : placeholder} rows={2}
@@ -342,6 +389,16 @@ function Field({ label, value, onChange, placeholder, area }: { label: string; v
           </button>
         )}
       </div>
+      {sugg.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {sugg.map((s) => (
+            <button key={s} type="button" onClick={() => { onChange(value ? `${value}, ${s}` : s); setSugg([]); }}
+              className="rounded-full border border-accent/30 bg-accent/5 px-2.5 py-1 text-xs text-ink/70 transition hover:bg-accent/10">
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
     </label>
   );
 }
