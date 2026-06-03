@@ -54,7 +54,7 @@ export function PublicVote({ items, onClose }: { items: VoteItem[]; onClose: () 
       {/* top */}
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-5 py-5 font-mono text-xs uppercase tracking-widest text-ink/45">
         <button onClick={onClose} className="hover:text-ink">✕</button>
-        <span className="font-serif text-base italic normal-case tracking-normal text-ink/70">the naming atelier</span>
+        <span className="font-serif text-base italic normal-case tracking-normal text-ink/70">the naming studio</span>
         <span>{done ? "Done" : `Vote · ${i + 1} of ${items.length}`}</span>
       </div>
 

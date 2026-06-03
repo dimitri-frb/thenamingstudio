@@ -135,7 +135,7 @@ function Recommendation({ idea, fav, onFav, onPick }: { idea: NameIdea; fav: boo
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-right font-serif text-base italic text-ink/40">— the atelier</p>
+        <p className="mt-4 text-right font-serif text-base italic text-ink/40">— the studio</p>
       </div>
 
       <button
@@ -302,7 +302,7 @@ function BeyondNames({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
   return (
     <section className="mt-24">
       <h2 className="text-center text-2xl font-bold tracking-tight">A name is just the start</h2>
-      <p className="mt-2 text-center text-ink/50">The naming atelier takes you all the way from idea to a brand you legally own.</p>
+      <p className="mt-2 text-center text-ink/50">The naming studio takes you all the way from idea to a brand you legally own.</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <button key={c.title} onClick={() => onCheckout(c.plan)} className="glass rounded-2xl p-6 text-left transition hover:border-ink/20">

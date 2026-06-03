@@ -196,8 +196,6 @@ function Header({ onLogo }: { onLogo: () => void }) {
         <Wordmark />
       </button>
       <div className="hidden items-center gap-6 font-mono text-xs uppercase tracking-widest text-ink/45 sm:flex">
-        <a href="#process" className="hover:text-ink">Process</a>
-        <a href="#pricing" className="hover:text-ink">Pricing</a>
         <span className="rounded-full border border-ink/15 px-3 py-1">🇫🇷 INPI-ready</span>
       </div>
     </header>

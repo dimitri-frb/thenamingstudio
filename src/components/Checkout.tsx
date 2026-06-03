@@ -162,13 +162,13 @@ function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: 
       </form>
 
       <p className="mt-4 text-center text-xs text-ink/40">
-        {mode === "signup" ? "Already have an account? " : "New to the atelier? "}
+        {mode === "signup" ? "Already have an account? " : "New to the studio? "}
         <button onClick={() => setMode(mode === "signup" ? "signin" : "signup")} className="font-medium text-accent2 hover:underline">
           {mode === "signup" ? "Sign in" : "Create one"}
         </button>
       </p>
       <p className="mt-3 text-center text-[11px] leading-relaxed text-ink/30">
-        By continuing you agree to the atelier's Terms & Privacy Policy.
+        By continuing you agree to the studio's Terms & Privacy Policy.
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-// Brand mark for "the naming atelier" — an asterisk (the atelier motif),
+// Brand mark for "the naming studio" — an asterisk (the studio motif),
 // used in the header, checkout and the generating screen.
 
 export function BrandMark({ className = "h-8 w-8 rounded-lg" }: { className?: string }) {
@@ -12,5 +12,5 @@ export function BrandMark({ className = "h-8 w-8 rounded-lg" }: { className?: st
 }
 
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <span className={`font-serif text-lg italic tracking-tight ${className}`}>the naming atelier</span>;
+  return <span className={`font-serif text-lg italic tracking-tight ${className}`}>the naming studio</span>;
 }
