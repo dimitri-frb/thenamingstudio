@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { naming, type Brief, type Concept, type Word, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
+import { naming, type Brief, type Concept, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive } from "./ConceptDeepDive";
@@ -11,7 +11,7 @@ import { Paywall, type Tier } from "./Paywall";
 
 const STEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Concepts", "Words & exploration", "Name ideas", "Comparison", "Decision",
+  "Concepts", "Exploration", "Name ideas", "Comparison", "Decision",
 ];
 
 const SIGNAL = ["Creativity", "Taste", "Craft", "Sharpness", "Trust", "Speed", "Momentum", "Optimism", "Calm", "Premium", "Playful", "Intrigue"];
@@ -39,7 +39,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [worlds, setWorlds] = useState<TerritoryWorld[]>([]);
-  const [starWords, setStarWords] = useState<Set<string>>(new Set());
+  const [keptQuotes, setKeptQuotes] = useState<Set<string>>(new Set());
+  const [keptBrands, setKeptBrands] = useState<Set<string>>(new Set());
+  const [keptAngles, setKeptAngles] = useState<Set<string>>(new Set());
   const [names, setNames] = useState<NameIdea[]>([]);
   const [starNames, setStarNames] = useState<Set<string>>(new Set());
   const [comp, setComp] = useState<Comparison | null>(null);
@@ -70,6 +72,13 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
     const n = new Set(s);
     if (n.has(v)) n.delete(v); else if (n.size < max) n.add(v);
     setter(n);
+  };
+
+  const keptCount = keptQuotes.size + keptBrands.size + keptAngles.size;
+  const toggleKept = (kind: "quotes" | "brands" | "angles", value: string) => {
+    if (kind === "quotes") toggle(keptQuotes, value, setKeptQuotes);
+    else if (kind === "brands") toggle(keptBrands, value, setKeptBrands);
+    else toggle(keptAngles, value, setKeptAngles);
   };
 
   // Arrived from the voice conversation with a ready brief → skip the forms,
@@ -122,7 +131,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             <span className="hidden font-mono text-xs uppercase tracking-widest text-ink/45 sm:inline">{STEPS[step]}</span>
           </div>
           {(() => {
-            const c = step === 4 ? chosen.size : step === 5 ? starWords.size : step === 6 ? starNames.size : null;
+            const c = step === 4 ? chosen.size : step === 5 ? keptCount : step === 6 ? starNames.size : null;
             return c != null ? <span className="shrink-0 font-mono text-xs text-accent">★ {c}</span> : null;
           })()}
         </div>
@@ -185,7 +194,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 4 && (
-              <Panel title={<>Pick the <I>territories</I> we'll mine for words.</>} hint="Each concept is a creative direction your name could live inside. Pick 2–4 to explore.">
+              <Panel title={<>These are the <I>worlds</I> your brand could live in.</>} hint="A name with no world behind it is just a word. Pick the 2–3 directions that make your gut say yes — we'll sketch each one out.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {concepts.map((c) => {
                     const on = chosen.has(c.title);
@@ -210,17 +219,17 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             {step === 5 && (
               <ConceptDeepDive
                 worlds={worlds}
-                kept={starWords}
-                onToggle={(w) => toggle(starWords, w, setStarWords)}
+                kept={{ quotes: keptQuotes, brands: keptBrands, angles: keptAngles }}
+                onToggle={toggleKept}
                 onBack={() => goto(4)}
                 onGenerate={() => generate("names", async () => {
-                  const seen = new Set<string>();
-                  const kw: Word[] = [];
-                  for (const W of worlds)
-                    for (const sw of W.words)
-                      for (const t of [sw.word, ...sw.branches.map((b) => b.word)])
-                        if (starWords.has(t) && !seen.has(t)) { seen.add(t); kw.push({ word: t, territory: W.title }); }
-                  setNames(await naming.names(brief, concepts.filter((c) => chosen.has(c.title)), kw));
+                  const sketch = {
+                    concepts: concepts.filter((c) => chosen.has(c.title)).map((c) => c.title),
+                    quotes: [...keptQuotes],
+                    brands: [...keptBrands],
+                    angles: [...keptAngles],
+                  };
+                  setNames(await naming.names(brief, sketch));
                 }, 6)}
               />
             )}
@@ -254,6 +263,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 
             {step === 7 && comp && (
               <Panel title={<>The <I>comparison</I> — scored, stress-tested.</>} hint="SMILE scoring, cross-language meaning, domain & trademark flags.">
+                <HeroPick comp={comp} />
                 {paid ? (
                   <div className="-mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-700">
                     <span>✓</span><span>Reality check complete — INPI trademark & domain availability verified for your shortlist.{paidTier === "bundle" && " Your brand book is on its way to your inbox."}</span>
@@ -389,6 +399,26 @@ function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }
         <a href={mail} className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">Email</a>
         <button onClick={copy} className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">{copied ? "Copied ✓" : "Copy link"}</button>
       </div>
+    </div>
+  );
+}
+
+function HeroPick({ comp }: { comp: Comparison }) {
+  const top = comp.rows.find((r) => r.name === comp.recommended) || comp.rows[0];
+  if (!top) return null;
+  return (
+    <div className="mb-7 rounded-3xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
+      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent">Our pick for you</p>
+      <h3 className="mt-2 font-serif text-5xl leading-none">{top.name}</h3>
+      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/70">{comp.why}</p>
+      <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-widest text-ink/45">
+        <span>Intuitive {top.intuitive}/5</span>
+        <span>Visual {top.visual}/5</span>
+        <span>Sound {top.sound}/5</span>
+        <span>Emotional {top.emotional}/5</span>
+        <span className="text-accent">SMILE {top.total}/20</span>
+      </div>
+      <p className="mt-4 font-serif text-base italic text-ink/55">“{top.verdict}” — the studio</p>
     </div>
   );
 }

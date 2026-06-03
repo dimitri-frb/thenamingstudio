@@ -1,9 +1,9 @@
 // Client-side fallback "studio" — runs the whole flow with no backend, so the
-// static GitHub Pages build is fully explorable. When the Claude bridge IS
-// reachable (local dev) the real model is used instead (see namingApi).
+// static GitHub Pages build is fully explorable. When real Claude IS reachable
+// (dev bridge or the Worker) it is used instead (see namingApi).
 // Deterministic-ish, decent quality, clearly demo-grade.
 
-import type { Brief, Concept, NameIdea, Comparison, TerritoryWorld, Msg, InterviewTurn, SeedWord } from "./namingApi";
+import type { Brief, Concept, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -15,7 +15,8 @@ function rng(seed: number) {
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const pick = <T,>(r: () => number, a: T[]): T => a[Math.floor(r() * a.length)];
-const STOP = new Set(["a", "an", "the", "for", "and", "or", "to", "of", "in", "on", "with", "that", "app", "platform", "tool", "your", "you", "we", "it", "is", "helps", "turns", "into", "make", "makes"]);
+const sample = <T,>(r: () => number, a: T[], n: number): T[] => [...a].sort(() => r() - 0.5).slice(0, n);
+const STOP = new Set(["a", "an", "the", "for", "and", "or", "to", "of", "in", "on", "with", "that", "app", "platform", "tool", "your", "you", "we", "it", "is", "helps", "turns", "into", "make", "makes", "this", "these", "angle", "own", "story", "whole"]);
 
 function keywords(b: Brief): string[] {
   const text = [b.does, b.problem, b.values, b.uvp].join(" ").toLowerCase();
@@ -35,32 +36,55 @@ const FRAMES = [
   { t: "True north", b: "A dependable point of reference when everything else is noisy.", lane: "suggestive" },
   { t: "Playground", b: "Light, joyful, a place to experiment without fear.", lane: "playful" },
 ];
-const PALETTES = [
-  ["#2C2A2E", "#D4A276", "#F0E6D3", "#5B7065"],
-  ["#1F2933", "#E07A5F", "#F2CC8F", "#81B29A"],
-  ["#33291F", "#A8763E", "#EDE6D6", "#6B705C"],
-  ["#22223B", "#C9ADA7", "#F2E9E4", "#9A8C98"],
-];
 const MOODS = ["intimate", "tactile", "unhurried", "literary", "honest", "bold", "warm", "precise", "playful", "quiet", "modern", "crafted"];
-const MOTIFS = ["✒️ a quill trailing into a wave", "🌿 a single leaf unfurling", "🪡 a thread pulled taut", "🌅 light breaking over a ridge", "🔑 a small brass key", "📡 a soft signal rippling out"];
 const PRE = ["lumo", "nova", "vela", "kai", "ora", "sol", "wren", "halo", "vero", "atlas", "ember", "lyra"];
 const SUF = ["ly", "ora", "io", "wave", "lab", "mint", "flow", "loop", "craft", "field", "kit", "able"];
 
-function branchesFor(r: () => number, w: string): SeedWord["branches"] {
-  const base = w.replace(/[aeiou]+$/i, "") || w;
-  return [
-    { word: pick(r, ["true" + w, w + "ly", "re" + w, w + "ish"]).toLowerCase(), kind: "synonym" },
-    { word: pick(r, ["north", "ember", "tide", "spark", "grove", "loom"]), kind: "metaphor" },
-    { word: pick(r, [base + "a", "le " + w, w + "o", "mon" + base]), kind: "foreign" },
-    { word: cap(base + pick(r, SUF)), kind: "sound" },
-  ];
-}
+// Manifesto-style voice lines for the exploration "sketch".
+const QUOTES = [
+  "We didn't come to blend in.",
+  "Less noise, more signal.",
+  "Made by hand, built to last.",
+  "Start before you're ready.",
+  "The quiet ones change everything.",
+  "Make the complicated feel simple.",
+  "Big ideas, said plainly.",
+  "For the people who give a damn.",
+  "Everything you need, nothing you don't.",
+  "Show up, do the work, repeat.",
+  "Taste is a feature.",
+  "Slow is smooth, and smooth is fast.",
+];
+const BRANDS: { name: string; why: string }[] = [
+  { name: "Aesop", why: "restraint as luxury — every word chosen" },
+  { name: "Notion", why: "calm, flexible, quietly powerful" },
+  { name: "Patagonia", why: "values worn on the sleeve" },
+  { name: "Stripe", why: "clean, precise, deeply trusted" },
+  { name: "Mailchimp", why: "playful warmth in a dull category" },
+  { name: "Oatly", why: "loud, witty, gleefully anti-corporate" },
+  { name: "Linear", why: "speed and taste treated as features" },
+  { name: "Liquid Death", why: "irreverent and impossible to forget" },
+  { name: "Muji", why: "the no-brand brand — pure utility" },
+  { name: "Headspace", why: "friendly, human, never intimidating" },
+  { name: "Duolingo", why: "a mascot with a personality of its own" },
+  { name: "Rivian", why: "adventurous, optimistic, new-world" },
+];
+const ANGLES: { title: string; note: string }[] = [
+  { title: "The insider", note: "Speak only to people already in the know." },
+  { title: "The rebel", note: "Position against the tired way it's always done." },
+  { title: "The craftsman", note: "Foreground care, detail, the human hand." },
+  { title: "The optimist", note: "Sell the brighter morning, not the problem." },
+  { title: "The minimalist", note: "Strip it to one idea, said once." },
+  { title: "The guide", note: "Be the calm expert who has your back." },
+  { title: "The challenger", note: "Name the enemy and rally people against it." },
+  { title: "The native", note: "Sound like you were born in this world, not visiting." },
+];
 
 /* ---------------- phases ---------------- */
 export function localConcepts(brief: Brief): { concepts: Concept[] } {
   const r = rng(hash(JSON.stringify(brief)));
   const kw = keywords(brief);
-  const frames = [...FRAMES].sort(() => r() - 0.5).slice(0, 10);
+  const frames = sample(r, FRAMES, FRAMES.length);
   return {
     concepts: frames.map((f, i) => ({
       title: kw[i] ? `${cap(kw[i])} & ${f.t.split(" ").pop()}` : f.t,
@@ -72,32 +96,36 @@ export function localConcepts(brief: Brief): { concepts: Concept[] } {
 
 export function localExplore(brief: Brief, concept: Concept): TerritoryWorld {
   const r = rng(hash(concept.title + brief.does));
-  const kw = keywords(brief);
-  const seeds = [...new Set([...kw, "ink", "echo", "north", "loom", "tide", "spark", "grove", "verse"])].slice(0, 8);
+  const aud = brief.audience || "the people you serve";
+  const m1 = pick(r, MOODS), m2 = pick(r, MOODS);
   return {
     title: concept.title,
-    story: `${concept.blurb} For ${brief.audience || "your people"}, this world makes the brand feel ${pick(r, MOODS)} and ${pick(r, MOODS)}.`,
-    mood: [...MOODS].sort(() => r() - 0.5).slice(0, 5),
-    palette: pick(r, PALETTES),
-    motif: pick(r, MOTIFS),
-    references: ["letterpress", "field notebooks", "indie studios"].sort(() => r() - 0.5),
-    samples: [cap(pick(r, PRE) + pick(r, SUF)), cap((kw[0] || "true") + pick(r, SUF)), cap(pick(r, PRE) + pick(r, SUF))],
-    words: seeds.map((w) => ({ word: w, note: pick(r, ["the core feeling", "what you do", "a quiet metaphor", "the texture of it", "where it leads"]), branches: branchesFor(r, w) })),
+    essence: `${cap(m1)}, ${m2}, and unmistakably yours.`,
+    story: `${concept.blurb} For ${aud}, this direction makes the brand feel ${pick(r, MOODS)} without ever trying too hard.`,
+    quotes: sample(r, QUOTES, 2),
+    brands: sample(r, BRANDS, 4),
+    angles: sample(r, ANGLES, 4),
   };
 }
 
-export function localNames(brief: Brief, concepts: Concept[], words: { word: string; territory: string }[]): { names: NameIdea[] } {
-  const r = rng(hash(JSON.stringify(words) + brief.does + Math.floor(Math.random() * 1e6)));
+export function localNames(brief: Brief, sketch: Sketch): { names: NameIdea[] } {
+  const r = rng(hash(JSON.stringify(sketch) + brief.does + Math.floor(Math.random() * 1e6)));
   const lanes = (brief.lanes?.length ? brief.lanes : ["suggestive", "compound", "invented", "evocative"]);
-  const seeds = words.length ? words : keywords(brief).map((w) => ({ word: w, territory: concepts[0]?.title || "" }));
+  // Seed words from the kept signals (concepts, angles, quotes) + the brief.
+  const fromSketch = [...(sketch?.concepts || []), ...(sketch?.angles || []), ...(sketch?.quotes || [])]
+    .join(" ").toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/)
+    .filter((w) => w.length > 3 && !STOP.has(w));
+  const seeds = [...new Set([...fromSketch, ...keywords(brief)])];
+  const pool = seeds.length ? seeds : keywords(brief);
   const out: NameIdea[] = [];
   const seen = new Set<string>();
   let guard = 0;
   while (out.length < 24 && guard < 400) {
     guard++;
-    const s = pick(r, seeds);
+    const word = pick(r, pool);
     const lane = pick(r, lanes);
-    const base = s.word.replace(/[^a-z]/gi, "");
+    const base = word.replace(/[^a-z]/gi, "");
+    if (!base) continue;
     let name = "";
     if (lane === "compound") name = cap(base) + cap(pick(r, SUF));
     else if (lane === "invented") name = cap(pick(r, PRE) + pick(r, SUF));
@@ -108,7 +136,7 @@ export function localNames(brief: Brief, concepts: Concept[], words: { word: str
     out.push({
       name,
       type: lane,
-      rationale: `From "${s.word}" — ${pick(r, ["short and ownable", "easy to say once heard", "carries the story without explaining", "a real word in a new place", "invented, so it's yours"])}.`,
+      rationale: `From "${word}" — ${pick(r, ["short and ownable", "easy to say once heard", "carries the story without explaining", "a real word in a new place", "invented, so it's yours"])}.`,
       score: 70 + Math.floor(r() * 28),
     });
   }
@@ -132,7 +160,7 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
   return {
     rows,
     recommended: best?.name || "",
-    why: best ? `Honestly? ${best.name} is the one we'd run with — it scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning — connect Claude locally for the real analysis.)` : "",
+    why: best ? `Honestly? ${best.name} is the one we'd run with — it scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning — connect real Claude for the full analysis.)` : "",
   };
 }
 
@@ -171,7 +199,7 @@ export function localInterview(messages: Msg[]): InterviewTurn {
   if (userTurns.length < Q.length) return { say: Q[userTurns.length], done: false };
   const a = userTurns.map((m) => m.text);
   return {
-    say: "Perfect — I've got a clear picture. Let me find some names. (Demo brief — connect Claude locally for a deeper read.)",
+    say: "Perfect — I've got a clear picture. Let me find some names. (Demo brief — connect real Claude for a deeper read.)",
     done: true,
     brief: {
       does: a[0] || "", industry: "", problem: a[2] || "", audience: a[1] || "",
