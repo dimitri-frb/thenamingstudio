@@ -35,7 +35,8 @@ const TYPE_ORDER: NameType[] = [
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("landing");
-  const [description, setDescription] = useState("");
+  // Brief is captured inside the flow now (not on the landing).
+  const [description] = useState("");
   const [vibes, setVibes] = useState<Vibe[]>([]);
   const [types, setTypes] = useState<NameType[]>(["Suggestive"]);
   const [include, setInclude] = useState("");
@@ -75,13 +76,8 @@ export default function App() {
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
-          <LandingAtelier
-            description={description}
-            setDescription={setDescription}
-            /* Local dev (logged into Claude) → real Classic flow. Static deploy → offline demo funnel. */
-            onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")}
-            onCheckout={setCheckout}
-          />
+          /* Local dev (logged into Claude) → real Classic flow. Static deploy → offline demo funnel. */
+          <LandingAtelier onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")} onCheckout={setCheckout} />
         )}
 
         {screen === "classic" && <ClassicFlow initialDoes={description} onRestart={restart} />}
