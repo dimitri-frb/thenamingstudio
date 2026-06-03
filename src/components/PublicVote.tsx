@@ -50,7 +50,7 @@ export function PublicVote({ items, onClose }: { items: VoteItem[]; onClose: () 
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 mesh flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--page)]">
       {/* top */}
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-5 py-5 font-mono text-xs uppercase tracking-widest text-ink/45">
         <button onClick={onClose} className="hover:text-ink">✕</button>
