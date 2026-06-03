@@ -72,7 +72,7 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
                   onClick={() => i <= reached && goto(i)}
                   className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition ${i === step ? "bg-ink/[0.06] text-ink" : i <= reached ? "text-ink/55 hover:text-ink" : "text-ink/25"}`}
                 >
-                  <span className="font-serif text-xs">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="font-mono text-xs">{String(i + 1).padStart(2, "0")}</span>
                   {s}
                 </button>
               </li>
@@ -84,7 +84,7 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
 
       {/* main */}
       <div className="min-w-0 pb-24">
-        <div className="mb-6 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-ink/40">
+        <div className="mb-6 flex items-center justify-between font-mono text-xs uppercase tracking-[0.2em] text-ink/40">
           <span>Step {String(step + 1).padStart(2, "0")} / 09 · {STEPS[step]}</span>
         </div>
 
@@ -154,7 +154,7 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
                         {on && <Check />}
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="font-serif text-xl">{c.title}</p>
-                          <span className="text-[10px] uppercase tracking-widest text-ink/35">{c.lane}</span>
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink/35">{c.lane}</span>
                         </div>
                         <p className="mt-1 text-sm text-ink/55">{c.blurb}</p>
                       </button>
@@ -198,7 +198,7 @@ export function ClassicFlow({ initialDoes, onRestart }: { initialDoes: string; o
                           <p className="font-serif text-2xl">{n.name}</p>
                           <span className="text-xs font-semibold text-emerald-600">{n.score}</span>
                         </div>
-                        <p className="mt-0.5 text-[10px] uppercase tracking-widest text-ink/35">{n.type}</p>
+                        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-ink/35">{n.type}</p>
                         <p className="mt-1.5 text-sm text-ink/55">{n.rationale}</p>
                       </button>
                     );
