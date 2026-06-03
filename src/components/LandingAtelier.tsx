@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { useVoice } from "../lib/useVoice";
-import { TYPE_META, type NameType } from "../lib/generate";
 import { eur, PLANS, type PlanId } from "../lib/plans";
 
 // Calm, editorial "naming atelier" — but with varied component shapes so the
@@ -14,8 +13,6 @@ const STEPS = [
   { n: "03", t: "Notice the one", note: "The right name feels obvious, quietly." },
   { n: "04", t: "Make it yours", note: "Domain, trademark, a brand to keep." },
 ];
-
-const ATELIER_TYPES: NameType[] = ["Suggestive", "AbstractRealWord", "Evocative", "Invented", "Compound", "FounderName"];
 
 type Cell = boolean | string;
 const PRICE_COLS = ["Preview", "Founder", "Launch"];
@@ -109,24 +106,6 @@ export function LandingAtelier({ description, setDescription, onNext, onCheckout
             </div>
           ))}
         </div>
-      </section>
-
-      <Rule />
-
-      {/* name types — a quiet hairline list */}
-      <section id="types">
-        <p className="font-serif text-2xl italic">Nine ways to name — a few favourites</p>
-        <ul className="mt-5 divide-y divide-ink/10">
-          {ATELIER_TYPES.map((t) => {
-            const m = TYPE_META[t];
-            return (
-              <li key={t} className="flex items-baseline justify-between gap-4 py-3">
-                <span className="text-lg">{m.label}{m.star && <span className="text-ink/40"> ✺</span>}</span>
-                <span className="font-serif text-base italic text-ink/45">{m.examples}</span>
-              </li>
-            );
-          })}
-        </ul>
       </section>
 
       <Rule />

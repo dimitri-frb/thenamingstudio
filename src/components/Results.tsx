@@ -10,7 +10,8 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
 }) {
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<NameIdea | null>(null);
-  const free = results.slice(0, FREE_LIMIT);
+  const recommended = results[0];
+  const free = results.slice(1, FREE_LIMIT);
   const locked = results.slice(FREE_LIMIT);
 
   function toggleFav(name: string) {
@@ -36,7 +37,12 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
         </div>
       </div>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-2">
+      {recommended && (
+        <Recommendation idea={recommended} fav={favs.has(recommended.name)} onFav={() => toggleFav(recommended.name)} onPick={() => setPicked(recommended)} />
+      )}
+
+      <p className="mt-10 text-sm font-medium uppercase tracking-widest text-ink/40">The rest of your shortlist</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {free.map((n, i) => (
           <NameCard key={n.name} idea={n} fav={favs.has(n.name)} onFav={() => toggleFav(n.name)} onPick={() => setPicked(n)} delay={i} />
         ))}
@@ -50,6 +56,94 @@ export function Results({ results, brief, onMore, onRestart, onCheckout }: {
       </div>
 
       {picked && <NamePopup idea={picked} onClose={() => setPicked(null)} onCheckout={onCheckout} />}
+    </div>
+  );
+}
+
+/* ---- Our pick: featured #1 with a human "why it wins" note ---- */
+function syllables(name: string) {
+  return (name.toLowerCase().match(/[aeiouy]+/g) || []).length || 1;
+}
+
+function whyItWins(idea: NameIdea): { intro: string; points: string[] } {
+  const syl = syllables(idea.name);
+  const meaning: Record<NameIdea["type"], string> = {
+    Suggestive: "It hints at what you do without spelling it out — that's exactly why names like Slack and Uber stuck.",
+    AbstractRealWord: "A familiar word in an unfamiliar place. Your brain remembers it on the first pass.",
+    Invented: "It's invented, so it's genuinely yours — easy to trademark, with nothing to compete against.",
+    Compound: "Two plain words doing one clear job. People get it instantly, no explaining.",
+    Evocative: "It leads with a feeling, and a feeling is what people actually remember.",
+    Playful: "It's got personality — the kind of name people repeat just because it's fun to say.",
+    Descriptive: "It says exactly what you do. Nobody ever has to ask what you're about.",
+    FounderName: "It reads like there's a person and a story behind it — warm, and very human.",
+    Acronym: "Short and sharp. Once people know you, it's effortless to recall.",
+  };
+
+  const points = [
+    `Highest combined score of the batch — ${idea.score}/100 across all four checks.`,
+    meaning[idea.type],
+  ];
+
+  if (syl <= 2) points.push(`Just ${syl} syllable${syl > 1 ? "s" : ""}, and it reads the same in English, French and German — no awkward pauses.`);
+  if (idea.name.length <= 7) points.push("You could say it once in a loud room and someone could still spell it right.");
+
+  if (idea.premiumDomain) points.push(`The .com is taken, but it's available as a premium buy — or grab ${idea.domain} today.`);
+  else if (idea.domainAvailable) points.push(`And ${idea.domain} is free right now. That almost never happens — worth grabbing.`);
+  else points.push(`The exact .com is gone, but ${idea.domain} is open and works perfectly well.`);
+
+  points.push("Broad enough to grow into, too — it won't box you in if you expand beyond the first product.");
+
+  return {
+    intro: "Honestly? If this were our company, this is the one we'd run with.",
+    points: points.slice(0, 5),
+  };
+}
+
+function Recommendation({ idea, fav, onFav, onPick }: { idea: NameIdea; fav: boolean; onFav: () => void; onPick: () => void }) {
+  const { intro, points } = whyItWins(idea);
+  return (
+    <div className="relative mt-7 overflow-hidden rounded-3xl border border-accent2/30 bg-gradient-to-br from-accent2/10 via-accent/5 to-transparent p-6 sm:p-8">
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent2/40 bg-accent2/10 px-3 py-1 text-xs font-semibold text-accent2">★ Our recommendation</span>
+        <button
+          onClick={onFav}
+          className={`text-2xl transition ${fav ? "text-accent2" : "text-ink/20 hover:text-ink/50"}`}
+          aria-label="Save name"
+        >
+          {fav ? "♥" : "♡"}
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <h3 className="font-serif text-5xl leading-none sm:text-6xl">{idea.name}</h3>
+        <span className="mb-1 text-sm font-semibold text-emerald-500">{idea.score}/100</span>
+      </div>
+      <p className="mt-2 text-ink/55">{idea.tagline}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <DomainBadge idea={idea} />
+        <span className="rounded-md border border-ink/10 px-2 py-0.5 text-xs text-ink/40">{TYPE_META[idea.type].label}</span>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-ink/10 bg-ink/[0.03] p-5">
+        <p className="font-serif text-lg italic text-ink/80">Why we'd choose it</p>
+        <p className="mt-2 text-sm leading-relaxed text-ink/65">{intro}</p>
+        <ul className="mt-4 space-y-2.5">
+          {points.map((p, i) => (
+            <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink/70">
+              <span className="mt-0.5 text-accent2">✓</span>
+              <span>{p}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-right font-serif text-base italic text-ink/40">— the atelier</p>
+      </div>
+
+      <button
+        onClick={onPick}
+        className="mt-6 w-full rounded-xl bg-gradient-to-r from-accent to-accent2 px-6 py-3.5 font-semibold text-white shadow-lg shadow-accent2/20 transition hover:brightness-110"
+      >
+        Make {idea.name} mine →
+      </button>
     </div>
   );
 }

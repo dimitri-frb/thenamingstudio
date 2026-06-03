@@ -82,10 +82,10 @@ export function LandingCarnival({ description, setDescription, onNext, onCheckou
 
         {/* sticker collage */}
         <div className="grid grid-cols-2 gap-4">
-          <Sticker rotate="-3deg" bg="var(--color-accent3)">🎯<br />zero<br />blank pages</Sticker>
-          <Sticker rotate="2deg" bg="var(--color-accent2)">50+<br />names<br />in seconds</Sticker>
-          <Sticker rotate="3deg" bg="#06b6d4">🌐<br />domains<br />checked</Sticker>
-          <Sticker rotate="-2deg" bg="var(--color-accent)">🛡<br />INPI<br />ready</Sticker>
+          <Sticker bg="var(--color-accent3)">🎯<br />zero<br />blank pages</Sticker>
+          <Sticker bg="var(--color-accent2)">50+<br />names<br />in seconds</Sticker>
+          <Sticker bg="#06b6d4">🌐<br />domains<br />checked</Sticker>
+          <Sticker bg="var(--color-accent)">🛡<br />INPI<br />ready</Sticker>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export function LandingCarnival({ description, setDescription, onNext, onCheckou
             <span
               key={t}
               className="nb rounded-full px-4 py-2 text-sm font-black uppercase text-white"
-              style={{ background: STICKER_COLORS[i % STICKER_COLORS.length], transform: `rotate(${(i % 2 ? 1 : -1) * (1 + (i % 3))}deg)` }}
+              style={{ background: STICKER_COLORS[i % STICKER_COLORS.length] }}
             >
               {TYPE_META[t].label}
             </span>
@@ -123,9 +123,9 @@ export function LandingCarnival({ description, setDescription, onNext, onCheckou
   );
 }
 
-function Sticker({ children, rotate, bg }: { children: React.ReactNode; rotate: string; bg: string }) {
+function Sticker({ children, bg }: { children: React.ReactNode; bg: string }) {
   return (
-    <div className="nb grid place-items-center rounded-2xl p-4 text-center text-sm font-black uppercase leading-tight text-white" style={{ background: bg, transform: `rotate(${rotate})` }}>
+    <div className="nb grid place-items-center rounded-2xl p-4 text-center text-sm font-black uppercase leading-tight text-white" style={{ background: bg }}>
       <span>{children}</span>
     </div>
   );
