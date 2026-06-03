@@ -15,6 +15,13 @@ import { PLANS, eur, type PlanId } from "./lib/plans";
 
 type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
 
+type ThemeId = "nocturne" | "atelier" | "carnival";
+const THEMES: { id: ThemeId; label: string; blurb: string; swatch: [string, string, string] }[] = [
+  { id: "nocturne", label: "Nocturne", blurb: "Dark · techy", swatch: ["#0d0b16", "#6366f1", "#d946ef"] },
+  { id: "atelier", label: "Atelier", blurb: "Calm · handmade", swatch: ["#f4eee2", "#7f8c6a", "#c0764e"] },
+  { id: "carnival", label: "Carnival", blurb: "Bright · arty", swatch: ["#fbf5ff", "#7c3aed", "#ec4899"] },
+];
+
 const VIBES: { key: Vibe; emoji: string; hint: string }[] = [
   { key: "Modern", emoji: "✨", hint: "clean, current" },
   { key: "Bold", emoji: "🔥", hint: "loud, confident" },
@@ -46,6 +53,11 @@ export default function App() {
   const [avoid, setAvoid] = useState("");
   const [results, setResults] = useState<NameIdea[]>([]);
   const [checkout, setCheckout] = useState<PlanId | null>(null);
+  const [theme, setTheme] = useState<ThemeId>("nocturne");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   const brief: Brief = useMemo(
     () => ({ description, vibes, types, include, avoid }),
@@ -77,7 +89,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen mesh">
-      <Header onLogo={restart} />
+      <Header onLogo={restart} theme={theme} setTheme={setTheme} />
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
@@ -100,7 +112,7 @@ export default function App() {
                     <Chip key={v.key} active={vibes.includes(v.key)} onClick={() => toggle(vibes, v.key, setVibes, 3)}>
                       <span className="text-2xl">{v.emoji}</span>
                       <span className="mt-2 block font-semibold">{v.key}</span>
-                      <span className="block text-xs text-white/40">{v.hint}</span>
+                      <span className="block text-xs text-ink/40">{v.hint}</span>
                     </Chip>
                   ))}
                 </div>
@@ -125,9 +137,9 @@ export default function App() {
                           <span className="font-semibold">
                             {m.label} {m.star && <span className="text-amber-400">★</span>}
                           </span>
-                          <span className="text-xs text-white/40">{m.examples}</span>
+                          <span className="text-xs text-ink/40">{m.examples}</span>
                         </div>
-                        <span className="mt-1 block text-sm text-white/50">{m.desc}</span>
+                        <span className="mt-1 block text-sm text-ink/50">{m.desc}</span>
                       </Chip>
                     );
                   })}
@@ -175,20 +187,48 @@ export default function App() {
 }
 
 /* ---------------- Header ---------------- */
-function Header({ onLogo }: { onLogo: () => void }) {
+function Header({ onLogo, theme, setTheme }: { onLogo: () => void; theme: ThemeId; setTheme: (t: ThemeId) => void }) {
   return (
-    <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 py-6">
+    <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-5 py-6">
       <button onClick={onLogo} className="group flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 font-black text-white shadow-lg shadow-fuchsia-500/20">B</span>
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent to-accent2 font-black text-white shadow-lg shadow-accent2/20">B</span>
         <span className="text-lg font-bold tracking-tight">Brandr</span>
       </button>
-      <div className="hidden items-center gap-6 text-sm text-white/60 sm:flex">
-        <a href="#process" className="hover:text-white">Process</a>
-        <a href="#types" className="hover:text-white">Name types</a>
-        <a href="#pricing" className="hover:text-white">Pricing</a>
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/50">🇫🇷 INPI-ready</span>
+      <div className="flex items-center gap-4 text-sm text-ink/60">
+        <div className="hidden items-center gap-6 lg:flex">
+          <a href="#process" className="hover:text-ink">Process</a>
+          <a href="#types" className="hover:text-ink">Name types</a>
+          <a href="#pricing" className="hover:text-ink">Pricing</a>
+        </div>
+        <ThemeSwitcher theme={theme} setTheme={setTheme} />
       </div>
     </header>
+  );
+}
+
+/* Live brand-direction switcher — try the three identities on the spot. */
+function ThemeSwitcher({ theme, setTheme }: { theme: ThemeId; setTheme: (t: ThemeId) => void }) {
+  return (
+    <div className="flex items-center gap-1 rounded-full border border-ink/12 bg-ink/[0.04] p-1" title="Switch brand direction">
+      {THEMES.map((t) => {
+        const active = t.id === theme;
+        return (
+          <button
+            key={t.id}
+            onClick={() => setTheme(t.id)}
+            title={`${t.label} — ${t.blurb}`}
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition ${active ? "bg-ink/10 text-ink" : "text-ink/45 hover:text-ink/80"}`}
+          >
+            <span className="flex -space-x-1">
+              {t.swatch.map((c, i) => (
+                <span key={i} className="h-3 w-3 rounded-full ring-1 ring-ink/15" style={{ background: c }} />
+              ))}
+            </span>
+            <span className="hidden sm:inline">{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -199,22 +239,22 @@ function Landing({ description, setDescription, onNext, onCheckout }: { descript
 
   return (
     <div className="animate-in pt-10 text-center sm:pt-16">
-      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/70">
+      <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-ink/5 px-3.5 py-1.5 text-xs font-medium text-ink/70">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
         From idea → registered brand, in one flow
       </span>
       <h1 className="mx-auto mt-6 max-w-3xl text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
         Name your company in
-        <span className="bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-sky-400 bg-clip-text text-transparent"> the next 60 seconds</span>
+        <span className="bg-gradient-to-r from-accent via-accent2 to-accent3 bg-clip-text text-transparent"> the next 60 seconds</span>
       </h1>
-      <p className="mx-auto mt-5 max-w-xl text-lg text-white/55">
+      <p className="mx-auto mt-5 max-w-xl text-lg text-ink/55">
         Describe what you're building — by typing or just talking. Get brandable
         names, domain checks, and a path to file your trademark.
       </p>
 
       <div className="mx-auto mt-9 max-w-2xl text-left">
-        <label className="mb-2 block text-sm font-medium text-white/60">What are you building?</label>
-        <div className={`glass rounded-2xl p-2 transition ${listening ? "border-fuchsia-400/60" : "focus-within:border-fuchsia-400/40"}`}>
+        <label className="mb-2 block text-sm font-medium text-ink/60">What are you building?</label>
+        <div className={`glass rounded-2xl p-2 transition ${listening ? "border-accent2/60" : "focus-within:border-accent2/40"}`}>
           <div className="relative">
             <textarea
               ref={taRef}
@@ -226,7 +266,7 @@ function Landing({ description, setDescription, onNext, onCheckout }: { descript
               }}
               rows={3}
               placeholder={listening ? "Listening… start talking" : "An AI app that turns voice notes into polished blog posts…"}
-              className="w-full resize-none bg-transparent px-4 py-3 pr-14 text-lg outline-none placeholder:text-white/25"
+              className="w-full resize-none bg-transparent px-4 py-3 pr-14 text-lg outline-none placeholder:text-ink/25"
             />
             {supported && (
               <button
@@ -234,8 +274,8 @@ function Landing({ description, setDescription, onNext, onCheckout }: { descript
                 title={listening ? "Stop dictation" : "Dictate your idea"}
                 className={`absolute right-2 top-2 grid h-10 w-10 place-items-center rounded-xl transition ${
                   listening
-                    ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/30"
-                    : "border border-white/10 text-white/60 hover:border-white/30 hover:text-white"
+                    ? "bg-accent2 text-white shadow-lg shadow-accent2/30"
+                    : "border border-ink/10 text-ink/60 hover:border-ink/30 hover:text-ink"
                 }`}
                 aria-label="Toggle voice input"
               >
@@ -246,7 +286,7 @@ function Landing({ description, setDescription, onNext, onCheckout }: { descript
           <div className="flex items-center justify-between px-2 pb-1">
             <div className="flex flex-wrap gap-2">
               {EXAMPLES.map((ex) => (
-                <button key={ex} onClick={() => setDescription(ex)} className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/40 transition hover:border-white/25 hover:text-white/70">
+                <button key={ex} onClick={() => setDescription(ex)} className="rounded-full border border-ink/10 px-2.5 py-1 text-xs text-ink/40 transition hover:border-ink/25 hover:text-ink/70">
                   {ex.length > 34 ? ex.slice(0, 34) + "…" : ex}
                 </button>
               ))}
@@ -254,19 +294,19 @@ function Landing({ description, setDescription, onNext, onCheckout }: { descript
           </div>
         </div>
         <div className="mt-1.5 h-4 text-xs">
-          {listening && <span className="text-fuchsia-400">● Listening — speak naturally, then tap the mic to stop.</span>}
+          {listening && <span className="text-accent2">● Listening — speak naturally, then tap the mic to stop.</span>}
           {error && <span className="text-amber-400">{error}. You can type instead.</span>}
-          {!listening && !error && supported && <span className="text-white/35">Tip: tap the mic 🎙️ to describe your idea out loud.</span>}
+          {!listening && !error && supported && <span className="text-ink/35">Tip: tap the mic 🎙️ to describe your idea out loud.</span>}
         </div>
 
         <button
           onClick={onNext}
           disabled={!description.trim()}
-          className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-4 text-base font-semibold shadow-xl shadow-fuchsia-500/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-3 w-full rounded-2xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-4 text-base font-semibold shadow-xl shadow-accent2/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Start naming →
         </button>
-        <p className="mt-3 text-center text-xs text-white/35">Free preview · no signup · ~60 seconds</p>
+        <p className="mt-3 text-center text-xs text-ink/35">Free preview · no signup · ~60 seconds</p>
       </div>
 
       <Process />
@@ -287,8 +327,8 @@ function MicIcon() {
 function PulsingMic() {
   return (
     <span className="relative flex h-4 w-4 items-center justify-center">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60" />
-      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ink/60" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ink" />
     </span>
   );
 }
@@ -304,14 +344,14 @@ function Process() {
   ];
   return (
     <section id="process" className="mt-28">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40">The naming process</h2>
-      <p className="mt-2 text-white/55">A real framework — from strategic brief to a name you own. Not a random generator.</p>
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-ink/40">The naming process</h2>
+      <p className="mt-2 text-ink/55">A real framework — from strategic brief to a name you own. Not a random generator.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-5">
         {phases.map((p) => (
           <div key={p.n} className="glass rounded-2xl p-5 text-left">
-            <span className="text-2xl font-black text-white/15">{p.n}</span>
+            <span className="text-2xl font-black text-ink/15">{p.n}</span>
             <h3 className="mt-2 font-semibold">{p.t}</h3>
-            <p className="mt-1 text-sm text-white/50">{p.d}</p>
+            <p className="mt-1 text-sm text-ink/50">{p.d}</p>
           </div>
         ))}
       </div>
@@ -324,7 +364,7 @@ function NameTypes() {
   return (
     <section id="types" className="mt-28">
       <h2 className="text-center text-3xl font-bold tracking-tight">9 ways to name a company</h2>
-      <p className="mt-2 text-center text-white/50">Every great name fits a type. We generate across all of them — you pick the lane.</p>
+      <p className="mt-2 text-center text-ink/50">Every great name fits a type. We generate across all of them — you pick the lane.</p>
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
         {TYPE_ORDER.map((t) => {
           const m = TYPE_META[t];
@@ -333,8 +373,8 @@ function NameTypes() {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{m.label} {m.star && <span className="text-amber-400">★</span>}</h3>
               </div>
-              <p className="mt-0.5 text-xs text-white/40">{m.examples}</p>
-              <p className="mt-2 text-sm text-white/55">{m.desc}</p>
+              <p className="mt-0.5 text-xs text-ink/40">{m.examples}</p>
+              <p className="mt-2 text-sm text-ink/55">{m.desc}</p>
             </div>
           );
         })}
@@ -353,26 +393,26 @@ function Pricing({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
   return (
     <section id="pricing" className="mt-28">
       <h2 className="text-center text-3xl font-bold tracking-tight">Start free. Pay when you're sure.</h2>
-      <p className="mt-3 text-center text-white/50">The name generation is the preview. Going further is where we shine.</p>
+      <p className="mt-3 text-center text-ink/50">The name generation is the preview. Going further is where we shine.</p>
       <div className="mt-10 grid gap-5 sm:grid-cols-3">
         {tiers.map((t) => (
-          <div key={t.name} className={`relative rounded-3xl p-6 text-left ${t.highlight ? "border border-fuchsia-400/40 bg-gradient-to-b from-fuchsia-500/10 to-transparent shadow-2xl shadow-fuchsia-500/10" : "glass"}`}>
-            {t.highlight && <span className="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-1 text-xs font-semibold">Most popular</span>}
+          <div key={t.name} className={`relative rounded-3xl p-6 text-left ${t.highlight ? "border border-accent2/40 bg-gradient-to-b from-accent2/10 to-transparent shadow-2xl shadow-accent2/10" : "glass"}`}>
+            {t.highlight && <span className="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-accent to-accent2 text-white px-3 py-1 text-xs font-semibold">Most popular</span>}
             <h3 className="font-semibold">{t.name}</h3>
-            <p className="text-sm text-white/45">{t.tagline}</p>
+            <p className="text-sm text-ink/45">{t.tagline}</p>
             <div className="mt-4 flex items-end gap-1">
               <span className="text-4xl font-extrabold">{t.price}</span>
-              {t.price !== "Free" && <span className="mb-1 text-white/40">one-time</span>}
+              {t.price !== "Free" && <span className="mb-1 text-ink/40">one-time</span>}
             </div>
             <ul className="mt-5 space-y-2.5 text-sm">
               {t.features.map((f) => (
-                <li key={f} className="flex gap-2 text-white/70"><span className="text-emerald-400">✓</span>{f}</li>
+                <li key={f} className="flex gap-2 text-ink/70"><span className="text-emerald-400">✓</span>{f}</li>
               ))}
             </ul>
             <button
               onClick={() => t.id && onCheckout(t.id)}
               disabled={!t.id}
-              className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold transition ${t.highlight ? "bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:brightness-110" : "border border-white/15 hover:bg-white/5"} ${!t.id ? "cursor-default opacity-60" : ""}`}
+              className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold transition ${t.highlight ? "bg-gradient-to-r from-accent to-accent2 text-white hover:brightness-110" : "border border-ink/15 hover:bg-ink/5"} ${!t.id ? "cursor-default opacity-60" : ""}`}
             >
               {t.cta}
             </button>
@@ -397,13 +437,13 @@ function Step({ index, title, subtitle, children, onBack, onNext, canNext, nextL
 }) {
   return (
     <div key={index} className="animate-in">
-      <p className="text-sm font-medium text-fuchsia-400">Step {index} of 3</p>
+      <p className="text-sm font-medium text-accent2">Step {index} of 3</p>
       <h2 className="mt-1 text-3xl font-bold tracking-tight">{title}</h2>
-      <p className="mt-2 text-white/50">{subtitle}</p>
+      <p className="mt-2 text-ink/50">{subtitle}</p>
       <div className="mt-7">{children}</div>
       <div className="mt-8 flex items-center justify-between">
-        <button onClick={onBack} className="text-sm text-white/50 transition hover:text-white">← Back</button>
-        <button onClick={onNext} disabled={!canNext} className="rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold shadow-lg shadow-fuchsia-500/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{nextLabel}</button>
+        <button onClick={onBack} className="text-sm text-ink/50 transition hover:text-ink">← Back</button>
+        <button onClick={onNext} disabled={!canNext} className="rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3 text-sm font-semibold shadow-lg shadow-accent2/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{nextLabel}</button>
       </div>
     </div>
   );
@@ -411,7 +451,7 @@ function Step({ index, title, subtitle, children, onBack, onNext, canNext, nextL
 
 function Chip({ children, active, onClick, align = "center" }: { children: React.ReactNode; active: boolean; onClick: () => void; align?: "center" | "left" }) {
   return (
-    <button onClick={onClick} className={`rounded-2xl border p-4 transition ${align === "center" ? "text-center" : "text-left"} ${active ? "border-fuchsia-400/60 bg-fuchsia-500/10 shadow-lg shadow-fuchsia-500/10" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}>
+    <button onClick={onClick} className={`rounded-2xl border p-4 transition ${align === "center" ? "text-center" : "text-left"} ${active ? "border-accent2/60 bg-accent2/10 shadow-lg shadow-accent2/10" : "border-ink/10 bg-ink/[0.03] hover:border-ink/25"}`}>
       {children}
     </button>
   );
@@ -420,17 +460,17 @@ function Chip({ children, active, onClick, align = "center" }: { children: React
 function Field({ label, placeholder, value, onChange }: { label: string; placeholder: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-white/60">{label}</label>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="glass w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-white/25 focus:border-fuchsia-400/40" />
+      <label className="mb-1.5 block text-sm font-medium text-ink/60">{label}</label>
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="glass w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-ink/25 focus:border-accent2/40" />
     </div>
   );
 }
 
 function Recap({ brief }: { brief: Brief }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-sm">
-      <p className="mb-2 font-medium text-white/60">Your brief</p>
-      <div className="space-y-1.5 text-white/45">
+    <div className="rounded-2xl border border-ink/10 bg-ink/[0.02] p-4 text-sm">
+      <p className="mb-2 font-medium text-ink/60">Your brief</p>
+      <div className="space-y-1.5 text-ink/45">
         <p className="line-clamp-2">💡 {brief.description || "—"}</p>
         <p>🎨 {brief.vibes.length ? brief.vibes.join(", ") : "Any tone"}</p>
         <p>🔤 {brief.types.length ? brief.types.map((t) => TYPE_META[t].label).join(", ") : "Mixed types"}</p>
@@ -451,18 +491,18 @@ function Generating({ description }: { description: string }) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
       <div className="relative h-20 w-20">
-        <div className="absolute inset-0 animate-ping rounded-2xl bg-fuchsia-500/30" />
-        <div className="relative grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-3xl font-black shadow-2xl shadow-fuchsia-500/30">B</div>
+        <div className="absolute inset-0 animate-ping rounded-2xl bg-accent2/30" />
+        <div className="relative grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent2 text-white text-3xl font-black shadow-2xl shadow-accent2/30">B</div>
       </div>
       <p className="mt-8 text-xl font-semibold">{lines[i]}</p>
-      <p className="mt-2 max-w-sm text-sm text-white/40 line-clamp-1">"{description || "your idea"}"</p>
+      <p className="mt-2 max-w-sm text-sm text-ink/40 line-clamp-1">"{description || "your idea"}"</p>
     </div>
   );
 }
 
 function Footer() {
   return (
-    <footer className="mx-auto mt-20 w-full max-w-5xl border-t border-white/10 px-5 py-10 text-sm text-white/35">
+    <footer className="mx-auto mt-20 w-full max-w-5xl border-t border-ink/10 px-5 py-10 text-sm text-ink/35">
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
         <span>© 2026 Brandr — a V1 preview.</span>
         <span>Domain & 🇫🇷 INPI trademark integrations · demo data</span>

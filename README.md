@@ -12,6 +12,19 @@ Built on the team's naming framework (see the Figma research): **5 phases**,
 **9 name types**, and **4-axis scoring** (Intuitive · Visual · Sound ·
 Emotional) plus a SMILE check.
 
+## Brand directions (live theme switcher)
+
+The header has a switcher to try three brand identities on the spot:
+
+- **Nocturne** — dark, techy SaaS (default): indigo→fuchsia, glassmorphism.
+- **Atelier** — calm, handmade, zen: warm paper, ink serif type, sage & clay
+  tones, soft paper grain.
+- **Carnival** — creative & arty: bright pop colors (violet/pink/tangerine),
+  bold display type, playful gradient mesh.
+
+Themes are driven by CSS variables on `data-theme` (see `src/index.css`), so the
+whole app — funnel, results, checkout, journey rail — restyles instantly.
+
 ## The funnel (the core of the product)
 
 1. **Describe** — one textarea: "What are you building?" — **type or dictate it

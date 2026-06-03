@@ -24,7 +24,7 @@ export function Checkout({ planId, onClose }: { planId: PlanId; onClose: () => v
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-in relative grid w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-[#0d0b16] shadow-2xl shadow-black/50 md:grid-cols-[1fr_1.1fr]">
+      <div className="animate-in relative grid w-full max-w-4xl overflow-hidden rounded-3xl border border-ink/10 [background:var(--surface-solid)] shadow-2xl shadow-black/50 md:grid-cols-[1fr_1.1fr]">
         {/* Left — order summary */}
         <OrderSummary planId={planId} stage={stage} />
 
@@ -32,7 +32,7 @@ export function Checkout({ planId, onClose }: { planId: PlanId; onClose: () => v
         <div className="relative p-7 sm:p-9">
           <button
             onClick={onClose}
-            className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/5 hover:text-white"
+            className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-lg text-ink/40 transition hover:bg-ink/5 hover:text-ink"
             aria-label="Close"
           >
             ✕
@@ -69,26 +69,26 @@ export function Checkout({ planId, onClose }: { planId: PlanId; onClose: () => v
 function OrderSummary({ planId, stage }: { planId: PlanId; stage: Stage }) {
   const plan = PLANS[planId];
   return (
-    <div className="hidden flex-col justify-between bg-gradient-to-b from-fuchsia-500/10 via-indigo-500/5 to-transparent p-7 sm:p-9 md:flex">
+    <div className="hidden flex-col justify-between bg-gradient-to-b from-accent2/10 via-accent/5 to-transparent p-7 sm:p-9 md:flex">
       <div>
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 font-black text-white">B</span>
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent to-accent2 font-black text-white">B</span>
           <span className="font-bold tracking-tight">Brandr</span>
         </div>
 
-        <p className="mt-8 text-sm text-white/45">You're unlocking</p>
+        <p className="mt-8 text-sm text-ink/45">You're unlocking</p>
         <div className="mt-1 flex items-end gap-2">
           <h3 className="text-2xl font-bold">{plan.name}</h3>
-          <span className="mb-1 rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/50">{plan.tagline}</span>
+          <span className="mb-1 rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">{plan.tagline}</span>
         </div>
         <div className="mt-4 flex items-end gap-1">
           <span className="text-4xl font-extrabold">{eur(plan.price)}</span>
-          <span className="mb-1 text-white/40">one-time</span>
+          <span className="mb-1 text-ink/40">one-time</span>
         </div>
 
         <ul className="mt-6 space-y-2.5 text-sm">
           {plan.features.map((f) => (
-            <li key={f} className="flex gap-2 text-white/70">
+            <li key={f} className="flex gap-2 text-ink/70">
               <span className="text-emerald-400">✓</span>
               {f}
             </li>
@@ -114,11 +114,11 @@ function Steps({ stage }: { stage: Stage }) {
     <div className="mt-10 flex items-center gap-2">
       {items.map((it, i) => (
         <div key={it.key} className="flex items-center gap-2">
-          <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${i <= idx ? "bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white" : "bg-white/10 text-white/40"}`}>
+          <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${i <= idx ? "bg-gradient-to-br from-accent to-accent2 text-white" : "bg-ink/10 text-ink/40"}`}>
             {i < idx ? "✓" : i + 1}
           </span>
-          <span className={`text-xs ${i <= idx ? "text-white/70" : "text-white/35"}`}>{it.label}</span>
-          {i < items.length - 1 && <span className="mx-1 h-px w-6 bg-white/15" />}
+          <span className={`text-xs ${i <= idx ? "text-ink/70" : "text-ink/35"}`}>{it.label}</span>
+          {i < items.length - 1 && <span className="mx-1 h-px w-6 bg-ink/15" />}
         </div>
       ))}
     </div>
@@ -134,15 +134,15 @@ function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: 
   return (
     <div className="animate-in">
       <h2 className="text-2xl font-bold tracking-tight">{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
-      <p className="mt-1.5 text-sm text-white/50">{mode === "signup" ? "One account to save names and manage your brand." : "Sign in to continue your purchase."}</p>
+      <p className="mt-1.5 text-sm text-ink/50">{mode === "signup" ? "One account to save names and manage your brand." : "Sign in to continue your purchase."}</p>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <OAuthButton provider="Google" icon={<GoogleIcon />} />
         <OAuthButton provider="GitHub" icon={<GitHubIcon />} />
       </div>
 
-      <div className="my-5 flex items-center gap-3 text-xs text-white/30">
-        <span className="h-px flex-1 bg-white/10" /> or with email <span className="h-px flex-1 bg-white/10" />
+      <div className="my-5 flex items-center gap-3 text-xs text-ink/30">
+        <span className="h-px flex-1 bg-ink/10" /> or with email <span className="h-px flex-1 bg-ink/10" />
       </div>
 
       <form
@@ -154,19 +154,19 @@ function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: 
         <button
           type="submit"
           disabled={!valid}
-          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3.5 font-semibold shadow-lg shadow-fuchsia-500/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3.5 font-semibold shadow-lg shadow-accent2/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Continue to payment →
         </button>
       </form>
 
-      <p className="mt-4 text-center text-xs text-white/40">
+      <p className="mt-4 text-center text-xs text-ink/40">
         {mode === "signup" ? "Already have an account? " : "New to Brandr? "}
-        <button onClick={() => setMode(mode === "signup" ? "signin" : "signup")} className="font-medium text-fuchsia-400 hover:underline">
+        <button onClick={() => setMode(mode === "signup" ? "signin" : "signup")} className="font-medium text-accent2 hover:underline">
           {mode === "signup" ? "Sign in" : "Create one"}
         </button>
       </p>
-      <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
+      <p className="mt-3 text-center text-[11px] leading-relaxed text-ink/30">
         By continuing you agree to Brandr's Terms & Privacy Policy.
       </p>
     </div>
@@ -193,16 +193,16 @@ function Payment({ plan, email, onBack, onPay }: { plan: (typeof PLANS)[PlanId];
 
   return (
     <div className="animate-in">
-      <button onClick={onBack} className="text-sm text-white/40 transition hover:text-white">← Back</button>
+      <button onClick={onBack} className="text-sm text-ink/40 transition hover:text-ink">← Back</button>
       <h2 className="mt-2 text-2xl font-bold tracking-tight">Payment</h2>
-      <p className="mt-1.5 text-sm text-white/50">Signed in as <span className="text-white/70">{email || "you@startup.com"}</span></p>
+      <p className="mt-1.5 text-sm text-ink/50">Signed in as <span className="text-ink/70">{email || "you@startup.com"}</span></p>
 
       <form onSubmit={(e) => { e.preventDefault(); if (valid) onPay(total); }} className="mt-5 space-y-3">
         <div>
           <Label>Card number</Label>
           <div className="relative">
             <Input placeholder="4242 4242 4242 4242" value={card} onChange={(v) => setCard(formatCard(v))} inputMode="numeric" />
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">VISA</div>
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink/30">VISA</div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -224,10 +224,10 @@ function Payment({ plan, email, onBack, onPay }: { plan: (typeof PLANS)[PlanId];
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="glass w-full rounded-xl px-4 py-3 outline-none transition focus:border-fuchsia-400/40"
+            className="glass w-full rounded-xl px-4 py-3 outline-none transition focus:border-accent2/40"
           >
             {["France", "Belgium", "Switzerland", "Germany", "United Kingdom", "United States", "Other"].map((c) => (
-              <option key={c} value={c} className="bg-[#0d0b16]">{c}</option>
+              <option key={c} value={c} className="[background:var(--surface-solid)]">{c}</option>
             ))}
           </select>
         </div>
@@ -237,22 +237,22 @@ function Payment({ plan, email, onBack, onPay }: { plan: (typeof PLANS)[PlanId];
           {discount > 0 && <span className="grid place-items-center rounded-xl bg-emerald-500/10 px-3 text-xs font-medium text-emerald-300">−20%</span>}
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm">
-          <div className="flex justify-between text-white/60"><span>{plan.name} (one-time)</span><span>{eur(plan.price)}</span></div>
+        <div className="rounded-xl border border-ink/10 bg-ink/[0.02] p-4 text-sm">
+          <div className="flex justify-between text-ink/60"><span>{plan.name} (one-time)</span><span>{eur(plan.price)}</span></div>
           {discount > 0 && <div className="mt-1 flex justify-between text-emerald-400"><span>Promo VIBECODE</span><span>−{eur(discount)}</span></div>}
-          <div className="mt-2 flex justify-between border-t border-white/10 pt-2 font-semibold"><span>Total due today</span><span>{eur(total)}</span></div>
+          <div className="mt-2 flex justify-between border-t border-ink/10 pt-2 font-semibold"><span>Total due today</span><span>{eur(total)}</span></div>
         </div>
 
         <button
           type="submit"
           disabled={!valid}
-          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3.5 font-semibold shadow-lg shadow-fuchsia-500/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3.5 font-semibold shadow-lg shadow-accent2/20 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           🔒 Pay {eur(total)}
         </button>
       </form>
 
-      <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-white/30">
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-ink/30">
         <LockIcon /> Secured by Stripe · 7-day money-back guarantee
       </div>
     </div>
@@ -263,9 +263,9 @@ function Payment({ plan, email, onBack, onPay }: { plan: (typeof PLANS)[PlanId];
 function Processing({ total }: { total: number }) {
   return (
     <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
-      <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-fuchsia-400" />
+      <div className="h-12 w-12 animate-spin rounded-full border-2 border-ink/15 border-t-accent2" />
       <p className="mt-6 font-semibold">Confirming your payment…</p>
-      <p className="mt-1 text-sm text-white/40">Charging {eur(total)} · do not close this window</p>
+      <p className="mt-1 text-sm text-ink/40">Charging {eur(total)} · do not close this window</p>
     </div>
   );
 }
@@ -275,16 +275,16 @@ function Success({ plan, email, paid, onClose }: { plan: (typeof PLANS)[PlanId];
     <div className="animate-in flex min-h-[420px] flex-col items-center justify-center text-center">
       <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-3xl shadow-xl shadow-emerald-500/30">✓</div>
       <h2 className="mt-5 text-2xl font-bold">You're in! 🎉</h2>
-      <p className="mt-2 max-w-xs text-sm text-white/55">
-        {plan.name} is unlocked. We sent a receipt to <span className="text-white/80">{email || "your inbox"}</span>.
+      <p className="mt-2 max-w-xs text-sm text-ink/55">
+        {plan.name} is unlocked. We sent a receipt to <span className="text-ink/80">{email || "your inbox"}</span>.
       </p>
       <button
         onClick={onClose}
-        className="mt-6 w-full max-w-xs rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3.5 font-semibold shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
+        className="mt-6 w-full max-w-xs rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3.5 font-semibold shadow-lg shadow-accent2/20 transition hover:brightness-110"
       >
         Start unlocking names →
       </button>
-      <p className="mt-3 text-xs text-white/30">Order #BR-{plan.id.toUpperCase().slice(0, 3)}{plan.price} · {eur(paid)} paid</p>
+      <p className="mt-3 text-xs text-ink/30">Order #BR-{plan.id.toUpperCase().slice(0, 3)}{plan.price} · {eur(paid)} paid</p>
     </div>
   );
 }
@@ -301,18 +301,18 @@ function Input({ value, onChange, placeholder, type = "text", autoFocus, inputMo
       placeholder={placeholder}
       autoFocus={autoFocus}
       inputMode={inputMode}
-      className="glass w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-white/25 focus:border-fuchsia-400/40"
+      className="glass w-full rounded-xl px-4 py-3 outline-none transition placeholder:text-ink/25 focus:border-accent2/40"
     />
   );
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-xs font-medium text-white/50">{children}</label>;
+  return <label className="mb-1.5 block text-xs font-medium text-ink/50">{children}</label>;
 }
 
 function OAuthButton({ provider, icon }: { provider: string; icon: React.ReactNode }) {
   return (
-    <button className="flex items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm font-medium transition hover:border-white/25 hover:bg-white/[0.06]">
+    <button className="flex items-center justify-center gap-2 rounded-xl border border-ink/12 bg-ink/[0.03] px-4 py-3 text-sm font-medium transition hover:border-ink/25 hover:bg-ink/[0.06]">
       {icon}
       {provider}
     </button>
