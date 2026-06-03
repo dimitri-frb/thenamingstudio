@@ -3,6 +3,7 @@ import { naming, type Brief, type Concept, type NameIdea, type Comparison, type 
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive, type Selection } from "./ConceptDeepDive";
+import { StudioNote, Kicker } from "./Guide";
 import { PublicVote } from "./PublicVote";
 import { Paywall, type Tier } from "./Paywall";
 
@@ -140,7 +141,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
         ) : (
           <>
             {step === 0 && (
-              <Panel title={<>Start with what the <I>company</I> actually does.</>} hint="The clearer this is, the sharper your name. Strategy is not optional.">
+              <Panel kicker="The brief · 1 of 4" title={<>First — what does the <I>company</I> actually do?</>}
+                guide="Great names are built on clarity, not luck. Tell us plainly what you're making — we'll do the heavy lifting from there.">
                 <Field label="What does the company do?" value={brief.does} onChange={(v) => set({ does: v })} area placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist — in minutes, not months." />
                 <Field label="Industry" value={brief.industry} onChange={(v) => set({ industry: v })} placeholder="Creator tools · SaaS" />
                 <Nav onNext={() => goto(1)} canNext={!!brief.does.trim()} nextLabel="Next · Brand context" />
@@ -148,7 +150,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 1 && (
-              <Panel title={<>Now the <I>brand</I> — who it's for and why it matters.</>} hint="What problem do you solve, for whom, and what makes your point of view defensible?">
+              <Panel kicker="The brief · 2 of 4" title={<>Now — who is it <I>for</I>, and why does it matter?</>}
+                guide="A name isn't for you. It's for the person who has to remember it, say it, and trust it. So let's get them right.">
                 <Field label="What problem does it solve?" value={brief.problem} onChange={(v) => set({ problem: v })} area placeholder="Founders spend weeks naming and settle for something generic." onSuggest={() => naming.suggest(brief, "problem")} />
                 <Field label="Who is the target audience?" value={brief.audience} onChange={(v) => set({ audience: v })} placeholder="Startup founders & brand strategists." onSuggest={() => naming.suggest(brief, "audience")} />
                 <Field label="What do they value?" value={brief.values} onChange={(v) => set({ values: v })} placeholder="Taste, speed, a defensible system." onSuggest={() => naming.suggest(brief, "values")} />
@@ -158,7 +161,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 2 && (
-              <Panel title={<>What should your name <I>signal</I> emotionally?</>} hint="Pick the words that should resonate — then mark anything to actively avoid.">
+              <Panel kicker="The brief · 3 of 4" title={<>What should the name make people <I>feel</I>?</>}
+                guide="Names land in the gut before the brain. Pick the feelings worth chasing — and the ones to steer well clear of.">
                 <ChipGroup label="Should signal" options={SIGNAL} selected={brief.signal} onToggle={(v) => set({ signal: toggleArr(brief.signal, v) })} />
                 <ChipGroup label="Should NOT signal" options={AVOID} selected={brief.avoid} onToggle={(v) => set({ avoid: toggleArr(brief.avoid, v) })} tone="avoid" />
                 <ChipGroup label="Tone / personality" options={TONE} selected={brief.tone} onToggle={(v) => set({ tone: toggleArr(brief.tone, v) })} />
@@ -167,7 +171,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 3 && (
-              <Panel title={<>Choose the <I>naming lanes</I> we'll explore.</>} hint="We pre-selected the lanes that fit your brief — keep them, or pick your own (up to 4).">
+              <Panel kicker="The brief · 4 of 4" title={<>Last one — which <I>kinds</I> of names should we chase?</>}
+                guide="Every memorable name is a deliberate bet on a style. We've pre-set the lanes that fit you — trust them, or follow your instinct."
+                hint="Keep our picks, or choose your own (up to 4).">
                 <div className="grid gap-3 sm:grid-cols-3">
                   {LANES.map((l) => {
                     const on = brief.lanes.includes(l.key);
@@ -189,7 +195,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 4 && (
-              <Panel title={<>These are the <I>worlds</I> your brand could live in.</>} hint="A name with no world behind it is just a word. Pick the 2–3 directions that make your gut say yes — we'll sketch each one out.">
+              <Panel kicker="The concepts" title={<>These are the <I>worlds</I> your brand could live in.</>}
+                guide="A name with no world behind it is just a word. Pick the two or three that make your gut say yes — we'll explore each together."
+                hint="Choose 2–4 to take further.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {concepts.map((c) => {
                     const on = chosen.has(c.title);
@@ -231,7 +239,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 6 && (
-              <Panel title={<>{names.length} names. <I>Star the keepers.</I></>} hint="Each carries a rationale and a SMILE pulse. Star up to 8 for the comparison.">
+              <Panel kicker="The shortlist" title={<>{names.length} names. <I>Star the keepers.</I></>}
+                guide="Don't overthink it — star the ones that make you look twice. We'll pressure-test your favourites next."
+                hint="Each carries a rationale and a SMILE pulse. Star up to 8.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {names.map((n) => {
                     const on = starNames.has(n.name);
@@ -258,7 +268,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 7 && comp && (
-              <Panel title={<>The <I>comparison</I> — scored, stress-tested.</>} hint="SMILE scoring, cross-language meaning, domain & trademark flags.">
+              <Panel kicker="The verdict" title={<>How they <I>hold up</I>.</>}
+                guide="We scored each name the way a strategist would — does it land, does it look right, does it sound good, does it stir something. Here's our pick, and an honest read on the rest."
+                hint="SMILE scoring, cross-language meaning, domain & trademark flags.">
                 <HeroPick comp={comp} />
                 {paid ? (
                   <div className="-mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-700">
@@ -309,12 +321,6 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                   </table>
                 </div>
 
-                <div className="mt-7 rounded-2xl border border-accent/30 bg-accent/5 p-5">
-                  <p className="font-serif text-lg italic text-ink/80">Our recommendation — {comp.recommended}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/70">{comp.why}</p>
-                  <p className="mt-3 text-right font-serif text-sm italic text-ink/40">— the studio</p>
-                </div>
-
                 <ShareFriends names={comp.rows.map((r) => r.name)} onVote={() => setVoteOpen(true)} />
 
                 <Nav onBack={() => goto(6)} canNext nextLabel="Make the decision →"
@@ -323,7 +329,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 8 && comp && (
-              <Panel title={<>The <I>decision</I>.</>} hint="Commit to one (or two). Great brands pick and move.">
+              <Panel kicker="The decision" title={<>Now — <I>commit</I>.</>}
+                guide="Here's the truth: great brands aren't the ones with the perfect name. They're the ones who chose, and went. Pick yours."
+                hint="Commit to one (or two). You can always gut-check with friends below.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {comp.rows.map((r) => (
                     <button key={r.name} onClick={() => setChosenFinal(r.name)}
@@ -425,12 +433,14 @@ function toggleArr(arr: string[], v: string, max = 999): string[] {
   return [...arr, v];
 }
 
-function Panel({ title, hint, children }: { title: React.ReactNode; hint: string; children: React.ReactNode }) {
+function Panel({ kicker, title, hint, guide, children }: { kicker?: string; title: React.ReactNode; hint?: string; guide?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="animate-in">
-      <h2 className="text-3xl leading-snug sm:text-4xl">{title}</h2>
-      <p className="mt-3 max-w-xl text-ink/55">{hint}</p>
-      <div className="mt-8 space-y-5">{children}</div>
+      {kicker && <Kicker>{kicker}</Kicker>}
+      <h2 className="mt-2 text-3xl leading-snug sm:text-4xl">{title}</h2>
+      {hint && <p className="mt-3 max-w-xl text-ink/55">{hint}</p>}
+      {guide && <StudioNote>{guide}</StudioNote>}
+      <div className="mt-7 space-y-5">{children}</div>
     </div>
   );
 }
@@ -544,17 +554,16 @@ function Nav({ onBack, onNext, canNext, nextLabel }: { onBack?: () => void; onNe
 
 function Thinking({ what }: { what: string }) {
   const labels: Record<string, string> = {
-    concepts: "Exploring concept territories…",
-    explore: "Building your worlds — words, moods & metaphors…",
-    words: "Mining each territory for words…",
-    names: "Drawing up candidate names…",
-    compare: "Scoring, and checking meanings across languages…",
+    concepts: "Mapping the worlds your brand could live in…",
+    explore: "Sketching this world out for you…",
+    names: "Drawing up names that fit your brand…",
+    compare: "Scoring each one the way a strategist would…",
   };
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
       <div className="h-12 w-12 animate-spin rounded-full border-2 border-ink/15 border-t-accent" />
       <p className="mt-6 font-serif text-2xl italic">{labels[what] || "The studio is thinking…"}</p>
-      <p className="mt-2 text-sm text-ink/40">A real Claude turn — this takes a few seconds.</p>
+      <p className="mt-2 text-sm text-ink/40">Give us a moment — good work takes a beat.</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TerritoryWorld } from "../lib/namingApi";
+import { StudioNote, Kicker } from "./Guide";
 
 // Explore the chosen directions, one at a time. An overview shows every world;
 // tap one and answer a few quick questions (a feeling, a line, some brands).
@@ -46,8 +47,9 @@ export function ConceptDeepDive({ worlds, selections, onSelect, onBack, onGenera
 
   return (
     <div className="animate-in">
-      <h2 className="text-3xl leading-snug sm:text-4xl">Explore your <span className="italic text-accent">worlds</span>.</h2>
-      <p className="mt-3 max-w-xl text-ink/55">Tap a world. A few quick questions and we'll feel out your brand — then move to the next. The more you answer, the clearer the picture.</p>
+      <Kicker>The exploration</Kicker>
+      <h2 className="mt-2 text-3xl leading-snug sm:text-4xl">Let's <span className="italic text-accent">explore</span> each world.</h2>
+      <StudioNote>This is the fun part. Step into a world and answer a few quick questions — a feeling, a line, a few brands you admire. The more you tell us, the sharper the names.</StudioNote>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {worlds.map((w, i) => {
