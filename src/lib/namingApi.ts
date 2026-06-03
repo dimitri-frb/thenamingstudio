@@ -16,6 +16,12 @@ export interface Brief {
 
 export interface Concept { title: string; blurb: string; lane: string }
 export interface Word { word: string; territory: string }
+export interface Branch { word: string; kind: "synonym" | "metaphor" | "foreign" | "sound" }
+export interface SeedWord { word: string; note: string; branches: Branch[] }
+export interface TerritoryWorld {
+  title: string; story: string; mood: string[]; palette: string[]; motif: string;
+  references: string[]; samples: string[]; words: SeedWord[];
+}
 export interface NameIdea { name: string; type: string; rationale: string; score: number }
 export interface CompareRow {
   name: string; intuitive: number; visual: number; sound: number; emotional: number;
@@ -49,6 +55,7 @@ export const naming = {
   interview: (messages: Msg[]) => call<InterviewTurn>("interview", EMPTY_BRIEF, { messages }),
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   words: (brief: Brief, concepts: Concept[]) => call<{ words: Word[] }>("words", brief, { concepts }).then((d) => d.words),
+  explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
   names: (brief: Brief, concepts: Concept[], words: Word[]) =>
     call<{ names: NameIdea[] }>("names", brief, { concepts, words }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),

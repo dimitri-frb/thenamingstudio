@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { naming, type Brief, type Concept, type Word, type NameIdea, type Comparison } from "../lib/namingApi";
+import { naming, type Brief, type Concept, type Word, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
+import { ConceptDeepDive } from "./ConceptDeepDive";
 
 // The "Classic flow" (Atelier) — the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -34,7 +35,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
-  const [words, setWords] = useState<Word[]>([]);
+  const [worlds, setWorlds] = useState<TerritoryWorld[]>([]);
   const [starWords, setStarWords] = useState<Set<string>>(new Set());
   const [names, setNames] = useState<NameIdea[]>([]);
   const [starNames, setStarNames] = useState<Set<string>>(new Set());
@@ -173,28 +174,27 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                     );
                   })}
                 </div>
-                <Nav onBack={() => goto(3)} canNext={chosen.size > 0} nextLabel="Explore words →"
-                  onNext={() => generate("words", async () => setWords(await naming.words(brief, concepts.filter((c) => chosen.has(c.title)))), 5)} />
+                <Nav onBack={() => goto(3)} canNext={chosen.size > 0} nextLabel="Explore in depth →"
+                  onNext={() => generate("explore", async () => setWorlds(await Promise.all(concepts.filter((c) => chosen.has(c.title)).map((c) => naming.explore(brief, c)))), 5)} />
               </Panel>
             )}
 
             {step === 5 && (
-              <Panel title={<>Mine each territory for <I>words</I> that could become names.</>} hint="Your brand is based on your inspiration. Select the words that speak to you the most.">
-                <div className="flex flex-wrap gap-2">
-                  {words.map((w) => {
-                    const on = starWords.has(w.word);
-                    return (
-                      <button key={w.word} onClick={() => toggle(starWords, w.word, setStarWords)}
-                        className={`rounded-full border px-3 py-1.5 text-sm transition ${on ? "border-accent bg-accent text-white" : "border-ink/20 hover:border-ink/40"}`}
-                        title={w.territory}>
-                        {on ? "★ " : ""}{w.word}
-                      </button>
-                    );
-                  })}
-                </div>
-                <Nav onBack={() => goto(4)} canNext={starWords.size > 0} nextLabel="Generate name ideas →"
-                  onNext={() => generate("names", async () => setNames(await naming.names(brief, concepts.filter((c) => chosen.has(c.title)), words.filter((w) => starWords.has(w.word)))), 6)} />
-              </Panel>
+              <ConceptDeepDive
+                worlds={worlds}
+                kept={starWords}
+                onToggle={(w) => toggle(starWords, w, setStarWords)}
+                onBack={() => goto(4)}
+                onGenerate={() => generate("names", async () => {
+                  const seen = new Set<string>();
+                  const kw: Word[] = [];
+                  for (const W of worlds)
+                    for (const sw of W.words)
+                      for (const t of [sw.word, ...sw.branches.map((b) => b.word)])
+                        if (starWords.has(t) && !seen.has(t)) { seen.add(t); kw.push({ word: t, territory: W.title }); }
+                  setNames(await naming.names(brief, concepts.filter((c) => chosen.has(c.title)), kw));
+                }, 6)}
+              />
             )}
 
             {step === 6 && (
@@ -400,6 +400,7 @@ function Nav({ onBack, onNext, canNext, nextLabel }: { onBack?: () => void; onNe
 function Thinking({ what }: { what: string }) {
   const labels: Record<string, string> = {
     concepts: "Exploring concept territories…",
+    explore: "Building your worlds — words, moods & metaphors…",
     words: "Mining each territory for words…",
     names: "Drawing up candidate names…",
     compare: "Scoring, and checking meanings across languages…",
