@@ -14,10 +14,11 @@ import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { LandingCarnival } from "./components/LandingCarnival";
 import { FlowCarnival, GeneratingCarnival } from "./components/FlowCarnival";
+import { ClassicFlow } from "./components/ClassicFlow";
 import { BrandMark, Wordmark } from "./components/Logo";
 import { PLANS, eur, type PlanId } from "./lib/plans";
 
-type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results";
+type Screen = "landing" | "vibe" | "types" | "refine" | "generating" | "results" | "classic";
 
 type ThemeId = "nocturne" | "atelier" | "carnival";
 const THEMES: { id: ThemeId; label: string; blurb: string; swatch: [string, string, string] }[] = [
@@ -89,7 +90,7 @@ export default function App() {
   // Macro journey: 0=brief, 1=names. Paid steps (domain/trademark/brand book)
   // stay ahead as inspiring locked milestones.
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
-  const showJourney = screen !== "landing";
+  const showJourney = screen !== "landing" && screen !== "classic";
 
   return (
     <div className="min-h-screen mesh">
@@ -97,7 +98,17 @@ export default function App() {
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && theme === "atelier" && (
-          <LandingAtelier description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />
+          <LandingAtelier
+            description={description}
+            setDescription={setDescription}
+            /* Local dev (logged into Claude) → real Classic flow. Static deploy → mock funnel. */
+            onNext={() => setScreen(import.meta.env.DEV ? "classic" : "vibe")}
+            onCheckout={setCheckout}
+          />
+        )}
+
+        {screen === "classic" && (
+          <ClassicFlow initialDoes={description} onRestart={restart} />
         )}
         {screen === "landing" && theme === "carnival" && (
           <LandingCarnival description={description} setDescription={setDescription} onNext={() => setScreen("vibe")} onCheckout={setCheckout} />

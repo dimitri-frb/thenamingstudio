@@ -12,6 +12,32 @@ Built on the team's naming framework (see the Figma research): **5 phases**,
 **9 name types**, and **4-axis scoring** (Intuitive · Visual · Sound ·
 Emotional) plus a SMILE check.
 
+## The Classic flow — Atelier, connected to real Claude 🟢
+
+The **Atelier** theme's "Begin the session" launches the full storytelling
+naming process (the 10-step Figma flow): Company context → Brand context →
+Emotional value → Naming strategy → **Concepts → Words → Names → Comparison**
+→ Decision. The four generative steps call **real Claude** — no mock.
+
+How the connection works (no API key in the browser): a **dev-only Vite
+middleware** (`/api/naming` in `vite.config.ts`) shells out to the `claude`
+CLI in print mode (`claude -p`), using whatever Claude account you're logged
+into on that machine. So:
+
+```bash
+npm run dev      # http://localhost:5173 — log in with `claude` first if needed
+# switch theme to "Atelier" → "Begin the session" → the live flow
+```
+
+- Works **locally** wherever the `claude` CLI is authenticated.
+- The **deployed GitHub Pages** build is static, so it can't run the bridge —
+  there, Atelier falls back to the offline mock funnel. The live Classic flow
+  is the local testing tool. (Production path later: a serverless proxy holding
+  an `ANTHROPIC_API_KEY` + RDAP/INPI/EUIPO for real domain & trademark checks.)
+
+Each generative phase uses a structured prompt (see `buildPrompt` in
+`vite.config.ts`) and returns strict JSON consumed by `src/lib/namingApi.ts`.
+
 ## Brand directions (live theme switcher)
 
 The header has a switcher to try three brand identities on the spot:
