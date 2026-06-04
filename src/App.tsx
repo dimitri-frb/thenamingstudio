@@ -104,7 +104,7 @@ export default function App() {
               <Step
                 index={1}
                 title="What's the personality?"
-                subtitle="Pick up to 3. This is your tone — it shapes every name."
+                subtitle="Pick up to 3. This is your tone, it shapes every name."
                 onBack={() => setScreen("landing")}
                 onNext={() => setScreen("types")}
                 canNext={vibes.length > 0}
@@ -250,7 +250,7 @@ function Recap({ brief }: { brief: Brief }) {
     <div className="rounded-2xl border border-ink/15 bg-[var(--surface-solid)] p-4 text-sm">
       <p className="mb-2 font-serif text-lg italic text-ink/60">Your brief</p>
       <div className="space-y-1.5 text-ink/45">
-        <p className="line-clamp-2">💡 {brief.description || "—"}</p>
+        <p className="line-clamp-2">💡 {brief.description || ", "}</p>
         <p>🎨 {brief.vibes.length ? brief.vibes.join(", ") : "Any tone"}</p>
         <p>🔤 {brief.types.length ? brief.types.map((t) => TYPE_META[t].label).join(", ") : "Mixed types"}</p>
       </div>

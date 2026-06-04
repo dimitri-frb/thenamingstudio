@@ -4,7 +4,7 @@ import { StudioNote, Kicker } from "./Guide";
 
 // Explore the chosen directions, one at a time. An overview shows every world;
 // tap one and answer a few quick questions (a feeling, a line, some brands).
-// Those answers — not a word list — are what the names are drawn from.
+// Those answers, not a word list, are what the names are drawn from.
 
 export type Selection = { feeling?: string; quote?: string; brands: string[] };
 
@@ -49,7 +49,7 @@ export function ConceptDeepDive({ worlds, selections, onSelect, onBack, onGenera
     <div className="animate-in">
       <Kicker>The exploration</Kicker>
       <h2 className="mt-2 text-3xl leading-snug sm:text-4xl">Let's <span className="italic text-accent">explore</span> each world.</h2>
-      <StudioNote>This is the fun part. Step into a world and answer a few quick questions — a feeling, a line, a few brands you admire. The more you tell us, the sharper the names.</StudioNote>
+      <StudioNote>This is the fun part. Step into a world and answer a few quick questions, a feeling, a line, a few brands you admire. The more you tell us, the sharper the names.</StudioNote>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {worlds.map((w, i) => {

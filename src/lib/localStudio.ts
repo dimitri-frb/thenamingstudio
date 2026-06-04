@@ -1,4 +1,4 @@
-// Client-side fallback "studio" — runs the whole flow with no backend, so the
+// Client-side fallback "studio", runs the whole flow with no backend, so the
 // static GitHub Pages build is fully explorable. When real Claude IS reachable
 // (dev bridge or the Worker) it is used instead (see namingApi).
 // Deterministic-ish, decent quality, clearly demo-grade.
@@ -25,14 +25,14 @@ function keywords(b: Brief): string[] {
 }
 
 const FRAMES = [
-  { t: "Craft & forge", b: "Treats the work like a maker's trade — raw material shaped by a steady hand.", lane: "evocative" },
+  { t: "Craft & forge", b: "Treats the work like a maker's trade, raw material shaped by a steady hand.", lane: "evocative" },
   { t: "The quiet signal", b: "A calm, confident presence that doesn't shout to be heard.", lane: "suggestive" },
   { t: "Flow & momentum", b: "The feeling of effortless forward motion, friction melting away.", lane: "suggestive" },
   { t: "First light", b: "The hopeful, early-morning moment before everyone else is awake.", lane: "evocative" },
   { t: "The companion", b: "A warm, ever-present sidekick that has your back.", lane: "suggestive" },
-  { t: "Field notes", b: "Curious, observant, a little hand-made — ideas captured in the wild.", lane: "compound" },
+  { t: "Field notes", b: "Curious, observant, a little hand-made, ideas captured in the wild.", lane: "compound" },
   { t: "Alchemy", b: "Turning the raw and ordinary into something polished and valuable.", lane: "invented" },
-  { t: "Open door", b: "Welcoming and unpretentious — anyone can walk in and belong.", lane: "evocative" },
+  { t: "Open door", b: "Welcoming and unpretentious, anyone can walk in and belong.", lane: "evocative" },
   { t: "True north", b: "A dependable point of reference when everything else is noisy.", lane: "suggestive" },
   { t: "Playground", b: "Light, joyful, a place to experiment without fear.", lane: "playful" },
 ];
@@ -55,7 +55,7 @@ const QUOTES = [
   "Slow is smooth, and smooth is fast.",
 ];
 const BRANDS: { name: string; why: string }[] = [
-  { name: "Aesop", why: "restraint as luxury — every word chosen" },
+  { name: "Aesop", why: "restraint as luxury, every word chosen" },
   { name: "Notion", why: "calm, flexible, quietly powerful" },
   { name: "Patagonia", why: "values worn on the sleeve" },
   { name: "Stripe", why: "clean, precise, deeply trusted" },
@@ -63,7 +63,7 @@ const BRANDS: { name: string; why: string }[] = [
   { name: "Oatly", why: "loud, witty, gleefully anti-corporate" },
   { name: "Linear", why: "speed and taste treated as features" },
   { name: "Liquid Death", why: "irreverent and impossible to forget" },
-  { name: "Muji", why: "the no-brand brand — pure utility" },
+  { name: "Muji", why: "the no-brand brand, pure utility" },
   { name: "Headspace", why: "friendly, human, never intimidating" },
   { name: "Duolingo", why: "a mascot with a personality of its own" },
   { name: "Rivian", why: "adventurous, optimistic, new-world" },
@@ -123,7 +123,7 @@ export function localNames(brief: Brief, sketch: Sketch): { names: NameIdea[] } 
     out.push({
       name,
       type: lane,
-      rationale: `From "${word}" — ${pick(r, ["short and ownable", "easy to say once heard", "carries the story without explaining", "a real word in a new place", "invented, so it's yours"])}.`,
+      rationale: `From "${word}", ${pick(r, ["short and ownable", "easy to say once heard", "carries the story without explaining", "a real word in a new place", "invented, so it's yours"])}.`,
       score: 70 + Math.floor(r() * 28),
     });
   }
@@ -137,17 +137,17 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
     const taken = n.name.length <= 6 ? r() > 0.3 : r() > 0.6;
     return {
       name: n.name, intuitive: I, visual: V, sound: S, emotional: E, total: I + V + S + E,
-      negatives: "clean (demo — not language-verified)",
-      domain: taken ? `${n.name.toLowerCase()}.com likely taken — try .io / get-` : `${n.name.toLowerCase()}.com may be free (estimate)`,
-      trademark: r() > 0.7 ? "possible clash — verify on INPI/EUIPO" : "no obvious clash (estimate)",
-      verdict: pick(r, ["Strong, ownable, easy to say.", "Memorable with a clear story.", "Distinctive — worth clearing legally.", "Warm and human; reads well."]),
+      negatives: "clean (demo, not language-verified)",
+      domain: taken ? `${n.name.toLowerCase()}.com likely taken, try .io / get-` : `${n.name.toLowerCase()}.com may be free (estimate)`,
+      trademark: r() > 0.7 ? "possible clash, verify on INPI/EUIPO" : "no obvious clash (estimate)",
+      verdict: pick(r, ["Strong, ownable, easy to say.", "Memorable with a clear story.", "Distinctive, worth clearing legally.", "Warm and human; reads well."]),
     };
   }).sort((a, b) => b.total - a.total);
   const best = rows[0];
   return {
     rows,
     recommended: best?.name || "",
-    why: best ? `Honestly? ${best.name} is the one we'd run with — it scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning — connect real Claude for the full analysis.)` : "",
+    why: best ? `Honestly? ${best.name} is the one we'd run with, it scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
   };
 }
 
@@ -175,10 +175,10 @@ export function recommendLanes(brief: Brief): string[] {
 }
 
 const Q = [
-  "Hey! So tell me — what does your company do, in a nutshell?",
+  "Hey! So tell me, what does your company do, in a nutshell?",
   "Love it. Who's the main person you picture using this?",
   "And what problem are you really solving for them?",
-  "What should the name feel like — any vibe words?",
+  "What should the name feel like, any vibe words?",
   "Anything the name should definitely avoid?",
 ];
 export function localInterview(messages: Msg[]): InterviewTurn {
@@ -186,7 +186,7 @@ export function localInterview(messages: Msg[]): InterviewTurn {
   if (userTurns.length < Q.length) return { say: Q[userTurns.length], done: false };
   const a = userTurns.map((m) => m.text);
   return {
-    say: "Perfect — I've got a clear picture. Let me find some names. (Demo brief — connect real Claude for a deeper read.)",
+    say: "Perfect, I've got a clear picture. Let me find some names. (Demo brief, connect real Claude for a deeper read.)",
     done: true,
     brief: {
       does: a[0] || "", industry: "", problem: a[2] || "", audience: a[1] || "",

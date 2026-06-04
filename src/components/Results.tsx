@@ -68,30 +68,30 @@ function syllables(name: string) {
 function whyItWins(idea: NameIdea): { intro: string; points: string[] } {
   const syl = syllables(idea.name);
   const meaning: Record<NameIdea["type"], string> = {
-    Suggestive: "It hints at what you do without spelling it out — that's exactly why names like Slack and Uber stuck.",
+    Suggestive: "It hints at what you do without spelling it out, that's exactly why names like Slack and Uber stuck.",
     AbstractRealWord: "A familiar word in an unfamiliar place. Your brain remembers it on the first pass.",
-    Invented: "It's invented, so it's genuinely yours — easy to trademark, with nothing to compete against.",
+    Invented: "It's invented, so it's genuinely yours, easy to trademark, with nothing to compete against.",
     Compound: "Two plain words doing one clear job. People get it instantly, no explaining.",
     Evocative: "It leads with a feeling, and a feeling is what people actually remember.",
-    Playful: "It's got personality — the kind of name people repeat just because it's fun to say.",
+    Playful: "It's got personality, the kind of name people repeat just because it's fun to say.",
     Descriptive: "It says exactly what you do. Nobody ever has to ask what you're about.",
-    FounderName: "It reads like there's a person and a story behind it — warm, and very human.",
+    FounderName: "It reads like there's a person and a story behind it, warm, and very human.",
     Acronym: "Short and sharp. Once people know you, it's effortless to recall.",
   };
 
   const points = [
-    `Highest combined score of the batch — ${idea.score}/100 across all four checks.`,
+    `Highest combined score of the batch, ${idea.score}/100 across all four checks.`,
     meaning[idea.type],
   ];
 
-  if (syl <= 2) points.push(`Just ${syl} syllable${syl > 1 ? "s" : ""}, and it reads the same in English, French and German — no awkward pauses.`);
+  if (syl <= 2) points.push(`Just ${syl} syllable${syl > 1 ? "s" : ""}, and it reads the same in English, French and German, no awkward pauses.`);
   if (idea.name.length <= 7) points.push("You could say it once in a loud room and someone could still spell it right.");
 
-  if (idea.premiumDomain) points.push(`The .com is taken, but it's available as a premium buy — or grab ${idea.domain} today.`);
-  else if (idea.domainAvailable) points.push(`And ${idea.domain} is free right now. That almost never happens — worth grabbing.`);
+  if (idea.premiumDomain) points.push(`The .com is taken, but it's available as a premium buy, or grab ${idea.domain} today.`);
+  else if (idea.domainAvailable) points.push(`And ${idea.domain} is free right now. That almost never happens, worth grabbing.`);
   else points.push(`The exact .com is gone, but ${idea.domain} is open and works perfectly well.`);
 
-  points.push("Broad enough to grow into, too — it won't box you in if you expand beyond the first product.");
+  points.push("Broad enough to grow into, too, it won't box you in if you expand beyond the first product.");
 
   return {
     intro: "Honestly? If this were our company, this is the one we'd run with.",
@@ -135,7 +135,7 @@ function Recommendation({ idea, fav, onFav, onPick }: { idea: NameIdea; fav: boo
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-right font-serif text-base italic text-ink/40">— the studio</p>
+        <p className="mt-4 text-right font-serif text-base italic text-ink/40">the studio</p>
       </div>
 
       <button
@@ -181,7 +181,7 @@ function NameCard({ idea, fav, onFav, onPick, delay }: { idea: NameIdea; fav: bo
   );
 }
 
-/* "Amazing name! What do you want to do next?" — opens on name click. */
+/* "Amazing name! What do you want to do next?", opens on name click. */
 function NamePopup({ idea, onClose, onCheckout }: { idea: NameIdea; onClose: () => void; onCheckout: (p: PlanId) => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -193,7 +193,7 @@ function NamePopup({ idea, onClose, onCheckout }: { idea: NameIdea; onClose: () 
   const actions: { icon: string; title: string; sub: string; plan: PlanId }[] = [
     { icon: "🛡️", title: "Register it at INPI", sub: "Lock the trademark in France & the EU", plan: "launch" },
     { icon: "🎨", title: "Create a logo", sub: "Logo & color directions, on brand", plan: "founder" },
-    { icon: "📖", title: "Design the brand", sub: "Full brand book — type, voice, palette", plan: "launch" },
+    { icon: "📖", title: "Design the brand", sub: "Full brand book, type, voice, palette", plan: "launch" },
   ];
 
   return createPortal(
@@ -227,7 +227,7 @@ function NamePopup({ idea, onClose, onCheckout }: { idea: NameIdea; onClose: () 
           ))}
         </div>
 
-        <button onClick={onClose} className="mt-4 text-xs text-ink/40 transition hover:text-ink">Maybe later — keep browsing</button>
+        <button onClick={onClose} className="mt-4 text-xs text-ink/40 transition hover:text-ink">Maybe later, keep browsing</button>
       </div>
     </div>,
     document.body,
@@ -284,8 +284,8 @@ function Paywall({ lockedCount, locked, onCheckout }: { lockedCount: number; loc
         <div className="glass w-full max-w-md rounded-3xl border-accent2/30 p-7 text-center shadow-2xl shadow-accent2/10">
           <span className="text-3xl">🔓</span>
           <h3 className="mt-3 text-2xl font-bold">Unlock {lockedCount}+ more names</h3>
-          <p className="mt-2 text-sm text-ink/55">Plus live domain search across every TLD and an INPI 🇫🇷 / EUIPO trademark conflict check — so you pick a name you can actually own.</p>
-          <button onClick={() => onCheckout("founder")} className="mt-5 w-full rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3.5 font-semibold shadow-lg shadow-accent2/20 transition hover:brightness-110">Unlock Founder — {eur(PLANS.founder.price)}</button>
+          <p className="mt-2 text-sm text-ink/55">Plus live domain search across every TLD and an INPI 🇫🇷 / EUIPO trademark conflict check, so you pick a name you can actually own.</p>
+          <button onClick={() => onCheckout("founder")} className="mt-5 w-full rounded-xl bg-gradient-to-r from-accent to-accent2 text-white px-6 py-3.5 font-semibold shadow-lg shadow-accent2/20 transition hover:brightness-110">Unlock Founder · {eur(PLANS.founder.price)}</button>
           <p className="mt-2.5 text-xs text-ink/35">One-time · instant access · no subscription</p>
         </div>
       </div>
@@ -297,7 +297,7 @@ function BeyondNames({ onCheckout }: { onCheckout: (p: PlanId) => void }) {
   const cards: { icon: string; title: string; body: string; tag: string; plan: PlanId }[] = [
     { icon: "🌐", title: "Domain search & registration", body: "Real-time availability across .com, .io, .fr and 400+ TLDs. Found the one? We register it for you.", tag: "Founder & Launch", plan: "founder" },
     { icon: "🛡️", title: "INPI trademark check & filing", body: "We screen your name against existing French & EU trademarks, flag conflicts, then file the deposit for you.", tag: "Launch", plan: "launch" },
-    { icon: "📘", title: "Brand book", body: "Logo directions, color palette, typography and voice — a ready-to-share PDF to launch with confidence.", tag: "Launch", plan: "launch" },
+    { icon: "📘", title: "Brand book", body: "Logo directions, color palette, typography and voice, a ready-to-share PDF to launch with confidence.", tag: "Launch", plan: "launch" },
   ];
   return (
     <section className="mt-24">

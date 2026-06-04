@@ -8,13 +8,13 @@ interface Milestone {
   plan?: PlanId; // set => paid step; clicking opens checkout
 }
 
-// The full arc the customer is on — from a blank idea to a brand they own.
+// The full arc the customer is on, from a blank idea to a brand they own.
 // Showing the locked steps ahead is the whole point: it keeps them in the tunnel.
 export const MILESTONES: Milestone[] = [
   { key: "brief", icon: "✏️", label: "Your brief", tease: "Define what makes you, you" },
   { key: "names", icon: "✨", label: "Find the name", tease: "Discover a name you'll love for years" },
   { key: "domain", icon: "🌐", label: "Secure domain", tease: "Claim your corner of the internet", plan: "founder" },
-  { key: "trademark", icon: "🛡️", label: "File trademark", tease: "Make it legally yours — INPI 🇫🇷", plan: "launch" },
+  { key: "trademark", icon: "🛡️", label: "File trademark", tease: "Make it legally yours, INPI 🇫🇷", plan: "launch" },
   { key: "brandbook", icon: "📖", label: "Brand book", tease: "Launch like you've been here before", plan: "launch" },
 ];
 
@@ -82,7 +82,7 @@ function Node({ milestone, state, onClick }: { milestone: Milestone; state: Node
     <button
       onClick={onClick}
       disabled={!clickable}
-      title={clickable ? `${milestone.tease} — unlock now` : milestone.tease}
+      title={clickable ? `${milestone.tease}, unlock now` : milestone.tease}
       className={`group flex items-center gap-2 rounded-xl px-2 py-1 transition ${clickable ? "cursor-pointer hover:bg-ink/5" : "cursor-default"}`}
     >
       <span className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm transition ${circle[state]}`}>

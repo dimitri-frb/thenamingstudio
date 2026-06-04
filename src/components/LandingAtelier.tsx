@@ -1,4 +1,4 @@
-// The home — a calm, editorial hero. "Start a brief" leads into the flow;
+// The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
 
 export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
@@ -15,7 +15,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
         </h1>
 
         <p className="mx-auto mt-8 max-w-xl font-serif text-2xl leading-relaxed text-ink/65">
-          Not a list of suggestions. A brief, a strategy, a defensible name —
+          Not a list of suggestions. A brief, a strategy, a defensible name,
           with the rigor of a senior consultant and the speed of a tool.
         </p>
 

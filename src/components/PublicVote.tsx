@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-// "Public vote" — a swipe deck to gut-check the shortlist (the Figma mock).
+// "Public vote", a swipe deck to gut-check the shortlist (the Figma mock).
 // Single-device for now (no backend); shows a tally at the end.
 
 export interface VoteItem { name: string; type?: string; note?: string }
@@ -103,7 +103,7 @@ function Result({ liked, items, onClose }: { liked: string[]; items: VoteItem[];
       <p className="font-mono text-xs uppercase tracking-widest text-ink/40">Your vote</p>
       <h2 className="mt-3 text-3xl">You kept {liked.length} of {items.length}.</h2>
       <div className="mt-6 space-y-2 text-left">
-        {liked.length === 0 && <p className="text-center text-ink/45">No favourites this round — that's a signal too.</p>}
+        {liked.length === 0 && <p className="text-center text-ink/45">No favourites this round, that's a signal too.</p>}
         {liked.map((n, idx) => (
           <div key={n} className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
             <span className="font-mono text-xs text-accent">{String(idx + 1).padStart(2, "0")}</span>

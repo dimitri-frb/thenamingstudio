@@ -1,4 +1,4 @@
-// Single source of truth for paid plans — used by the pricing section, the
+// Single source of truth for paid plans, used by the pricing section, the
 // paywall, and the checkout flow so prices never drift apart.
 
 export type PlanId = "founder" | "launch";

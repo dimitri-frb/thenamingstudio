@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 
 // The conversion moment. The whole creative flow is free; once the founder has a
-// shortlist worth comparing, we offer to "make it real" — check INPI + domains,
+// shortlist worth comparing, we offer to "make it real", check INPI + domains,
 // and optionally build the brand book. Least-friction checkout (Apple/Google/email).
 
 export type Tier = "check" | "bundle";
@@ -14,7 +14,7 @@ export const OFFERS = {
     price: 9,
     was: null as number | null,
     tagline: "Is the name actually free to use?",
-    blurb: "We verify INPI trademark availability and check the domain on every register — ready in under a minute.",
+    blurb: "We verify INPI trademark availability and check the domain on every register, ready in under a minute.",
     features: [
       "🇫🇷 INPI trademark availability",
       "🌐 Domain check across .com / .io / .fr / .co …",
@@ -33,7 +33,7 @@ export const OFFERS = {
       "Everything in the reality check",
       "📕 Full brand book (logo, colors, type, voice)",
       "Ready-to-ship assets & guidelines",
-      "Brand book alone is 99€ — 49€ in the bundle",
+      "Brand book is 99€ alone, 49€ in the bundle",
     ],
   },
 };
@@ -58,7 +58,7 @@ export function Paywall({
   const validEmail = /\S+@\S+\.\S+/.test(email);
 
   function pay(method: string) {
-    // Demo checkout — no real charge. A real build would hand off to Stripe /
+    // Demo checkout, no real charge. A real build would hand off to Stripe /
     // Apple Pay / Google Pay here; the email is captured for delivery + receipt.
     setProcessing(method);
     window.setTimeout(() => onPaid(tier, email || `${method}@demo`), 1400);
@@ -78,7 +78,7 @@ export function Paywall({
           ))}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-ink/60">
-          Now let's make it real. Before you fall in love, let's check the name is actually <em>yours to take</em> — trademark and domains, all at once.
+          Now let's make it real. Before you fall in love, let's check the name is actually <em>yours to take</em>, trademark and domains, all at once.
         </p>
 
         {/* offers */}
@@ -131,7 +131,7 @@ export function Paywall({
             </div>
             <input
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com — we send your results here"
+              placeholder="you@company.com, we send your results here"
               className="w-full rounded-xl border border-ink/20 bg-[var(--surface-solid)] px-4 py-3 text-sm outline-none transition placeholder:text-ink/30 focus:border-accent/50"
             />
             <button onClick={() => pay("card")} disabled={!validEmail}
@@ -143,7 +143,7 @@ export function Paywall({
         )}
 
         <button onClick={onMaybeLater} className="mt-4 block w-full text-center text-sm text-ink/40 transition hover:text-ink/70">
-          Maybe later — just show me the scored shortlist
+          Maybe later, just show me the scored shortlist
         </button>
       </div>
     </div>,

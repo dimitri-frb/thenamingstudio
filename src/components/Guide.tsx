@@ -1,4 +1,4 @@
-// The "studio voice" — a consistent guide presence that makes the whole flow
+// The "studio voice", a consistent guide presence that makes the whole flow
 // feel like being walked through by a brand expert. No persona, no avatar; just
 // the studio's mark (the asterisk) and a warm, inspiring line at each step.
 

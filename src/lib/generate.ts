@@ -1,4 +1,4 @@
-// the naming studio — name engine: a self-contained generator built around the team's
+// the naming studio, name engine: a self-contained generator built around the team's
 // naming framework (see the Figma research): 9 name types, scored on 4 axes
 // (Intuitive / Visual / Sound / Emotional) plus a SMILE check.
 //
@@ -17,8 +17,8 @@ export type Vibe =
 
 // The 9 name types from the research, with their archetypes.
 export type NameType =
-  | "Descriptive" // Dropbox, Booking.com — instant clarity
-  | "Suggestive" // Amazon, Uber, Slack — the sweet spot ★
+  | "Descriptive" // Dropbox, Booking.com, instant clarity
+  | "Suggestive" // Amazon, Uber, Slack, the sweet spot ★
   | "Compound" // Facebook, YouTube, PayPal
   | "Invented" // Google, Spotify, Kodak
   | "AbstractRealWord" // Apple, Stripe, Notion
@@ -192,15 +192,15 @@ const TAGLINES = [
 function rationaleFor(type: NameType, vibes: Vibe[]): string {
   const v = (vibes[0] ?? "Modern").toLowerCase();
   const map: Record<NameType, string> = {
-    Descriptive: `Says exactly what you do — zero explanation needed. Reads ${v}.`,
-    Suggestive: `Hints at the benefit without naming it — flexible, ownable, ${v}.`,
+    Descriptive: `Says exactly what you do, zero explanation needed. Reads ${v}.`,
+    Suggestive: `Hints at the benefit without naming it, flexible, ownable, ${v}.`,
     Compound: `Two ideas fused so the name tells a story. Clear and ${v}.`,
-    Invented: `Invented & unique — easy to trademark and rank for. Feels ${v}.`,
-    AbstractRealWord: `A real word borrowed into a new category — instantly memorable, ${v}.`,
+    Invented: `Invented & unique, easy to trademark and rank for. Feels ${v}.`,
+    AbstractRealWord: `A real word borrowed into a new category, instantly memorable, ${v}.`,
     FounderName: `Carries a built-in story and a ${v}, human feel.`,
-    Acronym: `Short and clean — works once you've earned recognition.`,
-    Evocative: `Pure feeling over function — ${v} and aspirational.`,
-    Playful: `Disarming and fun — a conversation starter that feels ${v}.`,
+    Acronym: `Short and clean, works once you've earned recognition.`,
+    Evocative: `Pure feeling over function, ${v} and aspirational.`,
+    Playful: `Disarming and fun, a conversation starter that feels ${v}.`,
   };
   return map[type];
 }

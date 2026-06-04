@@ -26,10 +26,10 @@ export function Checkout({ planId, onClose }: { planId: PlanId; onClose: () => v
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="animate-in relative grid w-full max-w-4xl overflow-hidden rounded-3xl border border-ink/10 [background:var(--surface-solid)] shadow-2xl shadow-black/50 md:grid-cols-[1fr_1.1fr]">
-        {/* Left — order summary */}
+        {/* Left, order summary */}
         <OrderSummary planId={planId} stage={stage} />
 
-        {/* Right — the form */}
+        {/* Right, the form */}
         <div className="relative p-7 sm:p-9">
           <button
             onClick={onClose}
@@ -126,7 +126,7 @@ function Steps({ stage }: { stage: Stage }) {
   );
 }
 
-/* ---------------- Step 1 — Signup ---------------- */
+/* ---------------- Step 1, Signup ---------------- */
 function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: string) => void; onContinue: () => void }) {
   const [pw, setPw] = useState("");
   const [mode, setMode] = useState<"signup" | "signin">("signup");
@@ -174,7 +174,7 @@ function Signup({ email, setEmail, onContinue }: { email: string; setEmail: (s: 
   );
 }
 
-/* ---------------- Step 2 — Payment ---------------- */
+/* ---------------- Step 2, Payment ---------------- */
 function Payment({ plan, email, onBack, onPay }: { plan: (typeof PLANS)[PlanId]; email: string; onBack: () => void; onPay: (total: number) => void }) {
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");

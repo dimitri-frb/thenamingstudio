@@ -3,7 +3,7 @@ import { naming, type Brief, type Msg } from "../lib/namingApi";
 import { useVoice, speak, stopSpeaking } from "../lib/useVoice";
 
 // Voice-first brief: the AI interviews the founder out loud, fills the brief
-// automatically, then hands off to name generation — no visible step forms.
+// automatically, then hands off to name generation, no visible step forms.
 
 export function Conversation({ voiceFirst, onComplete, onCancel }: {
   voiceFirst: boolean;
@@ -77,7 +77,7 @@ export function Conversation({ voiceFirst, onComplete, onCancel }: {
       <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-ink/40">
         <button onClick={onCancel} className="hover:text-ink" title="Leave">✕</button>
         <span>The brief</span>
-        <button onClick={() => { setVoice((v) => !v); stopSpeaking(); }} className={`text-base ${voice ? "text-accent" : "hover:text-ink"}`} title={voice ? "Voice on — tap to mute" : "Voice off — tap to unmute"}>
+        <button onClick={() => { setVoice((v) => !v); stopSpeaking(); }} className={`text-base ${voice ? "text-accent" : "hover:text-ink"}`} title={voice ? "Voice on, tap to mute" : "Voice off, tap to unmute"}>
           {voice ? "🔊" : "🔇"}
         </button>
       </div>
@@ -125,7 +125,7 @@ export function Conversation({ voiceFirst, onComplete, onCancel }: {
             {supported && (
               <button
                 onClick={micTap}
-                title={listening ? "Stop & send" : "Hold the thought — tap to talk"}
+                title={listening ? "Stop & send" : "Hold the thought, tap to talk"}
                 className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border transition ${
                   listening ? "border-accent bg-accent text-white" : "border-ink/20 text-ink/60 hover:border-ink/40"
                 }`}

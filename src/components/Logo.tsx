@@ -1,4 +1,4 @@
-// Brand mark for "the naming studio" — an asterisk (the studio motif),
+// Brand mark for "the naming studio", an asterisk (the studio motif),
 // used in the header, checkout and the generating screen.
 
 export function BrandMark({ className = "h-8 w-8 rounded-lg" }: { className?: string }) {

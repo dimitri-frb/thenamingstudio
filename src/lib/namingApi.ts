@@ -29,7 +29,7 @@ export interface TerritoryWorld {
   brands: BrandRef[];  // ~5 brands that live here, each with a why
 }
 
-// "Your brand so far" — the answers the founder gave while exploring. Names are
+// "Your brand so far", the answers the founder gave while exploring. Names are
 // drawn from this, not from a list of words.
 export interface Sketch { concepts: string[]; feelings: string[]; quotes: string[]; brands: string[] }
 
@@ -45,8 +45,8 @@ export interface Comparison { rows: CompareRow[]; recommended: string; why: stri
 const ENDPOINT = import.meta.env.DEV ? "/api/naming" : (import.meta.env.VITE_NAMING_API || "");
 
 async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<T> {
-  // Try real Claude (dev bridge or Worker). On any failure — no endpoint, 404,
-  // network, model error — fall back to the client-side studio so the whole flow
+  // Try real Claude (dev bridge or Worker). On any failure, no endpoint, 404,
+  // network, model error, fall back to the client-side studio so the whole flow
   // still works, just with demo-grade data.
   if (ENDPOINT) {
     try {
