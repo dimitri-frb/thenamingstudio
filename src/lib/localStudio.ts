@@ -24,17 +24,20 @@ function keywords(b: Brief): string[] {
   return [...new Set(ws)].slice(0, 10);
 }
 
+// Concept territories — clever, inspiring naming angles with clear titles.
 const FRAMES = [
-  { t: "Craft & forge", b: "Treats the work like a maker's trade, raw material shaped by a steady hand.", lane: "evocative" },
-  { t: "The quiet signal", b: "A calm, confident presence that doesn't shout to be heard.", lane: "suggestive" },
-  { t: "Flow & momentum", b: "The feeling of effortless forward motion, friction melting away.", lane: "suggestive" },
+  { t: "The ironic inversion", b: "Name it the opposite of what it is, like Ordinary, Regular or Beige, and let the wink do the work.", lane: "evocative" },
+  { t: "The insider code", b: "A name that reads like a password. Only the right people get it, and they feel chosen.", lane: "suggestive" },
+  { t: "The hidden name", b: "Understated, unlisted, almost a secret. The brand you discover, not the one shouting at you.", lane: "abstract" },
+  { t: "The maker's mark", b: "Treats the work like a craft, raw material shaped by a steady, human hand.", lane: "evocative" },
+  { t: "The quiet signal", b: "Calm and self-assured. It never raises its voice, and that's exactly why you trust it.", lane: "suggestive" },
+  { t: "Borrowed from nature", b: "A plant, an animal, a turn of weather. Instantly visual, instantly ownable.", lane: "evocative" },
+  { t: "The invented word", b: "A coined word that belongs to no one else, yours to define from zero.", lane: "invented" },
+  { t: "Plain and proud", b: "Says exactly what it is, with a confidence that needs no decoration.", lane: "descriptive" },
+  { t: "Borrowed myth", b: "Takes the gravity of a legend, a god, a story everyone half-remembers.", lane: "evocative" },
+  { t: "The playful twist", b: "A pun, a misspelling, a wink. The kind of name people repeat just for fun.", lane: "playful" },
   { t: "First light", b: "The hopeful, early-morning moment before everyone else is awake.", lane: "evocative" },
-  { t: "The companion", b: "A warm, ever-present sidekick that has your back.", lane: "suggestive" },
-  { t: "Field notes", b: "Curious, observant, a little hand-made, ideas captured in the wild.", lane: "compound" },
-  { t: "Alchemy", b: "Turning the raw and ordinary into something polished and valuable.", lane: "invented" },
-  { t: "Open door", b: "Welcoming and unpretentious, anyone can walk in and belong.", lane: "evocative" },
-  { t: "True north", b: "A dependable point of reference when everything else is noisy.", lane: "suggestive" },
-  { t: "Playground", b: "Light, joyful, a place to experiment without fear.", lane: "playful" },
+  { t: "True north", b: "A dependable point of reference when everything else is noise.", lane: "suggestive" },
 ];
 const PRE = ["lumo", "nova", "vela", "kai", "ora", "sol", "wren", "halo", "vero", "atlas", "ember", "lyra"];
 const SUF = ["ly", "ora", "io", "wave", "lab", "mint", "flow", "loop", "craft", "field", "kit", "able"];
@@ -73,15 +76,8 @@ const FEELINGS = ["warm", "bold", "calm", "playful", "premium", "honest", "moder
 /* ---------------- phases ---------------- */
 export function localConcepts(brief: Brief): { concepts: Concept[] } {
   const r = rng(hash(JSON.stringify(brief)));
-  const kw = keywords(brief);
-  const frames = sample(r, FRAMES, FRAMES.length);
-  return {
-    concepts: frames.map((f, i) => ({
-      title: kw[i] ? `${cap(kw[i])} & ${f.t.split(" ").pop()}` : f.t,
-      blurb: f.b,
-      lane: f.lane,
-    })),
-  };
+  const frames = sample(r, FRAMES, FRAMES.length).slice(0, 10);
+  return { concepts: frames.map((f) => ({ title: f.t, blurb: f.b, lane: f.lane })) };
 }
 
 export function localExplore(_brief: Brief, concept: Concept): TerritoryWorld {

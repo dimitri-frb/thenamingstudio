@@ -15,9 +15,9 @@ const STEPS = [
   "Concepts", "Exploration", "Name ideas", "Comparison", "Decision",
 ];
 
-const SIGNAL = ["Creativity", "Taste", "Craft", "Sharpness", "Trust", "Speed", "Momentum", "Optimism", "Calm", "Premium", "Playful", "Intrigue"];
-const TONE = ["Bold", "Fearless", "Friendly", "Empathetic", "Witty", "Confident", "Polished", "Warm", "Minimal", "Modern"];
-const AVOID = ["Generic industry terms", "Tech-bro acronyms", "Cutesy / cheesy", "Corporate jargon", "Hard to spell"];
+const SIGNAL = ["Trust", "Craft", "Taste", "Innovation", "Speed", "Warmth", "Boldness", "Calm", "Premium", "Playfulness", "Intelligence", "Optimism", "Rebellion", "Heritage", "Simplicity", "Intrigue"];
+const TONE = ["Bold", "Warm", "Witty", "Confident", "Friendly", "Elegant", "Minimal", "Modern", "Rebellious", "Honest", "Playful", "Refined"];
+const AVOID = ["Generic industry terms", "Tech-bro acronyms", "Cutesy / cheesy", "Corporate jargon", "Hard to spell", "Trendy buzzwords"];
 const LANES: { key: string; label: string; ex: string }[] = [
   { key: "descriptive", label: "Descriptive", ex: "Dropbox, Booking" },
   { key: "suggestive", label: "Suggestive ★", ex: "Amazon, Uber, Slack" },
@@ -163,9 +163,9 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             {step === 2 && (
               <Panel kicker="The brief · 3 of 4" title={<>What should the name make people <I>feel</I>?</>}
                 guide="Names land in the gut before the brain. Pick the feelings worth chasing, and the ones to steer well clear of.">
-                <ChipGroup label="Should signal" options={SIGNAL} selected={brief.signal} onToggle={(v) => set({ signal: toggleArr(brief.signal, v) })} />
-                <ChipGroup label="Should NOT signal" options={AVOID} selected={brief.avoid} onToggle={(v) => set({ avoid: toggleArr(brief.avoid, v) })} tone="avoid" />
-                <ChipGroup label="Tone / personality" options={TONE} selected={brief.tone} onToggle={(v) => set({ tone: toggleArr(brief.tone, v) })} />
+                <ChipGroup label="Should signal" options={SIGNAL} selected={brief.signal} onToggle={(v) => set({ signal: toggleArr(brief.signal, v) })} onAdd={(v) => set({ signal: [...brief.signal, v] })} />
+                <ChipGroup label="Should NOT signal" options={AVOID} selected={brief.avoid} onToggle={(v) => set({ avoid: toggleArr(brief.avoid, v) })} onAdd={(v) => set({ avoid: [...brief.avoid, v] })} tone="avoid" />
+                <ChipGroup label="Tone / personality" options={TONE} selected={brief.tone} onToggle={(v) => set({ tone: toggleArr(brief.tone, v) })} onAdd={(v) => set({ tone: [...brief.tone, v] })} />
                 <Nav onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes(brief) }); goto(3); }} canNext={brief.signal.length > 0} nextLabel="Next · Naming strategy" />
               </Panel>
             )}
@@ -520,12 +520,16 @@ function MicGlyph() {
   );
 }
 
-function ChipGroup({ label, options, selected, onToggle, tone }: { label: string; options: string[]; selected: string[]; onToggle: (v: string) => void; tone?: "avoid" }) {
+function ChipGroup({ label, options, selected, onToggle, onAdd, tone }: { label: string; options: string[]; selected: string[]; onToggle: (v: string) => void; onAdd?: (v: string) => void; tone?: "avoid" }) {
+  const [draft, setDraft] = useState("");
+  const extras = selected.filter((s) => !options.includes(s)); // custom additions
+  const all = [...options, ...extras];
+  const add = () => { const v = draft.trim(); if (v && onAdd && !selected.includes(v)) { onAdd(v); setDraft(""); } };
   return (
     <div>
       <span className="mb-2 block text-sm font-medium text-ink/60">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {options.map((o) => {
+        {all.map((o) => {
           const on = selected.includes(o);
           const onCls = tone === "avoid" ? "border-red-400/50 bg-red-500/10 text-red-600" : "border-accent bg-accent text-white";
           return (
@@ -535,6 +539,14 @@ function ChipGroup({ label, options, selected, onToggle, tone }: { label: string
             </button>
           );
         })}
+        {onAdd && (
+          <span className="inline-flex items-center rounded-full border border-dashed border-ink/25 pl-3 pr-1">
+            <input value={draft} onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+              placeholder="add your own" className="w-28 bg-transparent py-1.5 text-sm outline-none placeholder:text-ink/30" />
+            <button onClick={add} title="Add" className="grid h-6 w-6 place-items-center rounded-full text-ink/45 transition hover:bg-ink/10 hover:text-ink">+</button>
+          </span>
+        )}
       </div>
     </div>
   );
