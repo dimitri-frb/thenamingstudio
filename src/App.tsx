@@ -14,6 +14,7 @@ import { LandingAtelier } from "./components/LandingAtelier";
 import { ClassicFlow } from "./components/ClassicFlow";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
+import { BrandBook } from "./components/BrandBook";
 import { BrandMark, Wordmark } from "./components/Logo";
 import { type PlanId } from "./lib/plans";
 import { type Brief as StudioBrief } from "./lib/namingApi";
@@ -57,6 +58,29 @@ export default function App() {
       return { names, by: (p.get("by") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180) };
     } catch { return null; }
   });
+  // "?brandbook" (optionally "?brandbook=YourName") jumps straight to a demo
+  // brand book with sample data — no need to run the whole flow.
+  const [brandBookDemo, setBrandBookDemo] = useState<{ name: string; brief: StudioBrief } | null>(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (!p.has("brandbook")) return null;
+      const raw = (p.get("brandbook") || "").trim();
+      const name = raw && !/^(1|true|yes|demo)$/i.test(raw) ? raw.slice(0, 40) : "Lumora";
+      const brief: StudioBrief = {
+        does: "An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes not months",
+        industry: "Creator tools · SaaS",
+        problem: "Founders waste weeks naming and settle for something generic",
+        audience: "first-time founders",
+        values: "taste, speed, a defensible result",
+        uvp: "a naming studio in your pocket",
+        signal: ["Bold", "Warm", "Clear", "Modern"],
+        avoid: [],
+        tone: ["Modern", "Confident", "Warm"],
+        lanes: ["suggestive", "invented", "evocative"],
+      };
+      return { name, brief };
+    } catch { return null; }
+  });
 
   const brief: Brief = useMemo(
     () => ({ description, vibes, types, include, avoid }),
@@ -84,6 +108,19 @@ export default function App() {
 
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
   const showJourney = screen === "vibe" || screen === "types" || screen === "refine" || screen === "generating" || screen === "results";
+
+  // Direct brand-book demo (?brandbook): show only the brand book.
+  if (brandBookDemo) {
+    return (
+      <div className="min-h-screen mesh">
+        <BrandBook
+          brief={brandBookDemo.brief}
+          name={brandBookDemo.name}
+          onClose={() => { setBrandBookDemo(null); try { window.history.replaceState(null, "", window.location.pathname); } catch { /* noop */ } }}
+        />
+      </div>
+    );
+  }
 
   // Friend arriving via a shared vote link: show only the swipe vote.
   if (friendVote) {
