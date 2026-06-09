@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
+import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type CompareRow, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive } from "./ConceptDeepDive";
@@ -251,43 +251,25 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 7 && comp && (
-              <Panel kicker="The verdict" title={<>How they <I>hold up</I>.</>}
-                guide="We scored each name the way a strategist would, does it land, does it look right, does it sound good, does it stir something. Here's our pick, and an honest read on the rest."
-                hint="SMILE scoring, plus a .com-first domain read and an INPI 🇫🇷 trademark estimate for every name.">
+              <Panel kicker="The verdict" title={<>You <I>found</I> it.</>}
+                guide="This is the part founders remember. Sit with it for a second, then let's see what's yours to claim, the domain, the trademark, the handle."
+                hint="">
                 <HeroPick comp={comp} />
-                <div className="space-y-3">
-                  {comp.rows.map((r) => {
-                    const rec = r.name === comp.recommended;
-                    const slug = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-                    return (
-                      <div key={r.name} className={`rounded-2xl border p-5 ${rec ? "border-accent/40 bg-accent/5" : "border-ink/12 bg-[var(--surface-solid)]"}`}>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <p className="font-serif text-2xl leading-none">{r.name}{rec && <span className="text-accent"> ★</span>}</p>
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">SMILE {r.total}/20</span>
-                          <span className="ml-auto"><SmileDots score={r.total * 5} /></span>
-                        </div>
-                        <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{r.verdict}”</p>
-                        <div className="mt-3 grid gap-2.5 border-t border-ink/10 pt-3 sm:grid-cols-2">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                            <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">Domain</span>
-                            {r.domains.map((d) => (
-                              <span key={d.tld} className={`inline-flex items-center gap-1 ${d.available ? "text-emerald-600" : "text-ink/35 line-through"}`}>
-                                {d.available ? "✓" : "✕"} {slug}{d.tld}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex items-start gap-2 text-sm">
-                            <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-ink/40">INPI 🇫🇷</span>
-                            <span className={r.inpi ? "text-emerald-600" : "text-amber-600"}>
-                              {r.inpi ? "✓ Looks clear" : "⚠ Check closely"} <span className="text-ink/45">· {r.inpiNote}</span>
-                            </span>
-                          </div>
-                        </div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink/40">The rest of your shortlist</p>
+                <div className="mt-2 space-y-3">
+                  {comp.rows.filter((r) => r.name !== comp.recommended).map((r) => (
+                    <div key={r.name} className="rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="font-serif text-2xl leading-none">{r.name}</p>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">SMILE {r.total}/20</span>
+                        <span className="ml-auto"><SmileDots score={r.total * 5} /></span>
                       </div>
-                    );
-                  })}
+                      <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{r.verdict}”</p>
+                      <Checks row={r} className="mt-3 border-t border-ink/10 pt-3" />
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-ink/40">Domain & INPI reads are best-guess estimates, confirm with the live checks before you file.</p>
+                <p className="text-xs text-ink/40">Domain, trademark and handle reads are best-guess estimates, confirm with the live checks before you file.</p>
 
                 <ShareFriends names={comp.rows.map((r) => r.name)} onVote={() => setVoteOpen(true)} />
 
@@ -370,11 +352,12 @@ function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }
 function HeroPick({ comp }: { comp: Comparison }) {
   const top = comp.rows.find((r) => r.name === comp.recommended) || comp.rows[0];
   if (!top) return null;
+  const free = (top.domains.find((d) => d.tld === ".com")?.available ? 1 : 0) + (top.inpi ? 1 : 0) + (top.instagram ? 1 : 0);
   return (
-    <div className="mb-7 rounded-3xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
-      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent">Our pick for you</p>
-      <h3 className="mt-2 font-serif text-5xl leading-none">{top.name}</h3>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/70">{comp.why}</p>
+    <div className="mb-8 overflow-hidden rounded-3xl border border-accent2/30 bg-gradient-to-br from-accent2/12 via-accent/[0.06] to-transparent p-6 sm:p-8">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-accent2/40 bg-accent2/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-accent2">★ Our pick for you</span>
+      <h3 className="mt-4 font-serif text-6xl leading-[0.95] sm:text-7xl">{top.name}</h3>
+      <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink/70">{comp.why}</p>
       <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-widest text-ink/45">
         <span>Intuitive {top.intuitive}/5</span>
         <span>Visual {top.visual}/5</span>
@@ -383,9 +366,50 @@ function HeroPick({ comp }: { comp: Comparison }) {
         <span className="text-accent">SMILE {top.total}/20</span>
       </div>
       <p className="mt-4 font-serif text-base italic text-ink/55">“{top.verdict}” · the studio</p>
+
+      <div className="mt-7 rounded-2xl border border-ink/10 bg-[var(--page)]/60 p-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+          Yours to claim {free === 3 ? "· all three are free right now ✨" : `· ${free} of 3 free right now`}
+        </p>
+        <Checks row={top} className="mt-4" />
+      </div>
     </div>
   );
 }
+
+// The end-of-flow checks: domain (.com first), INPI trademark, Instagram handle.
+function Checks({ row, className = "" }: { row: CompareRow; className?: string }) {
+  const slug = row.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const com = row.domains.find((d) => d.tld === ".com")?.available ?? false;
+  const alts = row.domains.filter((d) => d.tld !== ".com");
+  return (
+    <div className={`grid gap-x-4 gap-y-3.5 sm:grid-cols-3 ${className}`}>
+      <CheckItem ok={com} head="Domain" title={`${slug}.com`} sub={alts.map((d) => `${d.tld} ${d.available ? "free" : "taken"}`).join(" · ")} icon={<GlobeGlyph />} />
+      <CheckItem ok={row.inpi} amber={!row.inpi} head="Trademark · INPI 🇫🇷" title={row.inpi ? "Looks clear to register" : "Worth a closer check"} sub={row.inpiNote} icon={<ScaleGlyph />} />
+      <CheckItem ok={row.instagram} head="Instagram" title={`@${slug}`} sub="handle" icon={<AtGlyph />} />
+    </div>
+  );
+}
+
+function CheckItem({ ok, amber, head, title, sub, icon }: { ok: boolean; amber?: boolean; head: string; title: string; sub?: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${ok ? "bg-emerald-500/15 text-emerald-600" : amber ? "bg-amber-500/15 text-amber-600" : "bg-ink/[0.06] text-ink/40"}`}>
+        {ok ? <CheckGlyph /> : amber ? <span className="text-sm font-semibold">!</span> : <span className="text-sm">✕</span>}
+      </span>
+      <div className="min-w-0">
+        <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-ink/40">{icon}{head}</p>
+        <p className={`truncate text-sm ${ok ? "text-ink/85" : amber ? "text-amber-700" : "text-ink/45 line-through"}`}>{title}</p>
+        {sub && <p className="truncate text-[11px] text-ink/40">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function CheckGlyph() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>; }
+function GlobeGlyph() { return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20A15 15 0 0 1 12 2" /></svg>; }
+function ScaleGlyph() { return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v18M5 7h14M5 7l-3 6h6zM19 7l-3 6h6z" /></svg>; }
+function AtGlyph() { return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4" /><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7" /></svg>; }
 
 function toggleArr(arr: string[], v: string, max = 999): string[] {
   if (arr.includes(v)) return arr.filter((x) => x !== v);

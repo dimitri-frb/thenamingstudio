@@ -42,6 +42,7 @@ export interface CompareRow {
   domains: DomainHit[];   // .com first
   inpi: boolean;          // appears clear to register?
   inpiNote: string;
+  instagram: boolean;     // @handle appears free?
   verdict: string;
 }
 export interface Comparison { rows: CompareRow[]; recommended: string; why: string }

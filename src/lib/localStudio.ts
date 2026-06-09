@@ -155,6 +155,7 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
       ],
       inpi,
       inpiNote: inpi ? "No earlier mark in classes 9 / 42 (estimate)" : "Possible earlier mark, worth a closer look (estimate)",
+      instagram: short ? r() > 0.6 : r() > 0.4, // shorter handles tend to be taken
       verdict: pick(r, ["Strong, ownable, easy to say.", "Memorable with a clear story.", "Distinctive and confident.", "Warm and human; reads well."]),
     };
   }).sort((a, b) => b.total - a.total);
