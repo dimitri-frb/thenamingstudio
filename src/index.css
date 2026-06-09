@@ -129,10 +129,33 @@ h1, h2, h3 {
 }
 .twinkle { animation: twinkle var(--tw, 3s) ease-in-out infinite; }
 
-/* Print only the brand book (Save as PDF) */
+/* Brand book "Save as PDF" — a clean printed document */
+.bb-printonly { display: none; }
 @media print {
+  @page { size: A4; margin: 16mm 15mm; }
+  html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
   .brandbook, .brandbook * { visibility: visible !important; }
-  .brandbook { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+  /* keep swatches / tinted blocks in the PDF */
+  .brandbook, .brandbook * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .brandbook {
+    position: absolute !important; inset: 0 auto auto 0 !important;
+    width: 100% !important; height: auto !important; overflow: visible !important; background: #fff !important;
+  }
   .brandbook .no-print { display: none !important; }
+  .bb-printonly { display: block !important; }
+
+  /* use the @page margins, drop the screen padding */
+  .bb-page { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+
+  /* cover becomes a full title page */
+  .bb-cover { min-height: 88vh; display: flex; flex-direction: column; justify-content: center; break-after: page; page-break-after: always; }
+  .bb-cover h1 { font-size: 52pt !important; line-height: 1 !important; }
+
+  /* sections stay whole, with breathing room */
+  .bb-section { break-inside: avoid; page-break-inside: avoid; margin-top: 30px !important; }
+  .bb-swatch { break-inside: avoid; page-break-inside: avoid; }
+
+  /* a touch more contrast on white paper */
+  .brandbook .text-ink\/55, .brandbook .text-ink\/60, .brandbook .text-ink\/65, .brandbook .text-ink\/70, .brandbook .text-ink\/75 { color: #3a342e !important; }
 }

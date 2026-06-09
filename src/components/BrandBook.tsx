@@ -38,8 +38,8 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-[var(--page)]/90 px-5 py-4 backdrop-blur">
         <button onClick={onClose} className="text-sm text-ink/55 transition hover:text-ink">← Back to your name</button>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink/45">Brand book · {name}</span>
-        <button onClick={() => window.print()} disabled={!bb}
-          className="rounded-lg bg-ink px-4 py-2 font-serif text-sm italic text-[var(--page)] transition hover:opacity-90 disabled:opacity-30">Save as PDF</button>
+        <button onClick={() => window.print()} disabled={!bb} title="Opens your print dialog, then choose 'Save as PDF'"
+          className="rounded-lg bg-ink px-4 py-2 font-serif text-sm italic text-[var(--page)] transition hover:opacity-90 disabled:opacity-30">↓ Save as PDF</button>
       </div>
 
       {!bb ? (
@@ -70,15 +70,20 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
   const ink = roleHex(/ink/i, "#1F1B18");
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-24 pt-12 sm:px-10">
+    <div className="bb-page mx-auto max-w-3xl px-6 pb-24 pt-12 sm:px-10">
       {/* cover */}
-      <section>
+      <section className="bb-cover">
+        <p className="bb-printonly mb-8 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">The naming studio · Brand book</p>
         <span className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ background: primary }}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5" /></svg>
         </span>
         <h1 className="mt-6 text-6xl leading-[0.95] sm:text-7xl" style={{ fontFamily: pair.heading, color: ink }}>{name}</h1>
         <p className="mt-5 max-w-xl text-xl text-ink/65" style={{ fontFamily: pair.body }}>{bb.tagline}</p>
-        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-accent">{bb.essence}</p>
+        <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-accent">{bb.essence}</p>
+        {/* a row of the palette as a colour spine on the cover */}
+        <div className="bb-printonly mt-10 flex h-2 w-48 overflow-hidden rounded-full">
+          {bb.palette.map((s) => <span key={s.hex} className="flex-1" style={{ background: s.hex }} />)}
+        </div>
       </section>
 
       <Rule />
@@ -107,11 +112,11 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
       <Section label="Colour">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {bb.palette.map((s) => (
-            <button key={s.hex} onClick={() => copy(s.hex)} className="group text-left">
+            <button key={s.hex} onClick={() => copy(s.hex)} className="bb-swatch group text-left">
               <span className="block h-20 w-full rounded-xl ring-1 ring-black/5" style={{ background: s.hex }} />
               <p className="mt-2 text-sm font-medium text-ink/80">{s.name}</p>
               <p className="font-mono text-[10px] uppercase tracking-wide text-ink/40">{s.role}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink/55 transition group-hover:text-accent">{s.hex} · copy</p>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink/55 transition group-hover:text-accent">{s.hex}<span className="no-print"> · copy</span></p>
             </button>
           ))}
         </div>
@@ -150,13 +155,14 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
       <p className="no-print mt-8 text-center text-sm text-ink/45">
         That's your starter brand book. <button onClick={() => window.print()} className="text-accent underline-offset-2 hover:underline">Save it as a PDF</button> and start shipping.
       </p>
+      <p className="bb-printonly mt-8 border-t border-ink/10 pt-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink/40">{name} · brand book · made with the naming studio</p>
     </div>
   );
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12">
+    <section className="bb-section mt-12">
       <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-accent">{label}</p>
       {children}
     </section>
