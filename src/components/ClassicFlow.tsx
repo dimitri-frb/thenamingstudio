@@ -266,7 +266,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                 </div>
                 <p className="text-xs text-ink/40">Domain, trademark and handle reads are best-guess estimates, confirm with the live checks before you file.</p>
 
-                <ShareFriends names={comp.rows.map((r) => r.name)} about={brief.does} onVote={() => setVoteOpen(true)} />
+                <ShareFriends names={comp.rows.map((r) => r.name)} notes={comp.rows.map((r) => r.verdict)} about={brief.does} onVote={() => setVoteOpen(true)} />
 
                 <Nav onBack={() => goto(6)} canNext nextLabel="Make the decision →"
                   onNext={() => { setChosenFinal(comp.recommended); goto(8); }} />
@@ -354,7 +354,7 @@ function NextStep({ n, title, sub, cta, href, onClick, badge }: { n: string; tit
 // "Ask your friends", share the shortlist for a gut-check (the Tinder-style
 // vote, or a prefilled WhatsApp / email / copyable link). Share intents only;
 // nothing is sent without the founder's own confirmation in their app.
-function ShareFriends({ names, about, onVote }: { names: string[]; about: string; onVote: () => void }) {
+function ShareFriends({ names, notes, about, onVote }: { names: string[]; notes: string[]; about: string; onVote: () => void }) {
   const [copied, setCopied] = useState(false);
   const [who, setWho] = useState("");
   // Link straight into the swipe vote for THIS shortlist, with context for
@@ -362,6 +362,7 @@ function ShareFriends({ names, about, onVote }: { names: string[]; about: string
   const base = window.location.origin + window.location.pathname.replace(/index\.html$/, "");
   const params = new URLSearchParams();
   params.set("vote", names.slice(0, 8).join("|"));
+  if (notes?.length) params.set("notes", notes.slice(0, 8).map((n) => (n || "").replace(/\|/g, " ")).join("|").slice(0, 700));
   if (who.trim()) params.set("by", who.trim());
   if (about?.trim()) params.set("about", about.trim().slice(0, 180));
   const voteLink = `${base}?${params.toString()}`;

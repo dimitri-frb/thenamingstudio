@@ -168,7 +168,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
     </section>
   );
 }
-function Rule() { return <div className="mt-12 border-t border-ink/10" />; }
+function Rule() { return <div className="bb-rule mt-12 border-t border-ink/10" />; }
 
 function DoList({ title, items, tone }: { title: string; items: string[]; tone: "do" | "dont" }) {
   return (

@@ -129,10 +129,10 @@ h1, h2, h3 {
 }
 .twinkle { animation: twinkle var(--tw, 3s) ease-in-out infinite; }
 
-/* Brand book "Save as PDF" — a clean printed document */
+/* Brand book "Save as PDF" — one clean A4 page */
 .bb-printonly { display: none; }
 @media print {
-  @page { size: A4; margin: 16mm 15mm; }
+  @page { size: A4; margin: 12mm; }
   html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
   .brandbook, .brandbook * { visibility: visible !important; }
@@ -144,18 +144,46 @@ h1, h2, h3 {
   }
   .brandbook .no-print { display: none !important; }
   .bb-printonly { display: block !important; }
+  .bb-rule { display: none !important; }
 
-  /* use the @page margins, drop the screen padding */
+  /* fit everything onto a single page: drop screen padding, compact the cover */
   .bb-page { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  .bb-cover {
+    min-height: 0 !important; display: block !important; break-after: avoid !important;
+    margin: 0 0 8px !important; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .bb-section { break-inside: avoid !important; page-break-inside: avoid !important; margin-top: 11px !important; }
+  .bb-swatch { break-inside: avoid !important; }
 
-  /* cover becomes a full title page */
-  .bb-cover { min-height: 88vh; display: flex; flex-direction: column; justify-content: center; break-after: page; page-break-after: always; }
-  .bb-cover h1 { font-size: 52pt !important; line-height: 1 !important; }
+  /* shrink the type scale so the whole book fits one page */
+  .brandbook .text-7xl, .brandbook .text-6xl { font-size: 30pt !important; line-height: 1 !important; }
+  .brandbook .text-4xl { font-size: 16pt !important; }
+  .brandbook .text-2xl { font-size: 12pt !important; }
+  .brandbook .text-xl { font-size: 11pt !important; }
+  .brandbook .text-lg { font-size: 10pt !important; line-height: 1.35 !important; }
+  .brandbook .text-base { font-size: 9pt !important; }
+  .brandbook .text-sm { font-size: 8.5pt !important; }
+  .brandbook .text-\[15px\] { font-size: 9pt !important; }
 
-  /* sections stay whole, with breathing room */
-  .bb-section { break-inside: avoid; page-break-inside: avoid; margin-top: 30px !important; }
-  .bb-swatch { break-inside: avoid; page-break-inside: avoid; }
+  /* tighten spacing + sizes */
+  .brandbook .mt-12 { margin-top: 10px !important; }
+  .brandbook .mt-10 { margin-top: 8px !important; }
+  .brandbook .mt-8 { margin-top: 7px !important; }
+  .brandbook .mt-7 { margin-top: 6px !important; }
+  .brandbook .mt-6 { margin-top: 6px !important; }
+  .brandbook .mt-5 { margin-top: 5px !important; }
+  .brandbook .mt-4 { margin-top: 4px !important; }
+  .brandbook .mt-3 { margin-top: 3px !important; }
+  .brandbook .mb-4 { margin-bottom: 4px !important; }
+  .brandbook .mb-2 { margin-bottom: 2px !important; }
+  .brandbook .p-5 { padding: 8px !important; }
+  .brandbook .p-4 { padding: 6px !important; }
+  .brandbook .gap-4 { gap: 6px !important; }
+  .brandbook .gap-3 { gap: 5px !important; }
+  .brandbook .h-20 { height: 34px !important; }
+  .brandbook .h-12 { height: 30px !important; }
+  .brandbook .w-12 { width: 30px !important; }
 
-  /* a touch more contrast on white paper */
+  /* slightly more contrast on white paper */
   .brandbook .text-ink\/55, .brandbook .text-ink\/60, .brandbook .text-ink\/65, .brandbook .text-ink\/70, .brandbook .text-ink\/75 { color: #3a342e !important; }
 }
