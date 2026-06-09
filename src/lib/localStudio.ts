@@ -3,7 +3,7 @@
 // (dev bridge or the Worker) it is used instead (see namingApi).
 // Deterministic-ish, decent quality, clearly demo-grade.
 
-import type { Brief, Concept, Feeling, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
+import type { Brief, BrandBook, Concept, Feeling, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -164,6 +164,79 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
     rows,
     recommended: best?.name || "",
     why: best ? `Honestly? ${best.name} is the one we'd run with. It scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
+  };
+}
+
+// ---- brand book (fallback) ----
+const BB_PALETTES: { hex: string; name: string; role: string }[][] = [
+  [
+    { hex: "#1F1B18", name: "Espresso", role: "Ink" },
+    { hex: "#C9774E", name: "Terracotta", role: "Primary" },
+    { hex: "#E8B08A", name: "Clay", role: "Accent" },
+    { hex: "#F2ECE2", name: "Paper", role: "Surface" },
+    { hex: "#5B7065", name: "Sage", role: "Highlight" },
+  ],
+  [
+    { hex: "#16181D", name: "Midnight", role: "Ink" },
+    { hex: "#3B6CF6", name: "Signal Blue", role: "Primary" },
+    { hex: "#7FA0FF", name: "Sky", role: "Accent" },
+    { hex: "#F5F6F8", name: "Cloud", role: "Surface" },
+    { hex: "#10B981", name: "Mint", role: "Highlight" },
+  ],
+  [
+    { hex: "#221E2B", name: "Aubergine", role: "Ink" },
+    { hex: "#7C5CFF", name: "Violet", role: "Primary" },
+    { hex: "#B9A7FF", name: "Lilac", role: "Accent" },
+    { hex: "#F4F1FA", name: "Mist", role: "Surface" },
+    { hex: "#F2B705", name: "Amber", role: "Highlight" },
+  ],
+  [
+    { hex: "#1A1F1C", name: "Forest", role: "Ink" },
+    { hex: "#2F8F6B", name: "Pine", role: "Primary" },
+    { hex: "#8FCBB0", name: "Eucalyptus", role: "Accent" },
+    { hex: "#F1F4F0", name: "Linen", role: "Surface" },
+    { hex: "#E0793B", name: "Ember", role: "Highlight" },
+  ],
+];
+
+function fontKeyFor(brief: Brief): string {
+  const t = [...(brief.tone || []), ...(brief.signal || [])].join(" ").toLowerCase();
+  if (/play|fun|warm|friend/.test(t)) return "friendly";
+  if (/tech|modern|smart|fast|innovat/.test(t)) return "modern";
+  if (/premium|elegan|herit|refined|trust/.test(t)) return "classic";
+  if (/craft|honest|calm|warm/.test(t)) return "warm";
+  return "editorial";
+}
+
+export function localBrandbook(brief: Brief, name: string): BrandBook {
+  const r = rng(hash(name + brief.does + brief.audience));
+  const aud = (brief.audience || "the people you serve").trim();
+  const a = aud.charAt(0).toLowerCase() + aud.slice(1);
+  const does = (brief.does || "what you do").trim().replace(/\.$/, "");
+  const doesLower = does.charAt(0).toLowerCase() + does.slice(1);
+  const adj = (brief.signal?.length ? brief.signal : ["Bold", "Warm", "Clear", "Modern"]).slice(0, 4);
+  const palette = pick(r, BB_PALETTES);
+  const tagline = pick(r, [`Naming, done right.`, `${name}. Made to be remembered.`, `Less noise. More ${pick(r, ["signal", "soul", "clarity"])}.`, `Start before you're ready.`]);
+  return {
+    essence: `${cap(adj[0] || "Bold")}, ${(adj[1] || "human").toLowerCase()}, unmistakably ${name}.`,
+    tagline,
+    story: `${name} is ${doesLower}. It's built for ${a}, who deserve better than the generic option. Where others settle, ${name} brings taste and intent to every detail.`,
+    whyName: `"${name}" is short, ownable and easy to say once heard — it carries the brand's story without needing to explain it.`,
+    voice: {
+      adjectives: adj,
+      dos: ["Say it plainly — clarity over cleverness.", "Talk to one person, warmly.", "Lead with the benefit, not the feature."],
+      donts: ["No jargon or buzzwords.", "Don't oversell or shout.", "Avoid hedging — be confident."],
+      sample: `Meet ${name} — ${doesLower}, without the usual headache.`,
+    },
+    palette,
+    fontKey: fontKeyFor(brief),
+    fontNote: `A pairing that reads ${(adj[0] || "modern").toLowerCase()} and ${(adj[1] || "clear").toLowerCase()} — confident headlines, effortless body text.`,
+    messaging: {
+      pitch: `${name} is ${doesLower}, built for ${a} — faster, and with more taste.`,
+      boilerplate: `${name} is ${doesLower}. Founded for ${a}, it turns a slow, frustrating process into something quick, confident and genuinely good.`,
+      taglines: [tagline, `${name} — ${cap(adj[0] || "bold")} by design.`, `The ${(adj[1] || "simple").toLowerCase()} way to ${pick(r, ["start", "build", "ship"])}.`],
+      valueProps: [`${cap(adj[0] || "Fast")} where it used to be slow.`, `Made for ${a}, not the masses.`, `Taste and rigor, in one place.`],
+    },
   };
 }
 

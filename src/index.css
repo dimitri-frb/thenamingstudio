@@ -128,3 +128,11 @@ h1, h2, h3 {
   50% { opacity: calc(var(--o, 0.3) * 0.2); }
 }
 .twinkle { animation: twinkle var(--tw, 3s) ease-in-out infinite; }
+
+/* Print only the brand book (Save as PDF) */
+@media print {
+  body * { visibility: hidden !important; }
+  .brandbook, .brandbook * { visibility: visible !important; }
+  .brandbook { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+  .brandbook .no-print { display: none !important; }
+}

@@ -47,6 +47,20 @@ export interface CompareRow {
 }
 export interface Comparison { rows: CompareRow[]; recommended: string; why: string }
 
+// The starter brand book — generated from the brief + the chosen name.
+export interface Swatch { hex: string; name: string; role: string }
+export interface BrandBook {
+  essence: string;
+  tagline: string;
+  story: string;
+  whyName: string;
+  voice: { adjectives: string[]; dos: string[]; donts: string[]; sample: string };
+  palette: Swatch[];
+  fontKey: string;   // one of the curated pairings (editorial|modern|classic|friendly|warm)
+  fontNote: string;
+  messaging: { pitch: string; boilerplate: string; taglines: string[]; valueProps: string[] };
+}
+
 // In dev, Vite's bridge serves /api/naming. In a production build we point at the
 // Cloudflare Worker via VITE_NAMING_API (set at build time). Empty => fallback only.
 const ENDPOINT = import.meta.env.DEV ? "/api/naming" : (import.meta.env.VITE_NAMING_API || "");
@@ -82,6 +96,7 @@ function localFallback(phase: string, brief: Brief, payload: any): unknown {
     case "explore": return local.localExplore(brief, payload.concept);
     case "names": return local.localNames(brief, payload.sketch);
     case "compare": return local.localCompare(brief, payload.names || []);
+    case "brandbook": return local.localBrandbook(brief, payload?.name || "");
     case "suggest": return local.localSuggest(brief, payload?.field || "");
     default: return {};
   }
@@ -100,4 +115,5 @@ export const naming = {
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
   names: (brief: Brief, sketch: Sketch) => call<{ names: NameIdea[] }>("names", brief, { sketch }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),
+  brandbook: (brief: Brief, name: string) => call<BrandBook>("brandbook", brief, { name }),
 };

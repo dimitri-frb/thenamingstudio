@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type CompareRow, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
@@ -7,6 +6,7 @@ import { ConceptDeepDive } from "./ConceptDeepDive";
 import { StudioNote, Kicker } from "./Guide";
 import { FeelingDeck } from "./FeelingDeck";
 import { PublicVote } from "./PublicVote";
+import { BrandBook } from "./BrandBook";
 
 // The "Classic flow" (Atelier), the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -316,7 +316,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
         />
       )}
 
-      {brandBookOpen && <BrandBookWip name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
+      {brandBookOpen && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
     </div>
   );
 }
@@ -334,7 +334,7 @@ function NextSteps({ name, onBrandBook }: { name: string; onBrandBook: () => voi
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <NextStep n="01" title="Register the name" sub="Protect it as a trademark at INPI 🇫🇷" cta="Open INPI →" href={inpi} />
         <NextStep n="02" title="Buy the domain" sub={`Grab ${slug}.com before someone else does`} cta="Search on GoDaddy →" href={godaddy} />
-        <NextStep n="03" title="Brand book & logo" sub="Everything you need to start shipping" cta="Start building →" onClick={onBrandBook} badge="Soon" />
+        <NextStep n="03" title="Brand book & logo" sub="Story, voice, colour & type — generated for you" cta="Create it →" onClick={onBrandBook} />
       </div>
     </div>
   );
@@ -356,36 +356,6 @@ function NextStep({ n, title, sub, cta, href, onClick, badge }: { n: string; tit
   return href
     ? <a href={href} target="_blank" rel="noreferrer" className={cls}>{inner}</a>
     : <button onClick={onClick} className={cls}>{inner}</button>;
-}
-
-// Placeholder "next page" for the brand book — work in progress.
-function BrandBookWip({ name, onClose }: { name: string; onClose: () => void }) {
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[var(--page)]">
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent">Brand book · {name}</p>
-        <h2 className="mt-4 font-serif text-5xl leading-tight sm:text-6xl">Your brand, <span className="italic text-accent">drawn out</span>.</h2>
-        <p className="mt-5 max-w-md text-ink/60">
-          Logo directions, a colour palette, typography and a voice, everything you need to stop thinking about branding and start building. We're putting the finishing touches on this part.
-        </p>
-        <span className="mt-7 rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-accent">Work in progress</span>
-        <div className="mt-10 grid w-full gap-3 sm:grid-cols-3">
-          {[
-            { t: "Logo directions", s: "A few marks to choose from" },
-            { t: "Colour & type", s: "A palette and fonts that fit" },
-            { t: "Voice & guidelines", s: "How the brand speaks" },
-          ].map((c) => (
-            <div key={c.t} className="rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5 text-left opacity-70">
-              <p className="font-serif text-lg">{c.t}</p>
-              <p className="mt-1 text-sm text-ink/50">{c.s}</p>
-            </div>
-          ))}
-        </div>
-        <button onClick={onClose} className="mt-10 rounded-xl bg-ink px-6 py-3 font-serif text-lg italic text-[var(--page)] transition hover:opacity-90">← Back to your name</button>
-      </div>
-    </div>,
-    document.body,
-  );
 }
 
 // "Ask your friends", share the shortlist for a gut-check (the Tinder-style
