@@ -13,6 +13,7 @@ import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { ClassicFlow } from "./components/ClassicFlow";
 import { Conversation } from "./components/Conversation";
+import { PublicVote } from "./components/PublicVote";
 import { BrandMark, Wordmark } from "./components/Logo";
 import { type PlanId } from "./lib/plans";
 import { type Brief as StudioBrief } from "./lib/namingApi";
@@ -46,6 +47,14 @@ export default function App() {
   const [results, setResults] = useState<NameIdea[]>([]);
   const [checkout, setCheckout] = useState<PlanId | null>(null);
   const [seedBrief, setSeedBrief] = useState<StudioBrief | null>(null);
+  // A shared "?vote=Name1|Name2" link drops friends straight into the swipe vote.
+  const [friendVote, setFriendVote] = useState<string[] | null>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("vote");
+      const names = (v || "").split("|").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+      return names.length ? names : null;
+    } catch { return null; }
+  });
 
   const brief: Brief = useMemo(
     () => ({ description, vibes, types, include, avoid }),
@@ -73,6 +82,18 @@ export default function App() {
 
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
   const showJourney = screen === "vibe" || screen === "types" || screen === "refine" || screen === "generating" || screen === "results";
+
+  // Friend arriving via a shared vote link: show only the swipe vote.
+  if (friendVote) {
+    return (
+      <div className="min-h-screen mesh">
+        <PublicVote
+          items={friendVote.map((n) => ({ name: n }))}
+          onClose={() => { setFriendVote(null); try { window.history.replaceState(null, "", window.location.pathname); } catch { /* noop */ } }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen mesh">

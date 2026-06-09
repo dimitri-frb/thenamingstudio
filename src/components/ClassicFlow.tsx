@@ -328,12 +328,15 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 // nothing is sent without the founder's own confirmation in their app.
 function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }) {
   const [copied, setCopied] = useState(false);
-  const link = "https://dimitri-frb.github.io/brandr/";
-  const msg = `Help me pick my company name 🙌, my shortlist: ${names.slice(0, 6).join(", ")}. Vote here: ${link}`;
+  // Link straight into the swipe vote for THIS shortlist (App reads ?vote=).
+  const base = window.location.origin + window.location.pathname.replace(/index\.html$/, "");
+  const voteLink = `${base}?vote=${encodeURIComponent(names.slice(0, 8).join("|"))}`;
+  const msg = `Help me pick my company name 🙌 — swipe through my shortlist and tell me your favourite: ${voteLink}`;
   const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`;
   const mail = `mailto:?subject=${encodeURIComponent("Help me name my company")}&body=${encodeURIComponent(msg)}`;
   async function copy() {
-    try { await navigator.clipboard.writeText(msg); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { /* noop */ }
+    try { await navigator.clipboard.writeText(voteLink); setCopied(true); window.setTimeout(() => setCopied(false), 1800); }
+    catch { window.prompt("Copy this link to share:", voteLink); }
   }
   return (
     <div className="mt-5 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
