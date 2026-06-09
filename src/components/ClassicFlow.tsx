@@ -229,7 +229,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             {step === 6 && (
               <Panel kicker="The shortlist" title={<>{names.length} names. <I>Star the keepers.</I></>}
                 guide="Don't overthink it, star the ones that make you look twice. We'll pressure-test your favourites next."
-                hint="Each carries a rationale and a SMILE pulse. Star up to 8.">
+                hint="Each carries a one-line rationale. Star up to 8.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {names.map((n) => {
                     const on = starNames.has(n.name);
@@ -240,9 +240,6 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                         <p className="font-serif text-2xl leading-none">{n.name}</p>
                         <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-ink/40">{n.type}</p>
                         <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{n.rationale}”</p>
-                        <div className="mt-3 flex items-center gap-2 border-t border-ink/10 pt-3 font-mono text-[10px] uppercase tracking-widest text-ink/40">
-                          <span>Smile</span><SmileDots score={n.score} />
-                        </div>
                       </button>
                     );
                   })}
@@ -261,11 +258,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                 <div className="mt-2 space-y-3">
                   {comp.rows.filter((r) => r.name !== comp.recommended).map((r) => (
                     <div key={r.name} className="rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <p className="font-serif text-2xl leading-none">{r.name}</p>
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">SMILE {r.total}/20</span>
-                        <span className="ml-auto"><SmileDots score={r.total * 5} /></span>
-                      </div>
+                      <p className="font-serif text-2xl leading-none">{r.name}</p>
                       <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{r.verdict}”</p>
                       <Checks row={r} className="mt-3 border-t border-ink/10 pt-3" />
                     </div>
@@ -290,7 +283,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                       className={`relative rounded-xl border p-5 text-left transition ${chosenFinal === r.name ? "border-accent bg-accent/5" : "border-ink/15 hover:border-ink/30"}`}>
                       {chosenFinal === r.name && <Check />}
                       <p className="font-serif text-2xl">{r.name}</p>
-                      <p className="mt-1 text-sm text-ink/50">{r.total}/20 · {r.verdict}</p>
+                      <p className="mt-1 text-sm text-ink/50">{r.verdict}</p>
                     </button>
                   ))}
                 </div>
@@ -404,13 +397,6 @@ function HeroPick({ comp }: { comp: Comparison }) {
       <span className="inline-flex items-center gap-1.5 rounded-full border border-accent2/40 bg-accent2/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-accent2">★ Our pick for you</span>
       <h3 className="mt-4 font-serif text-6xl leading-[0.95] sm:text-7xl">{top.name}</h3>
       <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink/70">{comp.why}</p>
-      <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-widest text-ink/45">
-        <span>Intuitive {top.intuitive}/5</span>
-        <span>Visual {top.visual}/5</span>
-        <span>Sound {top.sound}/5</span>
-        <span>Emotional {top.emotional}/5</span>
-        <span className="text-accent">SMILE {top.total}/20</span>
-      </div>
       <p className="mt-4 font-serif text-base italic text-ink/55">“{top.verdict}” · the studio</p>
 
       <div className="mt-7 rounded-2xl border border-ink/10 bg-[var(--page)]/60 p-5">
@@ -528,17 +514,6 @@ function Field({ label, value, onChange, placeholder, area, onSuggest }: { label
         </div>
       )}
     </label>
-  );
-}
-
-function SmileDots({ score }: { score: number }) {
-  const filled = Math.max(1, Math.min(5, Math.round((score / 100) * 5)));
-  return (
-    <span className="flex gap-0.5">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span key={i} className={`h-1.5 w-1.5 rounded-full ${i < filled ? "bg-accent" : "bg-ink/15"}`} />
-      ))}
-    </span>
   );
 }
 

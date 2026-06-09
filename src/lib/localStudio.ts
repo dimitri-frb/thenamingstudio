@@ -163,7 +163,7 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
   return {
     rows,
     recommended: best?.name || "",
-    why: best ? `Honestly? ${best.name} is the one we'd run with. It scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
+    why: best ? `Honestly? ${best.name} is the one we'd run with. It's easy to say after hearing it once, it's distinctive and ownable, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
   };
 }
 
