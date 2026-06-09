@@ -18,6 +18,10 @@ export interface Brief {
 
 export interface Concept { title: string; blurb: string; lane: string }
 
+// A feeling the brand could evoke, with a personalized "why it fits THIS brand"
+// line. Swiped through, Tinder-style, in the emotional step.
+export interface Feeling { word: string; why: string }
+
 // A concept explored into a "world" the founder feels out through a few quick
 // questions: which feeling, which line, which brands inspire them.
 export interface BrandRef { name: string; why: string }
@@ -71,6 +75,7 @@ function localFallback(phase: string, brief: Brief, payload: any): unknown {
   switch (phase) {
     case "interview": return local.localInterview(payload?.messages || []);
     case "concepts": return local.localConcepts(brief);
+    case "feelings": return local.localFeelings(brief);
     case "explore": return local.localExplore(brief, payload.concept);
     case "names": return local.localNames(brief, payload.sketch);
     case "compare": return local.localCompare(brief, payload.names || []);
@@ -87,6 +92,7 @@ const EMPTY_BRIEF: Brief = { does: "", industry: "", problem: "", audience: "", 
 export const naming = {
   interview: (messages: Msg[]) => call<InterviewTurn>("interview", EMPTY_BRIEF, { messages }),
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
+  feelings: (brief: Brief) => call<{ feelings: Feeling[] }>("feelings", brief).then((d) => d.feelings),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
   names: (brief: Brief, sketch: Sketch) => call<{ names: NameIdea[] }>("names", brief, { sketch }).then((d) => d.names),

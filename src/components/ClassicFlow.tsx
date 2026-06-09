@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { naming, type Brief, type Concept, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
+import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
 import { ConceptDeepDive, type Selection } from "./ConceptDeepDive";
 import { StudioNote, Kicker } from "./Guide";
+import { FeelingDeck } from "./FeelingDeck";
 import { PublicVote } from "./PublicVote";
 import { Paywall, type Tier } from "./Paywall";
 
@@ -15,9 +16,6 @@ const STEPS = [
   "Concepts", "Exploration", "Name ideas", "Comparison", "Decision",
 ];
 
-const SIGNAL = ["Trust", "Craft", "Taste", "Innovation", "Speed", "Warmth", "Boldness", "Calm", "Premium", "Playfulness", "Intelligence", "Optimism", "Rebellion", "Heritage", "Simplicity", "Intrigue"];
-const TONE = ["Bold", "Warm", "Witty", "Confident", "Friendly", "Elegant", "Minimal", "Modern", "Rebellious", "Honest", "Playful", "Refined"];
-const AVOID = ["Generic industry terms", "Tech-bro acronyms", "Cutesy / cheesy", "Corporate jargon", "Hard to spell", "Trendy buzzwords"];
 const LANES: { key: string; label: string; ex: string }[] = [
   { key: "descriptive", label: "Descriptive", ex: "Dropbox, Booking" },
   { key: "suggestive", label: "Suggestive ★", ex: "Amazon, Uber, Slack" },
@@ -37,6 +35,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [reached, setReached] = useState(0);
   const [brief, setBrief] = useState<Brief>({ ...empty, does: initialDoes || "" });
 
+  const [feelings, setFeelings] = useState<Feeling[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [worlds, setWorlds] = useState<TerritoryWorld[]>([]);
@@ -127,7 +126,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             <span className="hidden font-mono text-xs uppercase tracking-widest text-ink/45 sm:inline">{STEPS[step]}</span>
           </div>
           {(() => {
-            const c = step === 4 ? chosen.size : step === 5 ? exploredCount : step === 6 ? starNames.size : null;
+            const c = step === 2 ? brief.signal.length : step === 4 ? chosen.size : step === 5 ? exploredCount : step === 6 ? starNames.size : null;
             return c != null ? <span className="shrink-0 font-mono text-xs text-accent">★ {c}</span> : null;
           })()}
         </div>
@@ -156,17 +155,22 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                 <Field label="Who is the target audience?" value={brief.audience} onChange={(v) => set({ audience: v })} placeholder="Startup founders & brand strategists." onSuggest={() => naming.suggest(brief, "audience")} />
                 <Field label="What do they value?" value={brief.values} onChange={(v) => set({ values: v })} placeholder="Taste, speed, a defensible system." onSuggest={() => naming.suggest(brief, "values")} />
                 <Field label="Unique value proposition" value={brief.uvp} onChange={(v) => set({ uvp: v })} placeholder="A naming studio in your pocket." onSuggest={() => naming.suggest(brief, "uvp")} />
-                <Nav onBack={() => goto(0)} onNext={() => goto(2)} canNext={!!brief.problem.trim()} nextLabel="Next · Emotional value" />
+                <Nav onBack={() => goto(0)} canNext={!!brief.problem.trim()} nextLabel="Next · Emotional value"
+                  onNext={() => generate("feelings", async () => setFeelings(await naming.feelings(brief)), 2)} />
               </Panel>
             )}
 
             {step === 2 && (
               <Panel kicker="The brief · 3 of 4" title={<>What should the name make people <I>feel</I>?</>}
-                guide="Names land in the gut before the brain. Pick the feelings worth chasing, and the ones to steer well clear of.">
-                <ChipGroup label="Should signal" options={SIGNAL} selected={brief.signal} onToggle={(v) => set({ signal: toggleArr(brief.signal, v) })} onAdd={(v) => set({ signal: [...brief.signal, v] })} />
-                <ChipGroup label="Should NOT signal" options={AVOID} selected={brief.avoid} onToggle={(v) => set({ avoid: toggleArr(brief.avoid, v) })} onAdd={(v) => set({ avoid: [...brief.avoid, v] })} tone="avoid" />
-                <ChipGroup label="Tone / personality" options={TONE} selected={brief.tone} onToggle={(v) => set({ tone: toggleArr(brief.tone, v) })} onAdd={(v) => set({ tone: [...brief.tone, v] })} />
-                <Nav onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes(brief) }); goto(3); }} canNext={brief.signal.length > 0} nextLabel="Next · Naming strategy" />
+                guide="Names land in the gut before the brain. Swipe through the feelings that fit, we picked these from what you just told us.">
+                <FeelingDeck
+                  cards={feelings}
+                  kept={brief.signal}
+                  onKeep={(w) => set({ signal: [...brief.signal, w] })}
+                  onUnkeep={(w) => set({ signal: brief.signal.filter((x) => x !== w) })}
+                  onBack={() => goto(1)}
+                  onContinue={() => { set({ tone: brief.signal, lanes: brief.lanes.length ? brief.lanes : recommendLanes({ ...brief, tone: brief.signal }) }); goto(3); }}
+                />
               </Panel>
             )}
 
@@ -520,38 +524,6 @@ function MicGlyph() {
   );
 }
 
-function ChipGroup({ label, options, selected, onToggle, onAdd, tone }: { label: string; options: string[]; selected: string[]; onToggle: (v: string) => void; onAdd?: (v: string) => void; tone?: "avoid" }) {
-  const [draft, setDraft] = useState("");
-  const extras = selected.filter((s) => !options.includes(s)); // custom additions
-  const all = [...options, ...extras];
-  const add = () => { const v = draft.trim(); if (v && onAdd && !selected.includes(v)) { onAdd(v); setDraft(""); } };
-  return (
-    <div>
-      <span className="mb-2 block text-sm font-medium text-ink/60">{label}</span>
-      <div className="flex flex-wrap gap-2">
-        {all.map((o) => {
-          const on = selected.includes(o);
-          const onCls = tone === "avoid" ? "border-red-400/50 bg-red-500/10 text-red-600" : "border-accent bg-accent text-white";
-          return (
-            <button key={o} onClick={() => onToggle(o)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${on ? onCls : "border-ink/20 hover:border-ink/40"}`}>
-              {o}
-            </button>
-          );
-        })}
-        {onAdd && (
-          <span className="inline-flex items-center rounded-full border border-dashed border-ink/25 pl-3 pr-1">
-            <input value={draft} onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-              placeholder="add your own" className="w-28 bg-transparent py-1.5 text-sm outline-none placeholder:text-ink/30" />
-            <button onClick={add} title="Add" className="grid h-6 w-6 place-items-center rounded-full text-ink/45 transition hover:bg-ink/10 hover:text-ink">+</button>
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Nav({ onBack, onNext, canNext, nextLabel }: { onBack?: () => void; onNext?: () => void; canNext: boolean; nextLabel: string }) {
   return (
     <div className="flex items-center justify-between border-t border-ink/10 pt-6">
@@ -566,6 +538,7 @@ function Nav({ onBack, onNext, canNext, nextLabel }: { onBack?: () => void; onNe
 
 function Thinking({ what }: { what: string }) {
   const labels: Record<string, string> = {
+    feelings: "Reading your brief for the feelings that fit…",
     concepts: "Mapping the worlds your brand could live in…",
     explore: "Sketching this world out for you…",
     names: "Drawing up names that fit your brand…",

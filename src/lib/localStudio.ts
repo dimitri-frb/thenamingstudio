@@ -3,7 +3,7 @@
 // (dev bridge or the Worker) it is used instead (see namingApi).
 // Deterministic-ish, decent quality, clearly demo-grade.
 
-import type { Brief, Concept, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
+import type { Brief, Concept, Feeling, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -74,6 +74,34 @@ const BRANDS: { name: string; why: string }[] = [
 const FEELINGS = ["warm", "bold", "calm", "playful", "premium", "honest", "modern", "crafted", "fearless", "quiet"];
 
 /* ---------------- phases ---------------- */
+// Personalized feeling cards — each "why" pulls in the audience / what they do,
+// so the deck feels written for this specific founder.
+const FEELING_POOL: { word: string; why: (aud: string) => string }[] = [
+  { word: "Trust", why: (a) => `${a} are betting on you with something that matters; the name has to feel safe to choose.` },
+  { word: "Effortless", why: (a) => `You take the friction away; ${a} should feel it the moment they hear it.` },
+  { word: "Premium", why: (a) => `${a} should feel they're choosing the considered option, not the cheap one.` },
+  { word: "Warmth", why: (a) => `A human hand behind it; ${a} should feel looked after, not processed.` },
+  { word: "Boldness", why: (a) => `In a sea of sameness, ${a} remember the brand that dares.` },
+  { word: "Clarity", why: (a) => `${a} are busy; the name should feel instantly, refreshingly clear.` },
+  { word: "Playfulness", why: (a) => `A little fun goes a long way with ${a}.` },
+  { word: "Calm", why: (a) => `${a} come to you to feel less overwhelmed, not more.` },
+  { word: "Craft", why: (a) => `Made with care; ${a} can feel the craftsmanship in it.` },
+  { word: "Optimism", why: (a) => `${a} should feel the brighter morning you're selling.` },
+  { word: "Intelligence", why: (a) => `${a} should feel they're in clever, capable hands.` },
+  { word: "Rebellion", why: (a) => `${a} who are tired of the usual will feel seen.` },
+  { word: "Belonging", why: (a) => `${a} should feel part of something, not sold to.` },
+  { word: "Confidence", why: (a) => `${a} should feel sure the moment they hear it.` },
+  { word: "Wonder", why: (a) => `A spark of magic that makes ${a} lean in.` },
+  { word: "Heritage", why: (a) => `${a} should feel there's something timeless and proven here.` },
+];
+
+export function localFeelings(brief: Brief): { feelings: Feeling[] } {
+  const r = rng(hash("feelings" + brief.does + brief.audience + brief.problem));
+  const aud = (brief.audience || "the people you serve").trim();
+  const a = aud.charAt(0).toLowerCase() + aud.slice(1); // lower-case for mid-sentence use
+  return { feelings: sample(r, FEELING_POOL, FEELING_POOL.length).slice(0, 14).map((f) => ({ word: f.word, why: f.why(a) })) };
+}
+
 export function localConcepts(brief: Brief): { concepts: Concept[] } {
   const r = rng(hash(JSON.stringify(brief)));
   const frames = sample(r, FRAMES, FRAMES.length).slice(0, 10);
