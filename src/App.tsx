@@ -47,12 +47,14 @@ export default function App() {
   const [results, setResults] = useState<NameIdea[]>([]);
   const [checkout, setCheckout] = useState<PlanId | null>(null);
   const [seedBrief, setSeedBrief] = useState<StudioBrief | null>(null);
-  // A shared "?vote=Name1|Name2" link drops friends straight into the swipe vote.
-  const [friendVote, setFriendVote] = useState<string[] | null>(() => {
+  // A shared "?vote=Name1|Name2&by=…&about=…" link drops friends straight into
+  // the swipe vote, with context on who's asking and what the project is.
+  const [friendVote, setFriendVote] = useState<{ names: string[]; by: string; about: string } | null>(() => {
     try {
-      const v = new URLSearchParams(window.location.search).get("vote");
-      const names = (v || "").split("|").map((s) => s.trim()).filter(Boolean).slice(0, 10);
-      return names.length ? names : null;
+      const p = new URLSearchParams(window.location.search);
+      const names = (p.get("vote") || "").split("|").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+      if (!names.length) return null;
+      return { names, by: (p.get("by") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180) };
     } catch { return null; }
   });
 
@@ -88,7 +90,9 @@ export default function App() {
     return (
       <div className="min-h-screen mesh">
         <PublicVote
-          items={friendVote.map((n) => ({ name: n }))}
+          items={friendVote.names.map((n) => ({ name: n }))}
+          by={friendVote.by}
+          about={friendVote.about}
           onClose={() => { setFriendVote(null); try { window.history.replaceState(null, "", window.location.pathname); } catch { /* noop */ } }}
         />
       </div>

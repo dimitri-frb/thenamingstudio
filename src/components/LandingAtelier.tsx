@@ -11,7 +11,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
         <h1 className="mt-7 text-6xl leading-[1.0] sm:text-7xl">
           Name your
           <br />
-          thing, <span className="italic text-accent">properly.</span>
+          company, <span className="italic text-accent">properly.</span>
         </h1>
 
         <p className="mx-auto mt-8 max-w-xl font-serif text-2xl leading-relaxed text-ink/65">

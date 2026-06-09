@@ -6,12 +6,13 @@ import { createPortal } from "react-dom";
 
 export interface VoteItem { name: string; type?: string; note?: string }
 
-export function PublicVote({ items, onClose }: { items: VoteItem[]; onClose: () => void }) {
+export function PublicVote({ items, onClose, by, about }: { items: VoteItem[]; onClose: () => void; by?: string; about?: string }) {
   const [i, setI] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [hist, setHist] = useState<boolean[]>([]);
   const [secs, setSecs] = useState(0);
   const [drag, setDrag] = useState(0);
+  const [intro, setIntro] = useState<boolean>(!!about); // shown to friends arriving via a shared link
   const startX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -55,11 +56,13 @@ export function PublicVote({ items, onClose }: { items: VoteItem[]; onClose: () 
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-5 py-5 font-mono text-xs uppercase tracking-widest text-ink/45">
         <button onClick={onClose} className="hover:text-ink">✕</button>
         <span className="font-serif text-base italic normal-case tracking-normal text-ink/70">the naming studio</span>
-        <span>{done ? "Done" : `Vote · ${i + 1} of ${items.length}`}</span>
+        <span>{intro ? "Help vote" : done ? "Done" : `Vote · ${i + 1} of ${items.length}`}</span>
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        {done ? (
+        {intro ? (
+          <Intro by={by} about={about} count={items.length} onStart={() => setIntro(false)} />
+        ) : done ? (
           <Result liked={liked} items={items} onClose={onClose} />
         ) : (
           <>
@@ -94,6 +97,27 @@ export function PublicVote({ items, onClose }: { items: VoteItem[]; onClose: () 
       </div>
     </div>,
     document.body,
+  );
+}
+
+function Intro({ by, about, count, onStart }: { by?: string; about?: string; count: number; onStart: () => void }) {
+  const who = by && by.trim() ? by.trim() : "A founder";
+  const desc = about ? about.charAt(0).toLowerCase() + about.slice(1) : "";
+  return (
+    <div className="animate-in w-full max-w-md text-center">
+      <p className="font-mono text-xs uppercase tracking-[0.25em] text-accent">Help name a company</p>
+      <h2 className="mt-4 font-serif text-4xl leading-tight">
+        {who} is looking to name their new project{desc ? <>, <span className="italic text-accent2">{desc}</span></> : ""}.
+      </h2>
+      <p className="mt-4 font-serif text-2xl italic text-ink/70">They need your help.</p>
+      <p className="mt-5 leading-relaxed text-ink/55">
+        Here's how it works: swipe <span className="text-accent">♥</span> on the {count} names you love, and <span className="text-ink/70">✕</span> on the ones you don't. Your favourites help them decide.
+      </p>
+      <button onClick={onStart} className="mt-8 rounded-xl bg-accent px-7 py-3.5 font-serif text-lg italic text-white shadow-lg shadow-accent/20 transition hover:brightness-105">
+        Start voting →
+      </button>
+      <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-ink/35">Anonymous · takes 30 seconds</p>
+    </div>
   );
 }
 

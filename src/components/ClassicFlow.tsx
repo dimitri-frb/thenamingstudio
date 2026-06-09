@@ -273,7 +273,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                 </div>
                 <p className="text-xs text-ink/40">Domain, trademark and handle reads are best-guess estimates, confirm with the live checks before you file.</p>
 
-                <ShareFriends names={comp.rows.map((r) => r.name)} onVote={() => setVoteOpen(true)} />
+                <ShareFriends names={comp.rows.map((r) => r.name)} about={brief.does} onVote={() => setVoteOpen(true)} />
 
                 <Nav onBack={() => goto(6)} canNext nextLabel="Make the decision →"
                   onNext={() => { setChosenFinal(comp.recommended); goto(8); }} />
@@ -391,11 +391,17 @@ function BrandBookWip({ name, onClose }: { name: string; onClose: () => void }) 
 // "Ask your friends", share the shortlist for a gut-check (the Tinder-style
 // vote, or a prefilled WhatsApp / email / copyable link). Share intents only;
 // nothing is sent without the founder's own confirmation in their app.
-function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }) {
+function ShareFriends({ names, about, onVote }: { names: string[]; about: string; onVote: () => void }) {
   const [copied, setCopied] = useState(false);
-  // Link straight into the swipe vote for THIS shortlist (App reads ?vote=).
+  const [who, setWho] = useState("");
+  // Link straight into the swipe vote for THIS shortlist, with context for
+  // friends on who's asking and what the project is (App reads ?vote/by/about).
   const base = window.location.origin + window.location.pathname.replace(/index\.html$/, "");
-  const voteLink = `${base}?vote=${encodeURIComponent(names.slice(0, 8).join("|"))}`;
+  const params = new URLSearchParams();
+  params.set("vote", names.slice(0, 8).join("|"));
+  if (who.trim()) params.set("by", who.trim());
+  if (about?.trim()) params.set("about", about.trim().slice(0, 180));
+  const voteLink = `${base}?${params.toString()}`;
   const msg = `Help me pick my company name 🙌 — swipe through my shortlist and tell me your favourite: ${voteLink}`;
   const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`;
   const mail = `mailto:?subject=${encodeURIComponent("Help me name my company")}&body=${encodeURIComponent(msg)}`;
@@ -407,7 +413,9 @@ function ShareFriends({ names, onVote }: { names: string[]; onVote: () => void }
     <div className="mt-5 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
       <p className="font-serif text-xl italic">Still unsure? Ask your friends.</p>
       <p className="mt-1 text-sm text-ink/55">Share your shortlist and let people swipe through it, Tinder-style. The clear favourite usually rises fast.</p>
-      <div className="mt-4 flex flex-wrap gap-2.5">
+      <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="Your first name (optional) — so friends know who's asking"
+        className="mt-4 w-full rounded-xl border border-ink/20 bg-[var(--page)] px-4 py-2.5 text-sm outline-none transition placeholder:text-ink/30 focus:border-accent/50" />
+      <div className="mt-3 flex flex-wrap gap-2.5">
         <button onClick={onVote} className="rounded-xl bg-ink px-4 py-2.5 font-serif text-base italic text-[var(--page)] transition hover:opacity-90">Open the swipe vote →</button>
         <a href={wa} target="_blank" rel="noreferrer" className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">WhatsApp</a>
         <a href={mail} className="rounded-xl border border-ink/20 px-4 py-2.5 text-sm font-medium text-ink/75 transition hover:border-ink/40">Email</a>
