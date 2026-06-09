@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
-import { ConceptDeepDive, type Selection } from "./ConceptDeepDive";
+import { ConceptDeepDive } from "./ConceptDeepDive";
 import { StudioNote, Kicker } from "./Guide";
 import { FeelingDeck } from "./FeelingDeck";
 import { PublicVote } from "./PublicVote";
-import { Paywall, type Tier } from "./Paywall";
 
 // The "Classic flow" (Atelier), the storytelling naming process, wired to a
 // real Claude turn per generative phase via the dev bridge (/api/naming).
@@ -39,19 +38,12 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [worlds, setWorlds] = useState<TerritoryWorld[]>([]);
-  const [sel, setSel] = useState<Record<string, Selection>>({});
+  const [words, setWords] = useState<Set<string>>(new Set()); // words kept in the constellations
   const [names, setNames] = useState<NameIdea[]>([]);
   const [starNames, setStarNames] = useState<Set<string>>(new Set());
   const [comp, setComp] = useState<Comparison | null>(null);
   const [chosenFinal, setChosenFinal] = useState<string>("");
   const [voteOpen, setVoteOpen] = useState(false);
-
-  // Monetization, everything above is free; the comparison's INPI + domain
-  // checks are the paid "make it real" product. paid unlocks them; maybeLater
-  // lets them see the scored shortlist with those cells still locked.
-  const [paid, setPaid] = useState(false);
-  const [paidTier, setPaidTier] = useState<Tier | null>(null);
-  const [payOpen, setPayOpen] = useState(false);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,10 +63,6 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
     if (n.has(v)) n.delete(v); else if (n.size < max) n.add(v);
     setter(n);
   };
-
-  const exploredCount = Object.values(sel).filter((s) => s.feeling || s.quote || s.brands.length).length;
-  const selectFor = (concept: string, patch: Partial<Selection>) =>
-    setSel((s) => { const prev = s[concept] || { brands: [] }; return { ...s, [concept]: { ...prev, ...patch } }; });
 
   // Arrived from the voice conversation with a ready brief → skip the forms,
   // generate concepts, and drop the founder straight into the creative steps.
@@ -126,7 +114,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             <span className="hidden font-mono text-xs uppercase tracking-widest text-ink/45 sm:inline">{STEPS[step]}</span>
           </div>
           {(() => {
-            const c = step === 2 ? brief.signal.length : step === 4 ? chosen.size : step === 5 ? exploredCount : step === 6 ? starNames.size : null;
+            const c = step === 2 ? brief.signal.length : step === 4 ? chosen.size : step === 5 ? words.size : step === 6 ? starNames.size : null;
             return c != null ? <span className="shrink-0 font-mono text-xs text-accent">★ {c}</span> : null;
           })()}
         </div>
@@ -226,17 +214,11 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             {step === 5 && (
               <ConceptDeepDive
                 worlds={worlds}
-                selections={sel}
-                onSelect={selectFor}
+                kept={words}
+                onToggle={(w) => toggle(words, w, setWords)}
                 onBack={() => goto(4)}
                 onGenerate={() => generate("names", async () => {
-                  const entries = Object.entries(sel).filter(([, s]) => s.feeling || s.quote || s.brands.length);
-                  const sketch = {
-                    concepts: entries.length ? entries.map(([t]) => t) : worlds.map((w) => w.title),
-                    feelings: [...new Set(entries.map(([, s]) => s.feeling).filter(Boolean) as string[])],
-                    quotes: [...new Set(entries.map(([, s]) => s.quote).filter(Boolean) as string[])],
-                    brands: [...new Set(entries.flatMap(([, s]) => s.brands))],
-                  };
+                  const sketch = { concepts: worlds.map((w) => w.title), words: [...words] };
                   setNames(await naming.names(brief, sketch));
                 }, 6)}
               />
@@ -264,66 +246,48 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                   })}
                 </div>
                 <Nav onBack={() => goto(5)} canNext={starNames.size >= 2} nextLabel={`Compare ${starNames.size || ""} starred →`}
-                  onNext={async () => {
-                    await generate("compare", async () => setComp(await naming.compare(brief, names.filter((n) => starNames.has(n.name)))), 7);
-                    if (!paid) setPayOpen(true);
-                  }} />
+                  onNext={() => generate("compare", async () => setComp(await naming.compare(brief, names.filter((n) => starNames.has(n.name)))), 7)} />
               </Panel>
             )}
 
             {step === 7 && comp && (
               <Panel kicker="The verdict" title={<>How they <I>hold up</I>.</>}
                 guide="We scored each name the way a strategist would, does it land, does it look right, does it sound good, does it stir something. Here's our pick, and an honest read on the rest."
-                hint="SMILE scoring, cross-language meaning, domain & trademark flags.">
+                hint="SMILE scoring, plus a .com-first domain read and an INPI 🇫🇷 trademark estimate for every name.">
                 <HeroPick comp={comp} />
-                {paid ? (
-                  <div className="-mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-700">
-                    <span>✓</span><span>Reality check complete, INPI trademark & domain availability verified for your shortlist.{paidTier === "bundle" && " Your brand book is on its way to your inbox."}</span>
-                  </div>
-                ) : (
-                  <div className="-mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
-                    <span className="text-ink/70">🔒 INPI & domain availability are locked. Unlock the reality check to see what's actually free to take.</span>
-                    <button onClick={() => setPayOpen(true)} className="ml-auto shrink-0 rounded-lg bg-accent px-3.5 py-2 font-serif text-sm italic text-white transition hover:brightness-105">Unlock €9 →</button>
-                  </div>
-                )}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-ink/25 text-xs uppercase tracking-wider text-ink/45">
-                        <th className="py-2 pr-3 font-normal">Name</th>
-                        <th className="px-2 font-normal" title="Intuitive">I</th>
-                        <th className="px-2 font-normal" title="Visual">V</th>
-                        <th className="px-2 font-normal" title="Sound">S</th>
-                        <th className="px-2 font-normal" title="Emotional">E</th>
-                        <th className="px-2 font-normal">Σ</th>
-                        <th className="px-3 font-normal">Notes · meaning · domain · trademark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ink/10">
-                      {comp.rows.map((r) => {
-                        const rec = r.name === comp.recommended;
-                        return (
-                          <tr key={r.name} className={rec ? "bg-accent/5" : ""}>
-                            <td className="py-3 pr-3 font-serif text-lg">{r.name}{rec && <span className="text-accent"> ★</span>}</td>
-                            <td className="px-2 text-center">{r.intuitive}</td>
-                            <td className="px-2 text-center">{r.visual}</td>
-                            <td className="px-2 text-center">{r.sound}</td>
-                            <td className="px-2 text-center">{r.emotional}</td>
-                            <td className="px-2 text-center font-semibold">{r.total}</td>
-                            <td className="px-3 py-3 text-xs leading-relaxed text-ink/55">
-                              <p>{r.verdict}</p>
-                              {paid ? (
-                                <p className="mt-1 text-ink/45">🌍 {r.negatives} · 🌐 {r.domain} · ⚖️ {r.trademark}</p>
-                              ) : (
-                                <p className="mt-1 select-none text-ink/40">🌍 {r.negatives} · <span className="rounded bg-ink/10 px-6 text-transparent blur-[3px]">{r.domain}</span> · <span className="rounded bg-ink/10 px-6 text-transparent blur-[3px]">{r.trademark}</span></p>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="space-y-3">
+                  {comp.rows.map((r) => {
+                    const rec = r.name === comp.recommended;
+                    const slug = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    return (
+                      <div key={r.name} className={`rounded-2xl border p-5 ${rec ? "border-accent/40 bg-accent/5" : "border-ink/12 bg-[var(--surface-solid)]"}`}>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <p className="font-serif text-2xl leading-none">{r.name}{rec && <span className="text-accent"> ★</span>}</p>
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">SMILE {r.total}/20</span>
+                          <span className="ml-auto"><SmileDots score={r.total * 5} /></span>
+                        </div>
+                        <p className="mt-2 font-serif text-[15px] italic leading-snug text-ink/60">“{r.verdict}”</p>
+                        <div className="mt-3 grid gap-2.5 border-t border-ink/10 pt-3 sm:grid-cols-2">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                            <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">Domain</span>
+                            {r.domains.map((d) => (
+                              <span key={d.tld} className={`inline-flex items-center gap-1 ${d.available ? "text-emerald-600" : "text-ink/35 line-through"}`}>
+                                {d.available ? "✓" : "✕"} {slug}{d.tld}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex items-start gap-2 text-sm">
+                            <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-ink/40">INPI 🇫🇷</span>
+                            <span className={r.inpi ? "text-emerald-600" : "text-amber-600"}>
+                              {r.inpi ? "✓ Looks clear" : "⚠ Check closely"} <span className="text-ink/45">· {r.inpiNote}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+                <p className="text-xs text-ink/40">Domain & INPI reads are best-guess estimates, confirm with the live checks before you file.</p>
 
                 <ShareFriends names={comp.rows.map((r) => r.name)} onVote={() => setVoteOpen(true)} />
 
@@ -373,14 +337,6 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
         />
       )}
 
-      {payOpen && comp && (
-        <Paywall
-          names={comp.rows.map((r) => r.name)}
-          onClose={() => setPayOpen(false)}
-          onMaybeLater={() => setPayOpen(false)}
-          onPaid={(tier) => { setPaid(true); setPaidTier(tier); setPayOpen(false); }}
-        />
-      )}
     </div>
   );
 }

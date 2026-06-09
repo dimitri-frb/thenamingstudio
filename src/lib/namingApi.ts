@@ -22,25 +22,27 @@ export interface Concept { title: string; blurb: string; lane: string }
 // line. Swiped through, Tinder-style, in the emotional step.
 export interface Feeling { word: string; why: string }
 
-// A concept explored into a "world" the founder feels out through a few quick
-// questions: which feeling, which line, which brands inspire them.
-export interface BrandRef { name: string; why: string }
+// A concept explored as a "constellation" of words. Each seed word can be
+// opened into related words (synonyms, sounds, short forms) to dig deeper.
+export interface WordNode { word: string; related: string[] }
 export interface TerritoryWorld {
   title: string;
-  blurb: string;       // one clear sentence on what this direction is
-  feelings: string[];  // ~5 single feeling words to choose from
-  quotes: string[];    // ~4 manifesto lines (the brand's voice) to choose from
-  brands: BrandRef[];  // ~5 brands that live here, each with a why
+  blurb: string;        // one clear sentence on what this direction is
+  words: WordNode[];    // ~12-14 seed words forming the constellation
 }
 
-// "Your brand so far", the answers the founder gave while exploring. Names are
-// drawn from this, not from a list of words.
-export interface Sketch { concepts: string[]; feelings: string[]; quotes: string[]; brands: string[] }
+// The words the founder picked while exploring the constellations. Names are
+// drawn from these.
+export interface Sketch { concepts: string[]; words: string[] }
 
 export interface NameIdea { name: string; type: string; rationale: string; score: number }
+export interface DomainHit { tld: string; available: boolean }
 export interface CompareRow {
-  name: string; intuitive: number; visual: number; sound: number; emotional: number;
-  total: number; negatives: string; domain: string; trademark: string; verdict: string;
+  name: string; intuitive: number; visual: number; sound: number; emotional: number; total: number;
+  domains: DomainHit[];   // .com first
+  inpi: boolean;          // appears clear to register?
+  inpiNote: string;
+  verdict: string;
 }
 export interface Comparison { rows: CompareRow[]; recommended: string; why: string }
 

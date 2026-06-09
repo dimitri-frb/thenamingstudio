@@ -42,36 +42,23 @@ const FRAMES = [
 const PRE = ["lumo", "nova", "vela", "kai", "ora", "sol", "wren", "halo", "vero", "atlas", "ember", "lyra"];
 const SUF = ["ly", "ora", "io", "wave", "lab", "mint", "flow", "loop", "craft", "field", "kit", "able"];
 
-// Manifesto-style voice lines for the exploration "sketch".
-const QUOTES = [
-  "We didn't come to blend in.",
-  "Less noise, more signal.",
-  "Made by hand, built to last.",
-  "Start before you're ready.",
-  "The quiet ones change everything.",
-  "Make the complicated feel simple.",
-  "Big ideas, said plainly.",
-  "For the people who give a damn.",
-  "Everything you need, nothing you don't.",
-  "Show up, do the work, repeat.",
-  "Taste is a feature.",
-  "Slow is smooth, and smooth is fast.",
-];
-const BRANDS: { name: string; why: string }[] = [
-  { name: "Aesop", why: "restraint as luxury, every word chosen" },
-  { name: "Notion", why: "calm, flexible, quietly powerful" },
-  { name: "Patagonia", why: "values worn on the sleeve" },
-  { name: "Stripe", why: "clean, precise, deeply trusted" },
-  { name: "Mailchimp", why: "playful warmth in a dull category" },
-  { name: "Oatly", why: "loud, witty, gleefully anti-corporate" },
-  { name: "Linear", why: "speed and taste treated as features" },
-  { name: "Liquid Death", why: "irreverent and impossible to forget" },
-  { name: "Muji", why: "the no-brand brand, pure utility" },
-  { name: "Headspace", why: "friendly, human, never intimidating" },
-  { name: "Duolingo", why: "a mascot with a personality of its own" },
-  { name: "Rivian", why: "adventurous, optimistic, new-world" },
-];
-const FEELINGS = ["warm", "bold", "calm", "playful", "premium", "honest", "modern", "crafted", "fearless", "quiet"];
+// Word material for the exploration constellation.
+const EVOCATIVE = ["ember", "north", "tide", "spark", "grove", "loom", "echo", "ridge", "dawn", "forge", "current", "halo", "drift", "anchor", "signal", "compass", "lantern", "thread", "vault", "haven", "summit", "willow", "raven", "cobalt", "slate", "kismet", "lumen", "orbit", "meridian", "relic"];
+const METAPHOR = ["northstar", "wildfire", "undertow", "keystone", "wavelength", "groundswell", "lighthouse", "bloom", "headwind", "afterglow", "watershed", "foothold"];
+
+// Branch a seed word into ~5 related words (sounds, blends, short forms).
+function relatedFor(r: () => number, w: string): string[] {
+  const base = w.toLowerCase().replace(/[^a-z]/g, "") || w;
+  const suf = SUF.filter((s) => !base.endsWith(s)); // avoid doubling (e.g. craft+craft)
+  const out = [
+    cap(base) + pick(r, suf),
+    pick(r, METAPHOR),
+    cap(base.slice(0, 4)) + pick(r, ["ix", "en", "is", "ora", "yl"]),
+    cap(pick(r, PRE)) + base.slice(0, 3),
+    base.length > 3 ? base.slice(0, 3).toUpperCase() : null,
+  ].filter((s): s is string => !!s && s.length > 1);
+  return [...new Set(out)].filter((s) => s.toLowerCase() !== base).slice(0, 5);
+}
 
 /* ---------------- phases ---------------- */
 // Personalized feeling cards — each "why" pulls in the audience / what they do,
@@ -108,26 +95,24 @@ export function localConcepts(brief: Brief): { concepts: Concept[] } {
   return { concepts: frames.map((f) => ({ title: f.t, blurb: f.b, lane: f.lane })) };
 }
 
-export function localExplore(_brief: Brief, concept: Concept): TerritoryWorld {
-  const r = rng(hash(concept.title + _brief.does));
+export function localExplore(brief: Brief, concept: Concept): TerritoryWorld {
+  const r = rng(hash(concept.title + brief.does));
+  const fromConcept = concept.blurb.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
+  const seeds = sample(r, [...new Set([...fromConcept, ...keywords(brief), ...EVOCATIVE])], 13);
   return {
     title: concept.title,
     blurb: concept.blurb,
-    feelings: sample(r, FEELINGS, 5),
-    quotes: sample(r, QUOTES, 4),
-    brands: sample(r, BRANDS, 5),
+    words: seeds.map((w) => ({ word: w, related: relatedFor(r, w) })),
   };
 }
 
 export function localNames(brief: Brief, sketch: Sketch): { names: NameIdea[] } {
   const r = rng(hash(JSON.stringify(sketch) + brief.does + Math.floor(Math.random() * 1e6)));
   const lanes = (brief.lanes?.length ? brief.lanes : ["suggestive", "compound", "invented", "evocative"]);
-  // Seed words from the answers (concepts, feelings, quotes) + the brief.
-  const fromSketch = [...(sketch?.concepts || []), ...(sketch?.feelings || []), ...(sketch?.quotes || [])]
-    .join(" ").toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/)
-    .filter((w) => w.length > 3 && !STOP.has(w));
-  const seeds = [...new Set([...fromSketch, ...keywords(brief)])];
-  const pool = seeds.length ? seeds : keywords(brief);
+  // Seed words = the words the founder picked in the constellation + the brief.
+  const chosen = (sketch?.words || []).map((w) => w.toLowerCase().replace(/[^a-z]/g, "")).filter((w) => w.length > 2);
+  const pool = [...new Set([...chosen, ...keywords(brief)])];
+  if (!pool.length) pool.push(...keywords(brief));
   const out: NameIdea[] = [];
   const seen = new Set<string>();
   let guard = 0;
@@ -158,20 +143,26 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
   const r = rng(hash(JSON.stringify(names)));
   const rows = names.map((n) => {
     const I = 3 + Math.floor(r() * 3), V = 3 + Math.floor(r() * 3), S = 3 + Math.floor(r() * 3), E = 3 + Math.floor(r() * 3);
-    const taken = n.name.length <= 6 ? r() > 0.3 : r() > 0.6;
+    const short = n.name.replace(/[^a-z0-9]/gi, "").length <= 6;
+    const comFree = short ? r() > 0.7 : r() > 0.45; // shorter names tend to be taken
+    const inpi = r() > 0.35;
     return {
       name: n.name, intuitive: I, visual: V, sound: S, emotional: E, total: I + V + S + E,
-      negatives: "clean (demo, not language-verified)",
-      domain: taken ? `${n.name.toLowerCase()}.com likely taken, try .io / get-` : `${n.name.toLowerCase()}.com may be free (estimate)`,
-      trademark: r() > 0.7 ? "possible clash, verify on INPI/EUIPO" : "no obvious clash (estimate)",
-      verdict: pick(r, ["Strong, ownable, easy to say.", "Memorable with a clear story.", "Distinctive, worth clearing legally.", "Warm and human; reads well."]),
+      domains: [
+        { tld: ".com", available: comFree },
+        { tld: ".io", available: r() > 0.35 },
+        { tld: ".co", available: r() > 0.3 },
+      ],
+      inpi,
+      inpiNote: inpi ? "No earlier mark in classes 9 / 42 (estimate)" : "Possible earlier mark, worth a closer look (estimate)",
+      verdict: pick(r, ["Strong, ownable, easy to say.", "Memorable with a clear story.", "Distinctive and confident.", "Warm and human; reads well."]),
     };
   }).sort((a, b) => b.total - a.total);
   const best = rows[0];
   return {
     rows,
     recommended: best?.name || "",
-    why: best ? `Honestly? ${best.name} is the one we'd run with, it scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
+    why: best ? `Honestly? ${best.name} is the one we'd run with. It scores highest across all four axes, it's easy to say after hearing once, and it leaves you room to grow. (Demo reasoning, connect real Claude for the full analysis.)` : "",
   };
 }
 

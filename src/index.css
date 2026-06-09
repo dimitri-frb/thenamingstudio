@@ -98,3 +98,26 @@ h1, h2, h3 {
   stroke-dashoffset: var(--len, 400);
   animation: draw 1.3s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.35s;
 }
+
+/* Constellation: a world title swells in, then dissolves to reveal the words */
+@keyframes title-reveal {
+  0% { opacity: 0; transform: scale(0.94); letter-spacing: 0.04em; }
+  35% { opacity: 1; transform: scale(1); }
+  70% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1.06); letter-spacing: 0.12em; }
+}
+.title-reveal { animation: title-reveal 1.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* Words drift gently, like stars */
+@keyframes drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(var(--dx, 4px), var(--dy, -5px)); }
+  100% { transform: translate(0, 0); }
+}
+.drift { animation: drift var(--dur, 7s) ease-in-out infinite; }
+
+@keyframes star-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+.star-in { animation: star-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
