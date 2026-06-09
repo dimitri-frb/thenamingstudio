@@ -65,6 +65,19 @@ export interface BrandBook {
 // Cloudflare Worker via VITE_NAMING_API (set at build time). Empty => fallback only.
 const ENDPOINT = import.meta.env.DEV ? "/api/naming" : (import.meta.env.VITE_NAMING_API || "");
 
+// Belt-and-braces: strip em/en dashes from every string in any response, so a
+// dash can never reach the UI no matter what the model returns.
+function deDash<T>(v: T): T {
+  if (typeof v === "string") return v.replace(/\s*[—–]\s*/g, ", ").replace(/^,\s*/, "") as unknown as T;
+  if (Array.isArray(v)) return v.map(deDash) as unknown as T;
+  if (v && typeof v === "object") {
+    const o: Record<string, unknown> = {};
+    for (const k in v as Record<string, unknown>) o[k] = deDash((v as Record<string, unknown>)[k]);
+    return o as unknown as T;
+  }
+  return v;
+}
+
 async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<T> {
   // Try real Claude (dev bridge or Worker). On any failure, no endpoint, 404,
   // network, model error, fall back to the client-side studio so the whole flow
@@ -78,14 +91,14 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
       });
       if (res.ok) {
         const data = await res.json();
-        if (!data?.error) return data as T;
+        if (!data?.error) return deDash(data) as T;
       }
     } catch {
       /* offline / no endpoint → fall through to local */
     }
   }
   await new Promise((r) => setTimeout(r, 500)); // tiny beat so the "thinking" state reads
-  return localFallback(phase, brief, payload) as T;
+  return deDash(localFallback(phase, brief, payload)) as T;
 }
 
 function localFallback(phase: string, brief: Brief, payload: any): unknown {
