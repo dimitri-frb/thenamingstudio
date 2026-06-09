@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { naming, type Brief, type BrandBook as BrandBookData } from "../lib/namingApi";
 
-// The starter brand book — generated from the brief + the chosen name. v1:
+// The starter brand book, generated from the brief + the chosen name. v1:
 // story & voice, colour & type, a messaging kit (copyable), a typographic
 // wordmark, and "Save as PDF". AI logos come later.
 
@@ -122,7 +122,7 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
         <p className="font-mono text-[10px] uppercase tracking-widest text-ink/45">{pair.label} · {pair.hName} + {pair.bName}</p>
         <p className="mt-3 text-4xl leading-tight" style={{ fontFamily: pair.heading, color: ink }}>The quick brown fox</p>
         <p className="mt-3 max-w-xl leading-relaxed text-ink/70" style={{ fontFamily: pair.body }}>
-          Body copy sets the everyday tone — readable, even, and quietly confident. {bb.fontNote}
+          Body copy sets the everyday tone, readable, even, and quietly confident. {bb.fontNote}
         </p>
       </Section>
 

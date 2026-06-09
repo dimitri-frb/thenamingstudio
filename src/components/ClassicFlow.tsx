@@ -327,7 +327,7 @@ function NextSteps({ name, onBrandBook }: { name: string; onBrandBook: () => voi
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <NextStep n="01" title="Register the name" sub="Protect it as a trademark at INPI 🇫🇷" cta="Open INPI →" href={inpi} />
         <NextStep n="02" title="Buy the domain" sub={`Grab ${slug}.com before someone else does`} cta="Search on GoDaddy →" href={godaddy} />
-        <NextStep n="03" title="Brand book & logo" sub="Story, voice, colour & type — generated for you" cta="Create it →" onClick={onBrandBook} />
+        <NextStep n="03" title="Brand book & logo" sub="Story, voice, colour & type, generated for you" cta="Create it →" onClick={onBrandBook} />
       </div>
     </div>
   );
@@ -365,7 +365,7 @@ function ShareFriends({ names, about, onVote }: { names: string[]; about: string
   if (who.trim()) params.set("by", who.trim());
   if (about?.trim()) params.set("about", about.trim().slice(0, 180));
   const voteLink = `${base}?${params.toString()}`;
-  const msg = `Help me pick my company name 🙌 — swipe through my shortlist and tell me your favourite: ${voteLink}`;
+  const msg = `Help me pick my company name 🙌, swipe through my shortlist and tell me your favourite: ${voteLink}`;
   const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`;
   const mail = `mailto:?subject=${encodeURIComponent("Help me name my company")}&body=${encodeURIComponent(msg)}`;
   async function copy() {
@@ -376,7 +376,7 @@ function ShareFriends({ names, about, onVote }: { names: string[]; about: string
     <div className="mt-5 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5">
       <p className="font-serif text-xl italic">Still unsure? Ask your friends.</p>
       <p className="mt-1 text-sm text-ink/55">Share your shortlist and let people swipe through it, Tinder-style. The clear favourite usually rises fast.</p>
-      <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="Your first name (optional) — so friends know who's asking"
+      <input value={who} onChange={(e) => setWho(e.target.value)} placeholder="Your first name (optional), so friends know who's asking"
         className="mt-4 w-full rounded-xl border border-ink/20 bg-[var(--page)] px-4 py-2.5 text-sm outline-none transition placeholder:text-ink/30 focus:border-accent/50" />
       <div className="mt-3 flex flex-wrap gap-2.5">
         <button onClick={onVote} className="rounded-xl bg-ink px-4 py-2.5 font-serif text-base italic text-[var(--page)] transition hover:opacity-90">Open the swipe vote →</button>

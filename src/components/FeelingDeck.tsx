@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { Feeling } from "../lib/namingApi";
 
-// A "Tinder of feelings" — swipe through feeling cards generated from the brief.
+// A "Tinder of feelings", swipe through feeling cards generated from the brief.
 // ♥ (right) keeps the feeling; ✕ (left) skips it. Kept feelings become the
 // emotional signal for the name. Personalized: each card carries a "why it fits
 // you" line drawn from what the founder told us.
@@ -95,7 +95,7 @@ export function FeelingDeck({ cards, kept, onKeep, onUnkeep, onBack, onContinue 
             ))}
           </div>
         ) : (
-          <p className="text-sm italic text-ink/40">Swipe ♥ on the feelings that fit — they'll gather here.</p>
+          <p className="text-sm italic text-ink/40">Swipe ♥ on the feelings that fit, they'll gather here.</p>
         )}
       </div>
 

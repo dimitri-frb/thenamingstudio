@@ -59,7 +59,7 @@ export default function App() {
     } catch { return null; }
   });
   // "?brandbook" (optionally "?brandbook=YourName") jumps straight to a demo
-  // brand book with sample data — no need to run the whole flow.
+  // brand book with sample data, no need to run the whole flow.
   const [brandBookDemo, setBrandBookDemo] = useState<{ name: string; brief: StudioBrief } | null>(() => {
     try {
       const p = new URLSearchParams(window.location.search);

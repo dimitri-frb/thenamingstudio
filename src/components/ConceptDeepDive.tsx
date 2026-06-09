@@ -4,10 +4,10 @@ import { StudioNote, Kicker } from "./Guide";
 
 // Immersive exploration. Each chosen concept is a "world": its name swells in
 // and dissolves over a deep night sky, revealing a constellation of words. Tap
-// the ones that pull at you — they glow and open related words. A layout pass
+// the ones that pull at you, they glow and open related words. A layout pass
 // measures every word and pushes them apart so none overlap or leave the box.
 
-const PAPER = "#f0ece3";   // cream — words on the dark canvas
+const PAPER = "#f0ece3";   // cream, words on the dark canvas
 const GOLD = "#e6b489";    // warm glow for kept words
 const PAD = 16;            // keep words this far from the edges
 const GAP_X = 14, GAP_Y = 9; // min breathing room between words
@@ -135,7 +135,7 @@ export function ConceptDeepDive({ worlds, kept, onToggle, onBack, onGenerate }: 
         <Kicker>The exploration</Kicker>
         <h2 className="mt-2 text-3xl leading-snug sm:text-4xl">Into the <span className="italic text-accent">worlds</span>.</h2>
         <StudioNote>
-          Now we go deep into each of your concepts to see how they inspire you. Let us guide you — simply wander each world and tap the words that pull at you. The ones you keep become the raw material for your name.
+          Now we go deep into each of your concepts to see how they inspire you. Let us guide you, simply wander each world and tap the words that pull at you. The ones you keep become the raw material for your name.
         </StudioNote>
         <div className="mt-8 flex items-center justify-between border-t border-ink/10 pt-6">
           <button onClick={onBack} className="text-sm text-ink/50 transition hover:text-ink">← Back</button>

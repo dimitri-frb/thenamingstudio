@@ -24,7 +24,7 @@ function keywords(b: Brief): string[] {
   return [...new Set(ws)].slice(0, 10);
 }
 
-// Concept territories — clever, inspiring naming angles with clear titles.
+// Concept territories, clever, inspiring naming angles with clear titles.
 const FRAMES = [
   { t: "The ironic inversion", b: "Name it the opposite of what it is, like Ordinary, Regular or Beige, and let the wink do the work.", lane: "evocative" },
   { t: "The insider code", b: "A name that reads like a password. Only the right people get it, and they feel chosen.", lane: "suggestive" },
@@ -61,7 +61,7 @@ function relatedFor(r: () => number, w: string): string[] {
 }
 
 /* ---------------- phases ---------------- */
-// Personalized feeling cards — each "why" pulls in the audience / what they do,
+// Personalized feeling cards, each "why" pulls in the audience / what they do,
 // so the deck feels written for this specific founder.
 const FEELING_POOL: { word: string; why: (aud: string) => string }[] = [
   { word: "Trust", why: (a) => `${a} are betting on you with something that matters; the name has to feel safe to choose.` },
@@ -221,20 +221,20 @@ export function localBrandbook(brief: Brief, name: string): BrandBook {
     essence: `${cap(adj[0] || "Bold")}, ${(adj[1] || "human").toLowerCase()}, unmistakably ${name}.`,
     tagline,
     story: `${name} is ${doesLower}. It's built for ${a}, who deserve better than the generic option. Where others settle, ${name} brings taste and intent to every detail.`,
-    whyName: `"${name}" is short, ownable and easy to say once heard — it carries the brand's story without needing to explain it.`,
+    whyName: `"${name}" is short, ownable and easy to say once heard, it carries the brand's story without needing to explain it.`,
     voice: {
       adjectives: adj,
-      dos: ["Say it plainly — clarity over cleverness.", "Talk to one person, warmly.", "Lead with the benefit, not the feature."],
-      donts: ["No jargon or buzzwords.", "Don't oversell or shout.", "Avoid hedging — be confident."],
-      sample: `Meet ${name} — ${doesLower}, without the usual headache.`,
+      dos: ["Say it plainly, clarity over cleverness.", "Talk to one person, warmly.", "Lead with the benefit, not the feature."],
+      donts: ["No jargon or buzzwords.", "Don't oversell or shout.", "Avoid hedging, be confident."],
+      sample: `Meet ${name}, ${doesLower}, without the usual headache.`,
     },
     palette,
     fontKey: fontKeyFor(brief),
-    fontNote: `A pairing that reads ${(adj[0] || "modern").toLowerCase()} and ${(adj[1] || "clear").toLowerCase()} — confident headlines, effortless body text.`,
+    fontNote: `A pairing that reads ${(adj[0] || "modern").toLowerCase()} and ${(adj[1] || "clear").toLowerCase()}, confident headlines, effortless body text.`,
     messaging: {
-      pitch: `${name} is ${doesLower}, built for ${a} — faster, and with more taste.`,
+      pitch: `${name} is ${doesLower}, built for ${a}, faster, and with more taste.`,
       boilerplate: `${name} is ${doesLower}. Founded for ${a}, it turns a slow, frustrating process into something quick, confident and genuinely good.`,
-      taglines: [tagline, `${name} — ${cap(adj[0] || "bold")} by design.`, `The ${(adj[1] || "simple").toLowerCase()} way to ${pick(r, ["start", "build", "ship"])}.`],
+      taglines: [tagline, `${name}, ${cap(adj[0] || "bold")} by design.`, `The ${(adj[1] || "simple").toLowerCase()} way to ${pick(r, ["start", "build", "ship"])}.`],
       valueProps: [`${cap(adj[0] || "Fast")} where it used to be slow.`, `Made for ${a}, not the masses.`, `Taste and rigor, in one place.`],
     },
   };

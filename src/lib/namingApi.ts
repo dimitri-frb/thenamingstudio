@@ -47,7 +47,7 @@ export interface CompareRow {
 }
 export interface Comparison { rows: CompareRow[]; recommended: string; why: string }
 
-// The starter brand book — generated from the brief + the chosen name.
+// The starter brand book, generated from the brief + the chosen name.
 export interface Swatch { hex: string; name: string; role: string }
 export interface BrandBook {
   essence: string;
