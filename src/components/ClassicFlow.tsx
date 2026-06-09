@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type CompareRow, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
@@ -44,6 +45,7 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
   const [comp, setComp] = useState<Comparison | null>(null);
   const [chosenFinal, setChosenFinal] = useState<string>("");
   const [voteOpen, setVoteOpen] = useState(false);
+  const [brandBookOpen, setBrandBookOpen] = useState(false);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -292,13 +294,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
                     </button>
                   ))}
                 </div>
-                {chosenFinal && (
-                  <div className="mt-7 rounded-2xl border border-ink/15 p-6 text-center">
-                    <p className="font-serif text-3xl">{chosenFinal}</p>
-                    <p className="mt-2 text-sm text-ink/55">A fine choice. Next: secure the domain, run an INPI 🇫🇷 trademark check, and build the brand book.</p>
-                  </div>
-                )}
-                <div className="mt-7 flex items-center justify-center gap-3 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5 text-center">
+                {chosenFinal && <NextSteps name={chosenFinal} onBrandBook={() => setBrandBookOpen(true)} />}
+                <div className="mt-2 flex items-center justify-center gap-3 rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5 text-center">
                   <div className="text-left">
                     <p className="font-serif text-lg italic">Not sure? Get a gut-check.</p>
                     <p className="text-sm text-ink/50">Swipe through your shortlist like a vote.</p>
@@ -319,7 +316,75 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
         />
       )}
 
+      {brandBookOpen && <BrandBookWip name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
     </div>
+  );
+}
+
+// After the winner is picked: three ways to make it real.
+function NextSteps({ name, onBrandBook }: { name: string; onBrandBook: () => void }) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const inpi = "https://procedures.inpi.fr/?/";
+  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${slug}.com`;
+  return (
+    <div className="mt-2 rounded-3xl border border-accent2/30 bg-gradient-to-br from-accent2/12 via-accent/[0.06] to-transparent p-6 sm:p-8">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">You chose</p>
+      <h3 className="mt-2 font-serif text-5xl leading-none">{name}</h3>
+      <p className="mt-3 text-sm text-ink/60">A fine choice. Now let's make it real, here's where to go next.</p>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <NextStep n="01" title="Register the name" sub="Protect it as a trademark at INPI 🇫🇷" cta="Open INPI →" href={inpi} />
+        <NextStep n="02" title="Buy the domain" sub={`Grab ${slug}.com before someone else does`} cta="Search on GoDaddy →" href={godaddy} />
+        <NextStep n="03" title="Brand book & logo" sub="Everything you need to start shipping" cta="Start building →" onClick={onBrandBook} badge="Soon" />
+      </div>
+    </div>
+  );
+}
+
+function NextStep({ n, title, sub, cta, href, onClick, badge }: { n: string; title: string; sub: string; cta: string; href?: string; onClick?: () => void; badge?: string }) {
+  const inner = (
+    <>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-xs text-ink/35">{n}</span>
+        {badge && <span className="rounded-full bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-accent">{badge}</span>}
+      </div>
+      <p className="mt-3 font-serif text-xl leading-tight">{title}</p>
+      <p className="mt-1 text-sm leading-snug text-ink/55">{sub}</p>
+      <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-accent">{cta}</p>
+    </>
+  );
+  const cls = "block h-full rounded-2xl border border-ink/15 bg-[var(--surface-solid)] p-5 text-left transition hover:border-accent/40 hover:shadow-sm";
+  return href
+    ? <a href={href} target="_blank" rel="noreferrer" className={cls}>{inner}</a>
+    : <button onClick={onClick} className={cls}>{inner}</button>;
+}
+
+// Placeholder "next page" for the brand book — work in progress.
+function BrandBookWip({ name, onClose }: { name: string; onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[var(--page)]">
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent">Brand book · {name}</p>
+        <h2 className="mt-4 font-serif text-5xl leading-tight sm:text-6xl">Your brand, <span className="italic text-accent">drawn out</span>.</h2>
+        <p className="mt-5 max-w-md text-ink/60">
+          Logo directions, a colour palette, typography and a voice, everything you need to stop thinking about branding and start building. We're putting the finishing touches on this part.
+        </p>
+        <span className="mt-7 rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-accent">Work in progress</span>
+        <div className="mt-10 grid w-full gap-3 sm:grid-cols-3">
+          {[
+            { t: "Logo directions", s: "A few marks to choose from" },
+            { t: "Colour & type", s: "A palette and fonts that fit" },
+            { t: "Voice & guidelines", s: "How the brand speaks" },
+          ].map((c) => (
+            <div key={c.t} className="rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-5 text-left opacity-70">
+              <p className="font-serif text-lg">{c.t}</p>
+              <p className="mt-1 text-sm text-ink/50">{c.s}</p>
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose} className="mt-10 rounded-xl bg-ink px-6 py-3 font-serif text-lg italic text-[var(--page)] transition hover:opacity-90">← Back to your name</button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
