@@ -132,7 +132,7 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
     <div className="animate-in mx-auto max-w-5xl">
       <PhaseHeader phase={3} title="Grow the idea" accent="outward." />
       <StudioNote>
-        Your concepts have dissolved into the words they suggest. Wander the board, double-click any word to bloom what it relates to, and hover to read what it evokes. Click + to keep the words and quotes that pull at you, they gather on the right.
+        Your concepts have dissolved into the words they suggest. Wander the board, click any word to open what it relates to, and hover to read what it evokes. Click + to keep the words and quotes that pull at you, they gather on the right.
       </StudioNote>
 
       {/* breadcrumb of the hovered node */}
@@ -183,7 +183,7 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
             <button onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.15).toFixed(2)))} className="grid h-5 w-5 place-items-center rounded-full hover:bg-ink/10">+</button>
           </div>
           <span className="pointer-events-none absolute bottom-3 right-4 font-mono text-[10px] uppercase tracking-[0.2em] text-ink/30">
-            double-click to grow · + to keep
+            click to open · + to keep
           </span>
         </div>
 
@@ -246,7 +246,7 @@ function Node({ node, x, y, open, kept, onExpand, onKeep, onHover }: {
       onMouseLeave={() => onHover(false)}
     >
       <button
-        onDoubleClick={onExpand}
+        onClick={onExpand}
         className={`flex h-full w-full items-center gap-1.5 rounded-full border px-3 text-left transition ${
           kept
             ? "border-ink bg-ink text-[var(--page)] shadow"
@@ -270,11 +270,11 @@ function Node({ node, x, y, open, kept, onExpand, onKeep, onHover }: {
 }
 
 function Tooltip({ node, pos }: { node: BNode; pos: { x: number; y: number } }) {
-  // Sit the card just above the node; clamp to the left edge so it stays on board.
-  const left = Math.max(8, pos.x - 20);
-  const top = Math.max(4, pos.y - 56);
+  // Sit the card just below the hovered node so it always reads next to the word.
+  const left = Math.max(8, pos.x);
+  const top = pos.y + NODE_H + 8;
   return (
-    <div className="pointer-events-none absolute z-20 w-56 rounded-xl border border-ink/10 bg-ink px-3 py-2 text-[var(--page)] shadow-xl" style={{ left, top }}>
+    <div className="pointer-events-none absolute z-30 w-56 rounded-xl border border-ink/10 bg-ink px-3 py-2 text-[var(--page)] shadow-xl" style={{ left, top }}>
       <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--page)]/50">{node.kind === "quote" ? "Quote" : "Word"} · from {node.concept.toLowerCase()}</p>
       <p className="mt-1 font-serif text-[13px] italic leading-snug">{node.description}</p>
     </div>
