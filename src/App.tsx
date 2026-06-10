@@ -147,6 +147,7 @@ export default function App() {
           <LandingAtelier
             onNext={() => setScreen("classic")}
             onTalk={() => setScreen("talk")}
+            onStudio={() => { window.location.hash = "#/studio"; }}
             canTalk
           />
         )}
