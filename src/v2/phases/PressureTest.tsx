@@ -51,7 +51,7 @@ export function PressureTest({
   if (loading) {
     return (
       <div className="animate-in mx-auto max-w-3xl">
-        <PhaseHeader phase={6} title="Pressure-" accent="testing." />
+        <PhaseHeader phase={5} title="Pressure-" accent="testing." />
         <Thinking lines={["Running your finalists through the gauntlet…", "Bar · spell · language · stretch"]} />
       </div>
     );
@@ -61,7 +61,7 @@ export function PressureTest({
 
   return (
     <div className="animate-in mx-auto max-w-3xl">
-      <PhaseHeader phase={6} title="The" accent="gauntlet." />
+      <PhaseHeader phase={5} title="The" accent="gauntlet." />
       <StudioNote>
         Every name sounds good in your head. These are the tests a naming agency runs before they let a name out the door. Watch how your finalists hold up, and drop anything that stumbles.
       </StudioNote>

@@ -92,7 +92,7 @@ export interface PressureTest {
 }
 
 export interface SessionState {
-  phase: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  phase: 1 | 2 | 3 | 4 | 5 | 6;
   brief?: NameBrief;
   soundscape?: SoundscapeAnalysis;
   stance?: Stance;

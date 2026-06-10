@@ -38,7 +38,7 @@ export function Decide({
   if (!chosen) {
     return (
       <div className="animate-in mx-auto max-w-2xl">
-        <PhaseHeader phase={7} title="Decide" accent="& own." />
+        <PhaseHeader phase={6} title="Decide" accent="& own." />
         <StudioNote>No finalists survived. Step back and keep a couple more, even a flawed name beats no name.</StudioNote>
         <FooterNav onBack={onBack}>{null}</FooterNav>
       </div>
@@ -52,7 +52,7 @@ export function Decide({
 
   return (
     <div className="animate-in mx-auto max-w-2xl">
-      <PhaseHeader phase={7} title="You found" accent="it." />
+      <PhaseHeader phase={6} title="You found" accent="it." />
 
       {/* finalist switcher */}
       {ranked.length > 1 && (

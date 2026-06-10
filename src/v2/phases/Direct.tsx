@@ -3,19 +3,17 @@
 // the choice is strategic, not aesthetic.
 
 import { useEffect, useState } from "react";
-import type { NameBrief, Stance, Territory } from "../types";
+import type { NameBrief, Territory } from "../types";
 import { studio } from "../studioApi";
 import { FooterNav, PhaseHeader, PrimaryButton, StudioNote, Thinking } from "../ui";
 
 export function Direct({
   brief,
-  stance,
   initial,
   onBack,
   onDone,
 }: {
   brief: NameBrief;
-  stance: Stance;
   initial?: Territory[];
   onBack: () => void;
   onDone: (territories: Territory[]) => void;
@@ -26,11 +24,11 @@ export function Direct({
   useEffect(() => {
     if (initial?.length) return;
     let live = true;
-    studio.territories(brief, stance).then((t) => {
+    studio.territories(brief, "blend").then((t) => {
       if (live) { setTerritories(t); setLoading(false); }
     });
     return () => { live = false; };
-  }, [brief, stance, initial]);
+  }, [brief, initial]);
 
   const selectedCount = territories.filter((t) => t.selected).length;
 
@@ -47,17 +45,17 @@ export function Direct({
   if (loading) {
     return (
       <div className="animate-in mx-auto max-w-3xl">
-        <PhaseHeader phase={3} title="Choosing" accent="directions." />
-        <Thinking lines={["Drawing up your territories…", `Tuned to a ${stance === "break" ? "break-out" : "blend-in"} stance`]} />
+        <PhaseHeader phase={2} title="Choosing" accent="directions." />
+        <Thinking lines={["Drawing up your territories…", "Tuned to your brief"]} />
       </div>
     );
   }
 
   return (
     <div className="animate-in mx-auto max-w-3xl">
-      <PhaseHeader phase={3} title="Choosing" accent="directions." />
+      <PhaseHeader phase={2} title="Choosing" accent="directions." />
       <StudioNote>
-        Great names come from a direction, not a dice roll. Here are the territories that fit your brief and your {stance === "break" ? "break-out" : "blend-in"} stance. Pick the 2 or 3 you want to explore, each buys you something and costs you something.
+        Great names come from a direction, not a dice roll. Here are the territories that fit your brief. Pick the 2 or 3 you want to explore, each buys you something and costs you something.
       </StudioNote>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2">

@@ -75,7 +75,7 @@ export function Shortlist({
   if (loading) {
     return (
       <div className="animate-in mx-auto max-w-3xl">
-        <PhaseHeader phase={5} title="Building" accent="the shortlist." />
+        <PhaseHeader phase={4} title="Building" accent="the shortlist." />
         <Thinking lines={["Scoring, flagging and checking each name…", "SMILE · SCRATCH · domain · handle · INPI"]} />
       </div>
     );
@@ -83,7 +83,7 @@ export function Shortlist({
 
   return (
     <div className="animate-in mx-auto max-w-3xl">
-      <PhaseHeader phase={5} title="Your" accent="shortlist." />
+      <PhaseHeader phase={4} title="Your" accent="shortlist." />
       <StudioNote>
         These cleared the bar: strong on the things that make a name work, and actually ownable. {ownableCount} of {candidates.length} pass the ownability gate. Pick 1 to 3 finalists to pressure-test, or ask a friend to break the tie.
       </StudioNote>

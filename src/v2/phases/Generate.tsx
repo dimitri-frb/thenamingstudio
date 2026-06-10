@@ -122,7 +122,7 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
   if (!roots) {
     return (
       <div className="animate-in mx-auto max-w-3xl">
-        <PhaseHeader phase={4} title="Opening" accent="the space." />
+        <PhaseHeader phase={3} title="Opening" accent="the space." />
         <Thinking lines={["Scattering the words your concepts suggest…", "A whole board to play with"]} />
       </div>
     );
@@ -130,7 +130,7 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
 
   return (
     <div className="animate-in mx-auto max-w-5xl">
-      <PhaseHeader phase={4} title="Grow the idea" accent="outward." />
+      <PhaseHeader phase={3} title="Grow the idea" accent="outward." />
       <StudioNote>
         Your concepts have dissolved into the words they suggest. Wander the board, double-click any word to bloom what it relates to, and hover to read what it evokes. Click + to keep the words and quotes that pull at you, they gather on the right.
       </StudioNote>

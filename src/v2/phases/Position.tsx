@@ -86,7 +86,7 @@ export function Position({
           <>
             <Field label="The one thing to own" placeholder="e.g. the rigor of a strategist at the speed of a tool" value={oneThingToOwn} onChange={setOwn} hint="If people remembered one thing about you, what should it be?" />
             <Field label="The category" placeholder="e.g. branding tools · SaaS" value={category} onChange={setCategory} />
-            <Field label="Competitors" placeholder="e.g. Namelix, Looka, Brandpa" value={competitorsRaw} onChange={setCompetitors} hint="Name 2 to 4, comma-separated. We'll map the soundscape next." />
+            <Field label="Competitors" placeholder="e.g. Namelix, Looka, Brandpa" value={competitorsRaw} onChange={setCompetitors} hint="Name 2 to 4, comma-separated. They sharpen the directions." />
           </>
         )}
 

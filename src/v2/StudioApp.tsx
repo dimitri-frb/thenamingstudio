@@ -1,5 +1,5 @@
 // The v2 "studio" funnel orchestrator. Owns a single SessionState, threads it
-// through the seven phases, and persists it to localStorage so a refresh never
+// through the six phases, and persists it to localStorage so a refresh never
 // resets progress. Fully isolated from v1: nothing here imports v1's flow.
 
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +8,6 @@ import { markVariant } from "../lib/variant";
 import { BrandMark, Wordmark } from "../components/Logo";
 import { PhaseRail } from "./ui";
 import { Position } from "./phases/Position";
-import { ReadTheRoom } from "./phases/ReadTheRoom";
 import { Direct } from "./phases/Direct";
 import { Generate } from "./phases/Generate";
 import { Shortlist } from "./phases/Shortlist";
@@ -20,7 +19,12 @@ const STORE_KEY = "ns.v2.session";
 function load(): SessionState {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return { ...emptySession(), ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...emptySession(), ...JSON.parse(raw) } as SessionState;
+      // Guard stale sessions saved under the old 7-phase numbering.
+      s.phase = Math.min(6, Math.max(1, s.phase || 1)) as SessionState["phase"];
+      return s;
+    }
   } catch {
     /* ignore */
   }
@@ -75,35 +79,25 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
         )}
 
         {session.phase === 2 && session.brief && (
-          <ReadTheRoom
-            brief={session.brief}
-            initialStance={session.stance}
-            onBack={back}
-            onDone={(soundscape, stance) => patch({ soundscape, stance, phase: 3 })}
-          />
-        )}
-
-        {session.phase === 3 && session.brief && session.stance && (
           <Direct
             brief={session.brief}
-            stance={session.stance}
             initial={session.territories.length ? session.territories : undefined}
             onBack={back}
-            onDone={(territories) => patch({ territories, phase: 4 })}
+            onDone={(territories) => patch({ territories, phase: 3 })}
           />
         )}
 
-        {session.phase === 4 && session.brief && (
+        {session.phase === 3 && session.brief && (
           <Generate
             brief={session.brief}
             territories={session.territories}
             initialKept={session.keptWords}
             onBack={back}
-            onDone={(keptWords) => patch({ keptWords, phase: 5 })}
+            onDone={(keptWords) => patch({ keptWords, phase: 4 })}
           />
         )}
 
-        {session.phase === 5 && session.brief && (
+        {session.phase === 4 && session.brief && (
           <Shortlist
             brief={session.brief}
             keptWords={session.keptWords}
@@ -112,20 +106,20 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
             initialCandidates={session.candidates.length ? session.candidates : undefined}
             initialFinalists={session.finalists}
             onBack={back}
-            onDone={(candidates, finalists) => patch({ candidates, finalists, phase: 6 })}
+            onDone={(candidates, finalists) => patch({ candidates, finalists, phase: 5 })}
           />
         )}
 
-        {session.phase === 6 && session.brief && (
+        {session.phase === 5 && session.brief && (
           <PressureTest
             brief={session.brief}
             finalists={finalistCandidates}
             onBack={back}
-            onDone={(pressureTests, survivors) => patch({ pressureTests, finalists: survivors.map((c) => c.id), phase: 7 })}
+            onDone={(pressureTests, survivors) => patch({ pressureTests, finalists: survivors.map((c) => c.id), phase: 6 })}
           />
         )}
 
-        {session.phase === 7 && session.brief && (
+        {session.phase === 6 && session.brief && (
           <Decide
             brief={session.brief}
             survivors={finalistCandidates}

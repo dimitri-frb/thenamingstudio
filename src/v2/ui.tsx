@@ -6,7 +6,6 @@ import type React from "react";
 
 export const PHASE_TITLES = [
   "Position",
-  "Read the room",
   "Direct",
   "Generate",
   "Shortlist",
@@ -86,7 +85,7 @@ export function PhaseHeader({
   return (
     <>
       <Kicker>
-        Phase {phase} / 7 · {PHASE_TITLES[phase - 1]}
+        Phase {phase} / 6 · {PHASE_TITLES[phase - 1]}
       </Kicker>
       <h2 className="mt-2 text-3xl leading-snug sm:text-4xl">
         {title} {accent && <span className="italic text-accent">{accent}</span>}
