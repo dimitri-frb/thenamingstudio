@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type Feeling, type NameIdea, type Comparison, type CompareRow, type TerritoryWorld } from "../lib/namingApi";
 import { useVoice } from "../lib/useVoice";
 import { recommendLanes } from "../lib/localStudio";
-import { ConceptDeepDive } from "./ConceptDeepDive";
+import { Whiteboard } from "./Whiteboard";
 import { StudioNote, Kicker } from "./Guide";
 import { FeelingDeck } from "./FeelingDeck";
 import { PublicVote } from "./PublicVote";
@@ -152,13 +152,12 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
 
             {step === 2 && (
               <Panel kicker="The brief · 3 of 4" title={<>What should the name make people <I>feel</I>?</>}
-                guide="Names land in the gut before the brain. Swipe through the feelings that fit, we picked these from what you just told us.">
+                guide="Names land in the gut before the brain. Tap the feelings that fit, we drew these from what you just told us.">
                 <FeelingDeck
                   cards={feelings}
                   kept={brief.signal}
                   onKeep={(w) => set({ signal: [...brief.signal, w] })}
                   onUnkeep={(w) => set({ signal: brief.signal.filter((x) => x !== w) })}
-                  onBack={() => goto(1)}
                   onContinue={() => { set({ tone: brief.signal, lanes: brief.lanes.length ? brief.lanes : recommendLanes({ ...brief, tone: brief.signal }) }); goto(3); }}
                 />
               </Panel>
@@ -214,7 +213,8 @@ export function ClassicFlow({ initialDoes, seedBrief, onRestart }: { initialDoes
             )}
 
             {step === 5 && (
-              <ConceptDeepDive
+              <Whiteboard
+                brief={brief}
                 worlds={worlds}
                 kept={words}
                 onToggle={(w) => toggle(words, w, setWords)}

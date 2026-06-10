@@ -285,6 +285,105 @@ export function localWords(brief: NameBrief, territory: Territory): { word: stri
   return seeds.map((w) => ({ word: w, related: branch(r, w) }));
 }
 
+/* ----------------- phase 4: whiteboard exploration (category buckets) ----- */
+// Opening a concept on the board reveals three ways to mine it for material.
+const FAMOUS = [
+  "Kyoto", "Lisbon", "Patagonia", "the Atlas range", "Santorini", "Reykjavik",
+  "Marrakech", "the Dolomites", "Havana", "Kerala", "Ada Lovelace", "the Bauhaus",
+  "Coco Chanel", "Miyazaki", "Nikola Tesla", "Hemingway", "Frida Kahlo",
+  "Le Corbusier", "Athena", "Magellan", "Amelia Earhart", "Brunelleschi",
+];
+const QUOTE_POOL = [
+  "less, but better", "stay hungry", "make it new", "form follows function",
+  "the medium is the message", "real artists ship", "good design is honest",
+  "start before you're ready", "leave room to grow", "say it once, mean it",
+  "what you do, not what you say", "small is the new big",
+];
+
+export interface TerritoryExplore { synonyms: string[]; famous: string[]; quotes: string[] }
+
+export function localExploreTerritory(brief: NameBrief, territory: Territory): TerritoryExplore {
+  const r = rng(hash("explore" + territory.id + brief.whatItDoes));
+  // Synonyms & acronyms: the word craft, plus a couple of acronym-ish forms.
+  const words = localWords(brief, territory).map((w) => w.word);
+  const acronyms = sample(r, [...keywords(brief), ...words], 2)
+    .map((w) => clean(w).slice(0, 3).toUpperCase())
+    .filter((a) => a.length >= 2);
+  const synonyms = [...new Set([...sample(r, words, 6), ...acronyms])].slice(0, 7);
+  return {
+    synonyms,
+    famous: sample(r, FAMOUS, 6),
+    quotes: sample(r, QUOTE_POOL, 5),
+  };
+}
+
+// Real words, concepts and expressions to mine, never invented brand names.
+// (Coined name candidates belong in the shortlist, not the exploration board.)
+const CONCEPT_WORDS = [
+  "light", "signal", "north", "craft", "clarity", "trust", "momentum", "edge", "current", "anchor",
+  "compass", "threshold", "origin", "depth", "motion", "focus", "spark", "ground", "horizon", "summit",
+  "river", "stone", "ember", "dawn", "tide", "grove", "harbor", "lantern", "thread", "weave",
+  "forge", "balance", "rhythm", "echo", "pulse", "drift", "bloom", "root", "instinct", "precision",
+  "velocity", "gravity", "texture", "contrast", "tension", "release", "flow", "clear", "quiet", "true",
+];
+const CONCEPT_PHRASES = [
+  "first principles", "quiet confidence", "slow craft", "raw material", "open road", "north star",
+  "clean lines", "second nature", "common ground", "fresh eyes", "negative space", "sharp focus",
+];
+
+// Open any leaf item one level deeper into related words, concepts and
+// expressions, on demand. No coined brand names.
+export function expandItem(label: string): string[] {
+  const r = rng(hash("assoc:" + label));
+  const base = clean(label.split(/\s+/)[0]);
+  const pool = [...CONCEPT_WORDS, ...CONCEPT_PHRASES];
+  return sample(r, pool.filter((w) => clean(w) !== base), 5);
+}
+
+// A short studio "read" of a word or quote, shown on hover. Demo-grade glosses
+// now; real Claude returns true descriptions once the backend is wired.
+const WORD_GLOSS: ((w: string, c: string) => string)[] = [
+  (w, c) => `Where ${c} turns concrete, ${w} you can almost touch.`,
+  (w) => `Small, sharp, unmistakable. ${cap(w)} is the part people repeat.`,
+  (_w, c) => `The feeling of ${c}, distilled into a single word.`,
+  (w) => `A thread worth pulling, ${w} opens onto a dozen others.`,
+  (w) => `Quiet confidence. ${cap(w)} never has to raise its voice.`,
+  (w) => `Plainspoken and ownable. ${cap(w)} says it once and means it.`,
+  (w) => `Evocative, not literal. ${cap(w)} leaves room to grow into.`,
+];
+const QUOTE_GLOSS: ((c: string) => string)[] = [
+  (c) => `A line to live by, the spirit of ${c} said out loud.`,
+  (c) => `Borrow the cadence, not the words. Pure ${c}.`,
+  (c) => `The mood in one breath, ${c} with a pulse.`,
+];
+export function describeNode(label: string, concept: string, kind: "word" | "quote"): string {
+  const c = (concept || "the idea").toLowerCase();
+  const r = rng(hash("desc:" + kind + label + concept));
+  return kind === "quote" ? pick(r, QUOTE_GLOSS)(c) : pick(r, WORD_GLOSS)(label.toLowerCase(), c);
+}
+
+// The opening cloud of the exploration board: many real words and a few quotes
+// drawn from the chosen concepts. The concepts themselves are NOT shown, the
+// founder plays with the material directly.
+export interface BoardSeed { label: string; kind: "word" | "quote"; concept: string; description: string }
+export function localBoardSeeds(brief: NameBrief, territories: Territory[]): BoardSeed[] {
+  const out: BoardSeed[] = [];
+  territories.forEach((t) => {
+    const r = rng(hash("board" + t.id + brief.whatItDoes));
+    const ex = localExploreTerritory(brief, t);
+    const wordPool = [...ex.synonyms.filter((w) => w !== w.toUpperCase()), ...ex.famous]; // drop ALLCAPS acronyms
+    sample(r, wordPool, 5).forEach((w) => out.push({ label: w, kind: "word", concept: t.name, description: describeNode(w, t.name, "word") }));
+    sample(r, ex.quotes, 1).forEach((q) => out.push({ label: q, kind: "quote", concept: t.name, description: describeNode(q, t.name, "quote") }));
+  });
+  const seen = new Set<string>();
+  return out.filter((s) => {
+    const k = s.label.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 14);
+}
+
 /* ------------------------------ phase 5: candidates ----------------------- */
 function smileFor(r: () => number, name: string, nameJob: number): SmileScore {
   const w = clean(name);

@@ -45,6 +45,8 @@ const SUF = ["ly", "ora", "io", "wave", "lab", "mint", "flow", "loop", "craft", 
 // Word material for the exploration constellation.
 const EVOCATIVE = ["ember", "north", "tide", "spark", "grove", "loom", "echo", "ridge", "dawn", "forge", "current", "halo", "drift", "anchor", "signal", "compass", "lantern", "thread", "vault", "haven", "summit", "willow", "raven", "cobalt", "slate", "kismet", "lumen", "orbit", "meridian", "relic"];
 const METAPHOR = ["northstar", "wildfire", "undertow", "keystone", "wavelength", "groundswell", "lighthouse", "bloom", "headwind", "afterglow", "watershed", "foothold"];
+// Short evocative phrases, so a concept opens into "words AND expressions".
+const EXPRESSIONS = ["first light", "true north", "quiet power", "open road", "slow craft", "north star", "second nature", "clear sky", "fresh start", "common ground", "still water", "high noon"];
 
 // Branch a seed word into ~5 related words (sounds, blends, short forms).
 function relatedFor(r: () => number, w: string): string[] {
@@ -58,6 +60,14 @@ function relatedFor(r: () => number, w: string): string[] {
     base.length > 3 ? base.slice(0, 3).toUpperCase() : null,
   ].filter((s): s is string => !!s && s.length > 1);
   return [...new Set(out)].filter((s) => s.toLowerCase() !== base).slice(0, 5);
+}
+
+// Branch ANY label (word or expression) into related words, on demand, so a
+// node on the exploration whiteboard can always be opened one level deeper.
+export function expandWord(label: string): string[] {
+  const r = rng(hash("expand:" + label));
+  const base = label.toLowerCase().split(/\s+/)[0].replace(/[^a-z]/g, "") || label;
+  return relatedFor(r, base);
 }
 
 /* ---------------- phases ---------------- */
@@ -98,11 +108,13 @@ export function localConcepts(brief: Brief): { concepts: Concept[] } {
 export function localExplore(brief: Brief, concept: Concept): TerritoryWorld {
   const r = rng(hash(concept.title + brief.does));
   const fromConcept = concept.blurb.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
-  const seeds = sample(r, [...new Set([...fromConcept, ...keywords(brief), ...EVOCATIVE])], 13);
+  const words = sample(r, [...new Set([...fromConcept, ...keywords(brief), ...EVOCATIVE])], 10);
+  const expressions = sample(r, EXPRESSIONS, 3); // a few "expressions" alongside the words
+  const seeds = sample(r, [...words, ...expressions], 13);
   return {
     title: concept.title,
     blurb: concept.blurb,
-    words: seeds.map((w) => ({ word: w, related: relatedFor(r, w) })),
+    words: seeds.map((w) => ({ word: w, related: relatedFor(r, w.split(/\s+/)[0]) })),
   };
 }
 

@@ -73,6 +73,20 @@ export const studio = {
     return deDash(engine.localWords(brief, territory));
   },
 
+  async explore(brief: NameBrief, territory: Territory): Promise<engine.TerritoryExplore> {
+    const r = await remote<engine.TerritoryExplore>("explore", { brief, territory });
+    if (r) return r;
+    await beat(300);
+    return deDash(engine.localExploreTerritory(brief, territory));
+  },
+
+  async board(brief: NameBrief, territories: Territory[]): Promise<engine.BoardSeed[]> {
+    const r = await remote<{ seeds: engine.BoardSeed[] }>("board", { brief, territories });
+    if (r) return r.seeds;
+    await beat(500);
+    return deDash(engine.localBoardSeeds(brief, territories));
+  },
+
   async candidates(
     brief: NameBrief,
     keptWords: string[],
