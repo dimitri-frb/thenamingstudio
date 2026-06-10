@@ -1,7 +1,7 @@
 // The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
 
-export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
+export function LandingAtelier({ onNext, onTalk, canTalk, onStudio }: { onNext: () => void; onTalk: () => void; canTalk: boolean; onStudio?: () => void }) {
   return (
     <div className="animate-in">
       {/* hero */}
@@ -31,6 +31,16 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
             Start a brief
             <kbd className="grid h-5 w-5 place-items-center rounded border border-[var(--page)]/30 text-[10px] leading-none">⏎</kbd>
           </button>
+
+          {onStudio && (
+            <button
+              onClick={onStudio}
+              className="group flex items-center gap-2.5 rounded-xl border border-accent/40 bg-accent/[0.05] px-6 py-3.5 text-base font-medium text-accent transition hover:bg-accent/10"
+            >
+              Try the new Studio flow
+              <span className="font-serif italic">→</span>
+            </button>
+          )}
         </div>
 
         {canTalk && (
