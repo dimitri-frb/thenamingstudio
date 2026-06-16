@@ -121,10 +121,13 @@ export function Shortlist({
 function CandidateCard({ c, picked, onPick }: { c: NameCandidate; picked: boolean; onPick: () => void }) {
   const warnings = SCRATCH_LABELS.filter(({ key }) => c.scratch[key]);
   const badMeaning = c.scratch.badMeaningInMarkets || [];
+  const slug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
   return (
-    <button
+    <div
       onClick={onPick}
-      className={`block w-full rounded-2xl border p-4 text-left transition ${picked ? "border-accent bg-accent/5 shadow-sm" : "border-ink/15 bg-[var(--surface-solid)] hover:border-ink/30"}`}
+      role="button"
+      tabIndex={0}
+      className={`block w-full cursor-pointer rounded-2xl border p-4 text-left transition ${picked ? "border-accent bg-accent/5 shadow-sm" : "border-ink/15 bg-[var(--surface-solid)] hover:border-ink/30"}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -148,8 +151,18 @@ function CandidateCard({ c, picked, onPick }: { c: NameCandidate; picked: boolea
 
       {/* availability + warnings */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ink/10 pt-3 text-xs">
-        <span className="flex items-center gap-1.5 text-ink/55">{c.name.toLowerCase()}.com <StatePill state={c.availability.domainCom} /></span>
-        <span className="flex items-center gap-1.5 text-ink/55">@{c.name.toLowerCase()} <StatePill state={c.availability.instagram} /></span>
+        <span className="flex items-center gap-1.5 text-ink/55">
+          {slug}.com <StatePill state={c.availability.domainCom} />
+          <a
+            href={`https://www.godaddy.com/domainsearch/find?domainToCheck=${slug}.com`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-accent transition hover:underline"
+            title="See it and the available alternatives on GoDaddy"
+          >GoDaddy ↗</a>
+        </span>
+        <span className="flex items-center gap-1.5 text-ink/55">@{slug} <StatePill state={c.availability.instagram} /></span>
         <span className="flex items-center gap-1.5 text-ink/55">INPI <StatePill state={c.availability.trademarkINPI} /></span>
       </div>
       {(warnings.length > 0 || badMeaning.length > 0) && (
@@ -162,7 +175,7 @@ function CandidateCard({ c, picked, onPick }: { c: NameCandidate; picked: boolea
           ))}
         </div>
       )}
-    </button>
+    </div>
   );
 }
 

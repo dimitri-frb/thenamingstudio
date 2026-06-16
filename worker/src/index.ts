@@ -51,7 +51,7 @@ export default {
       const text = await callClaude(env, model, prompt, max);
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
-      if (phase === "candidates") data = fixCandidates(data, body);
+      if (phase === "candidates") data = await enrichCandidates(data);
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);
@@ -168,20 +168,42 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Return JSON {"rationale":"..."}.` }),
 };
 
-// Claude does not know a stable id or timestamp, so we stamp candidates here.
-function fixCandidates(data: any, _body: any): any {
+// Real .com availability via RDAP (the modern, free WHOIS). 404 = unregistered
+// (free), 200 = registered (taken). Authoritative, not a guess. Fails soft to
+// "unknown" so the flow never hangs on a slow registry.
+async function rdapDotCom(slug: string): Promise<"available" | "taken" | "unknown"> {
+  if (!slug) return "unknown";
+  try {
+    const res = await fetch(`https://rdap.org/domain/${slug}.com`, {
+      headers: { accept: "application/rdap+json" },
+      signal: AbortSignal.timeout(4500),
+    });
+    if (res.status === 404) return "available";
+    if (res.status === 200) return "taken";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+// Claude does not know a stable id, timestamp, or true availability, so we stamp
+// ids/time and replace the .com guess with a real RDAP lookup (run in parallel).
+async function enrichCandidates(data: any): Promise<any> {
   const list = Array.isArray(data?.candidates) ? data.candidates : [];
   const now = new Date().toISOString();
-  data.candidates = list.map((c: any, i: number) => ({
-    id: c.id || `c${i}-${Math.abs(hash(c.name || String(i))).toString(36)}`,
-    name: c.name,
-    territoryId: c.territoryId || "",
-    rationale: c.rationale || "",
-    smile: c.smile || {},
-    scratch: c.scratch || {},
-    availability: { ...(c.availability || {}), checkedAt: now },
-    ownable: !!c.ownable,
+  await Promise.all(list.map(async (c: any, i: number) => {
+    const slug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const domainCom = await rdapDotCom(slug);
+    c.id = c.id || `c${i}-${Math.abs(hash(c.name || String(i))).toString(36)}`;
+    c.territoryId = c.territoryId || "";
+    c.rationale = c.rationale || "";
+    c.smile = c.smile || {};
+    c.scratch = c.scratch || {};
+    // Keep Claude's Instagram / INPI estimates; the .com is now real.
+    c.availability = { ...(c.availability || {}), domainCom, checkedAt: now };
+    c.ownable = domainCom !== "taken" && c.availability.trademarkINPI !== "conflict" && !c.scratch?.copycat;
   }));
+  data.candidates = list;
   return data;
 }
 
