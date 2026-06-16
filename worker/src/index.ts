@@ -1,0 +1,192 @@
+// the naming studio - API Worker.
+//
+// A thin Cloudflare Worker that proxies the Anthropic API so the key never ships
+// to the browser. Both the v1 client (namingApi -> VITE_NAMING_API) and the v2
+// client (studioApi -> VITE_STUDIO_API) POST { phase, ... } here; we dispatch on
+// `phase`, build a prompt, call Claude, and return strict JSON matching the
+// shapes the frontend expects. If anything fails the frontend falls back to its
+// local demo engine, so a bad response never breaks the flow.
+//
+// Models are split by job to control cost: Haiku for mechanical work, Sonnet for
+// the creative work. The system prompt is cached (5-min TTL) to cut input cost.
+
+export interface Env {
+  ANTHROPIC_API_KEY: string;
+  ALLOWED_ORIGIN?: string; // optional: lock CORS to your site; defaults to *
+}
+
+const MODEL = {
+  fast: "claude-haiku-4-5-20251001",
+  smart: "claude-sonnet-4-6",
+};
+
+const SYS =
+  "You are a world-class brand naming strategist working inside a naming studio. " +
+  "You are warm, opinionated and precise. You ALWAYS respond with one valid, minified JSON value and nothing else: no prose, no markdown, no code fences. " +
+  "Never use em dashes or en dashes (the characters — or –); use commas, periods, colons or parentheses instead.";
+
+function cors(env: Env): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+export default {
+  async fetch(req: Request, env: Env): Promise<Response> {
+    if (req.method === "OPTIONS") return new Response(null, { headers: cors(env) });
+    if (req.method !== "POST") return json({ error: "POST only" }, env, 405);
+
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "bad json" }, env, 400); }
+
+    const phase: string = body?.phase || "";
+    const spec = PROMPTS[phase];
+    if (!spec) return json({ error: `unknown phase: ${phase}` }, env, 400);
+
+    try {
+      const { model, max, prompt } = spec(body);
+      const text = await callClaude(env, model, prompt, max);
+      let data = parseJSON(text);
+      if (data == null) return json({ error: "parse failed" }, env, 502);
+      if (phase === "candidates") data = fixCandidates(data, body);
+      return json(data, env);
+    } catch (e: any) {
+      return json({ error: String(e?.message || e) }, env, 502);
+    }
+  },
+};
+
+async function callClaude(env: Env, model: string, user: string, max_tokens: number): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens,
+      system: [{ type: "text", text: SYS, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: user }],
+    }),
+  });
+  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+  const data: any = await res.json();
+  return (data.content || []).map((b: any) => b.text || "").join("");
+}
+
+function parseJSON(text: string): any {
+  let t = (text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try { return JSON.parse(t); } catch { /* try to slice */ }
+  const s = Math.min(...["{", "["].map((c) => { const i = t.indexOf(c); return i < 0 ? Infinity : i; }));
+  const e = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+  if (s !== Infinity && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch { /* fall */ } }
+  return null;
+}
+
+function json(data: unknown, env: Env, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json", ...cors(env) },
+  });
+}
+
+const briefV1 = (b: any) => JSON.stringify(b || {});
+const briefV2 = (b: any) => JSON.stringify(b || {});
+
+// Each phase -> { model, max, prompt }. Shapes mirror the TS interfaces the
+// frontend parses (see src/lib/namingApi.ts and src/v2/types.ts).
+const PROMPTS: Record<string, (body: any) => { model: string; max: number; prompt: string }> = {
+  /* ---------------- v1 (namingApi) ---------------- */
+  concepts: (b) => ({ model: MODEL.smart, max: 1200, prompt:
+    `Brief: ${briefV1(b.brief)}.\nPropose 8 distinct, inspiring naming concept territories (clever angles, not names). ` +
+    `Return JSON {"concepts":[{"title":"short evocative title","blurb":"one inspiring sentence on the angle","lane":"suggestive|invented|evocative|descriptive|abstract|compound|playful"}]} with exactly 8 items.` }),
+
+  feelings: (b) => ({ model: MODEL.fast, max: 900, prompt:
+    `Brief: ${briefV1(b.brief)}.\nList 14 feelings the brand name could evoke. Each needs a one-line "why it fits THIS brand" that references the audience. ` +
+    `Return JSON {"feelings":[{"word":"Trust","why":"..."}]} with 14 items.` }),
+
+  explore: (b) => ({ model: MODEL.smart, max: 1400, prompt:
+    `Brief: ${briefV1(b.brief)}.\nConcept to explore: ${JSON.stringify(b.payload?.concept || {})}.\n` +
+    `Give 13 seed words or short expressions that mine this concept, each with 4 to 5 related words (synonyms, sounds, short forms). ` +
+    `Return JSON {"title":"the concept title","blurb":"the concept blurb","words":[{"word":"...","related":["...","..."]}]}.` }),
+
+  names: (b) => ({ model: MODEL.smart, max: 1500, prompt:
+    `Brief: ${briefV1(b.brief)}.\nConcepts: ${JSON.stringify(b.payload?.sketch?.concepts || [])}. Resonant words: ${JSON.stringify(b.payload?.sketch?.words || [])}.\n` +
+    `Coin 12 brand name candidates drawing on these. Mix lanes. Each: a short rationale and a score 70-98. ` +
+    `Return JSON {"names":[{"name":"Lumora","type":"suggestive","rationale":"one line","score":88}]} with 12 items.` }),
+
+  compare: (b) => ({ model: MODEL.smart, max: 1800, prompt:
+    `Brief: ${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
+    `For each give intuitive, visual, sound, emotional (each 3-6), total (their sum), a one-line verdict, and BEST-GUESS availability estimates: ` +
+    `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".co","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). Pick the strongest as recommended and say why. ` +
+    `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences"}.` }),
+
+  brandbook: (b) => ({ model: MODEL.smart, max: 1800, prompt:
+    `Brief: ${briefV1(b.brief)}.\nCreate a starter brand book for the chosen name "${b.payload?.name || ""}". ` +
+    `Return JSON {"essence":"3 words","tagline":"short","story":"3 sentences","whyName":"1-2 sentences","voice":{"adjectives":["..x4"],"dos":["..x3"],"donts":["..x3"],"sample":"one sentence of brand voice"},` +
+    `"palette":[{"hex":"#1F1B18","name":"Espresso","role":"Ink"} and 4 more, 5 total],"fontKey":"editorial|modern|classic|friendly|warm","fontNote":"one line",` +
+    `"messaging":{"pitch":"one line","boilerplate":"2 sentences","taglines":["..x3"],"valueProps":["..x3"]}}.` }),
+
+  suggest: (b) => ({ model: MODEL.fast, max: 300, prompt:
+    `Brief so far: ${briefV1(b.brief)}.\nSuggest 3 short, concrete options for the "${b.payload?.field || ""}" field. ` +
+    `Return JSON {"suggestions":["...","...","..."]}.` }),
+
+  interview: (b) => ({ model: MODEL.smart, max: 700, prompt:
+    `You are interviewing a founder to build a naming brief. Conversation so far (newest last): ${JSON.stringify(b.payload?.messages || [])}.\n` +
+    `If there are at least 5 user answers, set done true and produce the brief; otherwise ask ONE warm, specific next question and set done false. ` +
+    `Return JSON {"say":"your line","done":false,"brief":{"does":"","industry":"","problem":"","audience":"","values":"","uvp":"","signal":[],"avoid":[],"tone":[],"lanes":[]}} (omit brief unless done).` }),
+
+  /* ---------------- v2 (studioApi) ---------------- */
+  territories: (b) => ({ model: MODEL.smart, max: 1300, prompt:
+    `Brief: ${briefV2(b.brief)}.\nPropose 6 naming territories (directions) that fit this brief. Each must carry an explicit tradeoff. ` +
+    `Return JSON {"territories":[{"id":"slug","name":"The invented word","description":"one line","examplePattern":"Brand1 / Brand2 / Brand3","buys":"what it gives you","costs":"the tradeoff","selected":false}]} with 6 items.` }),
+
+  board: (b) => ({ model: MODEL.smart, max: 1500, prompt:
+    `Brief: ${briefV2(b.brief)}.\nConcepts chosen: ${JSON.stringify((b.territories || []).map((t: any) => ({ name: t.name, description: t.description })))}.\n` +
+    `Produce 14 evocative REAL words and 2 to 3 short quotes that these concepts suggest (these are raw material, NOT brand names). ` +
+    `Each item: its source concept name and a one-line studio read of what it evokes. ` +
+    `Return JSON {"seeds":[{"label":"word or short quote","kind":"word|quote","concept":"source concept name","description":"one line"}]}.` }),
+
+  candidates: (b) => ({ model: MODEL.smart, max: 2600, prompt:
+    `Brief: ${briefV2(b.brief)}.\nKept words and quotes: ${JSON.stringify(b.keptWords || [])}. Concepts: ${JSON.stringify((b.territories || []).filter((t: any) => t.selected).map((t: any) => ({ id: t.id, name: t.name })))}.\n` +
+    `Coin ${b.count || 8} brand name candidates from this material. For each return: name; territoryId (one of the concept ids or ""); rationale (one line); ` +
+    `smile {suggestive,memorable,imagery,legs,emotional,overall} each 0-100; scratch {spellingChallenged,copycat,restrictive,annoying,tame,hardToPronounce} booleans; ` +
+    `availability {domainCom:"available|taken|premium",otherTlds:{".io":"available|taken",".co":"available|taken"},instagram:"available|taken",trademarkINPI:"clear|conflict|unknown"} as rough estimates; ownable (boolean: .com not taken, no INPI conflict, not a copycat). ` +
+    `Return JSON {"candidates":[{"name","territoryId","rationale","smile","scratch","availability","ownable"}]}.` }),
+
+  pressure: (b) => ({ model: MODEL.fast, max: 500, prompt:
+    `Brief markets: ${JSON.stringify(b.brief?.targetMarkets || ["FR"])}.\nPressure-test the name "${b.candidate?.name || ""}". ` +
+    `Return JSON {"candidateId":"${b.candidate?.id || ""}","barTest":"pass|warn|fail","spellTest":"pass|warn|fail","linguisticSafety":[{"market":"FR","result":"pass|warn|fail","note":"only if not pass"}],"stretchTest":"pass|warn|fail"}.` }),
+
+  rationale: (b) => ({ model: MODEL.smart, max: 500, prompt:
+    `Brief: ${briefV2(b.brief)}.\nWrite the case for choosing the name "${b.candidate?.name || ""}": 4 to 5 sentences, investor-grade, warm and specific, no dashes. ` +
+    `Return JSON {"rationale":"..."}.` }),
+};
+
+// Claude does not know a stable id or timestamp, so we stamp candidates here.
+function fixCandidates(data: any, _body: any): any {
+  const list = Array.isArray(data?.candidates) ? data.candidates : [];
+  const now = new Date().toISOString();
+  data.candidates = list.map((c: any, i: number) => ({
+    id: c.id || `c${i}-${Math.abs(hash(c.name || String(i))).toString(36)}`,
+    name: c.name,
+    territoryId: c.territoryId || "",
+    rationale: c.rationale || "",
+    smile: c.smile || {},
+    scratch: c.scratch || {},
+    availability: { ...(c.availability || {}), checkedAt: now },
+    ownable: !!c.ownable,
+  }));
+  return data;
+}
+
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}

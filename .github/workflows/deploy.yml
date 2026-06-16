@@ -26,6 +26,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Set repo variable STUDIO_API_URL to your Worker URL to use real Claude.
+          # Unset => the site runs on the built-in demo engine (current behaviour).
+          VITE_NAMING_API: ${{ vars.STUDIO_API_URL }}
+          VITE_STUDIO_API: ${{ vars.STUDIO_API_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
