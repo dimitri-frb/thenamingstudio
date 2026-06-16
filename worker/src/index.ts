@@ -171,13 +171,29 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 // Real .com availability via RDAP (the modern, free WHOIS). 404 = unregistered
 // (free), 200 = registered (taken). Authoritative, not a guess. Fails soft to
 // "unknown" so the flow never hangs on a slow registry.
-async function rdapDotCom(slug: string): Promise<"available" | "taken" | "unknown"> {
-  if (!slug) return "unknown";
+// Authoritative RDAP server per TLD (verified to return 404 = free, 200 = taken).
+// .co and most ccTLDs have no public RDAP, so they are intentionally absent.
+const RDAP_BASE: Record<string, string> = {
+  com: "https://rdap.verisign.com/com/v1/",
+  net: "https://rdap.verisign.com/net/v1/",
+  org: "https://rdap.publicinterestregistry.org/rdap/",
+  io: "https://rdap.identitydigital.services/rdap/",
+  ai: "https://rdap.identitydigital.services/rdap/",
+  app: "https://pubapi.registry.google/rdap/",
+  dev: "https://pubapi.registry.google/rdap/",
+  xyz: "https://rdap.centralnic.com/xyz/",
+};
+
+// The alternative TLDs we check alongside .com, in the order founders care about.
+const ALT_TLDS = ["io", "ai", "app"];
+
+async function rdap(slug: string, tld: string): Promise<"available" | "taken" | "unknown"> {
+  const base = RDAP_BASE[tld];
+  if (!base || !slug) return "unknown";
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4500);
   try {
-    // Verisign is the authoritative RDAP server for .com (no redirect hop).
-    const res = await fetch(`https://rdap.verisign.com/com/v1/domain/${slug}.com`, {
+    const res = await fetch(`${base}domain/${slug}.${tld}`, {
       headers: { accept: "application/rdap+json" },
       signal: ctrl.signal,
     });
@@ -198,14 +214,17 @@ async function enrichCandidates(data: any): Promise<any> {
   const now = new Date().toISOString();
   await Promise.all(list.map(async (c: any, i: number) => {
     const slug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const domainCom = await rdapDotCom(slug);
+    // Real .com plus the alternative TLDs, all checked directly for the user.
+    const [domainCom, ...altStates] = await Promise.all([rdap(slug, "com"), ...ALT_TLDS.map((t) => rdap(slug, t))]);
+    const otherTlds: Record<string, string> = {};
+    ALT_TLDS.forEach((t, j) => { otherTlds["." + t] = altStates[j]; });
     c.id = c.id || `c${i}-${Math.abs(hash(c.name || String(i))).toString(36)}`;
     c.territoryId = c.territoryId || "";
     c.rationale = c.rationale || "";
     c.smile = c.smile || {};
     c.scratch = c.scratch || {};
-    // Keep Claude's Instagram / INPI estimates; the .com is now real.
-    c.availability = { ...(c.availability || {}), domainCom, checkedAt: now };
+    // Keep Claude's Instagram / INPI estimates; the domains are now real.
+    c.availability = { ...(c.availability || {}), domainCom, otherTlds, checkedAt: now };
     c.ownable = domainCom !== "taken" && c.availability.trademarkINPI !== "conflict" && !c.scratch?.copycat;
   }));
   data.candidates = list;

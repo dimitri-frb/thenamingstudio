@@ -46,6 +46,9 @@ export function Decide({
   }
 
   const slug = chosen.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const altsFree = Object.entries(chosen.availability.otherTlds || {})
+    .filter(([, s]) => s === "available")
+    .map(([tld]) => `${slug}${tld}`);
   const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${slug}.com`;
   const inpi = "https://procedures.inpi.fr/?/";
   const shareLink = `${window.location.origin}${window.location.pathname}`;
@@ -75,6 +78,9 @@ export function Decide({
           <span className="flex items-center gap-1.5 text-ink/60">@{slug} <StatePill state={chosen.availability.instagram} /></span>
           <span className="flex items-center gap-1.5 text-ink/60">INPI <StatePill state={chosen.availability.trademarkINPI} /></span>
         </div>
+        {altsFree.length > 0 && (
+          <p className="mt-4 text-sm text-emerald-700">✓ also free: {altsFree.join(" · ")}</p>
+        )}
       </div>
 
       {/* rationale */}

@@ -122,6 +122,9 @@ function CandidateCard({ c, picked, onPick }: { c: NameCandidate; picked: boolea
   const warnings = SCRATCH_LABELS.filter(({ key }) => c.scratch[key]);
   const badMeaning = c.scratch.badMeaningInMarkets || [];
   const slug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const altsFree = Object.entries(c.availability.otherTlds || {})
+    .filter(([, s]) => s === "available")
+    .map(([tld]) => `${slug}${tld}`);
   return (
     <div
       onClick={onPick}
@@ -165,6 +168,9 @@ function CandidateCard({ c, picked, onPick }: { c: NameCandidate; picked: boolea
         <span className="flex items-center gap-1.5 text-ink/55">@{slug} <StatePill state={c.availability.instagram} /></span>
         <span className="flex items-center gap-1.5 text-ink/55">INPI <StatePill state={c.availability.trademarkINPI} /></span>
       </div>
+      {altsFree.length > 0 && (
+        <p className="mt-1.5 text-xs text-emerald-700">✓ also free: {altsFree.join(" · ")}</p>
+      )}
       {(warnings.length > 0 || badMeaning.length > 0) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {warnings.map((w) => (
