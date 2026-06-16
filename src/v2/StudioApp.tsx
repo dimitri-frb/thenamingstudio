@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { emptySession, type SessionState } from "./types";
 import { markVariant } from "../lib/variant";
 import { BrandMark, Wordmark } from "../components/Logo";
-import { PhaseRail } from "./ui";
+import { PhaseRail, PHASE_TITLES } from "./ui";
 import { Position } from "./phases/Position";
 import { Direct } from "./phases/Direct";
 import { Generate } from "./phases/Generate";
@@ -54,6 +54,20 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
 
   const finalistCandidates = session.candidates.filter((c) => session.finalists.includes(c.id));
 
+  // The furthest phase the founder can jump to, derived from the work captured
+  // so far (so it survives a reload), so the left nav only lights up real steps.
+  const reached = Math.max(
+    session.phase,
+    session.brief ? 2 : 1,
+    session.territories.length ? 3 : 1,
+    session.keptWords.length ? 4 : 1,
+    session.candidates.length ? 5 : 1,
+    session.pressureTests.length ? 6 : 1,
+  );
+  const jump = (n: number) => {
+    if (n <= reached) { goto(n as SessionState["phase"]); window.scrollTo({ top: 0, behavior: "instant" }); }
+  };
+
   return (
     <div className="min-h-screen mesh">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-5 py-6">
@@ -67,8 +81,36 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-5 pb-24">
-        <PhaseRail phase={session.phase} />
+      <main className="mx-auto grid w-full max-w-5xl gap-10 px-5 pb-24 lg:grid-cols-[190px_1fr]">
+        {/* left process nav, follow the flow and jump back to any step reached */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-ink/40">The process</p>
+            <ol className="space-y-1.5 text-sm">
+              {PHASE_TITLES.map((t, i) => {
+                const n = i + 1;
+                const active = n === session.phase;
+                const open = n <= reached;
+                return (
+                  <li key={t}>
+                    <button
+                      onClick={() => jump(n)}
+                      disabled={!open}
+                      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition ${active ? "bg-ink/[0.06] text-ink" : open ? "text-ink/55 hover:text-ink" : "text-ink/25"}`}
+                    >
+                      <span className="font-mono text-xs">{String(n).padStart(2, "0")}</span>
+                      {t}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <button onClick={onExit} className="mt-8 text-xs text-ink/35 transition hover:text-ink">← Leave the studio</button>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+        <div className="lg:hidden"><PhaseRail phase={session.phase} /></div>
 
         {session.phase === 1 && (
           <Position
@@ -127,6 +169,7 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
             onRestart={() => { reset(); }}
           />
         )}
+        </div>
       </main>
     </div>
   );
