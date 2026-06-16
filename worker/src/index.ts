@@ -173,16 +173,21 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 // "unknown" so the flow never hangs on a slow registry.
 async function rdapDotCom(slug: string): Promise<"available" | "taken" | "unknown"> {
   if (!slug) return "unknown";
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4500);
   try {
-    const res = await fetch(`https://rdap.org/domain/${slug}.com`, {
+    // Verisign is the authoritative RDAP server for .com (no redirect hop).
+    const res = await fetch(`https://rdap.verisign.com/com/v1/domain/${slug}.com`, {
       headers: { accept: "application/rdap+json" },
-      signal: AbortSignal.timeout(4500),
+      signal: ctrl.signal,
     });
     if (res.status === 404) return "available";
     if (res.status === 200) return "taken";
     return "unknown";
   } catch {
     return "unknown";
+  } finally {
+    clearTimeout(timer);
   }
 }
 
