@@ -2,7 +2,7 @@
 // Three cards keep it under a couple of minutes; the studio reflects a tension
 // back if the personality and the name-job slider disagree.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NameBrief } from "../types";
 import { PERSONALITY_POOL, briefTension } from "../studioEngine";
 import { Chip, Field, FooterNav, PhaseHeader, PrimaryButton, StudioNote } from "../ui";
@@ -17,10 +17,12 @@ const MARKETS = ["FR", "EU", "US", "UK", "Global"];
 export function Position({
   initial,
   onBack,
+  onDraft,
   onDone,
 }: {
   initial?: NameBrief;
   onBack: () => void;
+  onDraft?: (brief: NameBrief) => void;
   onDone: (brief: NameBrief) => void;
 }) {
   const [step, setStep] = useState(0);
@@ -44,6 +46,13 @@ export function Position({
     personality, nameJob, targetMarkets,
   };
   const tension = step === 2 ? briefTension(draft) : null;
+
+  // Feed the live draft up to the brief panel as the founder fills it in. Keyed
+  // on the actual fields (not the draft object) so it fires on input, not on
+  // every render, which would loop.
+  useEffect(() => { onDraft?.(draft); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [namingTarget, whatItDoes, audience, oneThingToOwn, category, competitorsRaw, personality, nameJob, targetMarkets]);
 
   function toggle<T>(arr: T[], v: T, set: (a: T[]) => void, max = 99, min = 0) {
     if (arr.includes(v)) { if (arr.length > min) set(arr.filter((x) => x !== v)); }

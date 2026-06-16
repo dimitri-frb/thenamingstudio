@@ -26,10 +26,11 @@ const COL_W = 212;
 const ROW_H = 66;
 const PAD = 32;
 
-export function Generate({ brief, territories, initialKept, onBack, onDone }: {
+export function Generate({ brief, territories, initialKept, onKeptChange, onBack, onDone }: {
   brief: NameBrief;
   territories: Territory[];
   initialKept?: string[];
+  onKeptChange?: (keptWords: string[]) => void;
   onBack: () => void;
   onDone: (keptWords: string[]) => void;
 }) {
@@ -53,6 +54,12 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
     });
     return () => { live = false; };
   }, [brief, selectedTerritories]);
+
+  // Mirror kept words up to the living brief panel as the founder stars them.
+  useEffect(() => {
+    onKeptChange?.([...new Set([...kept.values()].map((k) => k.label))]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kept]);
 
   function childrenOf(node: BNode): BNode[] {
     const hit = cache.current.get(node.id);
@@ -112,9 +119,6 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
       return n;
     });
   }
-  function removeKeep(id: string) {
-    setKept((m) => { const n = new Map(m); n.delete(id); return n; });
-  }
 
   const keptList = [...kept.entries()];
   const hovered = placed.find((p) => p.node.id === hover)?.node;
@@ -146,8 +150,8 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
         )}
       </div>
 
-      <div className="mt-2 grid gap-5 lg:grid-cols-[1fr_290px]">
-        {/* the board */}
+      <div className="mt-2">
+        {/* the board, full width, the kept words now live in the global brief panel */}
         <div
           className="relative h-[580px] overflow-auto rounded-[24px] border border-ink/12 shadow-inner"
           style={{ background: "radial-gradient(circle at 1px 1px, rgba(0,0,0,0.05) 1px, transparent 0) 0 0 / 24px 24px, var(--surface-solid)" }}
@@ -186,32 +190,6 @@ export function Generate({ brief, territories, initialKept, onBack, onDone }: {
             click to open · + to keep
           </span>
         </div>
-
-        {/* kept words & quotes */}
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-[20px] border border-ink/12 bg-[var(--surface-solid)] p-5">
-            <div className="flex items-baseline justify-between">
-              <p className="font-serif text-lg italic">Kept</p>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-accent">{keptList.length} words & quotes</span>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {keptList.length ? keptList.map(([id, k]) => (
-                <div key={id} className="group border-t border-ink/8 pt-3 first:border-0 first:pt-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className={`leading-tight ${k.kind === "quote" ? "font-serif text-base italic" : "font-serif text-xl"}`}>{k.label}</p>
-                    <button onClick={() => removeKeep(id)} className="mt-1 text-ink/30 opacity-0 transition group-hover:opacity-100 hover:text-rose-600">×</button>
-                  </div>
-                  {k.trail.length > 1 && (
-                    <p className="mt-1 font-mono text-[10px] text-ink/40">{k.trail.join(" · ")}</p>
-                  )}
-                </div>
-              )) : (
-                <p className="text-xs italic text-ink/40">Click + on the words and quotes you love. They collect here, with the path that led you to them.</p>
-              )}
-            </div>
-          </div>
-        </aside>
       </div>
 
       <div className="mt-8 flex items-center justify-between border-t border-ink/10 pt-6">

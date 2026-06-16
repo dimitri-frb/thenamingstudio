@@ -7,6 +7,7 @@ import { emptySession, type SessionState } from "./types";
 import { markVariant } from "../lib/variant";
 import { BrandMark, Wordmark } from "../components/Logo";
 import { PhaseRail, PHASE_TITLES } from "./ui";
+import { BriefPanel } from "./BriefPanel";
 import { Position } from "./phases/Position";
 import { Direct } from "./phases/Direct";
 import { Generate } from "./phases/Generate";
@@ -56,9 +57,9 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
 
   // The furthest phase the founder can jump to, derived from the work captured
   // so far (so it survives a reload), so the left nav only lights up real steps.
+  // Note: no brief->2 bump, so a live draft during phase 1 doesn't unlock phase 2.
   const reached = Math.max(
     session.phase,
-    session.brief ? 2 : 1,
     session.territories.length ? 3 : 1,
     session.keptWords.length ? 4 : 1,
     session.candidates.length ? 5 : 1,
@@ -81,7 +82,7 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-5xl gap-10 px-5 pb-24 lg:grid-cols-[190px_1fr]">
+      <main className="mx-auto grid w-full max-w-6xl gap-8 px-5 pb-24 lg:grid-cols-[170px_1fr_250px]">
         {/* left process nav, follow the flow and jump back to any step reached */}
         <aside className="hidden lg:block">
           <div className="sticky top-24">
@@ -116,6 +117,7 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
           <Position
             initial={session.brief}
             onBack={onExit}
+            onDraft={(brief) => patch({ brief })}
             onDone={(brief) => patch({ brief, phase: 2 })}
           />
         )}
@@ -134,6 +136,7 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
             brief={session.brief}
             territories={session.territories}
             initialKept={session.keptWords}
+            onKeptChange={(keptWords) => patch({ keptWords })}
             onBack={back}
             onDone={(keptWords) => patch({ keptWords, phase: 4 })}
           />
@@ -170,6 +173,9 @@ export function StudioApp({ onExit }: { onExit: () => void }) {
           />
         )}
         </div>
+
+        {/* the living brief, fills in continuously as the phases move forward */}
+        <BriefPanel session={session} />
       </main>
     </div>
   );
