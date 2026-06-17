@@ -52,6 +52,7 @@ export default {
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
+      if (phase === "compare") data = await enrichCompare(data);
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);
@@ -123,7 +124,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   compare: (b) => ({ model: MODEL.smart, max: 1800, prompt:
     `Brief: ${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
     `For each give intuitive, visual, sound, emotional (each 3-6), total (their sum), a one-line verdict, and BEST-GUESS availability estimates: ` +
-    `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".co","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). Pick the strongest as recommended and say why. ` +
+    `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".ai","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). Pick the strongest as recommended and say why. ` +
     `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences"}.` }),
 
   brandbook: (b) => ({ model: MODEL.smart, max: 1800, prompt:
@@ -228,6 +229,32 @@ async function enrichCandidates(data: any): Promise<any> {
     c.ownable = domainCom !== "taken" && c.availability.trademarkINPI !== "conflict" && !c.scratch?.copycat;
   }));
   data.candidates = list;
+  return data;
+}
+
+// v1 compare: replace Claude's BEST-GUESS domain availability with real RDAP
+// lookups for the TLDs we can authoritatively check (.com, .io, .ai). INPI and
+// Instagram stay as estimates (no reliable free server-side check). A premium-
+// but-unregistered .com reads as available here, matching what GoDaddy shows.
+const COMPARE_TLDS = ["com", "io", "ai"];
+
+async function enrichCompare(data: any): Promise<any> {
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
+  await Promise.all(rows.map(async (r: any) => {
+    const slug = (r.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const prior: Record<string, boolean> = {};
+    (Array.isArray(r.domains) ? r.domains : []).forEach((d: any) => { prior[d.tld] = !!d.available; });
+    const states = await Promise.all(COMPARE_TLDS.map((t) => rdap(slug, t)));
+    // On "unknown" (timeout / no RDAP), keep Claude's prior guess so we never
+    // invent a verdict; "available"/"taken" override it with the real answer.
+    r.domains = COMPARE_TLDS.map((t, j) => {
+      const tld = "." + t;
+      const s = states[j];
+      const available = s === "available" ? true : s === "taken" ? false : (prior[tld] ?? false);
+      return { tld, available };
+    });
+  }));
+  data.rows = rows;
   return data;
 }
 

@@ -1,7 +1,7 @@
 // The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
 
-export function LandingAtelier({ onNext, onTalk, canTalk, onStudio }: { onNext: () => void; onTalk: () => void; canTalk: boolean; onStudio?: () => void }) {
+export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
   return (
     <div className="animate-in">
       {/* hero */}
@@ -20,7 +20,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk, onStudio }: { onNext: 
         </p>
 
         <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink/15 bg-[var(--surface-solid)] px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink/55">
-          <span className="text-sm">🇫🇷</span> Every name checked against the INPI trademark register
+          <span className="text-sm">🇫🇷</span> Every name checked against the INPI trademark register, Instagram, domain names and much more
         </p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -31,16 +31,6 @@ export function LandingAtelier({ onNext, onTalk, canTalk, onStudio }: { onNext: 
             Start a brief
             <kbd className="grid h-5 w-5 place-items-center rounded border border-[var(--page)]/30 text-[10px] leading-none">⏎</kbd>
           </button>
-
-          {onStudio && (
-            <button
-              onClick={onStudio}
-              className="group flex items-center gap-2.5 rounded-xl border border-accent/40 bg-accent/[0.05] px-6 py-3.5 text-base font-medium text-accent transition hover:bg-accent/10"
-            >
-              Try the new Studio flow
-              <span className="font-serif italic">→</span>
-            </button>
-          )}
         </div>
 
         {canTalk && (

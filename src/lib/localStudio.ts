@@ -163,7 +163,7 @@ export function localCompare(_brief: Brief, names: { name: string; type?: string
       domains: [
         { tld: ".com", available: comFree },
         { tld: ".io", available: r() > 0.35 },
-        { tld: ".co", available: r() > 0.3 },
+        { tld: ".ai", available: r() > 0.3 },
       ],
       inpi,
       inpiNote: inpi ? "No earlier mark in classes 9 / 42 (estimate)" : "Possible earlier mark, worth a closer look (estimate)",
