@@ -95,7 +95,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
             <div style={{ display: "flex", gap: 7, justifyContent: "center" }}>
               {([["No", "✗", "var(--ink-4)"], ["Maybe", "~", "var(--ink-3)"], ["Yes!", "♥", "#fff"]] as const).map(([t, g, c], i) => (
                 <div key={t} style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-                  <span style={{ width: i === 2 ? 52 : 42, height: i === 2 ? 52 : 42, borderRadius: "50%", border: "1px solid var(--line)", background: i === 2 ? "var(--ink)" : "var(--surface)", color: c, display: "grid", placeItems: "center", fontSize: i === 2 ? 20 : 16 }}>{g}</span>
+                  <span style={{ width: 42, height: 42, borderRadius: "50%", border: i === 2 ? "1px solid var(--ink)" : "1px solid var(--line)", background: i === 2 ? "var(--ink)" : "var(--surface)", color: c, display: "grid", placeItems: "center", fontSize: 16 }}>{g}</span>
                   <span className="lbl" style={{ fontSize: 8 }}>{t}</span>
                 </div>
               ))}
