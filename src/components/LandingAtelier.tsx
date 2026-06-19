@@ -31,6 +31,14 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
             Start a brief
             <kbd className="grid h-5 w-5 place-items-center rounded border border-[var(--page)]/30 text-[10px] leading-none">⏎</kbd>
           </button>
+          <button
+            onClick={() => window.location.assign(window.location.pathname + "?test")}
+            className="group flex items-center gap-2.5 rounded-xl border border-ink/20 px-6 py-3.5 text-base font-medium text-ink/60 transition hover:border-ink/40 hover:text-ink"
+            title="Jump through every step with sample data, no real run"
+          >
+            Test flow
+            <span className="font-serif italic transition group-hover:translate-x-0.5">→</span>
+          </button>
         </div>
 
         {canTalk && (
