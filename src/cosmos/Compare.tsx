@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { naming, type Brief, type Comparison, type CompareRow } from "../lib/namingApi";
 import { Dots, Foot, Head, Star, Thinking } from "./chrome";
-import { availableDomains, handleOptions } from "./data";
+import { availableDomains, handleOptions, nameTests } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
@@ -50,11 +50,12 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
           <table className="cmp">
             <thead>
               <tr>
-                <th style={{ width: "13%" }}>Name</th>
-                <th style={{ width: "24%" }}>Why it works</th>
-                <th style={{ width: "23%" }}>Available domains</th>
+                <th style={{ width: "12%" }}>Name</th>
+                <th style={{ width: "19%" }}>Why it works</th>
+                <th style={{ width: "20%" }}>Available domains</th>
                 <th>Trademark · INPI</th>
-                <th style={{ width: "15%" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><InstagramGlyph size={12} /> Instagram</span></th>
+                <th style={{ width: "13%" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><InstagramGlyph size={12} /> Instagram</span></th>
+                <th style={{ width: "12%" }}>Name tests</th>
                 <th>SMILE</th>
                 <th>Verdict</th>
               </tr>
@@ -96,6 +97,18 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
                           </a>
                         ))}
                       </div>
+                    </td>
+                    <td>
+                      {(() => { const t = nameTests(n.name); return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {([["Bar test", t.bar], ["Pronounce", t.pronounce], ["Spell", t.spell], ["Short", t.short]] as const).map(([label, ok]) => (
+                            <span key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--ink-2)", whiteSpace: "nowrap" }}>
+                              <span style={{ color: ok ? "var(--good)" : "var(--bad)", fontSize: 12, flex: "0 0 auto", width: 11, textAlign: "center" }}>{ok ? "✓" : "✗"}</span>
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      ); })()}
                     </td>
                     <td className="c"><Dots score={smileOf(n)} /></td>
                     <td className="c"><span className={"tag " + (verdict === "Strong" ? "fill" : verdict === "Solid" ? "" : "bad")}>{verdict}</span></td>

@@ -4,11 +4,12 @@
 import { useEffect } from "react";
 import type { Comparison, CompareRow } from "../lib/namingApi";
 import { Dots, Foot, Head } from "./chrome";
-import { slugify } from "./data";
+import { availableDomains, slugify } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
-const comFree = (r: CompareRow) => r.domains.find((d) => d.tld === ".com")?.available ?? false;
+// The single best domain that is actually available for this name.
+const bestDomain = (r: CompareRow) => availableDomains(r.name, r.domains, r.suggested)[0];
 
 export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
   comp: Comparison | null; chosen: string; setChosen: (n: string) => void;
@@ -22,7 +23,8 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
 
   const pick = rows.find((r) => r.name === chosen) || rows[0];
   const slug = slugify(pick?.name || "");
-  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${slug}.com`;
+  const best = pick ? bestDomain(pick) : undefined;
+  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${best?.domain || slug + ".com"}`;
   const inpi = "https://procedures.inpi.fr/?/";
 
   return (
@@ -38,7 +40,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
                   <th style={{ width: 36 }}></th>
                   <th>Name</th>
                   <th>SMILE</th>
-                  <th>.com</th>
+                  <th>Domain</th>
                   <th>INPI</th>
                   <th>Verdict</th>
                 </tr>
@@ -56,7 +58,9 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
                       </td>
                       <td><span className="nm" style={{ fontSize: 21 }}>{n.name}</span></td>
                       <td className="c"><Dots score={smileOf(n)} /></td>
-                      <td className="c"><span className={"tag " + (comFree(n) ? "good" : "bad")}>{comFree(n) ? "free" : "taken"}</span></td>
+                      <td className="c">{(() => { const d = bestDomain(n); return d
+                        ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ color: "var(--good)", fontSize: 12 }}>✓</span><span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span></span>
+                        : <span style={{ color: "var(--ink-4)" }}>—</span>; })()}</td>
                       <td className="c"><span className={"tag " + (n.inpi ? "good" : "watch")}>{n.inpi ? "Clear" : "Check"}</span></td>
                       <td className="c"><span className={"tag " + (v === "Strong" ? "fill" : v === "Solid" ? "" : "bad")}>{v}</span></td>
                     </tr>
@@ -78,7 +82,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
             {pick && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <span className="tag good">SMILE {smileOf(pick)}</span>
-                <span className={"tag " + (comFree(pick) ? "good" : "bad")}>{slug}.com {comFree(pick) ? "free" : "taken"}</span>
+                {best && <span className="tag good" style={{ textTransform: "none" }}>{best.domain} · {best.price}</span>}
                 <span className={"tag " + (pick.inpi ? "good" : "watch")}>INPI {pick.inpi ? "clear" : "check"}</span>
               </div>
             )}
@@ -86,7 +90,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
           <span className="lbl">Make it real</span>
           {[
             { a: "Register the name", b: "Protect it at INPI 🇫🇷", c: "OPEN INPI →", href: inpi },
-            { a: "Buy the domain", b: `${slug}.com`, c: "GODADDY →", href: godaddy },
+            { a: "Buy the domain", b: best?.domain || `${slug}.com`, c: "GODADDY →", href: godaddy },
             { a: "Brand book & logo", b: "Story, voice, type", c: "CREATE →", onClick: onBrandBook },
           ].map((s, i) => {
             const inner = (

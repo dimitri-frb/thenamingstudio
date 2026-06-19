@@ -84,6 +84,27 @@ export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// The classic quick naming "tests", computed simply from the name itself so they
+// render instantly everywhere. Conservative: a cross only shows for a clear miss.
+export interface NameTests { bar: boolean; pronounce: boolean; spell: boolean; short: boolean }
+export function nameTests(name: string): NameTests {
+  const s = name.toLowerCase().replace(/[^a-z]/g, "");
+  const vowels = (s.match(/[aeiouy]/g) || []).length;
+  const consRuns = s.split(/[aeiouy]+/).filter(Boolean).map((r) => r.length);
+  const maxCons = consRuns.length ? Math.max(...consRuns) : 0;
+  // Pronounce: has a vowel and no monstrous consonant cluster.
+  const pronounce = vowels >= 1 && maxCons <= 4;
+  // Spell: no ambiguous patterns (q-not-qu, ends in q/x/v/z, triple letter, 5+
+  // consonant run, or tricky digraphs) — i.e. you'd write it right from hearing it.
+  const ambiguous = /q(?!u)/.test(s) || /[qxvz]$/.test(s) || /(.)\1\1/.test(s) || /[^aeiouy]{5,}/.test(s) || /ph|yx|tz/.test(s);
+  const spell = !ambiguous && s.length > 0;
+  // Short: snappy enough to remember and type.
+  const short = s.length <= 8;
+  // Bar test: say it across a loud bar and a friend writes the right thing back.
+  const bar = pronounce && spell;
+  return { bar, pronounce, spell, short };
+}
+
 // Autocomplete suggestions for the Industry field (free text, datalist-backed).
 export const INDUSTRIES = [
   "B2B SaaS", "Consumer app", "Fintech", "Healthtech", "E-commerce", "Marketplace",

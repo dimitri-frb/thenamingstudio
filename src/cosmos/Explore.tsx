@@ -31,15 +31,36 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
   const [hist, setHist] = useState<string[]>([]);          // explored words (back stack)
   const [future, setFuture] = useState<string[]>([]);
   const reqId = useRef(0);
+  // Cache relate results per (world + seed) so back/forward and re-clicking an
+  // already-explored word are instant instead of refetching.
+  type Entry = { word: string; def: string; groups: RelGroupData[] };
+  const cache = useRef<Map<string, Entry>>(new Map());
+  const remember = (entry: Entry, ...seeds: string[]) => {
+    // Key by both the requested seed and the resolved focus word so back/forward
+    // and re-clicking a word both hit the cache.
+    [...seeds, entry.word].forEach((s) => cache.current.set(world + "::" + (s || "").toLowerCase(), entry));
+  };
+  if (initial && !cache.current.size) remember({ word: initial.focus.word, def: initial.focus.def, groups: initial.groups }, "");
 
-  // Load relations for a seed in the current world.
+  // Load relations for a seed in the current world (from cache if we've seen it).
   async function load(seed: string) {
+    const hit = cache.current.get(world + "::" + seed.toLowerCase());
+    if (hit) {
+      reqId.current++;
+      setFocus({ word: hit.word, def: hit.def });
+      setGroups(hit.groups);
+      setOffset({});
+      setLoading(false);
+      return;
+    }
     const id = ++reqId.current;
     setPending(seed || world);
     setLoading(true);
     try {
       const res = await naming.relate(brief, seed, world);
       if (id !== reqId.current) return;
+      const entry = { word: res.word, def: res.def, groups: res.groups || [] };
+      remember(entry, seed);
       setFocus({ word: res.word, def: res.def });
       setGroups(res.groups || []);
       setOffset({});
