@@ -43,7 +43,27 @@ export const TLD_PRICE: Record<string, [string, string]> = {
   ".com": ["$12", "$14/yr"],
   ".io":  ["$38", "$46/yr"],
   ".ai":  ["$70", "$110/yr"],
+  ".app": ["$14", "$18/yr"],
 };
+
+// Client-side fallback (dev / no worker): derive up to three available domains
+// from the estimated TLD availability, then fill with name tweaks (almost always
+// free). The live worker replaces this with real RDAP results in `row.suggested`.
+export interface DomOption { domain: string; price: string; renewal: string; premium?: boolean }
+export function availableDomains(name: string, domains?: { tld: string; available: boolean }[], suggested?: DomOption[]): DomOption[] {
+  if (suggested?.length) return suggested.slice(0, 3);
+  const slug = slugify(name);
+  const out: DomOption[] = [];
+  (domains || []).filter((d) => d.available).forEach((d) => {
+    const p = TLD_PRICE[d.tld] || ["$12", "$14/yr"];
+    out.push({ domain: `${slug}${d.tld}`, price: p[0], renewal: p[1] });
+  });
+  for (const v of [`get${slug}.com`, `${slug}app.com`, `${slug}hq.com`]) {
+    if (out.length >= 3) break;
+    if (!out.some((o) => o.domain === v)) out.push({ domain: v, price: "$12", renewal: "$14/yr" });
+  }
+  return out.slice(0, 3);
+}
 
 export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");

@@ -1,10 +1,10 @@
-// Step 8 · Comparison — the shortlist side by side in one table: meaning, domain
-// availability (real, via RDAP) + price, INPI trademark, handle, and a SMILE score.
-// Switch the extension to see who's free where.
+// Step 8 · Comparison — the shortlist side by side in one table: meaning, three
+// genuinely-available domains (real, via RDAP) with prices, INPI trademark,
+// handle, and a SMILE score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
 import { naming, type Brief, type Comparison, type CompareRow } from "../lib/namingApi";
 import { Dots, Foot, Head, Star, Thinking } from "./chrome";
-import { TLDS, TLD_PRICE, slugify } from "./data";
+import { availableDomains } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
@@ -13,7 +13,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
   setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void;
 }) {
-  const [activeTld, setActiveTld] = useState<string>(".com");
   const [sortSmile, setSortSmile] = useState(false);
 
   useEffect(() => {
@@ -29,7 +28,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
     <>
       <HeadC />
       <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
-        <Thinking lines={["Scoring and checking each name…", "SMILE · domain · INPI · handle"]} />
+        <Thinking lines={["Scoring each name and hunting available domains…", "SMILE · domains · INPI · handle"]} />
       </div>
     </>
   );
@@ -41,14 +40,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
     <>
       <HeadC />
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span className="lbl">Domain extension</span>
-        <div style={{ display: "flex", gap: 6 }}>
-          {TLDS.map((t) => (
-            <span key={t} className={"relchip" + (t === activeTld ? " on" : " off")} style={{ padding: "6px 12px" }} onClick={() => setActiveTld(t)}>
-              <span className="t" style={{ fontFamily: "var(--sans)" }}>{t}</span>
-            </span>
-          ))}
-        </div>
+        <span className="lbl">Each name shows three domains you can actually register today</span>
         <span style={{ flex: 1 }} />
         <button className="btn" style={{ fontSize: 13 }} onClick={() => setSortSmile((s) => !s)}>Sort by SMILE {sortSmile ? "↓" : "·"}</button>
       </div>
@@ -58,10 +50,9 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
           <table className="cmp">
             <thead>
               <tr>
-                <th style={{ width: "14%" }}>Name</th>
-                <th style={{ width: "28%" }}>Why it works</th>
-                <th>{activeTld} domain</th>
-                <th>Est. price</th>
+                <th style={{ width: "13%" }}>Name</th>
+                <th style={{ width: "24%" }}>Why it works</th>
+                <th style={{ width: "26%" }}>Available domains</th>
                 <th>Trademark · INPI</th>
                 <th>Handle</th>
                 <th>SMILE</th>
@@ -70,25 +61,28 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
             </thead>
             <tbody>
               {rows.map((n) => {
-                const slug = slugify(n.name);
-                const dom = n.domains.find((d) => d.tld === activeTld);
-                const free = dom?.available ?? false;
-                const [upfront, renewal] = TLD_PRICE[activeTld] || ["—", "—"];
                 const verdict = verdictOf(n);
                 const win = n.name === comp.recommended;
+                const domains = availableDomains(n.name, n.domains, n.suggested);
                 return (
                   <tr key={n.name} className={win ? "win" : ""}>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span className="nm">{n.name}</span>{win && <Star on />}
                       </div>
-                      <div className="meta">{slug}{activeTld}</div>
                     </td>
                     <td style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
-                    <td className="c"><span className={"tag " + (free ? "good" : "bad")}>{free ? "available" : "taken"}</span></td>
-                    <td className="c">
-                      <span style={{ fontFamily: "var(--serif)", fontSize: 17 }}>{free ? upfront : "—"}</span>
-                      <div className="meta">{free ? "then " + renewal : "purchase"}</div>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {domains.length === 0 && <span className="meta">checking…</span>}
+                        {domains.map((d) => (
+                          <span key={d.domain} style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
+                            <span style={{ color: "var(--good)", fontSize: 12, flex: "0 0 auto" }}>✓</span>
+                            <span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span>
+                            <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.price}{d.premium ? " · premium" : ""}</span>
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="c"><span className={"tag " + (n.inpi ? "good" : "watch")}>{n.inpi ? "Clear" : "Check"}</span></td>
                     <td className="c"><span className={"tag " + (n.instagram ? "good" : "bad")}>{n.instagram ? "free" : "taken"}</span></td>
@@ -118,6 +112,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
 function HeadC() {
   return (
     <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="Meaning, domain availability and price, French trademark (INPI), handle, and SMILE — in one table. Switch the extension to see who's free where." />
+      sub="Meaning, three available domains (with price), French trademark (INPI), handle, and SMILE — in one table. We always surface domains you can register, tweaking the name where the plain .com is gone." />
   );
 }

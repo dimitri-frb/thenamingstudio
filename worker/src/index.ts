@@ -240,27 +240,62 @@ async function enrichCandidates(data: any): Promise<any> {
   return data;
 }
 
-// v1 compare: replace Claude's BEST-GUESS domain availability with real RDAP
-// lookups for the TLDs we can authoritatively check (.com, .io, .ai). INPI and
-// Instagram stay as estimates (no reliable free server-side check). A premium-
-// but-unregistered .com reads as available here, matching what GoDaddy shows.
+// v1 compare: real RDAP lookups. For every name we find up to THREE domains that
+// are genuinely available — first by swapping the TLD (.com/.io/.ai/.app), then by
+// tweaking the name (get…, …app, …hq) so the founder always leaves with options
+// they can actually register. Each carries a rough price (it's available, but paid).
 const COMPARE_TLDS = ["com", "io", "ai"];
+const PRICE: Record<string, [string, string]> = {
+  com: ["$12", "$14/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"], app: ["$14", "$18/yr"],
+};
+// Name tweaks tried (all .com) when the plain TLDs don't yield three. Ordered so
+// coined names resolve fast; the longer tail covers common words whose obvious
+// variants are already grabbed (gettiller/tillerapp taken, but jointiller free).
+const NAME_TWEAKS = (slug: string) => [
+  `get${slug}`, `${slug}app`, `${slug}hq`, `try${slug}`, `${slug}ly`,
+  `${slug}io`, `join${slug}`, `${slug}go`, `hey${slug}`, `${slug}flow`,
+];
+// Free-plan worker allows ~50 subrequests; cap RDAP calls so a long shortlist
+// can't blow the budget (the Claude call is one more). Shared across all rows.
+const RDAP_BUDGET = 44;
 
 async function enrichCompare(data: any): Promise<any> {
   const rows = Array.isArray(data?.rows) ? data.rows : [];
+  const budget = { n: 0 };
   await Promise.all(rows.map(async (r: any) => {
     const slug = (r.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     const prior: Record<string, boolean> = {};
     (Array.isArray(r.domains) ? r.domains : []).forEach((d: any) => { prior[d.tld] = !!d.available; });
-    const states = await Promise.all(COMPARE_TLDS.map((t) => rdap(slug, t)));
-    // On "unknown" (timeout / no RDAP), keep Claude's prior guess so we never
-    // invent a verdict; "available"/"taken" override it with the real answer.
-    r.domains = COMPARE_TLDS.map((t, j) => {
+
+    // Check the four primary TLDs in parallel.
+    const tlds = ["com", "io", "ai", "app"];
+    const states: Record<string, string> = {};
+    await Promise.all(tlds.map(async (t) => {
+      if (budget.n >= RDAP_BUDGET) { states[t] = "unknown"; return; }
+      budget.n++;
+      states[t] = await rdap(slug, t);
+    }));
+
+    // .com/.io/.ai verdict (kept for the Decision screen + back-compat).
+    r.domains = COMPARE_TLDS.map((t) => {
       const tld = "." + t;
-      const s = states[j];
+      const s = states[t];
       const available = s === "available" ? true : s === "taken" ? false : (prior[tld] ?? false);
       return { tld, available };
     });
+
+    // Build up to three genuinely-available suggestions.
+    const suggested: any[] = [];
+    for (const t of tlds) {
+      if (suggested.length >= 3) break;
+      if (states[t] === "available") suggested.push({ domain: `${slug}.${t}`, price: PRICE[t][0], renewal: PRICE[t][1] });
+    }
+    for (const v of NAME_TWEAKS(slug)) {
+      if (suggested.length >= 3 || budget.n >= RDAP_BUDGET) break;
+      budget.n++;
+      if (await rdap(v, "com") === "available") suggested.push({ domain: `${v}.com`, price: PRICE.com[0], renewal: PRICE.com[1] });
+    }
+    r.suggested = suggested.slice(0, 3);
   }));
   data.rows = rows;
   return data;

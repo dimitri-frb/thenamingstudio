@@ -43,9 +43,13 @@ export interface RelateResult { word: string; def: string; groups: RelGroupData[
 
 export interface NameIdea { name: string; type: string; rationale: string; score: number }
 export interface DomainHit { tld: string; available: boolean }
+// A concrete available domain to suggest (may tweak the name with a suffix), with
+// its rough price. premium = available but a higher (premium) registry price.
+export interface SuggestedDomain { domain: string; price: string; renewal: string; premium?: boolean }
 export interface CompareRow {
   name: string; intuitive: number; visual: number; sound: number; emotional: number; total: number;
   domains: DomainHit[];   // .com first
+  suggested?: SuggestedDomain[]; // up to 3 domains that are actually available
   inpi: boolean;          // appears clear to register?
   inpiNote: string;
   instagram: boolean;     // @handle appears free?
