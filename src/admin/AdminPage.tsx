@@ -154,7 +154,10 @@ function procInfo(entries: ReqLog[]) {
   });
   const phaseStr = Object.entries(phases).map(([p, n]) => `${n}× ${PHASE_LABEL[p] || p}`).join(" · ");
   const email = entries.find((e) => e.phase === "lead")?.input?.payload?.email || "";
-  return { does, phaseStr, names, pick, email, count: entries.length, started: Math.min(...entries.map((e) => e.at)) };
+  // The name the founder locked in at the end (from the lead/brand-book step), if any.
+  const chosen = entries.find((e) => e.phase === "lead")?.input?.payload?.name
+    || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
+  return { does, chosen, phaseStr, names, pick, email, count: entries.length, started: Math.min(...entries.map((e) => e.at)) };
 }
 
 // One line per whole process (flow); expand to the individual requests it ran.
@@ -169,8 +172,12 @@ function ProcessRow({ entries, filter, c }: { entries: ReqLog[]; filter: string;
         style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: open ? "#FAF9F6" : "none", border: "none", cursor: "pointer", textAlign: "left", color: "inherit" }}>
         <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 11.5, color: c.ink3, flex: "0 0 138px" }}>{fmtTime(info.started)}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontFamily: c.serif, fontSize: 15, color: c.ink, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{info.does}</span>
-          <span style={{ fontSize: 11.5, color: c.ink3 }}>{info.count} request{info.count === 1 ? "" : "s"} · {info.phaseStr}{info.names ? ` · ${info.names} names` : ""}{info.pick ? ` · pick: ${info.pick}` : ""}</span>
+          <span style={{ fontFamily: c.serif, fontSize: 15, color: c.ink, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {info.chosen
+              ? <>{info.chosen} <span style={{ fontFamily: c.sans, fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: c.good, marginLeft: 4 }}>chosen</span></>
+              : info.does}
+          </span>
+          <span style={{ fontSize: 11.5, color: c.ink3 }}>{info.chosen ? `${info.does} · ` : ""}{info.count} request{info.count === 1 ? "" : "s"} · {info.phaseStr}{info.names ? ` · ${info.names} names` : ""}{info.pick ? ` · pick: ${info.pick}` : ""}</span>
           {info.email && <span style={{ fontSize: 12, color: c.good, marginLeft: 8 }}>✉ {info.email}</span>}
         </span>
         <span style={{ color: c.ink3, flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
