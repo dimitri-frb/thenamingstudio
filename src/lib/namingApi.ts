@@ -2,7 +2,7 @@
 // Cloudflare Worker in production, and falls back to a client-side studio
 // (./localStudio) when neither is reachable, so the whole flow always works.
 import * as local from "./localStudio";
-import { logRequest } from "./requestLog";
+import { logRequest, processId } from "./requestLog";
 
 export interface Brief {
   does: string;
@@ -93,18 +93,19 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
   // Try real Claude (dev bridge or Worker). On any failure, no endpoint, 404,
   // network, model error, fall back to the client-side studio so the whole flow
   // still works, just with demo-grade data.
+  const process = processId();
   if (ENDPOINT) {
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phase, brief, payload }),
+        body: JSON.stringify({ phase, brief, payload, process }),
       });
       if (res.ok) {
         const data = await res.json();
         if (!data?.error) {
           const out = deDash(data);
-          logRequest({ phase, source: "live", input: { brief, payload }, output: out });
+          logRequest({ phase, process, source: "live", input: { brief, payload }, output: out });
           return out as T;
         }
       }
@@ -114,7 +115,7 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
   }
   await new Promise((r) => setTimeout(r, 500)); // tiny beat so the "thinking" state reads
   const out = deDash(localFallback(phase, brief, payload));
-  logRequest({ phase, source: "fallback", input: { brief, payload }, output: out });
+  logRequest({ phase, process, source: "fallback", input: { brief, payload }, output: out });
   return out as T;
 }
 

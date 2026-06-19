@@ -72,7 +72,7 @@ export default {
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "compare") data = await enrichCompare(data);
       // Best-effort central log (only if a KV namespace is bound). Never blocks the response.
-      if (env.LOG) ctx.waitUntil(writeLog(env, phase, { brief: body.brief, payload: body.payload }, data));
+      if (env.LOG) ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);
@@ -112,13 +112,14 @@ function parseJSON(text: string): any {
 // ── Central request log (Cloudflare KV) ──
 // Each generation is stored under "log:<reverse-timestamp>:<rand>" so a prefix
 // list returns newest-first. A 60-day TTL keeps the store self-pruning.
-async function writeLog(env: Env, phase: string, input: unknown, output: unknown): Promise<void> {
+async function writeLog(env: Env, phase: string, process: unknown, input: unknown, output: unknown): Promise<void> {
   if (!env.LOG) return;
   try {
     const at = Date.now();
     const rev = (1e15 - at).toString().padStart(16, "0");
     const key = `log:${rev}:${Math.random().toString(36).slice(2, 8)}`;
-    await env.LOG.put(key, JSON.stringify({ at, phase, source: "live", input, output }), { expirationTtl: 60 * 60 * 24 * 60 });
+    const proc = typeof process === "string" ? process : "";
+    await env.LOG.put(key, JSON.stringify({ at, process: proc, phase, source: "live", input, output }), { expirationTtl: 60 * 60 * 24 * 60 });
   } catch { /* logging is best-effort */ }
 }
 

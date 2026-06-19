@@ -6,6 +6,7 @@
 export interface ReqLog {
   id: string;
   at: number;          // epoch ms
+  process?: string;    // groups all requests of one naming flow together
   phase: string;       // concepts | feelings | relate | names | compare | ...
   source: "live" | "fallback";
   input: any;          // { brief, payload }
@@ -14,6 +15,13 @@ export interface ReqLog {
 
 const KEY = "ns.admin.log";
 const MAX = 200;
+
+// A "process" = one naming flow. Every request made during the same flow shares
+// this id so the /admin page can show one line per process. Reset on restart.
+const rid = () => "p" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+let PROCESS = rid();
+export function processId(): string { return PROCESS; }
+export function newProcess(): string { PROCESS = rid(); return PROCESS; }
 
 export function logRequest(e: Omit<ReqLog, "id" | "at">): void {
   try {

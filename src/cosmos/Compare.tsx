@@ -136,7 +136,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
 function HeadC() {
   return (
     <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="Meaning, three available domains (with price), French trademark (INPI), Instagram handles, and SMILE — in one table. We surface domains and matching handles you can claim, tweaking the name where the plain ones are gone." />
+      sub="Meaning we will analyse for you domain availability, French trademark (INPI), Instagram handles, and run a SMILE analysis, all in one table. We surface domains and matching handles you can claim, tweaking the name where the plain ones are gone." />
   );
 }
 

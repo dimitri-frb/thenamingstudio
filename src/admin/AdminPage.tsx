@@ -43,7 +43,6 @@ function summary(e: ReqLog): string {
 export function AdminPage({ onExit }: { onExit: () => void }) {
   const [mode, setMode] = useState<"central" | "local">(WORKER ? "central" : "local");
   const [items, setItems] = useState<ReqLog[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [adminKey, setAdminKey] = useState<string>(() => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } });
   const [loading, setLoading] = useState(false);
@@ -74,7 +73,14 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
   }, [items]);
   const live = items.filter((e) => e.source === "live").length;
 
-  const shown = filter === "all" ? items : items.filter((e) => e.phase === filter);
+  // Group every request into the process (flow) it belongs to: one line per process.
+  const groups = useMemo(() => {
+    const map = new Map<string, ReqLog[]>();
+    for (const e of items) { const k = e.process || e.id; const a = map.get(k) || []; a.push(e); map.set(k, a); }
+    const arr = [...map.values()].map((es) => [...es].sort((a, b) => a.at - b.at));
+    arr.sort((a, b) => Math.max(...b.map((e) => e.at)) - Math.max(...a.map((e) => e.at)));
+    return arr;
+  }, [items]);
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.ink, fontFamily: C.sans, fontSize: 14 }}>
@@ -88,8 +94,8 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
               <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: C.bad }}>● Internal</span>
             </div>
             <p style={{ color: C.ink3, margin: "8px 0 0", fontSize: 13 }}>
-              {loading ? "Loading…" : `${items.length} request${items.length === 1 ? "" : "s"}`}
-              {mode === "central" ? " · central (all users)" : ` · this browser · ${live} live, ${items.length - live} demo`}
+              {loading ? "Loading…" : `${groups.length} process${groups.length === 1 ? "" : "es"} · ${items.length} request${items.length === 1 ? "" : "s"}`}
+              {mode === "central" ? " · central (all users)" : ` · this browser · ${live} live`}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -122,28 +128,72 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           ))}
         </div>
 
-        {/* list */}
+        {/* list — one line per process, expand to the requests it ran */}
         <div style={{ marginTop: 18, border: `1px solid ${C.line}`, borderRadius: 14, background: C.surface, overflow: "hidden" }}>
-          {shown.length === 0 && (
+          {groups.length === 0 && (
             <div style={{ padding: "48px 24px", textAlign: "center", color: C.ink3 }}>
               No requests logged yet. Run a flow (names, exploration, comparison…) and they'll appear here.
             </div>
           )}
-          {shown.map((e) => (
-            <div key={e.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-              <button onClick={() => setOpen(open === e.id ? null : e.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left", color: "inherit" }}>
-                <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 11.5, color: C.ink3, flex: "0 0 138px" }}>{fmtTime(e.at)}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.ink, flex: "0 0 110px" }}>{PHASE_LABEL[e.phase] || e.phase}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: e.source === "live" ? C.good : C.ink3, flex: "0 0 64px" }}>{e.source}</span>
-                <span style={{ flex: 1, fontSize: 13, color: C.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary(e)}</span>
-                <span style={{ color: C.ink3, flex: "0 0 auto" }}>{open === e.id ? "▾" : "▸"}</span>
-              </button>
-              {open === e.id && <Detail e={e} c={C} />}
-            </div>
-          ))}
+          {groups.map((entries) => <ProcessRow key={entries[0].process || entries[0].id} entries={entries} filter={filter} c={C} />)}
         </div>
       </div>
+    </div>
+  );
+}
+
+function procInfo(entries: ReqLog[]) {
+  const does = entries.map((e) => e.input?.brief?.does).find(Boolean) || "(no brief captured)";
+  const phases: Record<string, number> = {};
+  let names = 0, pick = "";
+  entries.forEach((e) => {
+    phases[e.phase] = (phases[e.phase] || 0) + 1;
+    if (e.phase === "names") names += e.output?.names?.length || 0;
+    if (e.phase === "compare") pick = e.output?.recommended || pick;
+  });
+  const phaseStr = Object.entries(phases).map(([p, n]) => `${n}× ${PHASE_LABEL[p] || p}`).join(" · ");
+  return { does, phaseStr, names, pick, count: entries.length, started: Math.min(...entries.map((e) => e.at)) };
+}
+
+// One line per whole process (flow); expand to the individual requests it ran.
+function ProcessRow({ entries, filter, c }: { entries: ReqLog[]; filter: string; c: typeof C }) {
+  const [open, setOpen] = useState(false);
+  const info = procInfo(entries);
+  const members = filter === "all" ? entries : entries.filter((e) => e.phase === filter);
+  if (members.length === 0) return null;
+  return (
+    <div style={{ borderBottom: `1px solid ${c.line}` }}>
+      <button onClick={() => setOpen(!open)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: open ? "#FAF9F6" : "none", border: "none", cursor: "pointer", textAlign: "left", color: "inherit" }}>
+        <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 11.5, color: c.ink3, flex: "0 0 138px" }}>{fmtTime(info.started)}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontFamily: c.serif, fontSize: 15, color: c.ink, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{info.does}</span>
+          <span style={{ fontSize: 11.5, color: c.ink3 }}>{info.count} request{info.count === 1 ? "" : "s"} · {info.phaseStr}{info.names ? ` · ${info.names} names` : ""}{info.pick ? ` · pick: ${info.pick}` : ""}</span>
+        </span>
+        <span style={{ color: c.ink3, flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div style={{ background: "#FAF9F6", padding: "2px 12px 14px" }}>
+          {members.map((e) => <RequestRow key={e.id} e={e} c={c} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RequestRow({ e, c }: { e: ReqLog; c: typeof C }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ border: `1px solid ${c.line}`, borderRadius: 10, background: c.surface, marginTop: 8, overflow: "hidden" }}>
+      <button onClick={() => setOpen(!open)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", background: "none", border: "none", cursor: "pointer", textAlign: "left", color: "inherit" }}>
+        <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 11, color: c.ink3, flex: "0 0 118px" }}>{fmtTime(e.at)}</span>
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.ink, flex: "0 0 102px" }}>{PHASE_LABEL[e.phase] || e.phase}</span>
+        <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: e.source === "live" ? c.good : c.ink3, flex: "0 0 56px" }}>{e.source}</span>
+        <span style={{ flex: 1, fontSize: 12.5, color: c.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary(e)}</span>
+        <span style={{ color: c.ink3, flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
+      </button>
+      {open && <Detail e={e} c={c} />}
     </div>
   );
 }

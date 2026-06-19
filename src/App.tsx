@@ -14,6 +14,7 @@ import { LandingAtelier } from "./components/LandingAtelier";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
 import { MOCK } from "./cosmos/mock";
 import { AdminPage } from "./admin/AdminPage";
+import { newProcess } from "./lib/requestLog";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
 import { BrandBook } from "./components/BrandBook";
@@ -104,6 +105,7 @@ export default function App() {
   }
 
   function restart() {
+    newProcess();           // a fresh flow = a new process in the request log
     setScreen("landing");
     setResults([]);
     setSeedBrief(null);
@@ -159,7 +161,7 @@ export default function App() {
         {screen === "landing" && (
           /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
           <LandingAtelier
-            onNext={() => setScreen("classic")}
+            onNext={() => { newProcess(); setScreen("classic"); }}
             onTalk={() => setScreen("talk")}
             canTalk
           />
