@@ -48,3 +48,17 @@ export const TLD_PRICE: Record<string, [string, string]> = {
 export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
+
+// Autocomplete suggestions for the Industry field (free text, datalist-backed).
+export const INDUSTRIES = [
+  "B2B SaaS", "Consumer app", "Fintech", "Healthtech", "E-commerce", "Marketplace",
+  "Creator tools", "Developer tools", "AI / ML", "EdTech", "Productivity", "Hardware",
+  "Agency / Studio", "Food & beverage", "Fashion & apparel", "Real estate / Proptech",
+  "Gaming", "Climate / Energy", "Travel & hospitality", "Media & entertainment",
+];
+
+// Options for the Stage dropdown.
+export const STAGES = [
+  "Just an idea", "Pre-launch · building MVP", "Private beta", "Just launched",
+  "Early revenue", "Growing / scaling", "Established",
+];

@@ -460,8 +460,16 @@ table.cmp td.c { white-space: nowrap; }
 @media (max-width: 1000px) {
   .cx { grid-template-columns: 1fr; }
   .cx-rail { display: none; }
+  .cx-body { overflow: auto; }                 /* let stacked screens scroll vertically */
   .relcolsD { grid-template-columns: repeat(2, 1fr); }
   .lanegrid { grid-template-columns: repeat(2, 1fr); }
+  /* Exploration: stack into a simple flex column so each block takes its natural
+     height (no grid-row sizing fights), the focus panel grows to fit every
+     relation group, and the page scrolls. */
+  .explore-cols { display: flex; flex-direction: column; gap: 16px; flex: none; }
+  .explore-cols > * { flex: none; min-height: 0; }
+  .focusD { flex: none; min-height: auto; overflow: visible; }
+  .focusD .relcolsD { overflow: visible; flex: none; }
 }
 @media (max-width: 680px) {
   .cx { --pad: 18px; }
@@ -483,3 +491,11 @@ table.cmp td.c { white-space: nowrap; }
 .brandbook .font-serif { font-family: 'Newsreader', Georgia, serif; }
 .brandbook .font-mono { font-family: 'DM Sans', ui-sans-serif, sans-serif; letter-spacing: 0.14em; }
 .brandbook .text-emerald-600 { color: #4B6B57; }
+
+/* Stage dropdown — styled to match .inp, with a quiet chevron. */
+.fld select.sel {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C887F' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}

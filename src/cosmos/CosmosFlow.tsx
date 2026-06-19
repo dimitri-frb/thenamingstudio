@@ -8,7 +8,7 @@ import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { PublicVote } from "../components/PublicVote";
 import { Cx, Head, Foot, Star, Thinking } from "./chrome";
-import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, AVOID_FALLBACK } from "./data";
+import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, AVOID_FALLBACK, INDUSTRIES, STAGES } from "./data";
 import { Explore } from "./Explore";
 import { Shortlist, type SavedIdea } from "./Shortlist";
 import { Compare } from "./Compare";
@@ -85,8 +85,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
           <Field label="What it does" hint="— one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
             placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Field label="Industry" value={brief.industry} onChange={(v) => set({ industry: v })} placeholder="Creator tools · B2B SaaS" />
-            <Field label="Stage" value={stage} onChange={setStage} placeholder="Pre-launch · building MVP" />
+            <Field label="Industry" value={brief.industry} onChange={(v) => set({ industry: v })} placeholder="Start typing…" options={INDUSTRIES} />
+            <SelectField label="Stage" value={stage} onChange={setStage} options={STAGES} />
           </div>
           <Field label="Working name" hint="— if you have one; we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
         </div>
@@ -108,7 +108,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
             placeholder="Founders spend weeks on naming and settle for something generic or compromised." />
           <Field label="Who it's for" hint="— and what they value" area value={brief.audience} onChange={(v) => set({ audience: v })}
             placeholder="Startup founders and brand strategists. Time-pressed, taste-conscious." />
-          <Field label="What only you can say" hint="— the defensible point of view" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
+          <Field label="What's your unique proposition" hint="— the defensible point of view" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
             placeholder="Strategy-first naming with the rigor of a senior consultant." />
         </div>
         <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
@@ -232,15 +232,30 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
 
 /* ───────────────────────── intake atoms ───────────────────────── */
 
-function Field({ label, hint, value, onChange, placeholder, area }: {
-  label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string; area?: boolean;
+function Field({ label, hint, value, onChange, placeholder, area, options }: {
+  label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string; area?: boolean; options?: string[];
 }) {
+  const listId = options ? "dl-" + label.replace(/[^a-z]/gi, "") : undefined;
   return (
     <div className="fld">
       <label><span className="flabel">{label}</span>{hint && <span className="fhint">{hint}</span>}</label>
       {area
         ? <textarea className="txa" rows={2} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-        : <input className="inp" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />}
+        : <input className="inp" list={listId} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />}
+      {options && <datalist id={listId}>{options.map((o) => <option key={o} value={o} />)}</datalist>}
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[];
+}) {
+  return (
+    <div className="fld">
+      <label><span className="flabel">{label}</span></label>
+      <select className="inp sel" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
     </div>
   );
 }

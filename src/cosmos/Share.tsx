@@ -71,8 +71,11 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ flex: 1, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: "var(--r2)", fontSize: 13, color: "var(--ink-2)", background: "var(--surface-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link}</span>
-            <button className="btn" onClick={() => navigator.clipboard?.writeText(link)}>Copy</button>
+            <span title={link} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: "var(--r2)", fontSize: 13, color: "var(--ink-2)", background: "var(--surface-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ flex: "0 0 auto" }}>🔗</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Shareable vote link · {list.length} name{list.length === 1 ? "" : "s"}</span>
+            </span>
+            <button className="btn" onClick={() => navigator.clipboard?.writeText(link)}>Copy link</button>
             <button className="btn solid" onClick={onVote}>Open vote →</button>
           </div>
         </div>

@@ -21,6 +21,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone }: {
   const [focus, setFocus] = useState<{ word: string; def: string }>({ word: "", def: "" });
   const [groups, setGroups] = useState<RelGroupData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState("");   // the word currently being explored (for the loading line)
   const [shown, setShown] = useState<Set<RelId>>(new Set(DEFAULT_RELS));
   const [offset, setOffset] = useState<Record<string, number>>({});
   const [hist, setHist] = useState<string[]>([]);          // explored words (back stack)
@@ -30,6 +31,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone }: {
   // Load relations for a seed in the current world.
   async function load(seed: string) {
     const id = ++reqId.current;
+    setPending(seed || world);
     setLoading(true);
     try {
       const res = await naming.relate(brief, seed, world);
@@ -136,7 +138,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone }: {
 
           {loading ? (
             <div className="focusD" style={{ alignItems: "center", justifyContent: "center" }}>
-              <Thinking lines={[`Pulling on “${focus.word || world}”…`, "Tracing how words relate"]} />
+              <Thinking lines={[`Exploring the world around “${pending}”`, "Tracing how words relate"]} />
             </div>
           ) : (
             <div className="focusD">
