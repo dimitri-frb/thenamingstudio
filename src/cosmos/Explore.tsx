@@ -129,8 +129,8 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
     <>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", flex: "0 0 auto" }}>
         <h1 className="h1" style={{ fontSize: 24 }}>One word in focus. <em>Its world, listed.</em></h1>
-        <span className="sub" style={{ fontSize: 12.5, flex: 1, minWidth: 200 }}>
-          Hover a word for two moves — explore it, or save it. Each word carries why it relates; refresh any group for a fresh set.
+        <span className="sub" style={{ fontSize: 14, flex: 1, minWidth: 200 }}>
+          Hover any word to explore it deeper, or save it for later.
         </span>
       </div>
 
@@ -192,7 +192,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
                   <div key={rel} className="relgroup">
                     <div className="gh">
                       <span className="g">{REL[rel].glyph}</span><span className="t">{REL[rel].label}</span>
-                      <button className="refresh-rel" onClick={() => refresh(rel)} title="Refresh — show a new set">↻</button>
+                      <button className="refresh-rel" onClick={() => refresh(rel)} title="Refresh, show a new set">↻</button>
                     </div>
                     <div className="items">
                       {wordsFor(rel).map((w, wi) => {

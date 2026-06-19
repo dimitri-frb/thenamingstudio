@@ -142,7 +142,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
 function HeadC() {
   return (
     <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="Meaning we will analyse for you domain availability, French trademark (INPI), Instagram handles, and run a SMILE analysis, all in one table. We surface domains and matching handles you can claim, tweaking the name where the plain ones are gone." />
+      sub="We analyse each name for you: domain availability, French trademark (INPI), Instagram handles, and a SMILE score, all in one table. Where the plain domain is gone, we surface close ones you can still claim." />
   );
 }
 

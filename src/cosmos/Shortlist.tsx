@@ -105,7 +105,7 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
       </div>
 
       <Anno pos="down" k="Diverge, then converge" style={{ position: "static", maxWidth: "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
-        Seeds and their ideas sit at the <b>same level</b> — keep a raw word, or a coined idea, your call.
+        Seeds and their ideas sit at the <b>same level</b>: keep a raw word, or a coined idea.
       </Anno>
     </>
   );
@@ -114,6 +114,6 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
 function Header() {
   return (
     <Head eyebrow="Shortlist · converge" title={<>Grow each keeper. <em>Cut to ten.</em></>}
-      sub="Every saved idea is a seed — keep the seed itself, or grow name ideas from it. Pick the strongest into your shortlist (max 10); that's what flows into the comparison." />
+      sub="Keep a seed as-is, or grow name ideas from it. Pick your strongest (max 10) to compare." />
   );
 }

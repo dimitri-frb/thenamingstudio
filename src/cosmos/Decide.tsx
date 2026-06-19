@@ -71,7 +71,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
           </div>
           <div style={{ padding: "11px 16px", borderTop: "1px solid var(--line-2)", background: "var(--surface-2)", display: "flex", alignItems: "center", gap: 10 }}>
             <span className="lbl">Note</span>
-            <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Trust the whole row, not one column — a strong name you can own beats a clever one you can't.</span>
+            <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Trust the whole row, not one column. A strong name you can own beats a clever one you can't.</span>
           </div>
         </div>
 

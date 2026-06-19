@@ -89,16 +89,16 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   if (step === 0) return shell(
     <>
       <Head eyebrow="The brief · 1 of 4" title={<>First, what does the <em>company</em> do?</>}
-        sub="The sharper this is, the sharper your name. Everything downstream answers to this brief." />
+        sub="The sharper this is, the sharper your name." />
       <div className="intake-cols">
         <div className="fgrid" style={{ alignContent: "start" }}>
-          <Field label="What it does" hint="— one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
+          <Field label="What it does" hint="· one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
             placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Industry" value={brief.industry} onChange={(v) => set({ industry: v })} placeholder="Start typing…" options={INDUSTRIES} />
             <SelectField label="Stage" value={stage} onChange={setStage} options={STAGES} />
           </div>
-          <Field label="Working name" hint="— if you have one; we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
+          <Field label="Working name" hint="· optional, we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
         </div>
         <HelpCard label="Why this matters"
           body="A name that doesn't know what it stands for has nothing to defend. These answers become the brief every later step is judged against."
@@ -110,15 +110,15 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   if (step === 1) return shell(
     <>
-      <Head eyebrow="The brief · 2 of 4" title={<>Now the <em>brand</em> — who it's for, why it matters.</>}
-        sub="What problem you solve, for whom, and what only you can credibly claim." />
+      <Head eyebrow="The brief · 2 of 4" title={<>Now the <em>brand</em>: who it's for, why it matters.</>}
+        sub="The problem you solve, who you solve it for, and what only you can claim." />
       <div className="intake-cols">
         <div className="fgrid" style={{ alignContent: "start" }}>
           <Field label="The problem you solve" area value={brief.problem} onChange={(v) => set({ problem: v })}
             placeholder="Founders spend weeks on naming and settle for something generic or compromised." />
-          <Field label="Who it's for" hint="— and what they value" area value={brief.audience} onChange={(v) => set({ audience: v })}
+          <Field label="Who it's for" hint="· and what they value" area value={brief.audience} onChange={(v) => set({ audience: v })}
             placeholder="Startup founders and brand strategists. Time-pressed, taste-conscious." />
-          <Field label="What's your unique proposition" hint="— the one thing only you can credibly claim, that rivals can't" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
+          <Field label="What's your unique proposition" hint="· the one claim rivals can't credibly make" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
             placeholder="e.g. Strategy-first naming with the rigor of a senior consultant, in minutes not months." />
         </div>
         <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
@@ -136,9 +136,9 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
           sub="Pick the feelings it should carry." />
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
-          <PickField label="The name should signal" hint="— pick 3–5" options={signalOpts} selected={brief.signal}
+          <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
             onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
-          <PickField label="Tonal register" hint="— pick 2–3" options={TONE_OPTIONS} selected={brief.tone}
+          <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
             onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
           <div className="helpcard" style={{ marginTop: "auto", display: "flex", gap: 14, alignItems: "flex-start" }}>
             <span className="lbl" style={{ flex: "0 0 auto", marginTop: 2 }}>Read</span>
@@ -183,7 +183,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   if (step === 4) return shell(
     <>
       <Head eyebrow="The concepts" title={<>The <em>worlds</em> your brand could live in.</>}
-        sub="A name with no world behind it is just a word. Pick the two or three that make your gut say yes — we'll explore each next." />
+        sub="Pick the two or three that make your gut say yes. We'll explore each next." />
       <div className="cgrid">
         {concepts.map((c) => {
           const on = chosen.has(c.title);

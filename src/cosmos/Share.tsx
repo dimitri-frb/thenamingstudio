@@ -67,7 +67,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
                 <span className="x" style={{ color: "var(--ink-4)", cursor: "pointer" }} onClick={() => setSending((s) => s.filter((x) => x !== n.name))}>×</span>
               </div>
             ))}
-            {!list.length && <span className="rn">All names removed — step back to add favourites.</span>}
+            {!list.length && <span className="rn">All names removed, step back to add favourites.</span>}
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -113,7 +113,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
       <div className="cx-foot">
         <span className="link" onClick={onBack}>← Comparison</span>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <span className="link" onClick={onSkip}>Skip — decide without a vote →</span>
+          <span className="link" onClick={onSkip}>Skip, decide without a vote →</span>
           <button className="btn lg solid" onClick={onDone}>See how it landed →</button>
         </div>
       </div>
@@ -123,7 +123,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
 
 function HeadS() {
   return (
-    <Head eyebrow="The gut-check · optional" title={<>Before you commit — <em>ask your friends.</em></>}
-      sub="Send up to 5 favourites as a quick No / Maybe / Yes vote. Results feed your comparison — they don't decide for you. Not feeling it? You can skip straight to the decision." />
+    <Head eyebrow="The gut-check · optional" title={<>Before you commit, <em>ask your friends.</em></>}
+      sub="Send up to 5 favourites as a quick No / Maybe / Yes vote. The results inform you, they don't decide for you." />
   );
 }
