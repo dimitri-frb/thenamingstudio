@@ -11,7 +11,7 @@ import { Results } from "./components/Results";
 import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
-import { ClassicFlow } from "./components/ClassicFlow";
+import { CosmosFlow } from "./cosmos/CosmosFlow";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
 import { BrandBook } from "./components/BrandBook";
@@ -159,7 +159,7 @@ export default function App() {
           />
         )}
 
-        {screen === "classic" && <ClassicFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
+        {screen === "classic" && <CosmosFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
           <Wizard>

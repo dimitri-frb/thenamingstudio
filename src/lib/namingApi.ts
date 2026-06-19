@@ -35,6 +35,12 @@ export interface TerritoryWorld {
 // drawn from these.
 export interface Sketch { concepts: string[]; words: string[] }
 
+// Exploration (Cosmos step 6): a focus word, with words related to it grouped by
+// how they relate (lexical, metaphor, translation, etymological root, mythic).
+export interface RelWord { w: string; note: string; lang?: string }
+export interface RelGroupData { rel: string; words: RelWord[] }
+export interface RelateResult { word: string; def: string; groups: RelGroupData[] }
+
 export interface NameIdea { name: string; type: string; rationale: string; score: number }
 export interface DomainHit { tld: string; available: boolean }
 export interface CompareRow {
@@ -107,6 +113,7 @@ function localFallback(phase: string, brief: Brief, payload: any): unknown {
     case "concepts": return local.localConcepts(brief);
     case "feelings": return local.localFeelings(brief);
     case "explore": return local.localExplore(brief, payload.concept);
+    case "relate": return local.localRelate(brief, payload?.seed || "", payload?.world || "");
     case "names": return local.localNames(brief, payload.sketch);
     case "compare": return local.localCompare(brief, payload.names || []);
     case "brandbook": return local.localBrandbook(brief, payload?.name || "");
@@ -125,6 +132,7 @@ export const naming = {
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   feelings: (brief: Brief) => call<{ feelings: Feeling[] }>("feelings", brief).then((d) => d.feelings),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
+  relate: (brief: Brief, seed: string, world: string) => call<RelateResult>("relate", brief, { seed, world }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
   names: (brief: Brief, sketch: Sketch) => call<{ names: NameIdea[] }>("names", brief, { sketch }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),

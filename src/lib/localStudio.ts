@@ -3,7 +3,7 @@
 // (dev bridge or the Worker) it is used instead (see namingApi).
 // Deterministic-ish, decent quality, clearly demo-grade.
 
-import type { Brief, BrandBook, Concept, Feeling, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn } from "./namingApi";
+import type { Brief, BrandBook, Concept, Feeling, NameIdea, Comparison, TerritoryWorld, Sketch, Msg, InterviewTurn, RelateResult } from "./namingApi";
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -68,6 +68,33 @@ export function expandWord(label: string): string[] {
   const r = rng(hash("expand:" + label));
   const base = label.toLowerCase().split(/\s+/)[0].replace(/[^a-z]/g, "") || label;
   return relatedFor(r, base);
+}
+
+// Demo-grade relation material for the exploration board (step 6). Real Claude
+// (the Worker) produces meaningful relations; this keeps the static build alive.
+const TRANSLATIONS: { w: string; lang: string }[] = [
+  { w: "veloce", lang: "IT" }, { w: "rápido", lang: "ES" }, { w: "vite", lang: "FR" },
+  { w: "snel", lang: "NL" }, { w: "schnell", lang: "DE" }, { w: "haya", lang: "JA" },
+  { w: "bystro", lang: "RU" }, { w: "claro", lang: "PT" }, { w: "ljus", lang: "SV" },
+  { w: "lume", lang: "IT" },
+];
+const ROOTS = ["velox", "celer", "lumen", "clarus", "ignis", "aura", "nova", "ortus", "vivus", "acer"];
+const MYTHIC = ["Hermes", "Iris", "Nike", "Atalanta", "Aurora", "Helios", "Mercury", "Pegasus", "Selene", "Apollo"];
+
+export function localRelate(_brief: Brief, seed: string, world: string): RelateResult {
+  const src = (seed || world || "spark").toLowerCase();
+  const ws = src.split(/\s+/).map((w) => w.replace(/[^a-z]/g, "")).filter((w) => w.length > 2 && !["the", "and", "for", "your"].includes(w));
+  const base = ws[ws.length - 1] || "spark";
+  const r = rng(hash("relate:" + base + ":" + world));
+  const note = (s: string, n: string) => ({ w: s, note: n });
+  const groups = [
+    { rel: "related", words: [...new Set([...sample(r, EVOCATIVE, 6), ...relatedFor(r, base).slice(0, 2)])].map((w) => note(w, "in the same lexical field")) },
+    { rel: "metaphor", words: sample(r, METAPHOR, 6).map((w) => note(w, "a symbol of the idea")) },
+    { rel: "translation", words: sample(r, TRANSLATIONS, 6).map((t) => ({ w: t.w, note: "kin in meaning", lang: t.lang })) },
+    { rel: "root", words: sample(r, ROOTS, 6).map((w) => note(w, "Latin/Greek root")) },
+    { rel: "mythic", words: sample(r, MYTHIC, 6).map((w) => note(w, "a name from myth")) },
+  ];
+  return { word: cap(base), def: `Evokes ${world || "the idea"}; a strong seed to grow from.`, groups };
 }
 
 /* ---------------- phases ---------------- */

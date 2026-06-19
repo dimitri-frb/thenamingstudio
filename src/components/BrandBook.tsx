@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { naming, type Brief, type BrandBook as BrandBookData } from "../lib/namingApi";
+import "../cosmos/cosmos.css"; // the .brandbook reskin lives here; ensure it loads wherever the book mounts
 
 // The starter brand book, generated from the brief + the chosen name. v1:
 // story & voice, colour & type, a messaging kit (copyable), a typographic
