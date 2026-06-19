@@ -2,6 +2,7 @@
 // Cloudflare Worker in production, and falls back to a client-side studio
 // (./localStudio) when neither is reachable, so the whole flow always works.
 import * as local from "./localStudio";
+import { logRequest } from "./requestLog";
 
 export interface Brief {
   does: string;
@@ -101,14 +102,20 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
       });
       if (res.ok) {
         const data = await res.json();
-        if (!data?.error) return deDash(data) as T;
+        if (!data?.error) {
+          const out = deDash(data);
+          logRequest({ phase, source: "live", input: { brief, payload }, output: out });
+          return out as T;
+        }
       }
     } catch {
       /* offline / no endpoint → fall through to local */
     }
   }
   await new Promise((r) => setTimeout(r, 500)); // tiny beat so the "thinking" state reads
-  return deDash(localFallback(phase, brief, payload)) as T;
+  const out = deDash(localFallback(phase, brief, payload));
+  logRequest({ phase, source: "fallback", input: { brief, payload }, output: out });
+  return out as T;
 }
 
 function localFallback(phase: string, brief: Brief, payload: any): unknown {

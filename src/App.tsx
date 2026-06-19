@@ -13,6 +13,7 @@ import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
 import { MOCK } from "./cosmos/mock";
+import { AdminPage } from "./admin/AdminPage";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
 import { BrandBook } from "./components/BrandBook";
@@ -110,6 +111,13 @@ export default function App() {
 
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
   const showJourney = screen === "vibe" || screen === "types" || screen === "refine" || screen === "generating" || screen === "results";
+
+  // Internal request log (/admin or ?admin): review every generation logged on
+  // this browser — content given, words generated, names generated.
+  const isAdmin = /(?:^|\/)admin\/?$/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("admin") || window.location.hash.replace(/^#\/?/, "") === "admin";
+  if (isAdmin) {
+    return <AdminPage onExit={() => window.location.assign(import.meta.env.BASE_URL || "/")} />;
+  }
 
   // Test mode (?test): step through every page with sample data, no real run.
   if (new URLSearchParams(window.location.search).has("test")) {

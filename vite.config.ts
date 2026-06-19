@@ -2,13 +2,26 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { spawn } from "node:child_process";
+import { copyFileSync } from "node:fs";
 
 // On GitHub Pages the app is served from https://<user>.github.io/brandr/,
 // so production assets need the "/brandr/" base. Dev stays at "/".
 export default defineConfig(({ command }) => ({
   base: command === "build" ? "/brandr/" : "/",
-  plugins: [react(), tailwindcss(), claudeBridge()],
+  plugins: [react(), tailwindcss(), claudeBridge(), spa404()],
 }));
+
+// GitHub Pages has no SPA rewrite, so deep paths like /brandr/admin 404. Copying
+// the built index.html to 404.html makes GitHub serve the app for any unknown
+// path, and the client router takes over.
+function spa404() {
+  return {
+    name: "spa-404",
+    closeBundle() {
+      try { copyFileSync("dist/index.html", "dist/404.html"); } catch { /* dev / no dist */ }
+    },
+  };
+}
 
 /**
  * Dev-only bridge: POST /api/naming -> runs `claude -p` with the right prompt
