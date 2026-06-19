@@ -6,9 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
-import { PublicVote } from "../components/PublicVote";
 import { Cx, CXSTEPS, Head, Foot, Star, Thinking } from "./chrome";
-import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, AVOID_FALLBACK, INDUSTRIES, STAGES } from "./data";
+import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES } from "./data";
 import type { TestSeed } from "./mock";
 import { Explore } from "./Explore";
 import { Shortlist, type SavedIdea } from "./Shortlist";
@@ -35,7 +34,6 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [taglines, setTaglines] = useState<Record<string, string>>(test?.taglines ?? {});
   const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
 
-  const [voteOpen, setVoteOpen] = useState(false);
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
 
@@ -120,8 +118,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
             placeholder="Founders spend weeks on naming and settle for something generic or compromised." />
           <Field label="Who it's for" hint="— and what they value" area value={brief.audience} onChange={(v) => set({ audience: v })}
             placeholder="Startup founders and brand strategists. Time-pressed, taste-conscious." />
-          <Field label="What's your unique proposition" hint="— the defensible point of view" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
-            placeholder="Strategy-first naming with the rigor of a senior consultant." />
+          <Field label="What's your unique proposition" hint="— the one thing only you can credibly claim, that rivals can't" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
+            placeholder="e.g. Strategy-first naming with the rigor of a senior consultant, in minutes not months." />
         </div>
         <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
           tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
@@ -136,14 +134,12 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     return shell(
       <>
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
-          sub="Pick the feelings it should carry. Then mark what you want to actively avoid." />
+          sub="Pick the feelings it should carry." />
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
           <PickField label="The name should signal" hint="— pick 3–5" options={signalOpts} selected={brief.signal}
             onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
           <PickField label="Tonal register" hint="— pick 2–3" options={TONE_OPTIONS} selected={brief.tone}
             onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
-          <AvoidField selected={brief.avoid.length ? brief.avoid : AVOID_FALLBACK}
-            onToggle={(s) => set({ avoid: toggleArr(brief.avoid.length ? brief.avoid : AVOID_FALLBACK, s) })} />
           <div className="helpcard" style={{ marginTop: "auto", display: "flex", gap: 14, alignItems: "flex-start" }}>
             <span className="lbl" style={{ flex: "0 0 auto", marginTop: 2 }}>Read</span>
             <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17, margin: 0, color: "var(--ink-2)", lineHeight: 1.5 }}>
@@ -220,12 +216,12 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   if (step === 7) return shell(
     <Compare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
-      onBack={() => goto(6)} onDone={() => goto(8)} />
+      onBack={() => goto(6)} onDone={() => goto(8)} onLockIn={() => goto(9)} />
   );
 
   if (step === 8) return shell(
     <Share brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
-      onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)} onVote={() => setVoteOpen(true)} />
+      onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)} />
   );
 
   if (step === 9) return (
@@ -234,7 +230,6 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
           onBack={() => goto(8)} onBrandBook={requestBrandBook} />
       )}
-      {voteOpen && comp && <PublicVote items={comp.rows.map((r) => ({ name: r.name, note: taglines[r.name] || r.verdict }))} onClose={() => setVoteOpen(false)} />}
       {gateOpen && chosenFinal && (
         <EmailGate name={chosenFinal} onClose={() => setGateOpen(false)}
           onSubmit={(email) => { captureLead(brief, email, chosenFinal); setGateOpen(false); setBrandBookOpen(true); }} />
@@ -320,17 +315,6 @@ function TestBar({ step, onJump }: { step: number; onJump: (n: number) => void }
           {i + 1}
         </button>
       ))}
-    </div>
-  );
-}
-
-function AvoidField({ selected, onToggle }: { selected: string[]; onToggle: (s: string) => void }) {
-  return (
-    <div className="fld">
-      <label><span className="flabel">Avoid at all costs</span></label>
-      <div className="pickrow">
-        {selected.map((s) => <span key={s} className="pick avoid on" onClick={() => onToggle(s)}>{s}<span style={{ color: "var(--ink-4)" }}>×</span></span>)}
-      </div>
     </div>
   );
 }

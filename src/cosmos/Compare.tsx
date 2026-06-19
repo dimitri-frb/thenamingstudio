@@ -3,15 +3,15 @@
 // handle, and a SMILE score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
 import { naming, type Brief, type Comparison, type CompareRow } from "../lib/namingApi";
-import { Dots, Foot, Head, Star, Thinking } from "./chrome";
+import { Dots, Head, Star, Thinking } from "./chrome";
 import { availableDomains, handleOptions, nameTests } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
 
-export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
+export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
-  setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void;
+  setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void;
 }) {
   const [sortSmile, setSortSmile] = useState(false);
 
@@ -128,7 +128,13 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
         </div>
       </div>
 
-      <Foot back="Name ideas" onBack={onBack} next="Get a gut-check →" onNext={onDone} />
+      <div className="cx-foot">
+        <span className="link" onClick={onBack}>← Name ideas</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <button className="btn" onClick={onLockIn}>Lock in my selection →</button>
+          <button className="btn lg solid" onClick={onDone}>Get a gut check →</button>
+        </div>
+      </div>
     </>
   );
 }

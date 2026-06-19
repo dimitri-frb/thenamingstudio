@@ -5,14 +5,13 @@ import { useMemo, useState } from "react";
 import type { Brief, Comparison } from "../lib/namingApi";
 import { Head } from "./chrome";
 
-export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDone, onVote }: {
+export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDone }: {
   brief: Brief; comp: Comparison | null; taglines: Record<string, string>;
   setTaglines: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  onBack: () => void; onSkip: () => void; onDone: () => void; onVote: () => void;
+  onBack: () => void; onSkip: () => void; onDone: () => void;
 }) {
   const all = comp?.rows || [];
   const [sending, setSending] = useState<string[]>(all.slice(0, 5).map((r) => r.name));
-  const [showTaglines, setShowTaglines] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -43,12 +42,6 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span className="lbl">Sending these {list.length}</span>
-            <span style={{ flex: 1 }} />
-            <span className="lbl">Tagline under each name</span>
-            <span onClick={() => setShowTaglines((v) => !v)}
-              style={{ width: 34, height: 20, borderRadius: 999, background: showTaglines ? "var(--ink)" : "var(--line)", position: "relative", cursor: "pointer", flex: "0 0 auto" }}>
-              <span style={{ position: "absolute", top: 2, left: showTaglines ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "var(--surface)", transition: "left .14s ease" }} />
-            </span>
           </div>
 
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 9, overflow: "auto" }}>
@@ -56,7 +49,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
               <div key={n.name} style={{ display: "flex", alignItems: "flex-start", gap: 12, border: "1px solid var(--line)", borderRadius: "var(--r2)", background: "var(--surface)", padding: "13px 16px" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontFamily: "var(--serif)", fontSize: 22, letterSpacing: "-0.01em" }}>{n.name}</span>
-                  {showTaglines && (
+                  {(
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
                       {editing === n.name ? (
                         <input autoFocus className="inp" style={{ padding: "4px 8px", fontSize: 14 }} value={tagOf(n.name)}
@@ -89,7 +82,6 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
             >
               {copied ? "Copied ✓" : "Copy link"}
             </button>
-            <button className="btn solid" onClick={onVote}>Open vote →</button>
           </div>
         </div>
 
@@ -103,7 +95,7 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
             </div>
             <div className="swipe" style={{ padding: "20px 16px" }}>
               <div style={{ fontFamily: "var(--serif)", fontSize: 42, lineHeight: 1, letterSpacing: "-0.02em" }}>{preview?.name || "—"}</div>
-              {showTaglines && preview && <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12.5, color: "var(--ink-2)", margin: "8px 0 0", lineHeight: 1.4 }}>"{tagOf(preview.name)}"</p>}
+              {preview && <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12.5, color: "var(--ink-2)", margin: "8px 0 0", lineHeight: 1.4 }}>"{tagOf(preview.name)}"</p>}
             </div>
             <div style={{ display: "flex", gap: 7, justifyContent: "center" }}>
               {([["No", "✗", "var(--ink-4)"], ["Maybe", "~", "var(--ink-3)"], ["Yes!", "♥", "#fff"]] as const).map(([t, g, c], i) => (
