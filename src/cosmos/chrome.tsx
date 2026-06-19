@@ -80,6 +80,16 @@ export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack
   );
 }
 
+// A quiet "i" badge that reveals an explanation on hover/focus. Lets us keep the
+// standing copy short and move the "what is this?" detail out of the way.
+export function Info({ children, pos = "down" }: { children: ReactNode; pos?: "up" | "down" }) {
+  return (
+    <span className={"info " + pos} tabIndex={0} role="button" aria-label="What's this?">
+      i<span className="info-pop">{children}</span>
+    </span>
+  );
+}
+
 export function Head({ eyebrow, title, sub }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

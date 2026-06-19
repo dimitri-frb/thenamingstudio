@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
-import { Cx, CXSTEPS, Head, Foot, Star, Thinking } from "./chrome";
+import { Cx, CXSTEPS, Head, Foot, Star, Thinking, Info } from "./chrome";
 import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES } from "./data";
 import type { TestSeed } from "./mock";
 import { Explore } from "./Explore";
@@ -182,7 +182,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   if (step === 4) return shell(
     <>
-      <Head eyebrow="The concepts" title={<>The <em>worlds</em> your brand could live in.</>}
+      <Head eyebrow={<>The concepts <Info>A <b>world</b> is a creative direction your name could come from, a theme with its own vocabulary. Pick a few that feel right; you'll mine each for words next.</Info></>}
+        title={<>The <em>worlds</em> your brand could live in.</>}
         sub="Pick the two or three that make your gut say yes. We'll explore each next." />
       <div className="cgrid">
         {concepts.map((c) => {

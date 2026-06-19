@@ -4,7 +4,7 @@
 // cross-world shortlist). Each group refreshes for a new set. Wired to naming.relate.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type RelGroupData } from "../lib/namingApi";
-import { Thinking } from "./chrome";
+import { Thinking, Info } from "./chrome";
 import { RELATIONS, REL, type RelId } from "./data";
 import type { SavedIdea } from "./Shortlist";
 
@@ -128,7 +128,10 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
   return (
     <>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", flex: "0 0 auto" }}>
-        <h1 className="h1" style={{ fontSize: 24 }}>One word in focus. <em>Its world, listed.</em></h1>
+        <h1 className="h1" style={{ fontSize: 24, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          One word in focus. <em>Its world, listed.</em>
+          <Info>Each column groups words by <b>how they relate</b> to your focus word, by meaning, sound, roots, translation, and more. Hover a word for two moves: <b>explore</b> it (make it the new focus) or <b>save</b> it to your shortlist.</Info>
+        </h1>
         <span className="sub" style={{ fontSize: 14, flex: 1, minWidth: 200 }}>
           Hover any word to explore it deeper, or save it for later.
         </span>

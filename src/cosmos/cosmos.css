@@ -510,6 +510,32 @@ table.cmp td.c { white-space: nowrap; }
 .votepage .text-emerald-500 { color: #4B6B57; }
 .votepage .border-emerald-500 { border-color: #4B6B57; }
 
+/* ─────────── hover info badge + tooltip ─────────── */
+.info {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--line);
+  color: var(--ink-3); background: var(--surface);
+  font-family: var(--sans); font-size: 10.5px; font-weight: 600; font-style: normal;
+  letter-spacing: 0; text-transform: none; line-height: 1; cursor: help;
+  vertical-align: middle; flex: 0 0 auto; user-select: none; transition: all .14s ease;
+}
+.info:hover, .info:focus-visible { border-color: var(--ink-3); color: var(--ink); outline: none; }
+.info-pop {
+  position: absolute; z-index: 60; left: -2px; width: max-content; max-width: 250px;
+  background: var(--ink); color: #F4F3EF; border-radius: var(--r2); padding: 10px 13px;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 400; font-style: normal;
+  letter-spacing: 0; text-transform: none; line-height: 1.45; text-align: left;
+  box-shadow: 0 16px 34px -16px rgba(0,0,0,0.45);
+  opacity: 0; pointer-events: none; transform: translateY(-2px); transition: opacity .14s ease, transform .14s ease;
+}
+.info-pop b { color: #fff; font-weight: 600; }
+.info:hover .info-pop, .info:focus-visible .info-pop { opacity: 1; transform: translateY(0); }
+.info.down .info-pop { top: calc(100% + 9px); }
+.info.up .info-pop { bottom: calc(100% + 9px); }
+.info-pop::after { content: ''; position: absolute; left: 7px; width: 9px; height: 9px; background: var(--ink); transform: rotate(45deg); }
+.info.down .info-pop::after { top: -4px; }
+.info.up .info-pop::after { bottom: -4px; }
+
 /* tap feedback for the Copy button */
 @keyframes copied-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
 .copied-anim { animation: copied-pop 0.32s ease; }

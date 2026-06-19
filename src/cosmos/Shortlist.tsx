@@ -3,7 +3,7 @@
 // the shortlist dock (max 10); that's what flows into the comparison.
 import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type NameIdea } from "../lib/namingApi";
-import { Anno, Head, Thinking } from "./chrome";
+import { Anno, Head, Thinking, Info } from "./chrome";
 
 export interface SavedIdea { w: string; concept: string; mine?: boolean }
 
@@ -113,7 +113,8 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
 
 function Header() {
   return (
-    <Head eyebrow="Shortlist · converge" title={<>Grow each keeper. <em>Cut to ten.</em></>}
+    <Head eyebrow={<>Shortlist · converge <Info>A <b>seed</b> is a word you saved while exploring. An <b>idea</b> is a name built from it, generated or typed by you. Both can go on your shortlist.</Info></>}
+      title={<>Grow each keeper. <em>Cut to ten.</em></>}
       sub="Keep a seed as-is, or grow name ideas from it. Pick your strongest (max 10) to compare." />
   );
 }
