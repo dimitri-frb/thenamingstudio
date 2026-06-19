@@ -3,7 +3,7 @@
 // the dev bridge in dev, the client-side studio as a fallback). The intake and
 // concept steps live here; the heavier screens are their own modules.
 import { useEffect, useRef, useState } from "react";
-import { naming, type Brief, type Concept, type Feeling } from "../lib/namingApi";
+import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { PublicVote } from "../components/PublicVote";
@@ -15,6 +15,7 @@ import { Shortlist, type SavedIdea } from "./Shortlist";
 import { Compare } from "./Compare";
 import { Share } from "./Share";
 import { Decide } from "./Decide";
+import { EmailGate } from "./EmailGate";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [] };
 
@@ -36,6 +37,14 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   const [voteOpen, setVoteOpen] = useState(false);
   const [brandBookOpen, setBrandBookOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+
+  // Brand book is email-gated: first time, capture the email; after that, open directly.
+  function requestBrandBook() {
+    let hasEmail = false;
+    try { hasEmail = !!localStorage.getItem("ns.email"); } catch { /* ignore */ }
+    if (hasEmail) setBrandBookOpen(true); else setGateOpen(true);
+  }
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -223,9 +232,13 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     <>
       {shell(
         <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
-          onBack={() => goto(8)} onBrandBook={() => setBrandBookOpen(true)} />
+          onBack={() => goto(8)} onBrandBook={requestBrandBook} />
       )}
       {voteOpen && comp && <PublicVote items={comp.rows.map((r) => ({ name: r.name, note: taglines[r.name] || r.verdict }))} onClose={() => setVoteOpen(false)} />}
+      {gateOpen && chosenFinal && (
+        <EmailGate name={chosenFinal} onClose={() => setGateOpen(false)}
+          onSubmit={(email) => { captureLead(brief, email, chosenFinal); setGateOpen(false); setBrandBookOpen(true); }} />
+      )}
       {brandBookOpen && chosenFinal && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
     </>
   );

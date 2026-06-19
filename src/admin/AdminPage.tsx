@@ -16,7 +16,7 @@ const C = {
 
 const PHASE_LABEL: Record<string, string> = {
   interview: "Interview", concepts: "Concepts", feelings: "Feelings", explore: "Explore",
-  relate: "Relate (words)", names: "Names", compare: "Compare", brandbook: "Brand book", suggest: "Suggest",
+  relate: "Relate (words)", names: "Names", compare: "Compare", brandbook: "Brand book", suggest: "Suggest", lead: "Email lead",
 };
 
 function fmtTime(t: number) {
@@ -33,6 +33,7 @@ function summary(e: ReqLog): string {
     case "explore": return `${o.words?.length || 0} seed words`;
     case "names": return `${o.names?.length || 0} names · ${(o.names || []).map((n: any) => n.name).slice(0, 6).join(", ")}`;
     case "compare": return `${o.rows?.length || 0} names compared · pick: ${o.recommended || "—"}`;
+    case "lead": return `✉ ${e.input?.payload?.email || o.email || ""}${e.input?.payload?.name ? ` · ${e.input.payload.name}` : ""}`;
     case "brandbook": return `brand book · ${e.input?.payload?.name || ""}`;
     case "suggest": return `suggest “${e.input?.payload?.field || ""}”`;
     case "interview": return o.done ? "interview complete → brief" : "interview turn";
@@ -152,7 +153,8 @@ function procInfo(entries: ReqLog[]) {
     if (e.phase === "compare") pick = e.output?.recommended || pick;
   });
   const phaseStr = Object.entries(phases).map(([p, n]) => `${n}× ${PHASE_LABEL[p] || p}`).join(" · ");
-  return { does, phaseStr, names, pick, count: entries.length, started: Math.min(...entries.map((e) => e.at)) };
+  const email = entries.find((e) => e.phase === "lead")?.input?.payload?.email || "";
+  return { does, phaseStr, names, pick, email, count: entries.length, started: Math.min(...entries.map((e) => e.at)) };
 }
 
 // One line per whole process (flow); expand to the individual requests it ran.
@@ -169,6 +171,7 @@ function ProcessRow({ entries, filter, c }: { entries: ReqLog[]; filter: string;
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontFamily: c.serif, fontSize: 15, color: c.ink, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{info.does}</span>
           <span style={{ fontSize: 11.5, color: c.ink3 }}>{info.count} request{info.count === 1 ? "" : "s"} · {info.phaseStr}{info.names ? ` · ${info.names} names` : ""}{info.pick ? ` · pick: ${info.pick}` : ""}</span>
+          {info.email && <span style={{ fontSize: 12, color: c.good, marginLeft: 8 }}>✉ {info.email}</span>}
         </span>
         <span style={{ color: c.ink3, flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
       </button>

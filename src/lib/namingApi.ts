@@ -150,3 +150,16 @@ export const naming = {
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),
   brandbook: (brief: Brief, name: string) => call<BrandBook>("brandbook", brief, { name }),
 };
+
+// Email capture before the brand book. Logged locally and (centrally) on the
+// Worker, so leads show up in /admin. No Claude call.
+export async function captureLead(brief: Brief, email: string, name: string): Promise<void> {
+  const process = processId();
+  logRequest({ phase: "lead", process, source: "live", input: { brief, payload: { email, name } }, output: { email, name } });
+  try { localStorage.setItem("ns.email", email); } catch { /* ignore */ }
+  if (ENDPOINT) {
+    try {
+      await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "lead", brief, payload: { email, name }, process }) });
+    } catch { /* best effort */ }
+  }
+}

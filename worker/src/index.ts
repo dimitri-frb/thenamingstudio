@@ -61,6 +61,13 @@ export default {
     try { body = await req.json(); } catch { return json({ error: "bad json" }, env, 400); }
 
     const phase: string = body?.phase || "";
+
+    // Lead capture (email gate before the brand book). No Claude call, just logged.
+    if (phase === "lead") {
+      if (env.LOG) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, { email: body?.payload?.email || "", name: body?.payload?.name || "" }));
+      return json({ ok: true }, env);
+    }
+
     const spec = PROMPTS[phase];
     if (!spec) return json({ error: `unknown phase: ${phase}` }, env, 400);
 
