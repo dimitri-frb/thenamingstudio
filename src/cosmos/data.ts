@@ -65,6 +65,21 @@ export function availableDomains(name: string, domains?: { tld: string; availabl
   return out.slice(0, 3);
 }
 
+// Up to three Instagram handle options, derived from the available domains so the
+// handle matches the domain (e.g. getembra.com -> @getembra), then filled with the
+// same name tweaks. Instagram has no reliable availability check, so these are
+// candidates to verify, not verdicts.
+export function handleOptions(name: string, domains: DomOption[]): string[] {
+  const slug = slugify(name);
+  const out: string[] = [];
+  domains.forEach((d) => { const label = d.domain.split(".")[0]; if (label && !out.includes(label)) out.push(label); });
+  for (const v of [slug, `${slug}hq`, `get${slug}`, `${slug}app`, `join${slug}`]) {
+    if (out.length >= 3) break;
+    if (!out.includes(v)) out.push(v);
+  }
+  return out.slice(0, 3).map((h) => "@" + h);
+}
+
 export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }

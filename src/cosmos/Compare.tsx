@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { naming, type Brief, type Comparison, type CompareRow } from "../lib/namingApi";
 import { Dots, Foot, Head, Star, Thinking } from "./chrome";
-import { availableDomains } from "./data";
+import { availableDomains, handleOptions } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
@@ -52,9 +52,9 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
               <tr>
                 <th style={{ width: "13%" }}>Name</th>
                 <th style={{ width: "24%" }}>Why it works</th>
-                <th style={{ width: "26%" }}>Available domains</th>
+                <th style={{ width: "23%" }}>Available domains</th>
                 <th>Trademark · INPI</th>
-                <th>Handle</th>
+                <th style={{ width: "15%" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><InstagramGlyph size={12} /> Instagram</span></th>
                 <th>SMILE</th>
                 <th>Verdict</th>
               </tr>
@@ -85,7 +85,18 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
                       </div>
                     </td>
                     <td className="c"><span className={"tag " + (n.inpi ? "good" : "watch")}>{n.inpi ? "Clear" : "Check"}</span></td>
-                    <td className="c"><span className={"tag " + (n.instagram ? "good" : "bad")}>{n.instagram ? "free" : "taken"}</span></td>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {handleOptions(n.name, domains).map((h) => (
+                          <a key={h} href={`https://instagram.com/${h.slice(1)}`} target="_blank" rel="noreferrer"
+                            title={`Check ${h} on Instagram`}
+                            style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-2)", textDecoration: "none", whiteSpace: "nowrap" }}>
+                            <span style={{ color: "var(--ink-3)", display: "inline-flex", flex: "0 0 auto" }}><InstagramGlyph size={13} /></span>
+                            <span style={{ fontFamily: "var(--serif)", fontSize: 14 }}>{h}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </td>
                     <td className="c"><Dots score={smileOf(n)} /></td>
                     <td className="c"><span className={"tag " + (verdict === "Strong" ? "fill" : verdict === "Solid" ? "" : "bad")}>{verdict}</span></td>
                   </tr>
@@ -112,6 +123,16 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone }: {
 function HeadC() {
   return (
     <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="Meaning, three available domains (with price), French trademark (INPI), handle, and SMILE — in one table. We always surface domains you can register, tweaking the name where the plain .com is gone." />
+      sub="Meaning, three available domains (with price), French trademark (INPI), Instagram handles, and SMILE — in one table. We surface domains and matching handles you can claim, tweaking the name where the plain ones are gone." />
+  );
+}
+
+function InstagramGlyph({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17" cy="7" r="1" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
