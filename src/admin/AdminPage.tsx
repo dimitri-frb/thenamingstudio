@@ -1,7 +1,12 @@
-// Internal request log (/?admin). Reviews every generation made from this
-// browser: the content given (brief), the words generated, the names generated.
-import { useMemo, useState } from "react";
+// Internal request log (/admin). Reviews every generation: the content given
+// (brief), the words generated, the names generated. Two sources:
+//  · Central  — every request from every user, read from the Worker's KV store.
+//  · This browser — the localStorage log (works offline / in dev).
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRequests, clearRequests, type ReqLog } from "../lib/requestLog";
+
+const WORKER = (import.meta.env.VITE_NAMING_API || "").replace(/\/$/, "");
+const KEY_STORE = "ns.admin.key";
 
 const C = {
   bg: "#F4F3EF", surface: "#FFFFFF", ink: "#1A1916", ink2: "#55534C", ink3: "#8C887F",
@@ -36,9 +41,31 @@ function summary(e: ReqLog): string {
 }
 
 export function AdminPage({ onExit }: { onExit: () => void }) {
-  const [items, setItems] = useState<ReqLog[]>(() => getRequests());
+  const [mode, setMode] = useState<"central" | "local">(WORKER ? "central" : "local");
+  const [items, setItems] = useState<ReqLog[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [adminKey, setAdminKey] = useState<string>(() => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null); setFilter("all");
+    if (mode === "local") { setItems(getRequests()); return; }
+    if (!WORKER) { setError("No Worker endpoint in this build — central log is only available on the deployed site."); setItems([]); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${WORKER}/?log=1&limit=200${adminKey ? `&key=${encodeURIComponent(adminKey)}` : ""}`);
+      if (res.status === 401) throw new Error("Unauthorized — check the admin key.");
+      if (!res.ok) throw new Error(`Server returned ${res.status}.`);
+      const data = await res.json();
+      setItems(data.items || []);
+      if (data.note) setError(data.note);
+    } catch (e: any) { setError(e?.message || String(e)); setItems([]); }
+    finally { setLoading(false); }
+  }, [mode, adminKey]);
+
+  useEffect(() => { load(); }, [load]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -61,15 +88,31 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
               <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: C.bad }}>● Internal</span>
             </div>
             <p style={{ color: C.ink3, margin: "8px 0 0", fontSize: 13 }}>
-              {items.length} request{items.length === 1 ? "" : "s"} from this browser · {live} live, {items.length - live} demo/fallback
+              {loading ? "Loading…" : `${items.length} request${items.length === 1 ? "" : "s"}`}
+              {mode === "central" ? " · central (all users)" : ` · this browser · ${live} live, ${items.length - live} demo`}
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setItems(getRequests())} style={btn(C)}>↻ Refresh</button>
-            <button onClick={() => { if (confirm("Clear the request log on this browser?")) { clearRequests(); setItems([]); } }} style={btn(C)}>Clear</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={load} style={btn(C)}>↻ Refresh</button>
+            {mode === "local" && <button onClick={() => { if (confirm("Clear the request log on this browser?")) { clearRequests(); setItems([]); } }} style={btn(C)}>Clear</button>}
             <button onClick={onExit} style={btn(C)}>← Studio</button>
           </div>
         </div>
+
+        {/* source toggle + admin key */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+          <Chip active={mode === "central"} onClick={() => setMode("central")} label="Central (everyone)" c={C} />
+          <Chip active={mode === "local"} onClick={() => setMode("local")} label="This browser" c={C} />
+          {mode === "central" && (
+            <>
+              <input type="password" placeholder="admin key (if set)" value={adminKey}
+                onChange={(e) => { setAdminKey(e.target.value); try { localStorage.setItem(KEY_STORE, e.target.value); } catch { /* ignore */ } }}
+                style={{ fontSize: 13, padding: "7px 11px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.surface, color: C.ink, outline: "none", minWidth: 160 }} />
+            </>
+          )}
+        </div>
+
+        {error && <div style={{ marginTop: 14, padding: "11px 15px", borderRadius: 12, border: `1px solid ${C.bad}`, color: C.bad, fontSize: 13, background: "#fff" }}>{error}</div>}
 
         {/* phase filter */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 22 }}>

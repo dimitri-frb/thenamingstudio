@@ -10,9 +10,20 @@
 // Models are split by job to control cost: Haiku for mechanical work, Sonnet for
 // the creative work. The system prompt is cached (5-min TTL) to cut input cost.
 
+// Minimal Cloudflare runtime types (present at runtime; declared here so this
+// no-package worker typechecks without an @cloudflare/workers-types dependency).
+interface KVNamespace {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  list(options?: { prefix?: string; limit?: number }): Promise<{ keys: { name: string }[] }>;
+}
+interface ExecutionContext { waitUntil(promise: Promise<unknown>): void }
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGIN?: string; // optional: lock CORS to your site; defaults to *
+  LOG?: KVNamespace;       // optional: central request log (bind a KV namespace named LOG)
+  ADMIN_KEY?: string;      // optional: required ?key= to read the log
 }
 
 const MODEL = {
@@ -28,15 +39,22 @@ const SYS =
 function cors(env: Env): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
     "Access-Control-Max-Age": "86400",
   };
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors(env) });
+
+    // Central request log read endpoint: GET ?log=1[&key=ADMIN_KEY][&limit=N].
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      if (url.searchParams.has("log")) return readLog(env, url);
+      return json({ ok: true }, env);
+    }
     if (req.method !== "POST") return json({ error: "POST only" }, env, 405);
 
     let body: any;
@@ -53,6 +71,8 @@ export default {
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "compare") data = await enrichCompare(data);
+      // Best-effort central log (only if a KV namespace is bound). Never blocks the response.
+      if (env.LOG) ctx.waitUntil(writeLog(env, phase, { brief: body.brief, payload: body.payload }, data));
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);
@@ -87,6 +107,32 @@ function parseJSON(text: string): any {
   const e = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
   if (s !== Infinity && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch { /* fall */ } }
   return null;
+}
+
+// ── Central request log (Cloudflare KV) ──
+// Each generation is stored under "log:<reverse-timestamp>:<rand>" so a prefix
+// list returns newest-first. A 60-day TTL keeps the store self-pruning.
+async function writeLog(env: Env, phase: string, input: unknown, output: unknown): Promise<void> {
+  if (!env.LOG) return;
+  try {
+    const at = Date.now();
+    const rev = (1e15 - at).toString().padStart(16, "0");
+    const key = `log:${rev}:${Math.random().toString(36).slice(2, 8)}`;
+    await env.LOG.put(key, JSON.stringify({ at, phase, source: "live", input, output }), { expirationTtl: 60 * 60 * 24 * 60 });
+  } catch { /* logging is best-effort */ }
+}
+
+async function readLog(env: Env, url: URL): Promise<Response> {
+  if (!env.LOG) return json({ items: [], note: "no KV namespace bound (LOG)" }, env);
+  if (env.ADMIN_KEY && url.searchParams.get("key") !== env.ADMIN_KEY) return json({ error: "unauthorized" }, env, 401);
+  const limit = Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150));
+  const list = await env.LOG.list({ prefix: "log:", limit });
+  const items = (await Promise.all(list.keys.map(async (k) => {
+    const v = await env.LOG!.get(k.name);
+    if (!v) return null;
+    try { return { id: k.name, ...JSON.parse(v) }; } catch { return null; }
+  }))).filter(Boolean);
+  return json({ items }, env);
 }
 
 function json(data: unknown, env: Env, status = 200): Response {

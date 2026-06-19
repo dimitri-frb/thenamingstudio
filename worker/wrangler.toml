@@ -5,3 +5,14 @@ compatibility_date = "2024-11-01"
 # Secrets / vars (set via wrangler, NOT committed):
 #   npx wrangler secret put ANTHROPIC_API_KEY   # required: your Anthropic API key
 #   (optional) [vars] ALLOWED_ORIGIN = "https://dimitri-frb.github.io"  # lock CORS
+
+# Central request log (the /admin page). Create a KV namespace, then paste its id
+# below and push — logging turns on automatically (the worker no-ops without it).
+#   npx wrangler kv namespace create LOG
+# Then uncomment and fill the id:
+# [[kv_namespaces]]
+# binding = "LOG"
+# id = "PASTE_KV_NAMESPACE_ID_HERE"
+#
+# (optional) protect the read endpoint with a key the /admin page must supply:
+#   npx wrangler secret put ADMIN_KEY
