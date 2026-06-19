@@ -4,6 +4,7 @@
 // concept steps live here; the heavier screens are their own modules.
 import { useEffect, useRef, useState } from "react";
 import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
+import { setTestMode } from "../lib/requestLog";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { Cx, CXSTEPS, Head, Foot, Star, Thinking, Info } from "./chrome";
@@ -19,6 +20,8 @@ import { EmailGate } from "./EmailGate";
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [] };
 
 export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed }) {
+  // Keep the request log clean: the sample/test flow is never recorded.
+  setTestMode(!!test);
   const [step, setStep] = useState(test?.step ?? 0);
   const [brief, setBrief] = useState<Brief>(test?.brief ?? { ...empty, does: initialDoes || "" });
   const [stage, setStage] = useState(test?.stage ?? "Pre-launch · building MVP");

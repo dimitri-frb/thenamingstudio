@@ -55,7 +55,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
 
         <p className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 font-mono text-xs uppercase tracking-widest text-ink/40">
           <span>10 steps</span>
-          <span>≈ 20 min</span>
+          <span>under 5 min</span>
           <span>used by 4,200 founders</span>
         </p>
       </section>

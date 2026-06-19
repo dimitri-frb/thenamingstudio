@@ -62,9 +62,12 @@ export default {
 
     const phase: string = body?.phase || "";
 
+    // Requests from the sample/test flow are flagged and never logged centrally.
+    const skipLog = !!body?.test;
+
     // Lead capture (email gate before the brand book). No Claude call, just logged.
     if (phase === "lead") {
-      if (env.LOG) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, { email: body?.payload?.email || "", name: body?.payload?.name || "" }));
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, { email: body?.payload?.email || "", name: body?.payload?.name || "" }));
       return json({ ok: true }, env);
     }
 
@@ -78,8 +81,8 @@ export default {
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "compare") data = await enrichCompare(data);
-      // Best-effort central log (only if a KV namespace is bound). Never blocks the response.
-      if (env.LOG) ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
+      // Best-effort central log (only if a KV namespace is bound, and not the test flow). Never blocks the response.
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);

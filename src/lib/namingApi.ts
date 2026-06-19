@@ -2,7 +2,7 @@
 // Cloudflare Worker in production, and falls back to a client-side studio
 // (./localStudio) when neither is reachable, so the whole flow always works.
 import * as local from "./localStudio";
-import { logRequest, processId } from "./requestLog";
+import { logRequest, processId, isTestMode } from "./requestLog";
 
 export interface Brief {
   does: string;
@@ -99,7 +99,7 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
       const res = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phase, brief, payload, process }),
+        body: JSON.stringify({ phase, brief, payload, process, test: isTestMode() }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -154,6 +154,7 @@ export const naming = {
 // Email capture before the brand book. Logged locally and (centrally) on the
 // Worker, so leads show up in /admin. No Claude call.
 export async function captureLead(brief: Brief, email: string, name: string): Promise<void> {
+  if (isTestMode()) return; // sample flow: never capture a lead or log it
   const process = processId();
   logRequest({ phase: "lead", process, source: "live", input: { brief, payload: { email, name } }, output: { email, name } });
   try { localStorage.setItem("ns.email", email); } catch { /* ignore */ }
