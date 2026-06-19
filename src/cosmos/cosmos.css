@@ -510,6 +510,33 @@ table.cmp td.c { white-space: nowrap; }
 .votepage .text-emerald-500 { color: #4B6B57; }
 .votepage .border-emerald-500 { border-color: #4B6B57; }
 
+/* ─────────── motion: gentle entrance + hover lift ───────────
+   New DOM mounts when the step changes, so these play once per screen. Kept
+   transform-free on hover so the entrance animation never fights a hover state. */
+@keyframes cx-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes cx-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .h1 { animation: cx-rise .46s cubic-bezier(.2,.7,.2,1) both; }
+  .eyebrow, .sub { animation: cx-fade .5s ease .05s both; }
+
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick,
+      .relcolsD .relgroup, .seed-row, table.cmp tbody tr) {
+    animation: cx-rise .42s cubic-bezier(.2,.7,.2,1) both;
+  }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(2) { animation-delay: .04s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(3) { animation-delay: .08s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(4) { animation-delay: .12s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(5) { animation-delay: .16s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(6) { animation-delay: .20s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(7) { animation-delay: .24s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(n+8) { animation-delay: .28s; }
+}
+
+/* soft hover lift (shadow only, no transform, so it never clashes with cx-rise) */
+.concept, .lane, .ncard { transition: border-color .14s ease, box-shadow .18s ease; }
+.concept:hover, .lane:hover, .ncard:hover { border-color: var(--ink-3); box-shadow: 0 10px 26px -18px rgba(26,25,22,0.4); }
+
 /* ─────────── hover info badge + tooltip ─────────── */
 .info {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
