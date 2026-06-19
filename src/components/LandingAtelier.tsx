@@ -20,7 +20,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
         </p>
 
         <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink/15 bg-[var(--surface-solid)] px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink/55">
-          <span className="text-sm">🇫🇷</span> Every name checked against the INPI trademark register, Instagram, domain names and much more
+          <span className="text-sm">🇫🇷</span> Every name checked against the INPI, Instagram, domain names and much more...
         </p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
