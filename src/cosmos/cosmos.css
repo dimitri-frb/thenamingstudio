@@ -499,3 +499,16 @@ table.cmp td.c { white-space: nowrap; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C887F' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center;
 }
+
+/* ─────────── shared vote page (PublicVote), reskinned to the Cosmos register ───────────
+   PublicVote renders in a portal (outside .cx) with Atelier/Tailwind tokens; re-tint
+   it here to the monochrome look, like the brand book. */
+.votepage { --color-accent: #1A1916; --color-accent2: #55534C; --page: #F4F3EF; --surface-solid: #FFFFFF; font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
+.votepage .font-serif { font-family: 'Newsreader', Georgia, serif; }
+.votepage .font-mono { font-family: 'DM Sans', ui-sans-serif, sans-serif; letter-spacing: 0.14em; }
+.votepage .text-emerald-500 { color: #4B6B57; }
+.votepage .border-emerald-500 { border-color: #4B6B57; }
+
+/* tap feedback for the Copy button */
+@keyframes copied-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.copied-anim { animation: copied-pop 0.32s ease; }

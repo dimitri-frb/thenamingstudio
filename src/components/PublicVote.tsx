@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import "../cosmos/cosmos.css"; // the .votepage reskin lives here
 
 // "Public vote", a swipe deck to gut-check the shortlist (the Figma mock).
 // Single-device for now (no backend); shows a tally at the end.
@@ -51,7 +52,7 @@ export function PublicVote({ items, onClose, by, about }: { items: VoteItem[]; o
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--page)]">
+    <div className="votepage fixed inset-0 z-50 flex flex-col bg-[var(--page)]">
       {/* top */}
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-5 py-5 font-mono text-xs uppercase tracking-widest text-ink/45">
         <button onClick={onClose} className="hover:text-ink">✕</button>

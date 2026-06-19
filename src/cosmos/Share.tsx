@@ -14,6 +14,13 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
   const [sending, setSending] = useState<string[]>(all.slice(0, 5).map((r) => r.name));
   const [showTaglines, setShowTaglines] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    navigator.clipboard?.writeText(link);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1700);
+  }
 
   const tagOf = (name: string) => taglines[name] ?? (all.find((r) => r.name === name)?.verdict || "");
   const list = sending.map((n) => all.find((r) => r.name === n)).filter(Boolean) as Comparison["rows"];
@@ -75,7 +82,13 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
               <span style={{ flex: "0 0 auto" }}>🔗</span>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Shareable vote link · {list.length} name{list.length === 1 ? "" : "s"}</span>
             </span>
-            <button className="btn" onClick={() => navigator.clipboard?.writeText(link)}>Copy link</button>
+            <button
+              className={"btn" + (copied ? " copied-anim" : "")}
+              onClick={copyLink}
+              style={{ minWidth: 104, justifyContent: "center", ...(copied ? { background: "var(--ink)", color: "var(--surface)", borderColor: "var(--ink)" } : {}) }}
+            >
+              {copied ? "Copied ✓" : "Copy link"}
+            </button>
             <button className="btn solid" onClick={onVote}>Open vote →</button>
           </div>
         </div>
