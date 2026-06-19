@@ -11,16 +11,17 @@ const MAX_SEEDS = 8;
 const PER_SEED = 6;
 const MAX_PICK = 10;
 
-interface SeedRow { seed: string; concept: string; ideas: NameIdea[]; loading?: boolean }
+export interface SeedRow { seed: string; concept: string; ideas: NameIdea[]; loading?: boolean }
 
-export function Shortlist({ brief, saved, shortlist, setShortlist, onDone }: {
+export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initialRows }: {
   brief: Brief; saved: SavedIdea[]; shortlist: string[];
-  setShortlist: React.Dispatch<React.SetStateAction<string[]>>; onDone: () => void;
+  setShortlist: React.Dispatch<React.SetStateAction<string[]>>; onDone: () => void; initialRows?: SeedRow[];
 }) {
-  const [rows, setRows] = useState<SeedRow[] | null>(null);
+  const [rows, setRows] = useState<SeedRow[] | null>(initialRows ?? null);
   const seeds = useRef(saved.slice(0, MAX_SEEDS));
 
   useEffect(() => {
+    if (initialRows) return;        // test mode: rows are pre-seeded, skip the live fetch
     let live = true;
     (async () => {
       const out = await Promise.all(seeds.current.map(async (s) => {

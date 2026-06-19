@@ -11,16 +11,20 @@ import type { SavedIdea } from "./Shortlist";
 const DEFAULT_RELS: RelId[] = ["related", "metaphor", "translation", "root", "mythic"];
 const PER_GROUP = 5;
 
-export function Explore({ brief, concepts, saved, setSaved, onDone }: {
+export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
   brief: Brief; concepts: Concept[]; saved: SavedIdea[];
   setSaved: React.Dispatch<React.SetStateAction<SavedIdea[]>>; onDone: () => void;
+  initial?: { focus: { word: string; def: string }; groups: RelGroupData[] };
 }) {
   const [active, setActive] = useState(0);
   const world = concepts[active]?.title || "your idea";
 
-  const [focus, setFocus] = useState<{ word: string; def: string }>({ word: "", def: "" });
-  const [groups, setGroups] = useState<RelGroupData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [focus, setFocus] = useState<{ word: string; def: string }>(initial?.focus ?? { word: "", def: "" });
+  const [groups, setGroups] = useState<RelGroupData[]>(initial?.groups ?? []);
+  const [loading, setLoading] = useState(!initial);
+  // Which concept index we already have a board for (seeded = 0). StrictMode-safe:
+  // re-running the mount effect is a no-op; only a real concept change refetches.
+  const loadedFor = useRef<number | null>(initial ? 0 : null);
   const [pending, setPending] = useState("");   // the word currently being explored (for the loading line)
   const [shown, setShown] = useState<Set<RelId>>(new Set(DEFAULT_RELS));
   const [offset, setOffset] = useState<Record<string, number>>({});
@@ -44,8 +48,15 @@ export function Explore({ brief, concepts, saved, setSaved, onDone }: {
     }
   }
 
-  // First load + whenever the active world changes.
-  useEffect(() => { setHist([]); setFuture([]); load(""); /* eslint-disable-next-line */ }, [active]);
+  // Load the board when the active world changes (and on first mount unless it
+  // was pre-seeded for test mode).
+  useEffect(() => {
+    if (loadedFor.current === active) return;
+    loadedFor.current = active;
+    setHist([]); setFuture([]);
+    load("");
+    /* eslint-disable-next-line */
+  }, [active]);
 
   function explore(word: string) {
     if (word === focus.word) return;

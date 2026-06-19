@@ -55,8 +55,8 @@ function CxBar({ step, total, onBack, right }: { step: number; total: number; on
 }
 
 // Full shell with rail. `wide` drops the rail for the board-width screens.
-export function Cx({ step, total = 10, wide, topRight, barRight, onBack, onJump, onLeave, children }: {
-  step: number; total?: number; wide?: boolean;
+export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack, onJump, onLeave, children }: {
+  step: number; total?: number; wide?: boolean; reached?: number;
   topRight?: ReactNode; barRight?: ReactNode;
   onBack: () => void; onJump: (n: number) => void; onLeave: () => void;
   children: ReactNode;
@@ -70,7 +70,7 @@ export function Cx({ step, total = 10, wide, topRight, barRight, onBack, onJump,
             {topRight || <span className="lbl">🇫🇷 INPI-ready</span>}
           </div>
         </div>
-        {!wide && <CxRail step={step} reached={step} onJump={onJump} onLeave={onLeave} />}
+        {!wide && <CxRail step={step} reached={reached ?? step} onJump={onJump} onLeave={onLeave} />}
         <div className="cx-main">
           <CxBar step={step} total={total} onBack={onBack} right={barRight} />
           <div className="cx-body">{children}</div>

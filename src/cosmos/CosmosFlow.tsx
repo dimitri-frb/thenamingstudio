@@ -7,8 +7,9 @@ import { naming, type Brief, type Concept, type Feeling } from "../lib/namingApi
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { PublicVote } from "../components/PublicVote";
-import { Cx, Head, Foot, Star, Thinking } from "./chrome";
+import { Cx, CXSTEPS, Head, Foot, Star, Thinking } from "./chrome";
 import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, AVOID_FALLBACK, INDUSTRIES, STAGES } from "./data";
+import type { TestSeed } from "./mock";
 import { Explore } from "./Explore";
 import { Shortlist, type SavedIdea } from "./Shortlist";
 import { Compare } from "./Compare";
@@ -17,21 +18,21 @@ import { Decide } from "./Decide";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [] };
 
-export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void }) {
-  const [step, setStep] = useState(0);
-  const [brief, setBrief] = useState<Brief>({ ...empty, does: initialDoes || "" });
-  const [stage, setStage] = useState("Pre-launch · building MVP");
-  const [workingName, setWorkingName] = useState("");
+export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed }) {
+  const [step, setStep] = useState(test?.step ?? 0);
+  const [brief, setBrief] = useState<Brief>(test?.brief ?? { ...empty, does: initialDoes || "" });
+  const [stage, setStage] = useState(test?.stage ?? "Pre-launch · building MVP");
+  const [workingName, setWorkingName] = useState(test?.workingName ?? "");
 
-  const [feelings, setFeelings] = useState<Feeling[]>([]);
-  const [concepts, setConcepts] = useState<Concept[]>([]);
-  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [feelings, setFeelings] = useState<Feeling[]>(test?.feelings ?? []);
+  const [concepts, setConcepts] = useState<Concept[]>(test?.concepts ?? []);
+  const [chosen, setChosen] = useState<Set<string>>(new Set(test?.chosen ?? []));
 
-  const [saved, setSaved] = useState<SavedIdea[]>([]);          // step 5 → 6
-  const [shortlist, setShortlist] = useState<string[]>([]);     // step 6 → 7
-  const [comp, setComp] = useState<import("../lib/namingApi").Comparison | null>(null);
-  const [taglines, setTaglines] = useState<Record<string, string>>({});
-  const [chosenFinal, setChosenFinal] = useState<string>("");
+  const [saved, setSaved] = useState<SavedIdea[]>(test?.saved ?? []);          // step 5 → 6
+  const [shortlist, setShortlist] = useState<string[]>(test?.shortlist ?? []); // step 6 → 7
+  const [comp, setComp] = useState<import("../lib/namingApi").Comparison | null>(test?.comp ?? null);
+  const [taglines, setTaglines] = useState<Record<string, string>>(test?.taglines ?? {});
+  const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
 
   const [voteOpen, setVoteOpen] = useState(false);
   const [brandBookOpen, setBrandBookOpen] = useState(false);
@@ -53,7 +54,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
   // Arrived from the voice conversation with a ready brief → straight to concepts.
   const seeded = useRef(false);
   useEffect(() => {
-    if (seeded.current || !seedBrief) return;
+    if (seeded.current || !seedBrief || test) return;
     seeded.current = true;
     setBrief(seedBrief);
     generate(["Reading your brief…", "Mapping the worlds your brand could live in"], async () => setConcepts(await naming.concepts(seedBrief)), 4);
@@ -64,14 +65,16 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
     <Cx
       step={step}
       wide={opts?.wide}
+      reached={test ? 9 : step}
       barRight={opts?.barRight}
-      topRight={opts?.topRight}
+      topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : opts?.topRight}
       onBack={() => (step > 0 ? goto(step - 1) : onRestart())}
       onJump={(n) => goto(n)}
       onLeave={onRestart}
     >
       {error && <div className="note" style={{ borderColor: "var(--bad)", color: "var(--bad)" }}>{error}</div>}
       {loading ? <Thinking lines={loading} /> : node}
+      {test && <TestBar step={step} onJump={goto} />}
     </Cx>
   );
 
@@ -197,12 +200,12 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart }: { initialDoes:
   const chosenConcepts = concepts.filter((c) => chosen.has(c.title));
 
   if (step === 5) return shell(
-    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(6)} />,
+    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(6)} initial={test?.exploreSeed} />,
     { wide: true, topRight: <span className="lbl">Exploration · Option D</span>, barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>★ {saved.length} saved</span> }
   );
 
   if (step === 6) return shell(
-    <Shortlist brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist} onDone={() => goto(7)} />,
+    <Shortlist brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist} onDone={() => goto(7)} initialRows={test?.shortlistRows} />,
     { barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>{shortlist.length} / 10 shortlisted</span> }
   );
 
@@ -287,6 +290,23 @@ function PickField({ label, hint, options, selected, onToggle }: {
       <div className="pickrow">
         {options.map((s) => <span key={s} className={"pick" + (selected.includes(s) ? " on" : "")} onClick={() => onToggle(s)}>{s}</span>)}
       </div>
+    </div>
+  );
+}
+
+// A floating navigator shown only in test mode (?test): jump to any of the 10
+// steps to review the page, no real run needed.
+function TestBar({ step, onJump }: { step: number; onJump: (n: number) => void }) {
+  return (
+    <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 5, padding: "8px 11px", borderRadius: 999, background: "var(--ink)", boxShadow: "0 14px 34px -12px rgba(0,0,0,0.45)" }}>
+      <span style={{ fontFamily: "var(--sans)", fontSize: 9, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", padding: "0 6px 0 2px" }}>Test</span>
+      {CXSTEPS.map((s, i) => (
+        <button key={i} title={`${i + 1}. ${s}`} onClick={() => onJump(i)}
+          style={{ width: 26, height: 26, borderRadius: "50%", border: "none", cursor: "pointer", fontSize: 11.5, fontVariantNumeric: "tabular-nums",
+            background: i === step ? "var(--surface)" : "rgba(255,255,255,0.12)", color: i === step ? "var(--ink)" : "rgba(255,255,255,0.7)", transition: "background .12s ease" }}>
+          {i + 1}
+        </button>
+      ))}
     </div>
   );
 }

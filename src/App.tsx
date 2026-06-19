@@ -12,6 +12,7 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
+import { MOCK } from "./cosmos/mock";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
 import { BrandBook } from "./components/BrandBook";
@@ -109,6 +110,11 @@ export default function App() {
 
   const journeyIndex = screen === "generating" || screen === "results" ? 1 : 0;
   const showJourney = screen === "vibe" || screen === "types" || screen === "refine" || screen === "generating" || screen === "results";
+
+  // Test mode (?test): step through every page with sample data, no real run.
+  if (new URLSearchParams(window.location.search).has("test")) {
+    return <CosmosFlow test={MOCK} initialDoes="" onRestart={() => { window.location.assign(window.location.pathname); }} />;
+  }
 
   // Direct brand-book demo (?brandbook): show only the brand book.
   if (brandBookDemo) {
