@@ -26,10 +26,10 @@
   --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --sans:  'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --r1: 6px;
-  --r2: 10px;
-  --r3: 16px;
-  --r4: 22px;
+  --r1: 8px;
+  --r2: 13px;
+  --r3: 19px;
+  --r4: 26px;
   --rp: 999px;
 
   --pad: 40px;
@@ -67,7 +67,7 @@
 }
 .cx-brand { display: flex; align-items: center; gap: 11px; }
 .cx-brand .gl {
-  width: 26px; height: 26px; border-radius: 7px;
+  width: 26px; height: 26px; border-radius: 9px;
   background: var(--ink); color: var(--bg);
   display: grid; place-items: center; font-size: 14px;
 }
@@ -119,14 +119,16 @@
 .link { font-size: 14px; color: var(--ink-3); cursor: pointer; }
 .btn {
   font-family: var(--sans); font-size: 14px; font-weight: 500;
-  padding: 11px 18px; border-radius: var(--r2); border: 1px solid var(--line);
+  padding: 11px 18px; border-radius: var(--rp); border: 1px solid var(--line);
   background: var(--surface); color: var(--ink); cursor: pointer;
-  display: inline-flex; align-items: center; gap: 8px; transition: all .14s ease;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform .18s cubic-bezier(.22,1,.36,1), border-color .16s ease, background .16s ease, box-shadow .2s ease, opacity .2s ease;
 }
-.btn:hover { border-color: var(--ink-3); }
-.btn.solid { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.btn.solid:hover { background: #000; }
-.btn.lg { padding: 13px 22px; font-size: 15px; border-radius: var(--r3); }
+.btn:hover { border-color: var(--ink-3); transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(.97); }
+.btn.solid { background: var(--ink); color: var(--surface); border-color: var(--ink); box-shadow: 0 8px 22px -12px rgba(26,25,22,0.5); }
+.btn.solid:hover { background: #000; box-shadow: 0 12px 28px -12px rgba(26,25,22,0.6); }
+.btn.lg { padding: 13px 24px; font-size: 15px; border-radius: var(--rp); }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
 .btn.ghost:hover { background: var(--surface-3); color: var(--ink); }
 
@@ -513,7 +515,7 @@ table.cmp td.c { white-space: nowrap; }
 /* ─────────── motion: gentle entrance + hover lift ───────────
    New DOM mounts when the step changes, so these play once per screen. Kept
    transform-free on hover so the entrance animation never fights a hover state. */
-@keyframes cx-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes cx-rise { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
 @keyframes cx-fade { from { opacity: 0; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -522,7 +524,9 @@ table.cmp td.c { white-space: nowrap; }
 
   :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick,
       .relcolsD .relgroup, .seed-row, table.cmp tbody tr) {
-    animation: cx-rise .42s cubic-bezier(.2,.7,.2,1) both;
+    /* `backwards` (not `both`) so the card reverts to its base state after the
+       entrance, leaving `transform` free for the hover lift below. */
+    animation: cx-rise .42s cubic-bezier(.2,.7,.2,1) backwards;
   }
   :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(2) { animation-delay: .04s; }
   :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(3) { animation-delay: .08s; }
@@ -533,9 +537,9 @@ table.cmp td.c { white-space: nowrap; }
   :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(n+8) { animation-delay: .28s; }
 }
 
-/* soft hover lift (shadow only, no transform, so it never clashes with cx-rise) */
-.concept, .lane, .ncard { transition: border-color .14s ease, box-shadow .18s ease; }
-.concept:hover, .lane:hover, .ncard:hover { border-color: var(--ink-3); box-shadow: 0 10px 26px -18px rgba(26,25,22,0.4); }
+/* soft hover lift — gentle rise + scale, like the Cosmos cards */
+.concept, .lane, .ncard { transition: border-color .16s ease, box-shadow .2s ease, transform .2s cubic-bezier(.22,1,.36,1); }
+.concept:hover, .lane:hover, .ncard:hover { border-color: var(--ink-3); box-shadow: 0 14px 30px -18px rgba(26,25,22,0.42); transform: translateY(-3px); }
 
 /* ─────────── hover info badge + tooltip ─────────── */
 .info {
