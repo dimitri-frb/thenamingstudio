@@ -229,7 +229,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `HARD RULES:\n` +
     `- No tired startup tells: no -ly / -ify / -io / -ai / -able / -ster / -hub / -fy endings, and no dropped trailing vowel (Flickr style).\n` +
     `- No filler coinages built on doubled or stacked vowels (Lumora, Zeneo, Aetheria, Qoraa).\n` +
-    `- No two obvious words mashed together (SmartPay, QuickHire).\n` +
+    (Array.isArray(b.brief?.lanes) && b.brief.lanes.includes("compound")
+      ? `- Compounds are welcome here (the founder chose the Compound lane): fuse two real words into one fresh, ownable name. Make it surprising, never a lazy category mashup like SmartPay or QuickHire.\n`
+      : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
     `- Do not just return the saved word or a plain synonym of it.\n\n` +
     `Vary length and rhythm so no two of the 8 feel like siblings. Order them strongest first. Score honestly 60 to 95 with real spread (most land 70 to 85; reserve 90+ for the rare exceptional one). For each, write a one-line rationale (max 14 words) that is vivid and specific to THIS brand, the kind of line that makes a founder say yes.\n` +
