@@ -42,7 +42,7 @@ export interface RelWord { w: string; note: string; lang?: string }
 export interface RelGroupData { rel: string; words: RelWord[] }
 export interface RelateResult { word: string; def: string; groups: RelGroupData[] }
 
-export interface NameIdea { name: string; type: string; rationale: string; score: number }
+export interface NameIdea { name: string; type: string; rationale: string; score: number; seed?: string }
 export interface DomainHit { tld: string; available: boolean }
 // A concrete available domain to suggest (may tweak the name with a suffix), with
 // its rough price. premium = available but a higher (premium) registry price.

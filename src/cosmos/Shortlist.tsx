@@ -20,19 +20,26 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
   const [rows, setRows] = useState<SeedRow[] | null>(initialRows ?? null);
   const seeds = useRef(saved.slice(0, MAX_SEEDS));
 
+  // ONE name call for the whole shortlist (every saved word at once), then sort
+  // the names back under the seed each one grew from. Far faster and steadier than
+  // firing a separate Opus call per seed.
   useEffect(() => {
     if (initialRows) return;        // test mode: rows are pre-seeded, skip the live fetch
     let live = true;
     (async () => {
-      const out = await Promise.all(seeds.current.map(async (s) => {
-        try {
-          const ideas = await naming.names(brief, { concepts: [s.concept], words: [s.w] });
-          return { seed: s.w, concept: s.concept, ideas: ideas.slice(0, PER_SEED) } as SeedRow;
-        } catch {
-          return { seed: s.w, concept: s.concept, ideas: [] } as SeedRow;
-        }
-      }));
-      if (live) setRows(out);
+      const base: SeedRow[] = seeds.current.map((s) => ({ seed: s.w, concept: s.concept, ideas: [] }));
+      try {
+        const ideas = await naming.names(brief, {
+          concepts: Array.from(new Set(seeds.current.map((s) => s.concept))),
+          words: seeds.current.map((s) => s.w),
+        });
+        const bySeed = (w?: string) => {
+          const i = seeds.current.findIndex((s) => s.w.toLowerCase() === (w || "").toLowerCase());
+          return i >= 0 ? i : 0;     // unmatched names fall under the first seed
+        };
+        for (const idea of ideas) base[bySeed(idea.seed)].ideas.push(idea);
+      } catch { /* keep empty rows; the founder can still keep seeds or swap a row */ }
+      if (live) setRows(base);
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

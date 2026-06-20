@@ -85,7 +85,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   function loadFeelings(): Promise<void> {
     if (feelings.length) return Promise.resolve();
     if (feelingsPromise.current) return feelingsPromise.current;
-    if (!brief.problem.trim()) return Promise.resolve();
+    if (!brief.does.trim()) return Promise.resolve();
     const p = (async () => {
       setFeelingsBusy(true);
       try { const f = await naming.feelings(brief); setFeelings(f); }
@@ -119,12 +119,35 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   useEffect(() => {
     if (test) return;
     if (step === 2) { loadFeelings(); return; }
-    if (step === 1 && brief.problem.trim() && !feelings.length && !feelingsBusy) {
-      const t = setTimeout(() => loadFeelings(), 700);
+    // Warm feelings as soon as the founder has described what the company does,
+    // so the brand -> signal transition is already done by the time they reach it.
+    if ((step === 0 || step === 1) && brief.does.trim() && !feelings.length && !feelingsBusy) {
+      const t = setTimeout(() => loadFeelings(), 600);
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, brief.problem, brief.audience, brief.uvp]);
+  }, [step, brief.does, brief.problem, brief.audience, brief.uvp]);
+
+  // Warm the FIRST exploration board while the founder is still picking concepts,
+  // so step 6 opens with words already on screen instead of a cold load.
+  const exploreWarm = useRef<string | null>(null);
+  useEffect(() => {
+    if (test || step !== 4) return;
+    const first = concepts.find((c) => chosen.has(c.title));
+    if (!first || exploreWarm.current === first.title) return;
+    const store = exploreStore.current;
+    const key = first.title + "::";
+    if (store.cache.has(key)) return;
+    exploreWarm.current = first.title;
+    naming.relate(brief, "", first.title, []).then((res) => {
+      const entry = { word: res.word, def: res.def, groups: res.groups || [] };
+      store.cache.set(key, entry);
+      store.cache.set(first.title + "::" + (entry.word || "").toLowerCase(), entry);
+      store.seen.add((entry.word || "").toLowerCase());
+      for (const g of entry.groups) for (const w of g.words) store.seen.add((w.w || "").toLowerCase());
+    }).catch(() => { exploreWarm.current = null; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, chosen, concepts]);
 
   // Persist the in-progress process so a refresh resumes exactly here.
   useEffect(() => {
@@ -170,7 +193,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           <Field label="Working name" hint="· optional, we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
         </div>
         <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
-          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
+          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"]} />
       </div>
       <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()} onNext={() => goto(1)} />
     </>
@@ -185,12 +208,12 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           <Field label="The problem you solve" area value={brief.problem} onChange={(v) => set({ problem: v })}
             placeholder="Founders spend weeks on naming and settle for something generic or compromised." />
           <Field label="Who it's for" hint="· and what they value" area value={brief.audience} onChange={(v) => set({ audience: v })}
-            placeholder="Startup founders and brand strategists. Time-pressed, taste-conscious." />
+            placeholder="Startup founders and brand strategists. Time-pressed, care about craft." />
           <Field label="What's your unique proposition" hint="· the one claim rivals can't credibly make" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
             placeholder="e.g. Strategy-first naming with the rigor of a senior consultant, in minutes not months." />
         </div>
         <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
-          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
+          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"]} />
       </div>
       <Foot back="Company context" onBack={() => goto(0)} next="Next: emotional value →" disabled={!brief.problem.trim()}
         onNext={goEmotional} />

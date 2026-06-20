@@ -186,20 +186,20 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Brief: ${briefV1(b.brief)}.\nPropose 8 distinct, inspiring naming concept territories (clever angles, not names). ` +
     `Return JSON {"concepts":[{"title":"short evocative title","blurb":"one inspiring sentence on the angle","lane":"suggestive|invented|evocative|descriptive|abstract|compound|playful"}]} with exactly 8 items.` }),
 
-  feelings: (b) => ({ model: MODEL.fast, max: 900, prompt:
-    `Brief: ${briefV1(b.brief)}.\nList 14 feelings the brand name could evoke. Each needs a one-line "why it fits THIS brand" that references the audience. ` +
-    `Return JSON {"feelings":[{"word":"Trust","why":"..."}]} with 14 items.` }),
+  feelings: (b) => ({ model: MODEL.fast, max: 600, prompt:
+    `Brief: ${briefV1(b.brief)}.\nList 9 feelings the brand name could evoke. Each needs a short one-line "why it fits THIS brand" (max 14 words) that references the audience. ` +
+    `Return JSON {"feelings":[{"word":"Trust","why":"..."}]} with 9 items.` }),
 
   explore: (b) => ({ model: MODEL.smart, max: 1400, prompt:
     `Brief: ${briefV1(b.brief)}.\nConcept to explore: ${JSON.stringify(b.payload?.concept || {})}.\n` +
     `Give 13 seed words or short expressions that mine this concept, each with 4 to 5 related words (synonyms, sounds, short forms). ` +
     `Return JSON {"title":"the concept title","blurb":"the concept blurb","words":[{"word":"...","related":["...","..."]}]}.` }),
 
-  relate: (b) => ({ model: MODEL.fast, max: 1000, prompt:
+  relate: (b) => ({ model: MODEL.fast, max: 800, prompt:
     `Brief: ${briefV1(b.brief)}.\nThe founder is exploring naming material in the world "${b.payload?.world || ""}". ` +
     `Focus word: "${b.payload?.seed || b.payload?.world || ""}".\n` +
     `Pick the single best focus word (the focus word itself if it is a real, evocative word, else the strongest word for this world), give a one-line definition, ` +
-    `then list words RELATED to that focus word, grouped by HOW they relate. Each group: 6 items, each with the word and a short 2-4 word note; translations also include a 2-letter language code. ` +
+    `then list words RELATED to that focus word, grouped by HOW they relate. Each group: 5 items, each with the word and a UNIQUE 2-4 word note specific to THAT exact word (its own meaning, image or flavour). The note must NEVER restate the group name or use a generic line like "same field" or "related word"; translations also include a 2-letter language code. ` +
     `Groups: related (same lexical field), metaphor (symbols/images), translation (the idea in other tongues), root (Latin/Greek/Old etymological roots), mythic (famous people, places, myths). ` +
     `Favour distinctive, varied words; avoid generic choices and do not repeat across groups.` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
@@ -207,12 +207,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       : ``) +
     `\nReturn JSON {"word":"swift","def":"one line","groups":[{"rel":"related","words":[{"w":"fleet","note":"fast and nimble"}]},{"rel":"metaphor","words":[...]},{"rel":"translation","words":[{"w":"veloce","note":"fast","lang":"IT"}]},{"rel":"root","words":[...]},{"rel":"mythic","words":[...]}]}.` }),
 
-  names: (b) => ({ model: MODEL.opus, max: 1800, prompt:
+  names: (b) => {
+   const words = Array.isArray(b.payload?.sketch?.words) ? b.payload.sketch.words : [];
+   const n = words.length <= 1 ? 6 : Math.min(12, words.length + 3);
+   return { model: MODEL.opus, max: 1800, prompt:
     `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable, the kind of name a company grows into and competitors envy.\n\n` +
     `BRIEF:\n${briefV1(b.brief)}.\n` +
     `Creative direction(s) the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
-    `Word(s) the founder saved and responded to (your primary raw material): ${JSON.stringify(b.payload?.sketch?.words || [])}.\n\n` +
-    `Coin 8 brand names built from and around that material. They must feel genuinely interesting, original and alive, the opposite of generic AI output. A founder should read the list and feel a spark.\n\n` +
+    `Word(s) the founder saved and responded to (your primary raw material): ${JSON.stringify(words)}.\n\n` +
+    `Coin ${n} brand names built from and around that material. They must feel genuinely interesting, original and alive, the opposite of generic AI output. A founder should read the list and feel a spark.\n\n` +
+    (words.length > 1 ? `Spread the names across the saved words: every saved word should inspire at least one name, no single word dominating. Tag each name with "seed" = the EXACT saved word it grew from.\n\n` : `Tag each name with "seed" = "${words[0] || ""}".\n\n`) +
     `WHAT GREAT LOOKS LIKE:\n` +
     `- Short: 1 to 3 syllables, ideally 4 to 8 letters. Sayable once, spellable from hearing. Never long or clunky.\n` +
     `- Original: surprising, not the word a rival would guess. It should make the founder lean in.\n` +
@@ -235,8 +239,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
     `- Do not just return the saved word or a plain synonym of it.\n\n` +
-    `Vary length and rhythm so no two of the 8 feel like siblings. Order them strongest first. Score honestly 60 to 95 with real spread (most land 70 to 85; reserve 90+ for the rare exceptional one). For each, write a one-line rationale (max 14 words) that is vivid and specific to THIS brand, the kind of line that makes a founder say yes.\n` +
-    `Reason silently and return ONLY minified JSON {"names":[{"name":"","type":"one of: descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful","rationale":"","score":0}]} with exactly 8 items.` }),
+    `Vary length and rhythm so no two feel like siblings. Order them strongest first. Score honestly 60 to 95 with real spread (most land 70 to 85; reserve 90+ for the rare exceptional one). For each, write a one-line rationale (max 14 words) that is vivid and specific to THIS brand, the kind of line that makes a founder say yes.\n` +
+    `Reason silently and return ONLY minified JSON {"names":[{"name":"","type":"one of: descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful","rationale":"","score":0,"seed":""}]} with exactly ${n} items.` };
+  },
 
   compare: (b) => ({ model: MODEL.smart, max: 2000, prompt:
     `BRIEF:\n${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
