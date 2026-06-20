@@ -61,13 +61,13 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   // children in the background so the next click is (almost) instant.
   const queue = useRef<string[]>([]);
   const running = useRef(0);
-  const MAX_CONC = 5;
+  const MAX_CONC = 8;
 
   const markSeen = (e: Entry) => {
     seen.current.add((e.word || "").toLowerCase());
     for (const g of e.groups) for (const w of g.words) seen.current.add((w.w || "").toLowerCase());
   };
-  const excludeList = () => Array.from(seen.current).slice(-100);
+  const excludeList = () => Array.from(seen.current).slice(-50);
 
   const remember = (entry: Entry, ...seeds: string[]) => {
     // Key by both the requested seed and the resolved focus word so back/forward
@@ -112,8 +112,8 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     }
   }
   function prefetchChildren(e: Entry) {
-    // The first few words of each group are the likely next clicks.
-    const words = e.groups.flatMap((g) => g.words.slice(0, 4).map((w) => w.w));
+    // Every visible word is a likely next click, so prefetch them all.
+    const words = e.groups.flatMap((g) => g.words.slice(0, PER_GROUP).map((w) => w.w));
     for (const w of words) {
       const key = cacheKey(w);
       if (!cache.current.has(key) && !inflight.current.has(key) && !queue.current.includes(w)) queue.current.push(w);

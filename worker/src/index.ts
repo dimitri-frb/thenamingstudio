@@ -29,6 +29,7 @@ export interface Env {
 const MODEL = {
   fast: "claude-haiku-4-5-20251001",
   smart: "claude-sonnet-4-6",
+  opus: "claude-opus-4-8", // reserved for the creative peak (coining names)
 };
 
 const SYS =
@@ -193,19 +194,19 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Give 13 seed words or short expressions that mine this concept, each with 4 to 5 related words (synonyms, sounds, short forms). ` +
     `Return JSON {"title":"the concept title","blurb":"the concept blurb","words":[{"word":"...","related":["...","..."]}]}.` }),
 
-  relate: (b) => ({ model: MODEL.fast, max: 1400, prompt:
+  relate: (b) => ({ model: MODEL.fast, max: 1000, prompt:
     `Brief: ${briefV1(b.brief)}.\nThe founder is exploring naming material in the world "${b.payload?.world || ""}". ` +
     `Focus word: "${b.payload?.seed || b.payload?.world || ""}".\n` +
     `Pick the single best focus word (the focus word itself if it is a real, evocative word, else the strongest word for this world), give a one-line definition, ` +
-    `then list words RELATED to that focus word, grouped by HOW they relate. Each group: 8 items, each with the word and a 3-6 word note; translations also include a 2-letter language code. ` +
+    `then list words RELATED to that focus word, grouped by HOW they relate. Each group: 6 items, each with the word and a short 2-4 word note; translations also include a 2-letter language code. ` +
     `Groups: related (same lexical field), metaphor (symbols/images), translation (the idea in other tongues), root (Latin/Greek/Old etymological roots), mythic (famous people, places, myths). ` +
-    `Favour distinctive, surprising, varied words; avoid obvious or generic choices, and do not repeat a word across groups.` +
+    `Favour distinctive, varied words; avoid generic choices and do not repeat across groups.` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
-      ? ` Do NOT use any of these already-shown words: ${b.payload.exclude.slice(-80).join(", ")}.`
+      ? ` Avoid these already-shown words: ${b.payload.exclude.slice(-50).join(", ")}.`
       : ``) +
     `\nReturn JSON {"word":"swift","def":"one line","groups":[{"rel":"related","words":[{"w":"fleet","note":"fast and nimble"}]},{"rel":"metaphor","words":[...]},{"rel":"translation","words":[{"w":"veloce","note":"fast","lang":"IT"}]},{"rel":"root","words":[...]},{"rel":"mythic","words":[...]}]}.` }),
 
-  names: (b) => ({ model: MODEL.smart, max: 1800, prompt:
+  names: (b) => ({ model: MODEL.opus, max: 1800, prompt:
     `BRIEF:\n${briefV1(b.brief)}.\n` +
     `Directions the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
     `Words the founder saved while exploring (their taste, the raw material they responded to): ${JSON.stringify(b.payload?.sketch?.words || [])}.\n\n` +
