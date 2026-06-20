@@ -207,18 +207,33 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `\nReturn JSON {"word":"swift","def":"one line","groups":[{"rel":"related","words":[{"w":"fleet","note":"fast and nimble"}]},{"rel":"metaphor","words":[...]},{"rel":"translation","words":[{"w":"veloce","note":"fast","lang":"IT"}]},{"rel":"root","words":[...]},{"rel":"mythic","words":[...]}]}.` }),
 
   names: (b) => ({ model: MODEL.opus, max: 1800, prompt:
+    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable, the kind of name a company grows into and competitors envy.\n\n` +
     `BRIEF:\n${briefV1(b.brief)}.\n` +
-    `Directions the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
-    `Words the founder saved while exploring (their taste, the raw material they responded to): ${JSON.stringify(b.payload?.sketch?.words || [])}.\n\n` +
-    `Coin exactly 12 candidate BRAND NAMES. Rules:\n` +
-    `- Build them from and around the saved words and chosen directions; each name should trace back to that material or the brief.\n` +
-    `- Mix the chosen lanes: include some real or evocative words, some compounds, some genuinely coined words, some metaphors. Vary length and rhythm.\n` +
-    `- Every name must be easy to say and spell, memorable, and ownable. Distinctive beats safe.\n` +
-    `- BAN tired startup cliches: no -ly / -ify / -io / -ai / -able / -ster endings, no doubled-vowel filler coinages (Lumora, Zeneo, Qoraa), no random vowel salad, no obvious keyword mashups. If you would be embarrassed to put it on a real storefront, drop it.\n` +
-    `- Avoid names clearly owned by famous companies.\n` +
-    `- Score 60-95 HONESTLY with real spread (most names are 70-85; reserve 90+ for genuinely exceptional ones). Do not bunch every score near the top.\n` +
-    `Each item: name, type (one of descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful), a one-line rationale tying it to the saved words or brief, and the score.\n` +
-    `Return JSON {"names":[{"name":"","type":"","rationale":"","score":0}]} with exactly 12 items.` }),
+    `Creative direction(s) the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
+    `Word(s) the founder saved and responded to (your primary raw material): ${JSON.stringify(b.payload?.sketch?.words || [])}.\n\n` +
+    `Coin 8 brand names built from and around that material. They must feel genuinely interesting, original and alive, the opposite of generic AI output. A founder should read the list and feel a spark.\n\n` +
+    `WHAT GREAT LOOKS LIKE:\n` +
+    `- Short: 1 to 3 syllables, ideally 4 to 8 letters. Sayable once, spellable from hearing. Never long or clunky.\n` +
+    `- Original: surprising, not the word a rival would guess. It should make the founder lean in.\n` +
+    `- Evocative: it suggests a feeling or an image tied to this brief, it does not literally describe the product.\n` +
+    `- Ownable: distinctive enough to be a real trademark and brand, not a plain category word.\n` +
+    `- Sound: real mouthfeel and rhythm, a name that rings when said aloud.\n\n` +
+    `TECHNIQUES, use a SPREAD across the set (never lean on one trick):\n` +
+    `- A real word repurposed (Stripe, Arc, Halo, Ember).\n` +
+    `- A blend or portmanteau (Pinterest, Vercel, Brisk).\n` +
+    `- A coined word from a Latin, Greek or old root (Vela, Solva, Lumen).\n` +
+    `- A foreign-language gem that fits the brief.\n` +
+    `- A short, sound-led invented word that simply feels right.\n` +
+    `- A myth, place or figure bent to fit (Atlas, Juno, Sienna).\n` +
+    `Treat the saved word as a springboard: bend it, blend it, translate it, trace its root, or coin a fresh word that carries its feeling, not just a synonym of it.\n\n` +
+    `HARD RULES:\n` +
+    `- No tired startup tells: no -ly / -ify / -io / -ai / -able / -ster / -hub / -fy endings, and no dropped trailing vowel (Flickr style).\n` +
+    `- No filler coinages built on doubled or stacked vowels (Lumora, Zeneo, Aetheria, Qoraa).\n` +
+    `- No two obvious words mashed together (SmartPay, QuickHire).\n` +
+    `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
+    `- Do not just return the saved word or a plain synonym of it.\n\n` +
+    `Vary length and rhythm so no two of the 8 feel like siblings. Order them strongest first. Score honestly 60 to 95 with real spread (most land 70 to 85; reserve 90+ for the rare exceptional one). For each, write a one-line rationale (max 14 words) that is vivid and specific to THIS brand, the kind of line that makes a founder say yes.\n` +
+    `Reason silently and return ONLY minified JSON {"names":[{"name":"","type":"one of: descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful","rationale":"","score":0}]} with exactly 8 items.` }),
 
   compare: (b) => ({ model: MODEL.smart, max: 2000, prompt:
     `BRIEF:\n${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
