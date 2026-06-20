@@ -14,7 +14,7 @@ export interface ReqLog {
 }
 
 const KEY = "ns.admin.log";
-const MAX = 200;
+const MAX = 400;
 
 // When the founder is running the sample "test" flow (?test / "Test flow"), we
 // don't want those requests polluting the real request log, locally or centrally.

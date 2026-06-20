@@ -91,8 +91,9 @@ export default {
       if (phase === "candidates") data = await enrichCandidates(data);
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
-      // Best-effort central log (only if a KV namespace is bound, and not the test flow). Never blocks the response.
-      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
+      // Best-effort central log (only if a KV namespace is bound, not the test flow,
+      // and not the high-volume exploration phase which would flood the log).
+      if (env.LOG && !skipLog && phase !== "relate") ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);

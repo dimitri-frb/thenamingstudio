@@ -77,17 +77,31 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     finally { setLoading(null); }
   }
 
-  // Feelings power the "signal" chips on step 3. Fetched in the background (on the
-  // brand step and on arrival) so the transition is instant; falls back to
-  // SIGNAL_FALLBACK on failure.
-  const feelingsReq = useRef(0);
-  async function loadFeelings() {
-    if (feelings.length || feelingsBusy || !brief.problem.trim()) return;
-    const id = ++feelingsReq.current;
-    setFeelingsBusy(true);
-    try { const f = await naming.feelings(brief); if (id === feelingsReq.current) setFeelings(f); }
-    catch { /* keep SIGNAL_FALLBACK */ }
-    finally { if (id === feelingsReq.current) setFeelingsBusy(false); }
+  // Feelings power the "signal" chips on step 3. We warm them in the background
+  // while the founder fills the brand step, so the (full-screen) transition is
+  // usually instant; if not ready yet, goEmotional waits behind the loader. One
+  // shared in-flight request, falls back to SIGNAL_FALLBACK on failure.
+  const feelingsPromise = useRef<Promise<void> | null>(null);
+  function loadFeelings(): Promise<void> {
+    if (feelings.length) return Promise.resolve();
+    if (feelingsPromise.current) return feelingsPromise.current;
+    if (!brief.problem.trim()) return Promise.resolve();
+    const p = (async () => {
+      setFeelingsBusy(true);
+      try { const f = await naming.feelings(brief); setFeelings(f); }
+      catch { /* keep SIGNAL_FALLBACK */ }
+      finally { setFeelingsBusy(false); feelingsPromise.current = null; }
+    })();
+    feelingsPromise.current = p;
+    return p;
+  }
+  // Brand step -> signal step: instant if feelings are already warm, otherwise the
+  // full-page loader shows until they land (Haiku, ~2-3s).
+  async function goEmotional() {
+    if (feelings.length) { goto(2); return; }
+    setError(null); setLoading(["Reading the brief…", "Drawing the feelings your name could carry"]);
+    try { await loadFeelings(); } catch { /* ignore */ }
+    finally { setLoading(null); goto(2); }
   }
 
   // Arrived from the voice conversation with a ready brief → straight to concepts.
@@ -155,9 +169,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           </div>
           <Field label="Working name" hint="· optional, we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
         </div>
-        <HelpCard label="Why this matters"
-          body="A name that doesn't know what it stands for has nothing to defend. These answers become the brief every later step is judged against."
-          bullets={["Sets the surface area", "Filters the wrong tonal lanes", "Lets us test names against a real job"]} />
+        <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
+          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
       </div>
       <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()} onNext={() => goto(1)} />
     </>
@@ -180,7 +193,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
       </div>
       <Foot back="Company context" onBack={() => goto(0)} next="Next: emotional value →" disabled={!brief.problem.trim()}
-        onNext={() => { loadFeelings(); goto(2); }} />
+        onNext={goEmotional} />
     </>
   );
 
@@ -191,17 +204,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
           sub="Pick the feelings it should carry." />
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
-          {feelingsBusy && !feelings.length ? (
-            <div className="fld">
-              <label><span className="flabel">The name should signal</span></label>
-              <p className="stream" style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "var(--ink-3)", margin: "4px 0" }}>
-                Finding the feelings your name should carry
-              </p>
-            </div>
-          ) : (
-            <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
-              onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
-          )}
+          <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
+            onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
           <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
             onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
           <div className="helpcard" style={{ marginTop: "auto", display: "flex", gap: 14, alignItems: "flex-start" }}>

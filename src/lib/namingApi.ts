@@ -106,7 +106,9 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
         const data = await res.json();
         if (!data?.error) {
           const out = deDash(data);
-          logRequest({ phase, process, source: "live", input: { brief, payload }, output: out });
+          // Exploration ("relate") fires dozens of times per process (prefetch);
+          // don't log it, it floods the admin and evicts older processes.
+          if (phase !== "relate") logRequest({ phase, process, source: "live", input: { brief, payload }, output: out });
           return out as T;
         }
       }
@@ -116,7 +118,7 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
   }
   await new Promise((r) => setTimeout(r, 500)); // tiny beat so the "thinking" state reads
   const out = deDash(localFallback(phase, brief, payload));
-  logRequest({ phase, process, source: "fallback", input: { brief, payload }, output: out });
+  if (phase !== "relate") logRequest({ phase, process, source: "fallback", input: { brief, payload }, output: out });
   return out as T;
 }
 
