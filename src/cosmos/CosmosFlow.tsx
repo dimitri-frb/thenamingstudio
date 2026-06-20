@@ -4,7 +4,8 @@
 // concept steps live here; the heavier screens are their own modules.
 import { useEffect, useRef, useState } from "react";
 import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
-import { setTestMode } from "../lib/requestLog";
+import { setTestMode, processId, setProcessId } from "../lib/requestLog";
+import { loadFlow, saveFlow } from "../lib/flowState";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { Cx, CXSTEPS, Head, Foot, Star, Thinking, Info } from "./chrome";
@@ -22,21 +23,30 @@ const empty: Brief = { does: "", industry: "", problem: "", audience: "", values
 export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed }) {
   // Keep the request log clean: the sample/test flow is never recorded.
   setTestMode(!!test);
-  const [step, setStep] = useState(test?.step ?? 0);
-  const [brief, setBrief] = useState<Brief>(test?.brief ?? { ...empty, does: initialDoes || "" });
-  const [stage, setStage] = useState(test?.stage ?? "Pre-launch · building MVP");
-  const [workingName, setWorkingName] = useState(test?.workingName ?? "");
+  // Restore an in-progress process from a previous session (read once). Test mode
+  // and the voice-seeded path never restore.
+  const restoredRef = useRef<ReturnType<typeof loadFlow> | undefined>(undefined);
+  if (restoredRef.current === undefined) {
+    restoredRef.current = (test || seedBrief) ? null : loadFlow();
+    if (restoredRef.current?.process) setProcessId(restoredRef.current.process);
+  }
+  const R = restoredRef.current;
 
-  const [feelings, setFeelings] = useState<Feeling[]>(test?.feelings ?? []);
+  const [step, setStep] = useState(R?.step ?? test?.step ?? 0);
+  const [brief, setBrief] = useState<Brief>(R?.brief ?? test?.brief ?? { ...empty, does: initialDoes || "" });
+  const [stage, setStage] = useState(R?.stage ?? test?.stage ?? "Pre-launch · building MVP");
+  const [workingName, setWorkingName] = useState(R?.workingName ?? test?.workingName ?? "");
+
+  const [feelings, setFeelings] = useState<Feeling[]>(R?.feelings ?? test?.feelings ?? []);
   const [feelingsBusy, setFeelingsBusy] = useState(false);   // feelings load in the background, so step 2->3 is instant
-  const [concepts, setConcepts] = useState<Concept[]>(test?.concepts ?? []);
-  const [chosen, setChosen] = useState<Set<string>>(new Set(test?.chosen ?? []));
+  const [concepts, setConcepts] = useState<Concept[]>(R?.concepts ?? test?.concepts ?? []);
+  const [chosen, setChosen] = useState<Set<string>>(new Set(R?.chosen ?? test?.chosen ?? []));
 
-  const [saved, setSaved] = useState<SavedIdea[]>(test?.saved ?? []);          // step 5 → 6
-  const [shortlist, setShortlist] = useState<string[]>(test?.shortlist ?? []); // step 6 → 7
-  const [comp, setComp] = useState<import("../lib/namingApi").Comparison | null>(test?.comp ?? null);
-  const [taglines, setTaglines] = useState<Record<string, string>>(test?.taglines ?? {}); // founder's tagline edits on the share screen
-  const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
+  const [saved, setSaved] = useState<SavedIdea[]>(R?.saved ?? test?.saved ?? []);          // step 5 → 6
+  const [shortlist, setShortlist] = useState<string[]>(R?.shortlist ?? test?.shortlist ?? []); // step 6 → 7
+  const [comp, setComp] = useState<import("../lib/namingApi").Comparison | null>(R?.comp ?? test?.comp ?? null);
+  const [taglines, setTaglines] = useState<Record<string, string>>(R?.taglines ?? test?.taglines ?? {}); // founder's tagline edits on the share screen
+  const [chosenFinal, setChosenFinal] = useState<string>(R?.chosenFinal ?? test?.chosenFinal ?? "");
 
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
@@ -50,7 +60,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [maxReached, setMaxReached] = useState(test?.step ?? 0); // furthest step seen, so back/forward + rail can jump anywhere visited
+  const [maxReached, setMaxReached] = useState(R?.maxReached ?? test?.step ?? 0); // furthest step seen, so back/forward + rail can jump anywhere visited
   // Exploration board + prefetch cache, kept here so leaving and returning to the
   // exploration step restores it instead of regenerating.
   const exploreStore = useRef<ExploreStore>({ cache: new Map(), seen: new Set(), focus: null, groups: [], active: 0, hist: [], future: [] });
@@ -101,6 +111,17 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.problem, brief.audience, brief.uvp]);
+
+  // Persist the in-progress process so a refresh resumes exactly here.
+  useEffect(() => {
+    if (test) return;
+    const t = setTimeout(() => saveFlow({
+      process: processId(), step, maxReached, brief, stage, workingName,
+      feelings, concepts, chosen: [...chosen], saved, shortlist, comp, taglines, chosenFinal,
+    }), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, maxReached, brief, stage, workingName, feelings, concepts, chosen, saved, shortlist, comp, taglines, chosenFinal]);
 
   const shell = (node: React.ReactNode, opts?: { wide?: boolean; barRight?: React.ReactNode; topRight?: React.ReactNode }) => (
     <Cx
@@ -172,10 +193,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
           {feelingsBusy && !feelings.length ? (
             <div className="fld">
-              <label><span className="flabel">The name should signal</span><span className="fhint">· personalizing your options…</span></label>
-              <div className="pickrow">
-                {[0, 1, 2, 3, 4].map((i) => <span key={i} className="pick" style={{ color: "var(--ink-4)", opacity: 0.5, cursor: "default", letterSpacing: "0.1em" }}>· · ·</span>)}
-              </div>
+              <label><span className="flabel">The name should signal</span></label>
+              <p className="stream" style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "var(--ink-3)", margin: "4px 0" }}>
+                Finding the feelings your name should carry
+              </p>
             </div>
           ) : (
             <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}

@@ -15,6 +15,7 @@ import { CosmosFlow } from "./cosmos/CosmosFlow";
 import { MOCK } from "./cosmos/mock";
 import { AdminPage } from "./admin/AdminPage";
 import { newProcess } from "./lib/requestLog";
+import { hasSavedFlow, clearFlow } from "./lib/flowState";
 import { Conversation } from "./components/Conversation";
 import { PublicVote } from "./components/PublicVote";
 import { BrandBook } from "./components/BrandBook";
@@ -41,7 +42,8 @@ const TYPE_ORDER: NameType[] = [
 ];
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("landing");
+  // Resume an in-progress process after a refresh; otherwise start on the landing.
+  const [screen, setScreen] = useState<Screen>(() => (hasSavedFlow() ? "classic" : "landing"));
   // Brief is captured inside the flow now (not on the landing).
   const [description] = useState("");
   const [vibes, setVibes] = useState<Vibe[]>([]);
@@ -105,6 +107,7 @@ export default function App() {
   }
 
   function restart() {
+    clearFlow();            // drop the saved process so refresh won't resume it
     newProcess();           // a fresh flow = a new process in the request log
     setScreen("landing");
     setResults([]);

@@ -28,6 +28,7 @@ const rid = () => "p" + Math.random().toString(36).slice(2, 8) + Date.now().toSt
 let PROCESS = rid();
 export function processId(): string { return PROCESS; }
 export function newProcess(): string { PROCESS = rid(); return PROCESS; }
+export function setProcessId(id: string): void { if (id) PROCESS = id; } // restore the same process after a refresh
 
 export function logRequest(e: Omit<ReqLog, "id" | "at">): void {
   if (testMode) return; // never log the sample/test flow
