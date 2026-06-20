@@ -39,6 +39,12 @@ function claudeBridge() {
         req.on("end", async () => {
           try {
             const { phase, brief, payload } = JSON.parse(body || "{}");
+            // Domain availability is pure RDAP (no Claude), mirrors the Worker.
+            if (phase === "domains") {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify(await domainsForNode(payload?.name || "")));
+              return;
+            }
             const prompt = buildPrompt(phase, brief, payload);
             const raw = await runClaude(prompt);
             const json = extractJson(raw);
@@ -71,6 +77,44 @@ function runClaude(prompt: string): Promise<string> {
       else reject(new Error(err.trim() || `claude exited with code ${code}`));
     });
   });
+}
+
+// Dev-only RDAP domain availability (mirrors the Worker's domainsFor).
+const RDAP_BASE_NODE: Record<string, string> = {
+  com: "https://rdap.verisign.com/com/v1/",
+  io: "https://rdap.identitydigital.services/rdap/",
+  ai: "https://rdap.identitydigital.services/rdap/",
+  app: "https://pubapi.registry.google/rdap/",
+};
+async function rdapNode(slug: string, tld: string): Promise<"available" | "taken" | "unknown"> {
+  const base = RDAP_BASE_NODE[tld];
+  if (!base || !slug) return "unknown";
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const res = await fetch(`${base}domain/${slug}.${tld}`, { headers: { accept: "application/rdap+json" }, signal: ctrl.signal });
+    if (res.status === 404) return "available";
+    if (res.status === 200) return "taken";
+    return "unknown";
+  } catch { return "unknown"; } finally { clearTimeout(timer); }
+}
+async function domainsForNode(name: string): Promise<{ domains: any[]; suggested: any[] }> {
+  const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!slug) return { domains: [], suggested: [] };
+  const tlds = ["com", "io", "ai", "app"];
+  const tweakSlugs = [`get${slug}`, `${slug}app`, `${slug}hq`, `try${slug}`, `${slug}ly`, `${slug}io`, `join${slug}`, `${slug}go`, `hey${slug}`, `${slug}flow`];
+  const PR: Record<string, [string, string]> = { com: ["$12", "$14/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"], app: ["$14", "$18/yr"] };
+  const [primary, tweaks] = await Promise.all([
+    Promise.all(tlds.map((t) => rdapNode(slug, t))),
+    Promise.all(tweakSlugs.map((v) => rdapNode(v, "com"))),
+  ]);
+  const states: Record<string, string> = {};
+  tlds.forEach((t, i) => { states[t] = primary[i]; });
+  const domains = ["com", "io", "ai"].map((t) => ({ tld: "." + t, available: states[t] === "available" }));
+  const suggested: any[] = [];
+  for (const t of tlds) { if (suggested.length >= 3) break; if (states[t] === "available") suggested.push({ domain: `${slug}.${t}`, price: PR[t][0], renewal: PR[t][1] }); }
+  tweakSlugs.forEach((v, i) => { if (suggested.length < 3 && tweaks[i] === "available") suggested.push({ domain: `${v}.com`, price: PR.com[0], renewal: PR.com[1] }); });
+  return { domains, suggested: suggested.slice(0, 3) };
 }
 
 function extractJson(text: string): any {
@@ -120,7 +164,7 @@ function buildPrompt(phase: string, brief: any, payload: any): string {
     case "relate":
       return `${SYS}\n\nBRIEF:\n${B}\n\nWORLD: ${JSON.stringify(payload.world)}\nFOCUS WORD: ${JSON.stringify(payload.seed || payload.world)}\n\nTASK: The founder is exploring naming material. Pick the single best FOCUS WORD (use the given focus word if it is a real, evocative single word; otherwise pick the strongest word for this world). Give a one-line definition, then list words RELATED to that focus word, grouped by HOW they relate. Each group: exactly 8 items, each with the word and a 3-6 word note; translations also include a 2-letter language code. Groups: related (same lexical field), metaphor (symbols/images), translation (the idea in other tongues), root (Latin/Greek/Old etymological roots), mythic (famous people, places, myths). Favour distinctive, surprising, varied words; avoid obvious or generic choices, and do not repeat a word across groups.${Array.isArray(payload.exclude) && payload.exclude.length ? ` Do NOT use any of these already-shown words: ${payload.exclude.slice(-80).join(", ")}.` : ``}\nSCHEMA: {"word":"","def":"","groups":[{"rel":"related","words":[{"w":"","note":""}]},{"rel":"metaphor","words":[{"w":"","note":""}]},{"rel":"translation","words":[{"w":"","note":"","lang":"IT"}]},{"rel":"root","words":[{"w":"","note":""}]},{"rel":"mythic","words":[{"w":"","note":""}]}]}`;
     case "names":
-      return `${SYS}\n\nBRIEF:\n${B}\n\nWORDS THE FOUNDER PICKED while exploring (treat these as their taste, the raw material they responded to):\n${JSON.stringify(payload.sketch)}\n\nTASK: Generate exactly 12 candidate BRAND NAMES built from and inspired by the picked words and chosen directions. Use a mix of the chosen lanes. Avoid names obviously owned by famous companies; prefer ownable, brandable options. For each: name, type (one of [descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful]), a one-line human rationale tying it back to the words they picked, and a 0-100 "pulse" score for overall brand strength.\nSCHEMA: {"names":[{"name":"","type":"","rationale":"","score":0}]}`;
+      return `${SYS}\n\nBRIEF:\n${B}\n\nWORDS THE FOUNDER PICKED while exploring (treat these as their taste, the raw material they responded to):\n${JSON.stringify(payload.sketch)}\n\nTASK: Generate exactly 12 candidate BRAND NAMES built from and around the picked words and chosen directions; each name should trace back to that material or the brief. Use a mix of the chosen lanes: some real or evocative words, some compounds, some genuinely coined, some metaphors; vary length and rhythm. Every name must be easy to say and spell, memorable and ownable; distinctive beats safe. BAN tired startup cliches: no -ly / -ify / -io / -ai / -able / -ster endings, no doubled-vowel filler coinages (Lumora, Zeneo, Qoraa), no random vowel salad, no obvious keyword mashups, if you'd be embarrassed to put it on a real storefront, drop it. Avoid names clearly owned by famous companies. For each: name, type (one of [descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful]), a one-line human rationale tying it to the picked words, and a 60-95 "pulse" score scored HONESTLY with real spread (most names 70-85; reserve 90+ for genuinely exceptional, never bunch every score near the top).\nSCHEMA: {"names":[{"name":"","type":"","rationale":"","score":0}]}`;
     case "brandbook":
       return `${SYS}\n\nBRIEF:\n${B}\n\nCHOSEN NAME: ${payload.name}\n\nTASK: Produce a concise STARTER BRAND BOOK for the brand "${payload.name}", drawn entirely from the brief. Be specific to THIS brand, warm and human, never generic or templated. Give:\n- essence: the one-line soul of the brand (a few words).\n- tagline: a short, memorable tagline.\n- story: a 2-3 sentence positioning paragraph (what it is, who it's for, why it matters).\n- whyName: one sentence on why "${payload.name}" fits this brand.\n- voice: { adjectives: 4 single tone words; dos: 3 short "do" guidelines for how the brand writes; donts: 3 short "don'ts"; sample: one example sentence written in the brand's actual voice }.\n- palette: exactly 5 colours that fit the brand's feeling, each { hex (#RRGGBB), name (evocative), role (one of Ink, Primary, Accent, Surface, Highlight) }. Tasteful, harmonious, usable.\n- fontKey: pick the single best-fitting typography pairing from exactly these options: editorial, modern, classic, friendly, warm.\n- fontNote: one short sentence on why that pairing fits.\n- messaging: { pitch: a one-sentence elevator pitch; boilerplate: a 2-sentence company boilerplate; taglines: 3 alternative taglines; valueProps: 3 short value propositions }.\nSCHEMA: {"essence":"","tagline":"","story":"","whyName":"","voice":{"adjectives":["","","",""],"dos":["","",""],"donts":["","",""],"sample":""},"palette":[{"hex":"#","name":"","role":""}],"fontKey":"editorial","fontNote":"","messaging":{"pitch":"","boilerplate":"","taglines":["","",""],"valueProps":["","",""]}}`;
     case "suggest":

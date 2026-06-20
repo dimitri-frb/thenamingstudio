@@ -151,6 +151,18 @@ export const naming = {
   brandbook: (brief: Brief, name: string) => call<BrandBook>("brandbook", brief, { name }),
 };
 
+// Real domain availability for one name (its own request on the Worker, so it's
+// fast and thorough). Not logged. Returns empty on any failure.
+export async function fetchDomains(name: string): Promise<{ domains: DomainHit[]; suggested: SuggestedDomain[] }> {
+  if (ENDPOINT) {
+    try {
+      const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domains", payload: { name } }) });
+      if (res.ok) { const d = await res.json(); if (!d?.error) return { domains: d.domains || [], suggested: d.suggested || [] }; }
+    } catch { /* ignore */ }
+  }
+  return { domains: [], suggested: [] };
+}
+
 // Email capture before the brand book. Logged locally and (centrally) on the
 // Worker, so leads show up in /admin. No Claude call.
 export async function captureLead(brief: Brief, email: string, name: string): Promise<void> {

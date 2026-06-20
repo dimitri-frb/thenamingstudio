@@ -2,9 +2,11 @@
 // genuinely-available domains (real, via RDAP) with prices, INPI trademark,
 // handle, and a SMILE score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
-import { naming, type Brief, type Comparison, type CompareRow } from "../lib/namingApi";
+import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
 import { Dots, Head, Star, Thinking } from "./chrome";
 import { availableDomains, handleOptions, nameTests } from "./data";
+
+type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
@@ -14,6 +16,9 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void;
 }) {
   const [sortSmile, setSortSmile] = useState(false);
+  // Real domain availability, fetched per-name in parallel so the scored table
+  // appears instantly and domains fill in as they land.
+  const [dom, setDom] = useState<Record<string, Dom>>({});
 
   useEffect(() => {
     if (comp) return;
@@ -23,6 +28,29 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch real domains for every name (each its own fast request), then persist
+  // them back into comp so the Decision and Share screens have them too.
+  useEffect(() => {
+    if (!comp) return;
+    let live = true;
+    const todo = comp.rows.map((r) => r.name).filter((n) => !(n in dom));
+    if (!todo.length) return;
+    todo.forEach(async (name) => {
+      const res = await fetchDomains(name);
+      if (live) setDom((prev) => ({ ...prev, [name]: res }));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comp]);
+
+  useEffect(() => {
+    if (!comp || !comp.rows.length) return;
+    if (!comp.rows.every((r) => dom[r.name])) return;
+    if (!comp.rows.some((r) => !r.suggested && dom[r.name]?.suggested)) return;
+    setComp({ ...comp, rows: comp.rows.map((r) => ({ ...r, domains: dom[r.name]?.domains ?? r.domains, suggested: dom[r.name]?.suggested ?? r.suggested })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dom, comp]);
 
   if (!comp) return (
     <>
@@ -64,7 +92,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
               {rows.map((n) => {
                 const verdict = verdictOf(n);
                 const win = n.name === comp.recommended;
-                const domains = availableDomains(n.name, n.domains, n.suggested);
+                const dinfo = dom[n.name];
+                const domains = dinfo ? availableDomains(n.name, dinfo.domains, dinfo.suggested) : [];
                 return (
                   <tr key={n.name} className={win ? "win" : ""}>
                     <td>
@@ -75,7 +104,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                     <td style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                        {domains.length === 0 && <span className="meta">checking…</span>}
+                        {!dinfo && <span className="meta">checking…</span>}
+                        {dinfo && domains.length === 0 && <span className="meta">none found</span>}
                         {domains.map((d) => (
                           <span key={d.domain} style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
                             <span style={{ color: "var(--good)", fontSize: 12, flex: "0 0 auto" }}>✓</span>

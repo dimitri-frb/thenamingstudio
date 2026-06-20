@@ -65,6 +65,14 @@ export default {
     // Requests from the sample/test flow are flagged and never logged centrally.
     const skipLog = !!body?.test;
 
+    // Domain availability for ONE name (its own request => its own subrequest
+    // budget => fast + thorough). No Claude call. Called per-name in parallel by
+    // the comparison screen, so the table can show scores instantly and fill in
+    // domains as they land.
+    if (phase === "domains") {
+      return json(await domainsFor(body?.payload?.name || ""), env);
+    }
+
     // Lead capture (email gate before the brand book). No Claude call, just logged.
     if (phase === "lead") {
       if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, { email: body?.payload?.email || "", name: body?.payload?.name || "" }));
@@ -80,7 +88,8 @@ export default {
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
-      if (phase === "compare") data = await enrichCompare(data);
+      // Comparison no longer blocks on RDAP: the client fetches real domains
+      // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, and not the test flow). Never blocks the response.
       if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
       return json(data, env);
@@ -153,7 +162,18 @@ function json(data: unknown, env: Env, status = 200): Response {
   });
 }
 
-const briefV1 = (b: any) => JSON.stringify(b || {});
+// A labelled brief the model can actually reason over (beats dumping raw JSON).
+const briefV1 = (b: any) => [
+  `What the company does: ${b?.does || "n/a"}`,
+  `Industry: ${b?.industry || "n/a"}`,
+  `Problem solved: ${b?.problem || "n/a"}`,
+  `Target audience: ${b?.audience || "n/a"}`,
+  `What they value: ${b?.values || "n/a"}`,
+  `Unique value proposition: ${b?.uvp || "n/a"}`,
+  `The name SHOULD signal: ${(b?.signal || []).join(", ") || "n/a"}`,
+  `Brand tone: ${(b?.tone || []).join(", ") || "n/a"}`,
+  `Naming lanes to explore: ${(b?.lanes || []).join(", ") || "any"}`,
+].join("\n");
 const briefV2 = (b: any) => JSON.stringify(b || {});
 
 // Each phase -> { model, max, prompt }. Shapes mirror the TS interfaces the
@@ -185,10 +205,19 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       : ``) +
     `\nReturn JSON {"word":"swift","def":"one line","groups":[{"rel":"related","words":[{"w":"fleet","note":"fast and nimble"}]},{"rel":"metaphor","words":[...]},{"rel":"translation","words":[{"w":"veloce","note":"fast","lang":"IT"}]},{"rel":"root","words":[...]},{"rel":"mythic","words":[...]}]}.` }),
 
-  names: (b) => ({ model: MODEL.smart, max: 1500, prompt:
-    `Brief: ${briefV1(b.brief)}.\nConcepts: ${JSON.stringify(b.payload?.sketch?.concepts || [])}. Resonant words: ${JSON.stringify(b.payload?.sketch?.words || [])}.\n` +
-    `Coin 12 brand name candidates drawing on these. Mix lanes. Each: a short rationale and a score 70-98. ` +
-    `Return JSON {"names":[{"name":"Lumora","type":"suggestive","rationale":"one line","score":88}]} with 12 items.` }),
+  names: (b) => ({ model: MODEL.smart, max: 1800, prompt:
+    `BRIEF:\n${briefV1(b.brief)}.\n` +
+    `Directions the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
+    `Words the founder saved while exploring (their taste, the raw material they responded to): ${JSON.stringify(b.payload?.sketch?.words || [])}.\n\n` +
+    `Coin exactly 12 candidate BRAND NAMES. Rules:\n` +
+    `- Build them from and around the saved words and chosen directions; each name should trace back to that material or the brief.\n` +
+    `- Mix the chosen lanes: include some real or evocative words, some compounds, some genuinely coined words, some metaphors. Vary length and rhythm.\n` +
+    `- Every name must be easy to say and spell, memorable, and ownable. Distinctive beats safe.\n` +
+    `- BAN tired startup cliches: no -ly / -ify / -io / -ai / -able / -ster endings, no doubled-vowel filler coinages (Lumora, Zeneo, Qoraa), no random vowel salad, no obvious keyword mashups. If you would be embarrassed to put it on a real storefront, drop it.\n` +
+    `- Avoid names clearly owned by famous companies.\n` +
+    `- Score 60-95 HONESTLY with real spread (most names are 70-85; reserve 90+ for genuinely exceptional ones). Do not bunch every score near the top.\n` +
+    `Each item: name, type (one of descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful), a one-line rationale tying it to the saved words or brief, and the score.\n` +
+    `Return JSON {"names":[{"name":"","type":"","rationale":"","score":0}]} with exactly 12 items.` }),
 
   compare: (b) => ({ model: MODEL.smart, max: 1800, prompt:
     `Brief: ${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
@@ -261,7 +290,7 @@ async function rdap(slug: string, tld: string): Promise<"available" | "taken" | 
   const base = RDAP_BASE[tld];
   if (!base || !slug) return "unknown";
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 4500);
+  const timer = setTimeout(() => ctrl.abort(), 3000);
   try {
     const res = await fetch(`${base}domain/${slug}.${tld}`, {
       headers: { accept: "application/rdap+json" },
@@ -316,50 +345,35 @@ const NAME_TWEAKS = (slug: string) => [
   `get${slug}`, `${slug}app`, `${slug}hq`, `try${slug}`, `${slug}ly`,
   `${slug}io`, `join${slug}`, `${slug}go`, `hey${slug}`, `${slug}flow`,
 ];
-// Free-plan worker allows ~50 subrequests; cap RDAP calls so a long shortlist
-// can't blow the budget (the Claude call is one more). Shared across all rows.
-const RDAP_BUDGET = 44;
 
-async function enrichCompare(data: any): Promise<any> {
-  const rows = Array.isArray(data?.rows) ? data.rows : [];
-  const budget = { n: 0 };
-  await Promise.all(rows.map(async (r: any) => {
-    const slug = (r.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const prior: Record<string, boolean> = {};
-    (Array.isArray(r.domains) ? r.domains : []).forEach((d: any) => { prior[d.tld] = !!d.available; });
+// Real availability for ONE name: check the primary TLDs and every name tweak in
+// parallel (about 14 RDAP calls, comfortably under the per-request subrequest
+// limit), then return the .com/.io/.ai verdict plus up to three domains the
+// founder can actually register today.
+async function domainsFor(name: string): Promise<{ domains: any[]; suggested: any[] }> {
+  const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!slug) return { domains: [], suggested: [] };
+  const tlds = ["com", "io", "ai", "app"];
+  const tweakSlugs = NAME_TWEAKS(slug);
+  const [primary, tweaks] = await Promise.all([
+    Promise.all(tlds.map((t) => rdap(slug, t))),
+    Promise.all(tweakSlugs.map((v) => rdap(v, "com"))),
+  ]);
+  const states: Record<string, string> = {};
+  tlds.forEach((t, i) => { states[t] = primary[i]; });
 
-    // Check the four primary TLDs in parallel.
-    const tlds = ["com", "io", "ai", "app"];
-    const states: Record<string, string> = {};
-    await Promise.all(tlds.map(async (t) => {
-      if (budget.n >= RDAP_BUDGET) { states[t] = "unknown"; return; }
-      budget.n++;
-      states[t] = await rdap(slug, t);
-    }));
+  const domains = COMPARE_TLDS.map((t) => ({ tld: "." + t, available: states[t] === "available" }));
 
-    // .com/.io/.ai verdict (kept for the Decision screen + back-compat).
-    r.domains = COMPARE_TLDS.map((t) => {
-      const tld = "." + t;
-      const s = states[t];
-      const available = s === "available" ? true : s === "taken" ? false : (prior[tld] ?? false);
-      return { tld, available };
-    });
+  const suggested: any[] = [];
+  for (const t of tlds) {
+    if (suggested.length >= 3) break;
+    if (states[t] === "available") suggested.push({ domain: `${slug}.${t}`, price: PRICE[t][0], renewal: PRICE[t][1] });
+  }
+  tweakSlugs.forEach((v, i) => {
+    if (suggested.length < 3 && tweaks[i] === "available") suggested.push({ domain: `${v}.com`, price: PRICE.com[0], renewal: PRICE.com[1] });
+  });
 
-    // Build up to three genuinely-available suggestions.
-    const suggested: any[] = [];
-    for (const t of tlds) {
-      if (suggested.length >= 3) break;
-      if (states[t] === "available") suggested.push({ domain: `${slug}.${t}`, price: PRICE[t][0], renewal: PRICE[t][1] });
-    }
-    for (const v of NAME_TWEAKS(slug)) {
-      if (suggested.length >= 3 || budget.n >= RDAP_BUDGET) break;
-      budget.n++;
-      if (await rdap(v, "com") === "available") suggested.push({ domain: `${v}.com`, price: PRICE.com[0], renewal: PRICE.com[1] });
-    }
-    r.suggested = suggested.slice(0, 3);
-  }));
-  data.rows = rows;
-  return data;
+  return { domains, suggested: suggested.slice(0, 3) };
 }
 
 function hash(s: string): number {
