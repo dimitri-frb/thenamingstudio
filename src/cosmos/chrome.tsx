@@ -41,10 +41,13 @@ function CxRail({ step, reached, onJump, onLeave }: {
   );
 }
 
-function CxBar({ step, total, onBack, right }: { step: number; total: number; onBack: () => void; right?: ReactNode }) {
+function CxBar({ step, total, reached = step, onBack, onForward, right }: { step: number; total: number; reached?: number; onBack: () => void; onForward?: () => void; right?: ReactNode }) {
+  const canFwd = step < reached;
   return (
     <div className="cx-bar">
-      <button className="back" onClick={onBack}>←</button>
+      <button className="back" onClick={onBack} title="Back">←</button>
+      <button className="back" onClick={onForward} disabled={!canFwd} title="Forward"
+        style={canFwd ? undefined : { opacity: 0.3, cursor: "default" }}>→</button>
       <span className="sno">{String(step + 1).padStart(2, "0")} / {total}</span>
       <div className="cx-prog">
         {Array.from({ length: total }).map((_, i) => <span key={i} className={i <= step ? "on" : ""} />)}
@@ -72,7 +75,7 @@ export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack
         </div>
         {!wide && <CxRail step={step} reached={reached ?? step} onJump={onJump} onLeave={onLeave} />}
         <div className="cx-main">
-          <CxBar step={step} total={total} onBack={onBack} right={barRight} />
+          <CxBar step={step} total={total} reached={reached ?? step} onBack={onBack} onForward={() => onJump(Math.min(total - 1, step + 1))} right={barRight} />
           <div className="cx-body">{children}</div>
         </div>
       </div>

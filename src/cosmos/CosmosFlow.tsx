@@ -10,7 +10,7 @@ import { BrandBook } from "../components/BrandBook";
 import { Cx, CXSTEPS, Head, Foot, Star, Thinking, Info } from "./chrome";
 import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES } from "./data";
 import type { TestSeed } from "./mock";
-import { Explore } from "./Explore";
+import { Explore, type ExploreStore } from "./Explore";
 import { Shortlist, type SavedIdea } from "./Shortlist";
 import { Compare } from "./Compare";
 import { Share } from "./Share";
@@ -49,8 +49,13 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [maxReached, setMaxReached] = useState(test?.step ?? 0); // furthest step seen, so back/forward + rail can jump anywhere visited
+  // Exploration board + prefetch cache, kept here so leaving and returning to the
+  // exploration step restores it instead of regenerating.
+  const exploreStore = useRef<ExploreStore>({ cache: new Map(), seen: new Set(), focus: null, groups: [], active: 0, hist: [], future: [] });
+
   const set = (patch: Partial<Brief>) => setBrief((b) => ({ ...b, ...patch }));
-  const goto = (n: number) => setStep(n);
+  const goto = (n: number) => { setStep(n); setMaxReached((m) => Math.max(m, n)); };
   const toggleArr = (arr: string[], v: string, max = 999) =>
     arr.includes(v) ? arr.filter((x) => x !== v) : arr.length >= max ? arr : [...arr, v];
 
@@ -75,7 +80,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     <Cx
       step={step}
       wide={opts?.wide}
-      reached={test ? 9 : step}
+      reached={test ? 9 : maxReached}
       barRight={opts?.barRight}
       topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : opts?.topRight}
       onBack={() => (step > 0 ? goto(step - 1) : onRestart())}
@@ -209,7 +214,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const chosenConcepts = concepts.filter((c) => chosen.has(c.title));
 
   if (step === 5) return shell(
-    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(6)} initial={test?.exploreSeed} />,
+    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(6)} initial={test?.exploreSeed} store={exploreStore.current} />,
     { wide: true, topRight: <span className="lbl">Exploration · Option D</span>, barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>★ {saved.length} saved</span> }
   );
 

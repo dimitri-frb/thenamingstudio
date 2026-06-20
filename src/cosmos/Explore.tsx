@@ -11,34 +11,49 @@ import type { SavedIdea } from "./Shortlist";
 const DEFAULT_RELS: RelId[] = ["related", "metaphor", "translation", "root", "mythic"];
 const PER_GROUP = 5;
 
-export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
+// Persisted across step navigation (held by CosmosFlow) so leaving and returning
+// to exploration restores the board + prefetch cache instead of refetching.
+export interface ExploreStore {
+  cache: Map<string, { word: string; def: string; groups: RelGroupData[] }>;
+  seen: Set<string>;
+  focus: { word: string; def: string } | null;
+  groups: RelGroupData[];
+  active: number;
+  hist: string[];
+  future: string[];
+}
+
+export function Explore({ brief, concepts, saved, setSaved, onDone, initial, store }: {
   brief: Brief; concepts: Concept[]; saved: SavedIdea[];
   setSaved: React.Dispatch<React.SetStateAction<SavedIdea[]>>; onDone: () => void;
   initial?: { focus: { word: string; def: string }; groups: RelGroupData[] };
+  store?: ExploreStore;
 }) {
-  const [active, setActive] = useState(0);
+  // A restored board (we've been here before) takes priority over the test seed.
+  const restored = store && store.focus ? store : null;
+  const [active, setActive] = useState(restored?.active ?? 0);
   const world = concepts[active]?.title || "your idea";
 
-  const [focus, setFocus] = useState<{ word: string; def: string }>(initial?.focus ?? { word: "", def: "" });
-  const [groups, setGroups] = useState<RelGroupData[]>(initial?.groups ?? []);
-  const [loading, setLoading] = useState(!initial);
-  // Which concept index we already have a board for (seeded = 0). StrictMode-safe:
-  // re-running the mount effect is a no-op; only a real concept change refetches.
-  const loadedFor = useRef<number | null>(initial ? 0 : null);
+  const [focus, setFocus] = useState<{ word: string; def: string }>(restored?.focus ?? initial?.focus ?? { word: "", def: "" });
+  const [groups, setGroups] = useState<RelGroupData[]>(restored?.groups ?? initial?.groups ?? []);
+  const [loading, setLoading] = useState(!(restored || initial));
+  // Which concept index we already have a board for. StrictMode-safe: re-running
+  // the mount effect is a no-op; only a real concept change refetches.
+  const loadedFor = useRef<number | null>((restored || initial) ? (restored?.active ?? 0) : null);
   const [pending, setPending] = useState("");   // the word currently being explored (for the loading line)
   const [shown, setShown] = useState<Set<RelId>>(new Set(DEFAULT_RELS));
   const [offset, setOffset] = useState<Record<string, number>>({});
-  const [hist, setHist] = useState<string[]>([]);          // explored words (back stack)
-  const [future, setFuture] = useState<string[]>([]);
+  const [hist, setHist] = useState<string[]>(restored?.hist ?? []);    // explored words (back stack)
+  const [future, setFuture] = useState<string[]>(restored?.future ?? []);
   const reqId = useRef(0);
   // Cache relate results per (world + seed) so back/forward and re-clicking an
   // already-explored word are instant instead of refetching.
   type Entry = { word: string; def: string; groups: RelGroupData[] };
-  const cache = useRef<Map<string, Entry>>(new Map());
+  const cache = useRef<Map<string, Entry>>(store?.cache ?? new Map());
   const cacheKey = (seed: string) => world + "::" + (seed || "").toLowerCase();
   // Every word we've ever surfaced this session, so each new board can ask for
   // fresh words and avoid repeating (uniqueness).
-  const seen = useRef<Set<string>>(new Set());
+  const seen = useRef<Set<string>>(store?.seen ?? new Set());
   // In-flight relate calls, so a click and a prefetch for the same word share one
   // request instead of firing twice.
   const inflight = useRef<Map<string, Promise<Entry | null>>>(new Map());
@@ -131,8 +146,15 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
     else setLoading(false);
   }
 
+  // Mirror the live board into the persisted store so returning to this step
+  // restores it (the cache + seen set are already the store's own instances).
+  useEffect(() => {
+    if (!store) return;
+    store.active = active; store.focus = focus; store.groups = groups; store.hist = hist; store.future = future;
+  });
+
   // Load the board when the active world changes (and on first mount unless it
-  // was pre-seeded for test mode).
+  // was pre-seeded for test mode or restored from the store).
   useEffect(() => {
     if (loadedFor.current === active) return;
     loadedFor.current = active;
