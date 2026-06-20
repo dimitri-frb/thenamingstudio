@@ -35,38 +35,100 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
   // already-explored word are instant instead of refetching.
   type Entry = { word: string; def: string; groups: RelGroupData[] };
   const cache = useRef<Map<string, Entry>>(new Map());
+  const cacheKey = (seed: string) => world + "::" + (seed || "").toLowerCase();
+  // Every word we've ever surfaced this session, so each new board can ask for
+  // fresh words and avoid repeating (uniqueness).
+  const seen = useRef<Set<string>>(new Set());
+  // In-flight relate calls, so a click and a prefetch for the same word share one
+  // request instead of firing twice.
+  const inflight = useRef<Map<string, Promise<Entry | null>>>(new Map());
+  // A small concurrency-limited prefetch queue: when a board loads we fetch its
+  // children in the background so the next click is (almost) instant.
+  const queue = useRef<string[]>([]);
+  const running = useRef(0);
+  const MAX_CONC = 5;
+
+  const markSeen = (e: Entry) => {
+    seen.current.add((e.word || "").toLowerCase());
+    for (const g of e.groups) for (const w of g.words) seen.current.add((w.w || "").toLowerCase());
+  };
+  const excludeList = () => Array.from(seen.current).slice(-100);
+
   const remember = (entry: Entry, ...seeds: string[]) => {
     // Key by both the requested seed and the resolved focus word so back/forward
     // and re-clicking a word both hit the cache.
-    [...seeds, entry.word].forEach((s) => cache.current.set(world + "::" + (s || "").toLowerCase(), entry));
+    [...seeds, entry.word].forEach((s) => cache.current.set(cacheKey(s), entry));
   };
-  if (initial && !cache.current.size) remember({ word: initial.focus.word, def: initial.focus.def, groups: initial.groups }, "");
+  if (initial && !cache.current.size) {
+    const e = { word: initial.focus.word, def: initial.focus.def, groups: initial.groups };
+    remember(e, ""); markSeen(e);
+  }
 
-  // Load relations for a seed in the current world (from cache if we've seen it).
+  // Fetch (or reuse) a relate board for a seed in the current world. Caches the
+  // result, records its words as "seen", and dedupes concurrent calls.
+  function fetchRelate(seed: string): Promise<Entry | null> {
+    const key = cacheKey(seed);
+    const cached = cache.current.get(key);
+    if (cached) return Promise.resolve(cached);
+    const pend = inflight.current.get(key);
+    if (pend) return pend;
+    const p = (async () => {
+      try {
+        const res = await naming.relate(brief, seed, world, excludeList());
+        const entry = { word: res.word, def: res.def, groups: res.groups || [] };
+        remember(entry, seed); markSeen(entry);
+        return entry;
+      } catch { return null; }
+      finally { inflight.current.delete(key); }
+    })();
+    inflight.current.set(key, p);
+    return p;
+  }
+
+  // Background prefetch: keep one level ahead of the founder. Capped concurrency
+  // so we don't fire dozens of requests at once.
+  function pump() {
+    while (running.current < MAX_CONC && queue.current.length) {
+      const seed = queue.current.shift()!;
+      const key = cacheKey(seed);
+      if (cache.current.has(key) || inflight.current.has(key)) continue;
+      running.current++;
+      fetchRelate(seed).finally(() => { running.current--; pump(); });
+    }
+  }
+  function prefetchChildren(e: Entry) {
+    // The first few words of each group are the likely next clicks.
+    const words = e.groups.flatMap((g) => g.words.slice(0, 4).map((w) => w.w));
+    for (const w of words) {
+      const key = cacheKey(w);
+      if (!cache.current.has(key) && !inflight.current.has(key) && !queue.current.includes(w)) queue.current.push(w);
+    }
+    pump();
+  }
+
+  function applyBoard(e: Entry) {
+    setFocus({ word: e.word, def: e.def });
+    setGroups(e.groups);
+    setOffset({});
+    setLoading(false);
+  }
+
+  // Load relations for a seed (instant from cache; otherwise a single fetch).
   async function load(seed: string) {
-    const hit = cache.current.get(world + "::" + seed.toLowerCase());
+    const hit = cache.current.get(cacheKey(seed));
     if (hit) {
       reqId.current++;
-      setFocus({ word: hit.word, def: hit.def });
-      setGroups(hit.groups);
-      setOffset({});
-      setLoading(false);
+      applyBoard(hit);
+      prefetchChildren(hit);
       return;
     }
     const id = ++reqId.current;
     setPending(seed || world);
     setLoading(true);
-    try {
-      const res = await naming.relate(brief, seed, world);
-      if (id !== reqId.current) return;
-      const entry = { word: res.word, def: res.def, groups: res.groups || [] };
-      remember(entry, seed);
-      setFocus({ word: res.word, def: res.def });
-      setGroups(res.groups || []);
-      setOffset({});
-    } finally {
-      if (id === reqId.current) setLoading(false);
-    }
+    const entry = await fetchRelate(seed);
+    if (id !== reqId.current) return;
+    if (entry) { applyBoard(entry); prefetchChildren(entry); }
+    else setLoading(false);
   }
 
   // Load the board when the active world changes (and on first mount unless it
@@ -75,6 +137,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial }: {
     if (loadedFor.current === active) return;
     loadedFor.current = active;
     setHist([]); setFuture([]);
+    queue.current = [];            // drop pending prefetches from the previous world
     load("");
     /* eslint-disable-next-line */
   }, [active]);

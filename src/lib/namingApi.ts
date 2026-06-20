@@ -144,7 +144,7 @@ export const naming = {
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   feelings: (brief: Brief) => call<{ feelings: Feeling[] }>("feelings", brief).then((d) => d.feelings),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
-  relate: (brief: Brief, seed: string, world: string) => call<RelateResult>("relate", brief, { seed, world }),
+  relate: (brief: Brief, seed: string, world: string, exclude: string[] = []) => call<RelateResult>("relate", brief, { seed, world, exclude }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
   names: (brief: Brief, sketch: Sketch) => call<{ names: NameIdea[] }>("names", brief, { sketch }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),
