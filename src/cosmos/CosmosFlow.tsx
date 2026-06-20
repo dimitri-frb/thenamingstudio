@@ -28,6 +28,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [workingName, setWorkingName] = useState(test?.workingName ?? "");
 
   const [feelings, setFeelings] = useState<Feeling[]>(test?.feelings ?? []);
+  const [feelingsBusy, setFeelingsBusy] = useState(false);   // feelings load in the background, so step 2->3 is instant
   const [concepts, setConcepts] = useState<Concept[]>(test?.concepts ?? []);
   const [chosen, setChosen] = useState<Set<string>>(new Set(test?.chosen ?? []));
 
@@ -66,6 +67,19 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     finally { setLoading(null); }
   }
 
+  // Feelings power the "signal" chips on step 3. Fetched in the background (on the
+  // brand step and on arrival) so the transition is instant; falls back to
+  // SIGNAL_FALLBACK on failure.
+  const feelingsReq = useRef(0);
+  async function loadFeelings() {
+    if (feelings.length || feelingsBusy || !brief.problem.trim()) return;
+    const id = ++feelingsReq.current;
+    setFeelingsBusy(true);
+    try { const f = await naming.feelings(brief); if (id === feelingsReq.current) setFeelings(f); }
+    catch { /* keep SIGNAL_FALLBACK */ }
+    finally { if (id === feelingsReq.current) setFeelingsBusy(false); }
+  }
+
   // Arrived from the voice conversation with a ready brief → straight to concepts.
   const seeded = useRef(false);
   useEffect(() => {
@@ -75,6 +89,18 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     generate(["Reading your brief…", "Mapping the worlds your brand could live in"], async () => setConcepts(await naming.concepts(seedBrief)), 4);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedBrief]);
+
+  // Warm the feelings while the founder is still filling the brand step, and
+  // ensure they're loading the moment they land on the signal step.
+  useEffect(() => {
+    if (test) return;
+    if (step === 2) { loadFeelings(); return; }
+    if (step === 1 && brief.problem.trim() && !feelings.length && !feelingsBusy) {
+      const t = setTimeout(() => loadFeelings(), 700);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, brief.problem, brief.audience, brief.uvp]);
 
   const shell = (node: React.ReactNode, opts?: { wide?: boolean; barRight?: React.ReactNode; topRight?: React.ReactNode }) => (
     <Cx
@@ -133,7 +159,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch", "taste-conscious", "strategist-grade"]} />
       </div>
       <Foot back="Company context" onBack={() => goto(0)} next="Next: emotional value →" disabled={!brief.problem.trim()}
-        onNext={() => generate(["Reading the brief…", "Drawing the feelings your name could carry"], async () => setFeelings(await naming.feelings(brief)), 2)} />
+        onNext={() => { loadFeelings(); goto(2); }} />
     </>
   );
 
@@ -144,8 +170,17 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
           sub="Pick the feelings it should carry." />
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
-          <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
-            onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
+          {feelingsBusy && !feelings.length ? (
+            <div className="fld">
+              <label><span className="flabel">The name should signal</span><span className="fhint">· personalizing your options…</span></label>
+              <div className="pickrow">
+                {[0, 1, 2, 3, 4].map((i) => <span key={i} className="pick" style={{ color: "var(--ink-4)", opacity: 0.5, cursor: "default", letterSpacing: "0.1em" }}>· · ·</span>)}
+              </div>
+            </div>
+          ) : (
+            <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
+              onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
+          )}
           <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
             onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
           <div className="helpcard" style={{ marginTop: "auto", display: "flex", gap: 14, alignItems: "flex-start" }}>
