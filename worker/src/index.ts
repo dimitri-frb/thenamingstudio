@@ -219,11 +219,13 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Each item: name, type (one of descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful), a one-line rationale tying it to the saved words or brief, and the score.\n` +
     `Return JSON {"names":[{"name":"","type":"","rationale":"","score":0}]} with exactly 12 items.` }),
 
-  compare: (b) => ({ model: MODEL.smart, max: 1800, prompt:
-    `Brief: ${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
-    `For each give intuitive, visual, sound, emotional (each 3-6), total (their sum), a one-line verdict, and BEST-GUESS availability estimates: ` +
-    `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".ai","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). Pick the strongest as recommended and say why. ` +
-    `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences"}.` }),
+  compare: (b) => ({ model: MODEL.smart, max: 2000, prompt:
+    `BRIEF:\n${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
+    `For each give intuitive, visual, sound, emotional (each 3-6), total (their sum), a one-line verdict, a "tagline" and BEST-GUESS availability estimates: ` +
+    `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".ai","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). ` +
+    `The tagline is a short BRAND tagline (3 to 6 words) for the COMPANY if it were named this, capturing what it does or how it feels for the brief, NOT a description of the word itself (e.g. for a calm finance app: "Money, finally at peace"). ` +
+    `Pick the strongest as recommended and say why. ` +
+    `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","tagline","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences"}.` }),
 
   brandbook: (b) => ({ model: MODEL.smart, max: 1800, prompt:
     `Brief: ${briefV1(b.brief)}.\nCreate a starter brand book for the chosen name "${b.payload?.name || ""}". ` +

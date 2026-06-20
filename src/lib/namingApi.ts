@@ -49,6 +49,7 @@ export interface DomainHit { tld: string; available: boolean }
 export interface SuggestedDomain { domain: string; price: string; renewal: string; premium?: boolean }
 export interface CompareRow {
   name: string; intuitive: number; visual: number; sound: number; emotional: number; total: number;
+  tagline?: string;      // a short brand tagline for the company, used on the share screen
   domains: DomainHit[];   // .com first
   suggested?: SuggestedDomain[]; // up to 3 domains that are actually available
   inpi: boolean;          // appears clear to register?

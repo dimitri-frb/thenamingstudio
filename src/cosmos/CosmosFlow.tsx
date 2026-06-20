@@ -34,6 +34,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [saved, setSaved] = useState<SavedIdea[]>(test?.saved ?? []);          // step 5 → 6
   const [shortlist, setShortlist] = useState<string[]>(test?.shortlist ?? []); // step 6 → 7
   const [comp, setComp] = useState<import("../lib/namingApi").Comparison | null>(test?.comp ?? null);
+  const [taglines, setTaglines] = useState<Record<string, string>>(test?.taglines ?? {}); // founder's tagline edits on the share screen
   const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
 
   const [brandBookOpen, setBrandBookOpen] = useState(false);
@@ -223,7 +224,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   );
 
   if (step === 8) return shell(
-    <Share brief={brief} comp={comp}
+    <Share brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
       onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)} />
   );
 

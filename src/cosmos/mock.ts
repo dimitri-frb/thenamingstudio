@@ -81,26 +81,26 @@ const shortlistRows: SeedRow[] = [
 const shortlist = ["Aurova", "Embra", "Albara", "Lumen", "Sparq"];
 
 type Dims = { intuitive: number; visual: number; sound: number; emotional: number };
-const row = (name: string, d: Dims, inpi: boolean, ig: boolean, verdict: string, suggested: { domain: string; price: string; renewal: string }[]) => ({
+const row = (name: string, d: Dims, inpi: boolean, ig: boolean, verdict: string, tagline: string, suggested: { domain: string; price: string; renewal: string }[]) => ({
   name, ...d, total: d.intuitive + d.visual + d.sound + d.emotional,
   domains: [{ tld: ".com", available: false }, { tld: ".io", available: true }, { tld: ".ai", available: true }],
   suggested, inpi, inpiNote: inpi ? "No earlier mark in classes 9 / 42 (estimate)" : "Possible earlier mark, worth a closer look (estimate)",
-  instagram: ig, verdict,
+  instagram: ig, verdict, tagline,
 });
 
 const comp: Comparison = {
   recommended: "Aurova",
   why: "Aurova clears every column: a warm, ownable coinage with a clear dawn story and domains you can grab today.",
   rows: [
-    row("Aurova", { intuitive: 5, visual: 5, sound: 5, emotional: 5 }, true, true, "Warm, ownable, and instantly evokes the dawn.",
+    row("Aurova", { intuitive: 5, visual: 5, sound: 5, emotional: 5 }, true, true, "Warm, ownable, and instantly evokes the dawn.", "Begin again, every morning.",
       [{ domain: "aurova.com", price: "$12", renewal: "$14/yr" }, { domain: "aurova.io", price: "$38", renewal: "$46/yr" }, { domain: "aurova.app", price: "$14", renewal: "$18/yr" }]),
-    row("Embra", { intuitive: 4, visual: 5, sound: 4, emotional: 5 }, true, true, "Soft warmth with a quiet glow; reads premium.",
+    row("Embra", { intuitive: 4, visual: 5, sound: 4, emotional: 5 }, true, true, "Soft warmth with a quiet glow; reads premium.", "Calm, beautifully held.",
       [{ domain: "embra.io", price: "$38", renewal: "$46/yr" }, { domain: "getembra.com", price: "$12", renewal: "$14/yr" }, { domain: "embraapp.com", price: "$12", renewal: "$14/yr" }]),
-    row("Albara", { intuitive: 4, visual: 4, sound: 4, emotional: 4 }, true, false, "Elegant and musical, a touch long.",
+    row("Albara", { intuitive: 4, visual: 4, sound: 4, emotional: 4 }, true, false, "Elegant and musical, a touch long.", "Your quiet companion.",
       [{ domain: "albara.ai", price: "$70", renewal: "$110/yr" }, { domain: "getalbara.com", price: "$12", renewal: "$14/yr" }, { domain: "albarahq.com", price: "$12", renewal: "$14/yr" }]),
-    row("Lumen", { intuitive: 4, visual: 4, sound: 5, emotional: 3 }, false, false, "Clear and bright but a touch generic.",
+    row("Lumen", { intuitive: 4, visual: 4, sound: 5, emotional: 3 }, false, false, "Clear and bright but a touch generic.", "Clarity, switched on.",
       [{ domain: "lumenly.com", price: "$12", renewal: "$14/yr" }, { domain: "lumenio.com", price: "$12", renewal: "$14/yr" }, { domain: "joinlumen.com", price: "$12", renewal: "$14/yr" }]),
-    row("Sparq", { intuitive: 3, visual: 4, sound: 4, emotional: 3 }, true, true, "Punchy and short; the dropped vowel feels a little dated.",
+    row("Sparq", { intuitive: 3, visual: 4, sound: 4, emotional: 3 }, true, true, "Punchy and short; the dropped vowel feels a little dated.", "A spark for builders.",
       [{ domain: "sparq.io", price: "$38", renewal: "$46/yr" }, { domain: "sparq.app", price: "$14", renewal: "$18/yr" }, { domain: "getsparq.com", price: "$12", renewal: "$14/yr" }]),
   ],
 };

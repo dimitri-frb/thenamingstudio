@@ -5,12 +5,15 @@ import { useMemo, useState } from "react";
 import type { Brief, Comparison } from "../lib/namingApi";
 import { Head } from "./chrome";
 
-export function Share({ brief, comp, onBack, onSkip, onDone }: {
-  brief: Brief; comp: Comparison | null;
+export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDone }: {
+  brief: Brief; comp: Comparison | null; taglines: Record<string, string>;
+  setTaglines: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onBack: () => void; onSkip: () => void; onDone: () => void;
 }) {
   const all = comp?.rows || [];
   const [sending, setSending] = useState<string[]>(all.slice(0, 5).map((r) => r.name));
+  const [showTaglines, setShowTaglines] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   function copyLink() {
@@ -19,7 +22,8 @@ export function Share({ brief, comp, onBack, onSkip, onDone }: {
     window.setTimeout(() => setCopied(false), 1700);
   }
 
-  const tagOf = (name: string) => all.find((r) => r.name === name)?.verdict || "";
+  // The brand tagline for each name (a founder edit overrides the generated one).
+  const tagOf = (name: string) => taglines[name] ?? (all.find((r) => r.name === name)?.tagline || all.find((r) => r.name === name)?.verdict || "");
   const list = sending.map((n) => all.find((r) => r.name === n)).filter(Boolean) as Comparison["rows"];
   const preview = list[1] || list[0];
 
@@ -31,7 +35,7 @@ export function Share({ brief, comp, onBack, onSkip, onDone }: {
     p.set("about", (brief.does || "").slice(0, 160));
     return `${base}?${p.toString()}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sending, brief.does]);
+  }, [sending, taglines, brief.does]);
 
   return (
     <>
@@ -40,6 +44,12 @@ export function Share({ brief, comp, onBack, onSkip, onDone }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span className="lbl">Sending these {list.length}</span>
+            <span style={{ flex: 1 }} />
+            <span className="lbl">Show taglines</span>
+            <span onClick={() => setShowTaglines((v) => !v)} role="switch" aria-checked={showTaglines}
+              style={{ width: 34, height: 20, borderRadius: 999, background: showTaglines ? "var(--ink)" : "var(--line)", position: "relative", cursor: "pointer", flex: "0 0 auto", transition: "background .14s ease" }}>
+              <span style={{ position: "absolute", top: 2, left: showTaglines ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "var(--surface)", transition: "left .14s ease" }} />
+            </span>
           </div>
 
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 9, overflow: "auto" }}>
@@ -47,9 +57,20 @@ export function Share({ brief, comp, onBack, onSkip, onDone }: {
               <div key={n.name} style={{ display: "flex", alignItems: "flex-start", gap: 12, border: "1px solid var(--line)", borderRadius: "var(--r2)", background: "var(--surface)", padding: "13px 16px" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontFamily: "var(--serif)", fontSize: 22, letterSpacing: "-0.01em" }}>{n.name}</span>
-                  <div style={{ marginTop: 3 }}>
-                    <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14, color: "var(--ink-2)", lineHeight: 1.35 }}>{tagOf(n.name)}</span>
-                  </div>
+                  {showTaglines && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                      {editing === n.name ? (
+                        <input autoFocus className="inp" style={{ padding: "4px 8px", fontSize: 14 }} value={tagOf(n.name)}
+                          onChange={(e) => setTaglines((t) => ({ ...t, [n.name]: e.target.value }))}
+                          onBlur={() => setEditing(null)} onKeyDown={(e) => { if (e.key === "Enter") setEditing(null); }} />
+                      ) : (
+                        <>
+                          <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14, color: "var(--ink-2)", lineHeight: 1.35 }}>{tagOf(n.name)}</span>
+                          <span className="lbl" style={{ color: "var(--ink-3)", cursor: "pointer", flex: "0 0 auto" }} onClick={() => setEditing(n.name)}>✎ edit</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <span className="x" style={{ color: "var(--ink-4)", cursor: "pointer" }} onClick={() => setSending((s) => s.filter((x) => x !== n.name))}>×</span>
               </div>
@@ -82,7 +103,7 @@ export function Share({ brief, comp, onBack, onSkip, onDone }: {
             </div>
             <div className="swipe" style={{ padding: "20px 16px" }}>
               <div style={{ fontFamily: "var(--serif)", fontSize: 42, lineHeight: 1, letterSpacing: "-0.02em" }}>{preview?.name || "—"}</div>
-              {preview && <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12.5, color: "var(--ink-2)", margin: "8px 0 0", lineHeight: 1.4 }}>"{tagOf(preview.name)}"</p>}
+              {showTaglines && preview && <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12.5, color: "var(--ink-2)", margin: "8px 0 0", lineHeight: 1.4 }}>"{tagOf(preview.name)}"</p>}
             </div>
             <div style={{ display: "flex", gap: 7, justifyContent: "center" }}>
               {([["No", "✗", "var(--ink-4)"], ["Maybe", "~", "var(--ink-3)"], ["Yes!", "♥", "#fff"]] as const).map(([t, g, c], i) => (
