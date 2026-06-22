@@ -539,7 +539,7 @@ async function inpiDebug(env: Env, p: any): Promise<any> {
     out.gotToken = !!token;
     out.scope = lj?.scope; out.tokenType = lj?.token_type;
     // Decode the JWT payload's authorities/roles (claims are not secrets; never the token).
-    try { const pl = JSON.parse(atob((token.split(".")[1] || "").replace(/-/g, "+").replace(/_/g, "/"))); out.jwtClaims = { auth: pl.auth, authorities: pl.authorities, scope: pl.scope, aud: pl.aud, roles: pl.roles }; } catch { /* not a jwt */ }
+    try { const pl = JSON.parse(atob((token.split(".")[1] || "").replace(/-/g, "+").replace(/_/g, "/"))); out.jwtClaims = { auth: pl.auth, authorities: pl.authorities, scope: pl.scope, aud: pl.aud, sub: pl.sub, user: pl.user_name || pl.preferred_username, client: pl.client_id || pl.azp }; } catch { /* not a jwt */ }
     if (!token) { out.loginBody = JSON.stringify(lj).slice(0, 200); return out; }
     cookies = mergeCookies(lr.headers, cookies);
     const auth = { token, cookies };
@@ -555,7 +555,7 @@ async function inpiDebug(env: Env, p: any): Promise<any> {
     out.searchStatus = sr.status; out.searchContentType = sr.headers.get("content-type");
     const txt = await sr.text();
     out.searchHasMarks = /MarkVerbalElementText|TradeMark/i.test(txt);
-    out.searchSample = txt.slice(0, 500);
+    try { const ej = JSON.parse(txt); out.searchError = { status: ej.status, title: ej.title, detail: ej.detail, message: ej.message, path: ej.path }; } catch { out.searchSample = txt.slice(0, 300); }
   } catch (e: any) { out.error = String(e?.message || e); }
   return out;
 }
