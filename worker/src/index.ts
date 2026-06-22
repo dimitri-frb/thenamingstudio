@@ -530,39 +530,32 @@ async function inpiDebug(env: Env, rawName: string): Promise<any> {
   const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
   if (!out.credsPresent) return out;
   try {
-    const p = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "_", password: "_" }) });
-    out.primeStatus = p.status;
-    out.primeSetCookieRaw = (p.headers.get("set-cookie") || "(none)").slice(0, 140);
-    out.primeHasGetSetCookie = typeof (p.headers as any).getSetCookie === "function";
-    out.primeGetSetCookieCount = out.primeHasGetSetCookie ? ((p.headers as any).getSetCookie() || []).length : -1;
-    let cookies = mergeCookies(p.headers);
-    out.cookiesBuilt = cookies.slice(0, 60);
-    out.gotXsrf = !!xsrfOf(cookies);
-    const lr = await fetch(INPI_LOGIN_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
-      body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }),
-    });
-    out.loginStatus = lr.status;
-    const authH = lr.headers.get("authorization") || "";
-    out.tokenInHeader = /\S/.test(authH);
-    let token = authH.replace(/^Bearer\s+/i, "").trim();
-    let bodyText = ""; try { bodyText = await lr.text(); } catch { /* none */ }
-    if (!token && bodyText) { try { const j = JSON.parse(bodyText); token = j?.id_token || j?.token || j?.access_token || ""; out.tokenBodyFields = Object.keys(j || {}); } catch { /* not json */ } }
-    out.gotToken = !!token;
-    if (!out.gotToken) { out.loginBodySample = bodyText.slice(0, 200); return out; }
-    cookies = mergeCookies(lr.headers, cookies);
-    const q = `${INPI_F_WORDING}:"${(rawName || "atlas").replace(/["\\]/g, " ")}"`;
-    const sr = await fetch(INPI_SEARCH, {
-      method: "POST",
-      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
-      body: JSON.stringify({ query: q, collections: INPI_COLLECTIONS, size: 2, position: 0, withFacets: false }),
-    });
-    out.searchStatus = sr.status;
-    out.searchContentType = sr.headers.get("content-type");
-    const st = await sr.text();
-    out.searchSample = st.slice(0, 500);
-    out.searchHasMarks = /MarkVerbalElementText|TradeMark/i.test(st);
+    const auth = await inpiAuth(env);
+    out.gotToken = !!auth;
+    if (!auth) return out;
+    const term = (rawName || "carrefour").replace(/["\\]/g, " ");
+    // Probe candidate Solr query shapes to find the wording field that the
+    // diffusion index actually accepts (the rest 500 on a bad field name).
+    const candidates: string[] = [
+      "*:*",
+      `${INPI_F_WORDING}:"${term}"`,
+      `${term}`,
+      `"${term}"`,
+      `MARK:"${term}"`,
+      `marqueVerbale:"${term}"`,
+      `markVerbalElementText:${term}`,
+      `wordMark:"${term}"`,
+    ];
+    out.probes = [];
+    for (const q of candidates) {
+      const sr = await fetch(INPI_SEARCH, {
+        method: "POST",
+        headers: { authorization: "Bearer " + auth.token, "content-type": "application/json", accept: "application/xml", "X-XSRF-TOKEN": xsrfOf(auth.cookies), cookie: auth.cookies },
+        body: JSON.stringify({ query: q, collections: ["FMARK"], size: 2, position: 0, withFacets: false }),
+      });
+      const txt = await sr.text();
+      out.probes.push({ q, status: sr.status, marks: /MarkVerbalElementText|TradeMark/i.test(txt), sample: sr.status === 200 ? txt.slice(0, 80) : (txt.match(/"detail":"([^"]{0,80})/) || ["", ""])[1] });
+    }
   } catch (e: any) { out.error = String(e?.message || e); }
   return out;
 }
