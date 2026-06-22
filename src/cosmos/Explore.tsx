@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { naming, type Brief, type Concept, type RelGroupData } from "../lib/namingApi";
 import { Thinking, Info } from "./chrome";
-import { RELATIONS, REL, type RelId } from "./data";
+import { REL, type RelId } from "./data";
 import type { SavedIdea } from "./Shortlist";
 
 const DEFAULT_RELS: RelId[] = ["related", "metaphor", "translation", "root", "mythic"];
@@ -41,7 +41,6 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   // the mount effect is a no-op; only a real concept change refetches.
   const loadedFor = useRef<number | null>((restored || initial) ? (restored?.active ?? 0) : null);
   const [pending, setPending] = useState("");   // the word currently being explored (for the loading line)
-  const [shown, setShown] = useState<Set<RelId>>(new Set(DEFAULT_RELS));
   const [offset, setOffset] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState<Set<RelId>>(new Set());
   const [hist, setHist] = useState<string[]>(restored?.hist ?? []);    // explored words (back stack)
@@ -271,18 +270,9 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
           </div>
         </div>
 
-        {/* CENTER — explore input + filters + focus + word lists */}
+        {/* CENTER — explore input + focus + word lists (all relation groups always shown) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0, minWidth: 0 }}>
           <ExploreInput onSubmit={explore} />
-          <div className="relbar">
-            <span className="lbl" style={{ marginRight: 2 }}>Show</span>
-            {RELATIONS.filter((r) => r.id !== "coin").map((r) => (
-              <span key={r.id} className={"relchip " + (shown.has(r.id) ? "on" : "off")}
-                onClick={() => setShown((s) => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}>
-                <span className="g">{r.glyph}</span><span className="t">{r.label}</span><span className="s">{r.sub}</span>
-              </span>
-            ))}
-          </div>
 
           {loading ? (
             <div className="focusD" style={{ alignItems: "center", justifyContent: "center" }}>
@@ -304,7 +294,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
                 </span>
               </div>
               <div className="relcolsD">
-                {DEFAULT_RELS.filter((rel) => shown.has(rel)).map((rel) => (
+                {DEFAULT_RELS.map((rel) => (
                   <div key={rel} className="relgroup">
                     <div className="gh">
                       <span className="g">{REL[rel].glyph}</span><span className="t">{REL[rel].label}</span>
