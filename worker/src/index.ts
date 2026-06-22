@@ -454,10 +454,16 @@ const INPI_F_WORDING = "markVerbalElementText";
 // the gateway sets it on every response. We use a fake username so the real
 // account is never touched by the priming call.
 async function inpiPrime(): Promise<string> {
-  try {
-    const p = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "_", password: "_" }) });
-    return mergeCookies(p.headers);
-  } catch { return ""; }
+  // The gateway occasionally 522s the priming call from Cloudflare's egress; retry
+  // until we actually get an XSRF-TOKEN cookie.
+  for (let i = 0; i < 4; i++) {
+    try {
+      const p = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "_", password: "_" }) });
+      const c = mergeCookies(p.headers);
+      if (xsrfOf(c)) return c;
+    } catch { /* retry */ }
+  }
+  return "";
 }
 
 // Merge Set-Cookie(s) from a response into a "name=value; ..." Cookie header.
