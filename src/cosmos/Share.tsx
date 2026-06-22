@@ -2,24 +2,41 @@
 // / Yes vote, each with its tagline. Results feed the comparison, they don't
 // decide for you. The founder can also skip straight to the decision.
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Brief, Comparison } from "../lib/namingApi";
 import { Head } from "./chrome";
 
-export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDone }: {
+export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDone, onCapture }: {
   brief: Brief; comp: Comparison | null; taglines: Record<string, string>;
   setTaglines: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onBack: () => void; onSkip: () => void; onDone: () => void;
+  onCapture?: (email: string, fromName: string) => void;
 }) {
   const all = comp?.rows || [];
   const [sending, setSending] = useState<string[]>(all.slice(0, 5).map((r) => r.name));
   const [showTaglines, setShowTaglines] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [gate, setGate] = useState(false);
+  const [fromName, setFromName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
 
-  function copyLink() {
+  const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
+
+  function doCopy() {
     navigator.clipboard?.writeText(link);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1700);
+  }
+  // First share also registers the lead: collect a name + email so the founder gets
+  // the answers back (and we never re-ask on the decision step).
+  function copyLink() {
+    if (hasEmail()) doCopy(); else setGate(true);
+  }
+  function submitGate(email: string) {
+    try { localStorage.setItem("ns.fromName", fromName.trim()); } catch { /* ignore */ }
+    onCapture?.(email.trim(), fromName.trim());
+    setGate(false);
+    doCopy();
   }
 
   // The brand tagline for each name (a founder edit overrides the generated one).
@@ -33,9 +50,10 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
     p.set("vote", sending.join("|"));
     p.set("notes", sending.map((n) => tagOf(n)).join("|"));
     p.set("about", (brief.does || "").slice(0, 160));
+    if (fromName.trim()) p.set("from", fromName.trim());
     return `${base}?${p.toString()}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sending, taglines, brief.does]);
+  }, [sending, taglines, brief.does, fromName]);
 
   return (
     <>
@@ -125,7 +143,51 @@ export function Share({ brief, comp, taglines, setTaglines, onBack, onSkip, onDo
           <button className="btn lg solid" onClick={onDone}>See how it landed →</button>
         </div>
       </div>
+      {gate && <ShareGate fromName={fromName} setFromName={setFromName} onSubmit={submitGate} onClose={() => setGate(false)} />}
     </>
+  );
+}
+
+// Collected before the first shareable link: the founder's name (so friends know
+// who's asking) and email (so we send the results back, and register the lead).
+function ShareGate({ fromName, setFromName, onSubmit, onClose }: {
+  fromName: string; setFromName: (v: string) => void; onSubmit: (email: string) => void; onClose: () => void;
+}) {
+  const C = {
+    ink: "#1A1916", ink2: "#55534C", ink3: "#8C887F", ink4: "#B6B2A8",
+    surface: "#FFFFFF", line: "#E4E2DB",
+    serif: "'Newsreader', Georgia, serif", sans: "'DM Sans', ui-sans-serif, system-ui, sans-serif",
+  };
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem("ns.email") || ""; } catch { return ""; } });
+  const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const ready = valid && fromName.trim().length > 0;
+  function go() { if (ready) onSubmit(email.trim()); }
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 20, background: "rgba(26,25,22,0.42)", backdropFilter: "blur(3px)", fontFamily: C.sans }}
+      onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 440, background: "#F7F6F2", border: `1px solid ${C.line}`, borderRadius: 22, padding: "34px 32px 28px", position: "relative", boxShadow: "0 40px 90px -40px rgba(26,25,22,0.5)" }}>
+        <button onClick={onClose} aria-label="Close"
+          style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: "50%", border: `1px solid ${C.line}`, background: C.surface, color: C.ink3, cursor: "pointer", fontSize: 14 }}>✕</button>
+        <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: C.ink3 }}>Share for votes</span>
+        <h2 style={{ fontFamily: C.serif, fontSize: 30, lineHeight: 1.08, margin: "10px 0 0", color: C.ink }}>Get the answers back.</h2>
+        <p style={{ fontSize: 14.5, color: C.ink2, lineHeight: 1.5, margin: "12px 0 22px" }}>
+          Add your name and email. Friends see who's asking, and we send the results, and your brand book, straight to your inbox.
+        </p>
+        <input autoFocus value={fromName} placeholder="Your name"
+          onChange={(e) => setFromName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") go(); }}
+          style={{ width: "100%", fontFamily: C.sans, fontSize: 15.5, padding: "13px 15px", borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.ink, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
+        <input type="email" value={email} placeholder="you@company.com"
+          onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") go(); }}
+          style={{ width: "100%", fontFamily: C.sans, fontSize: 15.5, padding: "13px 15px", borderRadius: 12, border: `1px solid ${valid || !email ? C.line : "#9A5C50"}`, background: C.surface, color: C.ink, outline: "none", boxSizing: "border-box" }} />
+        <button onClick={go} disabled={!ready}
+          style={{ width: "100%", marginTop: 12, fontFamily: C.sans, fontSize: 15, fontWeight: 500, padding: "13px 18px", borderRadius: 14, border: "none", cursor: ready ? "pointer" : "not-allowed", background: C.ink, color: "#fff", opacity: ready ? 1 : 0.4 }}>
+          Copy my share link →
+        </button>
+        <p style={{ fontSize: 11.5, color: C.ink4, textAlign: "center", margin: "12px 0 0" }}>No spam. Just your results.</p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -46,9 +46,10 @@ export const TLD_PRICE: Record<string, [string, string]> = {
   ".app": ["$14", "$18/yr"],
 };
 
-// Client-side fallback (dev / no worker): derive up to three available domains
-// from the estimated TLD availability, then fill with name tweaks (almost always
-// free). The live worker replaces this with real RDAP results in `row.suggested`.
+// Domains we can show as available. ONLY ever surfaces domains that were actually
+// verified free (the worker's RDAP `suggested`, or verified-available TLDs of the
+// exact name). We never fabricate "getX/joinX" guesses, that would mark taken
+// domains as available (e.g. getatlas.com) and break the founder's trust.
 export interface DomOption { domain: string; price: string; renewal: string; premium?: boolean }
 export function availableDomains(name: string, domains?: { tld: string; available: boolean }[], suggested?: DomOption[]): DomOption[] {
   if (suggested?.length) return suggested.slice(0, 3);
@@ -58,10 +59,6 @@ export function availableDomains(name: string, domains?: { tld: string; availabl
     const p = TLD_PRICE[d.tld] || ["$12", "$14/yr"];
     out.push({ domain: `${slug}${d.tld}`, price: p[0], renewal: p[1] });
   });
-  for (const v of [`join${slug}.com`, `try${slug}.com`, `get${slug}.com`, `use${slug}.com`, `the${slug}.com`]) {
-    if (out.length >= 3) break;
-    if (!out.some((o) => o.domain === v)) out.push({ domain: v, price: "$12", renewal: "$14/yr" });
-  }
   return out.slice(0, 3);
 }
 

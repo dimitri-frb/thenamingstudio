@@ -106,7 +106,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
               <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{picked.size} selected</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {doms.length === 0 && <span style={{ fontSize: 13, color: "var(--ink-4)" }}>Checking availability…</span>}
+              {doms.length === 0 && <span style={{ fontSize: 13, color: "var(--ink-4)" }}>No exact domain free, the name may still be worth it, or try a variant.</span>}
               {doms.map((d) => {
                 const on = picked.has(d.domain);
                 return (

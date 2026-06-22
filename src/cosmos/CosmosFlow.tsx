@@ -346,7 +346,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   if (step === 8) return shell(
     <Share brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
-      onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)} />
+      onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)}
+      onCapture={(email) => captureLead(brief, email, chosenFinal || comp?.recommended || "")} />
   );
 
   if (step === 9) return (
