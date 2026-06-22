@@ -530,7 +530,13 @@ async function inpiDebug(env: Env, rawName: string): Promise<any> {
   const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
   if (!out.credsPresent) return out;
   try {
-    let cookies = await inpiPrime();
+    const p = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "_", password: "_" }) });
+    out.primeStatus = p.status;
+    out.primeSetCookieRaw = (p.headers.get("set-cookie") || "(none)").slice(0, 140);
+    out.primeHasGetSetCookie = typeof (p.headers as any).getSetCookie === "function";
+    out.primeGetSetCookieCount = out.primeHasGetSetCookie ? ((p.headers as any).getSetCookie() || []).length : -1;
+    let cookies = mergeCookies(p.headers);
+    out.cookiesBuilt = cookies.slice(0, 60);
     out.gotXsrf = !!xsrfOf(cookies);
     const lr = await fetch(INPI_LOGIN_URL, {
       method: "POST",
