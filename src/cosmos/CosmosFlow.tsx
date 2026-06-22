@@ -50,12 +50,27 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
+  // A live, AI-reframed read of the brief, shown on the right of the brief steps so
+  // the founder sees we understand them as they type (not just an echo).
+  const [briefSynth, setBriefSynth] = useState<{ line: string; tags: string[] } | null>(null);
 
-  // Brand book is email-gated: first time, capture the email; after that, open directly.
-  function requestBrandBook() {
+  // Email gate: the first time the founder commits to a name (locking it in, or
+  // opening the brand book) we capture their email; afterwards we just run the
+  // action. `afterGate` holds what to do once the email is in.
+  const afterGate = useRef<() => void>(() => {});
+  const [gateName, setGateName] = useState("");
+  function openGate(name: string, next: () => void) {
     let hasEmail = false;
     try { hasEmail = !!localStorage.getItem("ns.email"); } catch { /* ignore */ }
-    if (hasEmail) setBrandBookOpen(true); else setGateOpen(true);
+    if (hasEmail) { next(); return; }
+    setGateName(name); afterGate.current = next; setGateOpen(true);
+  }
+  function requestBrandBook() { openGate(chosenFinal, () => setBrandBookOpen(true)); }
+  // Locking in from the comparison: remember the name and gate on the email before
+  // moving to the decision screen.
+  function lockIn(name: string) {
+    if (name) setChosenFinal(name);
+    openGate(name, () => goto(9));
   }
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +143,17 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.does, brief.problem, brief.audience, brief.uvp]);
 
+  // Reframe the brief live (debounced) while the founder fills the brief steps, so
+  // the "brief, so far" card shows we understand it instead of echoing their words.
+  useEffect(() => {
+    if (test || step > 2 || !brief.does.trim()) return;
+    const t = setTimeout(() => {
+      naming.synthesize(brief).then((s) => { if (s?.line) setBriefSynth(s); }).catch(() => { /* keep last */ });
+    }, 650);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, brief.does, brief.problem, brief.audience, brief.uvp, brief.industry, brief.signal, brief.tone]);
+
   // Warm the FIRST exploration board while the founder is still picking concepts,
   // so step 6 opens with words already on screen instead of a cold load.
   const exploreWarm = useRef<string | null>(null);
@@ -174,8 +200,19 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
       {error && <div className="note" style={{ borderColor: "var(--bad)", color: "var(--bad)" }}>{error}</div>}
       {loading ? <Thinking lines={loading} /> : node}
       {test && <TestBar step={step} onJump={goto} />}
+      {gateOpen && (
+        <EmailGate name={gateName} onClose={() => setGateOpen(false)}
+          onSubmit={(email) => { captureLead(brief, email, gateName); setGateOpen(false); afterGate.current(); }} />
+      )}
     </Cx>
   );
+
+  // The evolving "brief, so far" card (right side of the brief steps): an AI reframe
+  // once it lands, otherwise the founder's own words.
+  const briefLine = briefSynth?.line || brief.does || "A naming studio for founders who care about taste.";
+  const briefTags = briefSynth?.tags?.length
+    ? briefSynth.tags
+    : [brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"];
 
   // ── Steps 1–4 · intake + concepts (loading shows inside the same shell) ──
   if (step === 0) return shell(
@@ -192,8 +229,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           </div>
           <Field label="Working name" hint="· optional, we won't be bound by it" value={workingName} onChange={setWorkingName} placeholder="Untitled" />
         </div>
-        <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
-          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"]} />
+        <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
       </div>
       <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()} onNext={() => goto(1)} />
     </>
@@ -212,8 +248,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
           <Field label="What's your unique proposition" hint="· the one claim rivals can't credibly make" area value={brief.uvp} onChange={(v) => set({ uvp: v })}
             placeholder="e.g. Strategy-first naming with the rigor of a senior consultant, in minutes not months." />
         </div>
-        <HelpCard label="The brief, so far" quote={`"${brief.does || "A naming studio for founders who care about taste."}"`}
-          tags={[brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"]} />
+        <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
       </div>
       <Foot back="Company context" onBack={() => goto(0)} next="Next: emotional value →" disabled={!brief.problem.trim()}
         onNext={goEmotional} />
@@ -226,17 +261,14 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
       <>
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
           sub="Pick the feelings it should carry." />
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
-          <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
-            onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
-          <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
-            onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
-          <div className="helpcard" style={{ marginTop: "auto", display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <span className="lbl" style={{ flex: "0 0 auto", marginTop: 2 }}>Read</span>
-            <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17, margin: 0, color: "var(--ink-2)", lineHeight: 1.5 }}>
-              You're leaning {brief.signal.length ? <b style={{ fontStyle: "normal", fontWeight: 500 }}>{brief.signal.slice(0, 3).join(", ").toLowerCase()}</b> : "into a clear register"}. That points coined and evocative names in; generic-tech names will feel wrong against it.
-            </p>
+        <div className="intake-cols">
+          <div className="fgrid" style={{ alignContent: "start", gap: 24 }}>
+            <PickField label="The name should signal" hint="· pick 3 to 5" options={signalOpts} selected={brief.signal}
+              onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
+            <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
+              onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
           </div>
+          <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
         </div>
         <Foot back="Brand context" onBack={() => goto(1)} next="Next: naming strategy →" disabled={brief.signal.length < 1}
           onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
@@ -308,7 +340,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   if (step === 7) return shell(
     <Compare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
-      onBack={() => goto(6)} onDone={() => goto(8)} onLockIn={() => goto(9)} />
+      onBack={() => goto(6)} onDone={() => goto(8)}
+      onLockIn={() => lockIn(comp?.recommended || comp?.rows?.[0]?.name || chosenFinal)} />
   );
 
   if (step === 8) return shell(
@@ -321,10 +354,6 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
       {shell(
         <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
           onBack={() => goto(8)} onBrandBook={requestBrandBook} />
-      )}
-      {gateOpen && chosenFinal && (
-        <EmailGate name={chosenFinal} onClose={() => setGateOpen(false)}
-          onSubmit={(email) => { captureLead(brief, email, chosenFinal); setGateOpen(false); setBrandBookOpen(true); }} />
       )}
       {brandBookOpen && chosenFinal && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
     </>

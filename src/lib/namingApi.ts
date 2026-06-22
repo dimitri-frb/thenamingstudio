@@ -124,6 +124,11 @@ async function call<T>(phase: string, brief: Brief, payload?: unknown): Promise<
 
 function localFallback(phase: string, brief: Brief, payload: any): unknown {
   switch (phase) {
+    case "synthesize": {
+      const line = brief.does?.trim() || "A brand finding its name.";
+      const tags = [brief.industry, ...(brief.tone || [])].filter(Boolean).slice(0, 3).map((t) => t.toLowerCase());
+      return { line, tags };
+    }
     case "interview": return local.localInterview(payload?.messages || []);
     case "concepts": return local.localConcepts(brief);
     case "feelings": return local.localFeelings(brief);
@@ -146,6 +151,7 @@ export const naming = {
   interview: (messages: Msg[]) => call<InterviewTurn>("interview", EMPTY_BRIEF, { messages }),
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   feelings: (brief: Brief) => call<{ feelings: Feeling[] }>("feelings", brief).then((d) => d.feelings),
+  synthesize: (brief: Brief) => call<{ line: string; tags: string[] }>("synthesize", brief),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
   relate: (brief: Brief, seed: string, world: string, exclude: string[] = []) => call<RelateResult>("relate", brief, { seed, world, exclude }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),

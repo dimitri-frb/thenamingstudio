@@ -186,6 +186,14 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Brief: ${briefV1(b.brief)}.\nPropose 8 distinct, inspiring naming concept territories (clever angles, not names). ` +
     `Return JSON {"concepts":[{"title":"short evocative title","blurb":"one inspiring sentence on the angle","lane":"suggestive|invented|evocative|descriptive|abstract|compound|playful"}]} with exactly 8 items.` }),
 
+  // A single reframed sentence that proves we understand the brand, shown live on
+  // the brief steps as the founder types. Cheap + fast; reframes, never echoes.
+  synthesize: (b) => ({ model: MODEL.fast, max: 140, prompt:
+    `Here is a founder's brief, in progress: ${briefV1(b.brief)}.\n` +
+    `Write ONE sharp sentence (max 22 words) that reframes what this brand really is, in plain confident language, showing you understand it, do NOT just repeat their words. ` +
+    `Then give 2 or 3 short lowercase tags (1-2 words each) that capture its character. ` +
+    `Return ONLY JSON {"line":"...","tags":["...","..."]}.` }),
+
   feelings: (b) => ({ model: MODEL.fast, max: 600, prompt:
     `Brief: ${briefV1(b.brief)}.\nList 9 feelings the brand name could evoke. Each needs a short one-line "why it fits THIS brand" (max 14 words) that references the audience. ` +
     `Return JSON {"feelings":[{"word":"Trust","why":"..."}]} with 9 items.` }),
@@ -360,26 +368,28 @@ async function enrichCandidates(data: any): Promise<any> {
 // are genuinely available — first by swapping the TLD (.com/.io/.ai/.app), then by
 // tweaking the name (get…, …app, …hq) so the founder always leaves with options
 // they can actually register. Each carries a rough price (it's available, but paid).
-const COMPARE_TLDS = ["com", "io", "ai"];
+// The availability badges shown on the comparison row, in the order founders care
+// about for the NAME ITSELF. (.co is intentionally absent: it has no public RDAP,
+// so it can't be verified, and we never want to show a guess as a fact.)
+const COMPARE_TLDS = ["com", "app", "io"];
 const PRICE: Record<string, [string, string]> = {
-  com: ["$12", "$14/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"], app: ["$14", "$18/yr"],
+  com: ["$12", "$14/yr"], app: ["$14", "$18/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
 };
-// Name tweaks tried (all .com) when the plain TLDs don't yield three. Ordered so
-// coined names resolve fast; the longer tail covers common words whose obvious
-// variants are already grabbed (gettiller/tillerapp taken, but jointiller free).
+// Logical fallbacks when the exact name is gone, in priority order: the kind of
+// thing real startups do (joinX / tryX / getX / useX), then a "the" prefix. All .com.
 const NAME_TWEAKS = (slug: string) => [
-  `get${slug}`, `${slug}app`, `${slug}hq`, `try${slug}`, `${slug}ly`,
-  `${slug}io`, `join${slug}`, `${slug}go`, `hey${slug}`, `${slug}flow`,
+  `join${slug}`, `try${slug}`, `get${slug}`, `use${slug}`, `the${slug}`, `${slug}app`, `${slug}hq`,
 ];
 
-// Real availability for ONE name: check the primary TLDs and every name tweak in
-// parallel (about 14 RDAP calls, comfortably under the per-request subrequest
-// limit), then return the .com/.io/.ai verdict plus up to three domains the
-// founder can actually register today.
+// Real availability for ONE name, in the founder's priority order:
+//   1. the name itself on .com, .app, .io (each verified via RDAP)
+//   2. logical variants (joinX, tryX, getX, useX) on .com
+//   3. a "the" prefix (theX.com)
+// All checked in parallel via RDAP, then up to three registrable domains returned.
 async function domainsFor(name: string): Promise<{ domains: any[]; suggested: any[] }> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { domains: [], suggested: [] };
-  const tlds = ["com", "io", "ai", "app"];
+  const tlds = ["com", "app", "io"];   // the name itself, in priority order
   const tweakSlugs = NAME_TWEAKS(slug);
   const [primary, tweaks] = await Promise.all([
     Promise.all(tlds.map((t) => rdap(slug, t))),
@@ -391,10 +401,12 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
   const domains = COMPARE_TLDS.map((t) => ({ tld: "." + t, available: states[t] === "available" }));
 
   const suggested: any[] = [];
+  // Tier 1 — the exact name across the priority TLDs.
   for (const t of tlds) {
     if (suggested.length >= 3) break;
     if (states[t] === "available") suggested.push({ domain: `${slug}.${t}`, price: PRICE[t][0], renewal: PRICE[t][1] });
   }
+  // Tier 2 + 3 — logical variants, then the "the" prefix.
   tweakSlugs.forEach((v, i) => {
     if (suggested.length < 3 && tweaks[i] === "available") suggested.push({ domain: `${v}.com`, price: PRICE.com[0], renewal: PRICE.com[1] });
   });

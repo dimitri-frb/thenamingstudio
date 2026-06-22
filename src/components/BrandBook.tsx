@@ -111,7 +111,7 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
 
       {/* colour */}
       <Section label="Colour">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-5">
           {bb.palette.map((s) => (
             <button key={s.hex} onClick={() => copy(s.hex)} className="bb-swatch group text-left">
               <span className="block h-20 w-full rounded-xl ring-1 ring-black/5" style={{ background: s.hex }} />
@@ -126,7 +126,7 @@ function Book({ bb, name }: { bb: BrandBookData; name: string }) {
       {/* type */}
       <Section label="Typography">
         <p className="font-mono text-[10px] uppercase tracking-widest text-ink/45">{pair.label} · {pair.hName} + {pair.bName}</p>
-        <p className="mt-3 text-4xl leading-tight" style={{ fontFamily: pair.heading, color: ink }}>The quick brown fox</p>
+        <p className="mt-3 text-4xl leading-tight" style={{ fontFamily: pair.heading, color: ink }}>{bb.tagline || name}</p>
         <p className="mt-3 max-w-xl leading-relaxed text-ink/70" style={{ fontFamily: pair.body }}>
           Body copy sets the everyday tone, readable, even, and quietly confident. {bb.fontNote}
         </p>

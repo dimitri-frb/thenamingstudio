@@ -36,7 +36,7 @@ export const AVOID_FALLBACK = ["Generic name generators", "Tech-bro acronyms", "
 
 // Domain extensions shown in the comparison. Only .com/.io/.ai are checked for
 // real (RDAP, via the worker); they map to the live availability verdicts.
-export const TLDS = [".com", ".io", ".ai"] as const;
+export const TLDS = [".com", ".app", ".io"] as const;
 
 // Rough first-year + renewal price estimates per extension, for the price column.
 export const TLD_PRICE: Record<string, [string, string]> = {
@@ -58,7 +58,7 @@ export function availableDomains(name: string, domains?: { tld: string; availabl
     const p = TLD_PRICE[d.tld] || ["$12", "$14/yr"];
     out.push({ domain: `${slug}${d.tld}`, price: p[0], renewal: p[1] });
   });
-  for (const v of [`get${slug}.com`, `${slug}app.com`, `${slug}hq.com`]) {
+  for (const v of [`join${slug}.com`, `try${slug}.com`, `get${slug}.com`, `use${slug}.com`, `the${slug}.com`]) {
     if (out.length >= 3) break;
     if (!out.some((o) => o.domain === v)) out.push({ domain: v, price: "$12", renewal: "$14/yr" });
   }

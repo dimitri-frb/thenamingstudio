@@ -86,15 +86,25 @@ export function localRelate(_brief: Brief, seed: string, world: string): RelateR
   const ws = src.split(/\s+/).map((w) => w.replace(/[^a-z]/g, "")).filter((w) => w.length > 2 && !["the", "and", "for", "your"].includes(w));
   const base = ws[ws.length - 1] || "spark";
   const r = rng(hash("relate:" + base + ":" + world));
-  const note = (s: string, n: string) => ({ w: s, note: n });
+  // A small pool of distinct flavour notes per relation, picked without repeats so
+  // a column never reads as the same generic line on every row.
+  const NOTES: Record<string, string[]> = {
+    related: ["close cousin", "near in meaning", "same family", "a softer shade", "a sharper edge", "everyday kin", "quietly adjacent", "one step over"],
+    metaphor: ["a vivid image", "a turning point", "where it begins", "the hidden engine", "a quiet signal", "the high ground", "a steady anchor", "the spark"],
+    root: ["old and load-bearing", "carries weight", "an ancient seed", "the deep origin", "weathered, solid", "where it started", "a classical bone", "buried strength"],
+    mythic: ["a figure of force", "the swift one", "a guiding light", "bold and remembered", "a name with nerve", "the fearless one", "a luminous figure", "myth made short"],
+  };
+  const picker = (key: string) => { const pool = [...NOTES[key]]; return () => pool.length ? pool.splice(Math.floor(r() * pool.length), 1)[0] : NOTES[key][0]; };
+  const note = (s: string, next: () => string) => ({ w: s, note: next() });
+  const relN = picker("related"), metN = picker("metaphor"), rootN = picker("root"), mythN = picker("mythic");
   const groups = [
-    { rel: "related", words: [...new Set([...sample(r, EVOCATIVE, 6), ...relatedFor(r, base).slice(0, 2)])].map((w) => note(w, "in the same lexical field")) },
-    { rel: "metaphor", words: sample(r, METAPHOR, 6).map((w) => note(w, "a symbol of the idea")) },
-    { rel: "translation", words: sample(r, TRANSLATIONS, 6).map((t) => ({ w: t.w, note: "kin in meaning", lang: t.lang })) },
-    { rel: "root", words: sample(r, ROOTS, 6).map((w) => note(w, "Latin/Greek root")) },
-    { rel: "mythic", words: sample(r, MYTHIC, 6).map((w) => note(w, "a name from myth")) },
+    { rel: "related", words: [...new Set([...sample(r, EVOCATIVE, 6), ...relatedFor(r, base).slice(0, 2)])].slice(0, 5).map((w) => note(w, relN)) },
+    { rel: "metaphor", words: sample(r, METAPHOR, 5).map((w) => note(w, metN)) },
+    { rel: "translation", words: sample(r, TRANSLATIONS, 5).map((t) => ({ w: t.w, note: `${t.lang}, kindred sense`, lang: t.lang })) },
+    { rel: "root", words: sample(r, ROOTS, 5).map((w) => note(w, rootN)) },
+    { rel: "mythic", words: sample(r, MYTHIC, 5).map((w) => note(w, mythN)) },
   ];
-  return { word: cap(base), def: `Evokes ${world || "the idea"}; a strong seed to grow from.`, groups };
+  return { word: cap(base), def: `${cap(base)}, a seed drawn from ${world || "the idea"} to grow a name from.`, groups };
 }
 
 /* ---------------- phases ---------------- */

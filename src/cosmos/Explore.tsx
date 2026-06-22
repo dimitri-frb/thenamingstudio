@@ -43,6 +43,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   const [pending, setPending] = useState("");   // the word currently being explored (for the loading line)
   const [shown, setShown] = useState<Set<RelId>>(new Set(DEFAULT_RELS));
   const [offset, setOffset] = useState<Record<string, number>>({});
+  const [refreshing, setRefreshing] = useState<Set<RelId>>(new Set());
   const [hist, setHist] = useState<string[]>(restored?.hist ?? []);    // explored words (back stack)
   const [future, setFuture] = useState<string[]>(restored?.future ?? []);
   const reqId = useRef(0);
@@ -208,7 +209,22 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     const off = offset[rel] || 0;
     return Array.from({ length: Math.min(PER_GROUP, all.length) }, (_, i) => all[(off + i) % all.length]);
   };
-  const refresh = (rel: RelId) => setOffset((p) => ({ ...p, [rel]: (p[rel] || 0) + PER_GROUP }));
+  // Refresh a single column with genuinely fresh words: refetch relations for the
+  // current focus (excluding everything already shown) and swap in that one group.
+  async function refresh(rel: RelId) {
+    if (refreshing.has(rel) || !focus.word) return;
+    setRefreshing((s) => new Set(s).add(rel));
+    try {
+      const res = await naming.relate(brief, focus.word, world, excludeList());
+      const ng = (res.groups || []).find((g) => g.rel === rel);
+      if (ng?.words?.length) {
+        setGroups((gs) => gs.map((g) => (g.rel === rel ? { ...g, words: ng.words } : g)));
+        setOffset((p) => ({ ...p, [rel]: 0 }));
+        for (const w of ng.words) seen.current.add((w.w || "").toLowerCase());
+      }
+    } catch { /* keep the current set */ }
+    finally { setRefreshing((s) => { const n = new Set(s); n.delete(rel); return n; }); }
+  }
 
   return (
     <>
@@ -280,7 +296,8 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
                   <div key={rel} className="relgroup">
                     <div className="gh">
                       <span className="g">{REL[rel].glyph}</span><span className="t">{REL[rel].label}</span>
-                      <button className="refresh-rel" onClick={() => refresh(rel)} title="Refresh, show a new set">↻</button>
+                      <button className={"refresh-rel" + (refreshing.has(rel) ? " spin" : "")} disabled={refreshing.has(rel)}
+                        onClick={() => refresh(rel)} title="Refresh, show a new set">↻</button>
                     </div>
                     <div className="items">
                       {wordsFor(rel).map((w, wi) => {

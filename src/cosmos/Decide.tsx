@@ -1,7 +1,7 @@
 // Step 10 · Decision. The signals sit in one table — SMILE, domain, trademark —
 // and the founder makes the call. The chosen name gets the hero treatment and the
 // "make it real" steps (register, buy the domain, brand book) update to match.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Comparison, CompareRow } from "../lib/namingApi";
 import { Dots, Foot, Head } from "./chrome";
 import { availableDomains, slugify } from "./data";
@@ -16,16 +16,24 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
   onBack: () => void; onBrandBook: () => void;
 }) {
   const rows = comp ? [...comp.rows].sort((a, b) => smileOf(b) - smileOf(a)) : [];
+  // Which available domains the founder has ticked to go register.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
 
   useEffect(() => { if (!chosen && comp) setChosen(comp.recommended || comp.rows[0]?.name || ""); /* eslint-disable-next-line */ }, [comp]);
 
+  const pick = rows.find((r) => r.name === chosen) || rows[0];
+  const doms = pick ? availableDomains(pick.name, pick.domains, pick.suggested) : [];
+  // Default-tick the top available domain whenever the chosen name changes.
+  useEffect(() => { setPicked(doms[0] ? new Set([doms[0].domain]) : new Set()); /* eslint-disable-next-line */ }, [chosen, doms[0]?.domain]);
+
   if (!comp) return <Head eyebrow="The decision" title={<>Make the call.</>} />;
 
-  const pick = rows.find((r) => r.name === chosen) || rows[0];
   const slug = slugify(pick?.name || "");
   const best = pick ? bestDomain(pick) : undefined;
-  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${best?.domain || slug + ".com"}`;
+  const buyList = doms.filter((d) => picked.has(d.domain)).map((d) => d.domain);
+  const godaddy = `https://www.godaddy.com/domainsearch/bulk-domain-search?domainsToCheck=${(buyList.length ? buyList : [best?.domain || slug + ".com"]).join(",")}`;
   const inpi = "https://procedures.inpi.fr/?/";
+  const toggle = (d: string) => setPicked((p) => { const n = new Set(p); n.has(d) ? n.delete(d) : n.add(d); return n; });
 
   return (
     <>
@@ -88,14 +96,44 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
             )}
           </div>
           <span className="lbl">Make it real</span>
+
+          {/* Domain checklist — tick the ones to register, then grab them in one go. */}
+          <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r2)", background: "var(--surface)", padding: "13px 16px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+              <span className="lbl" style={{ fontSize: 9.5 }}>01</span>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 17, letterSpacing: "-0.01em" }}>Grab the domains</div>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{picked.size} selected</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {doms.length === 0 && <span style={{ fontSize: 13, color: "var(--ink-4)" }}>Checking availability…</span>}
+              {doms.map((d) => {
+                const on = picked.has(d.domain);
+                return (
+                  <label key={d.domain} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", cursor: "pointer" }}>
+                    <span style={{ width: 17, height: 17, flex: "0 0 auto", borderRadius: 5, border: "1.5px solid " + (on ? "var(--ink)" : "var(--line)"), background: on ? "var(--ink)" : "transparent", display: "grid", placeItems: "center" }}>
+                      {on && <span style={{ color: "var(--surface)", fontSize: 11, lineHeight: 1 }}>✓</span>}
+                    </span>
+                    <input type="checkbox" checked={on} onChange={() => toggle(d.domain)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ fontFamily: "var(--serif)", fontSize: 16, flex: 1 }}>{d.domain}</span>
+                    <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{d.price}{d.premium ? " · premium" : ""}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <a href={godaddy} target="_blank" rel="noreferrer"
+              style={{ display: "flex", justifyContent: "center", marginTop: 10, padding: "9px 12px", borderRadius: "var(--rp)", background: "var(--ink)", color: "var(--bg)", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", ...(picked.size ? {} : { opacity: 0.45, pointerEvents: "none" }) }}>
+              REGISTER {picked.size > 1 ? `${picked.size} DOMAINS` : "AT GODADDY"} →
+            </a>
+          </div>
+
           {[
-            { a: "Register the name", b: "Protect it at INPI 🇫🇷", c: "OPEN INPI →", href: inpi },
-            { a: "Buy the domain", b: best?.domain || `${slug}.com`, c: "GODADDY →", href: godaddy },
-            { a: "Brand book & logo", b: "Story, voice, type", c: "CREATE →", onClick: onBrandBook },
+            { n: "02", a: "Register the name", b: "Protect it at INPI 🇫🇷", c: "OPEN INPI →", href: inpi as string | undefined, onClick: undefined as (() => void) | undefined },
+            { n: "03", a: "Brand book & logo", b: "Story, voice, type", c: "CREATE →", href: undefined, onClick: onBrandBook },
           ].map((s, i) => {
             const inner = (
               <>
-                <span className="lbl" style={{ fontSize: 9.5, flex: "0 0 auto" }}>{String(i + 1).padStart(2, "0")}</span>
+                <span className="lbl" style={{ fontSize: 9.5, flex: "0 0 auto" }}>{s.n}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: "var(--serif)", fontSize: 17, letterSpacing: "-0.01em" }}>{s.a}</div>
                   <p style={{ fontSize: 12, color: "var(--ink-3)", margin: 0 }}>{s.b}</p>
