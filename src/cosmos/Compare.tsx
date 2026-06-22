@@ -130,15 +130,21 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         ))}
                       </div>
                     </td>
-                    <td className="c">{(() => {
+                    <td>{(() => {
                       const ip = inpi[n.name];
+                      const brandCls = comp.niceClasses || [];
+                      const sub = (text: string, color = "var(--ink-3)") => <span style={{ fontSize: 11, color, marginTop: 3, whiteSpace: "nowrap" }}>{text}</span>;
+                      const wrap = (tag: React.ReactNode, line: React.ReactNode) => <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0 }}>{tag}{line}</div>;
                       if (ip?.ok && ip.verdict !== "unknown") {
-                        const cl = ip.hits[0]?.classes?.[0];
-                        if (ip.verdict === "conflict") return <span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" in class ${ip.hits.flatMap((h) => h.classes).join(", ")}`}>Taken{cl ? ` · cl.${cl}` : ""}</span>;
-                        if (ip.verdict === "adjacent") return <span className="tag good" title={`Exists, but only in other classes (${ip.hits.flatMap((h) => h.classes).join(", ")})`}>Clear here</span>;
-                        return <span className="tag good" title="No conflicting mark found in your class (INPI)">Clear</span>;
+                        const hitCls = [...new Set(ip.hits.flatMap((h) => h.classes))];
+                        if (ip.verdict === "conflict") {
+                          const blocked = hitCls.filter((c) => brandCls.includes(c));
+                          return wrap(<span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" registered in class ${hitCls.join(", ")}`}>Taken</span>, sub(`in cl. ${(blocked.length ? blocked : hitCls).join(", ")}`, "var(--bad)"));
+                        }
+                        if (ip.verdict === "adjacent") return wrap(<span className="tag good" title={`The same word exists, but only in class ${hitCls.join(", ")} (not yours)`}>Clear here</span>, sub(`free in cl. ${brandCls.join(", ")} · exists in cl. ${hitCls.join(", ")}`));
+                        return wrap(<span className="tag good" title="No conflicting mark in your class (INPI)">Clear</span>, brandCls.length ? sub(`free in cl. ${brandCls.join(", ")}`) : null);
                       }
-                      return <span className={"tag " + (n.inpi ? "good" : "watch")} title="Heuristic estimate (INPI check unavailable)">{n.inpi ? "Clear?" : "Check"}</span>;
+                      return wrap(<span className={"tag " + (n.inpi ? "good" : "watch")} title="Heuristic estimate (live INPI check unavailable)">{n.inpi ? "Clear?" : "Check"}</span>, brandCls.length ? sub(`est. · cl. ${brandCls.join(", ")}`) : null);
                     })()}</td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

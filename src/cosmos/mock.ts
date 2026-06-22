@@ -91,6 +91,7 @@ const row = (name: string, d: Dims, inpi: boolean, ig: boolean, verdict: string,
 const comp: Comparison = {
   recommended: "Aurova",
   why: "Aurova clears every column: a warm, ownable coinage with a clear dawn story and domains you can grab today.",
+  niceClasses: [9, 42],
   rows: [
     row("Aurova", { intuitive: 5, visual: 5, sound: 5, emotional: 5 }, true, true, "Warm, ownable, and instantly evokes the dawn.", "Begin again, every morning.",
       [{ domain: "aurova.com", price: "$12", renewal: "$14/yr" }, { domain: "aurova.io", price: "$38", renewal: "$46/yr" }, { domain: "aurova.app", price: "$14", renewal: "$18/yr" }]),
