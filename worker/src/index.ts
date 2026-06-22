@@ -83,6 +83,7 @@ export default {
     if (phase === "inpi") {
       const name = body?.payload?.name || "";
       const classes: number[] = Array.isArray(body?.payload?.classes) ? body.payload.classes : [];
+      if (body?.payload?.debug) return json(await inpiDebug(env, name), env); // safe: statuses only, never the token
       return json(await inpiCheck(env, name, classes), env);
     }
 
@@ -493,6 +494,44 @@ function parseInpiMarks(xml: string): { name: string; classes: number[]; status:
 // (registered, pending, unknown) counts as a live obstacle.
 function inpiDead(status: string): boolean {
   return /expir|withdraw|retir|radi|annul|refus|reject|lapsed|abandon|expired|surrender/i.test(status || "");
+}
+
+// Safe diagnostic: returns where the INPI flow stands (HTTP statuses, whether a
+// token came back, a sanitized sample of the search response) WITHOUT ever
+// returning the token, password, or login body. Used to validate the two
+// constants against a live entitled account.
+async function inpiDebug(env: Env, rawName: string): Promise<any> {
+  const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
+  if (!out.credsPresent) return out;
+  try {
+    const lr = await fetch(INPI_LOGIN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }),
+    });
+    out.loginStatus = lr.status;
+    out.loginContentType = lr.headers.get("content-type");
+    const authH = lr.headers.get("authorization") || "";
+    out.tokenInHeader = /\S/.test(authH);
+    let token = authH.replace(/^Bearer\s+/i, "").trim();
+    let bodyText = "";
+    try { bodyText = await lr.text(); } catch { /* none */ }
+    if (!token && bodyText) { try { const j = JSON.parse(bodyText); token = j?.token || j?.id_token || j?.access_token || ""; out.tokenBodyFields = Object.keys(j || {}); } catch { /* not json */ } }
+    out.gotToken = !!token;
+    if (!out.gotToken) { out.loginBodySample = bodyText.slice(0, 200); return out; }
+    const q = `${INPI_F_WORDING}:"${(rawName || "atlas").replace(/["\\]/g, " ")}"`;
+    const sr = await fetch(INPI_SEARCH, {
+      method: "POST",
+      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml" },
+      body: JSON.stringify({ query: q, collections: INPI_COLLECTIONS, size: 2, position: 0, withFacets: false }),
+    });
+    out.searchStatus = sr.status;
+    out.searchContentType = sr.headers.get("content-type");
+    const st = await sr.text();
+    out.searchSample = st.slice(0, 400);
+    out.searchHasMarks = /MarkVerbalElementText|TradeMark/i.test(st);
+  } catch (e: any) { out.error = String(e?.message || e); }
+  return out;
 }
 
 async function inpiCheck(env: Env, rawName: string, classes: number[]): Promise<{
