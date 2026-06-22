@@ -446,27 +446,46 @@ const INPI_COLLECTIONS = ["FMARK", "CTMARK", "TMINT"];
 // names differ from these conventional ones.
 const INPI_F_WORDING = "markVerbalElementText";
 
-// Cached token (module scope persists across requests on a warm isolate).
-let inpiTok: { token: string; exp: number } | null = null;
+// The gateway protects every POST with a cookie-based CSRF token, so logging in is
+// a handshake: GET to receive an XSRF-TOKEN cookie, then POST /auth/login with that
+// token echoed in the X-XSRF-TOKEN header. We carry the cookies forward so the
+// (also POST) search passes CSRF too.
+const INPI_PRIME = INPI_BASE + "/services/uaa/api/account"; // any GET that sets the XSRF cookie
 
-async function inpiToken(env: Env): Promise<string | null> {
+// Merge Set-Cookie(s) from a response into a "name=value; ..." Cookie header.
+function mergeCookies(headers: Headers, prev = ""): string {
+  const jar = new Map<string, string>();
+  for (const part of prev.split(/;\s*/)) { const i = part.indexOf("="); if (i > 0) jar.set(part.slice(0, i), part.slice(i + 1)); }
+  const list: string[] = typeof (headers as any).getSetCookie === "function"
+    ? (headers as any).getSetCookie()
+    : (headers.get("set-cookie") ? [headers.get("set-cookie") as string] : []);
+  for (const sc of list) { const head = sc.split(";")[0]; const i = head.indexOf("="); if (i > 0) jar.set(head.slice(0, i).trim(), head.slice(i + 1)); }
+  return Array.from(jar.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+const xsrfOf = (cookie: string): string => (cookie.match(/XSRF-TOKEN=([^;]+)/) || [])[1] || "";
+
+// Cached auth (module scope persists across requests on a warm isolate).
+let inpiAuthCache: { token: string; cookies: string; exp: number } | null = null;
+
+async function inpiAuth(env: Env): Promise<{ token: string; cookies: string } | null> {
   if (!env.INPI_LOGIN || !env.INPI_PASSWORD) return null;
   const now = Date.now();
-  if (inpiTok && inpiTok.exp > now + 60_000) return inpiTok.token;
+  if (inpiAuthCache && inpiAuthCache.exp > now + 60_000) return inpiAuthCache;
   try {
-    const r = await fetch(INPI_LOGIN_URL, {
+    const prime = await fetch(INPI_PRIME, { method: "GET" });           // 1. get the XSRF cookie
+    let cookies = mergeCookies(prime.headers);
+    const r = await fetch(INPI_LOGIN_URL, {                             // 2. login with the CSRF token
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: { "content-type": "application/json", accept: "application/json", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
       body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }),
     });
     if (!r.ok) return null;
-    // INPI returns the JWT in the Authorization response header (Bearer ...); some
-    // deployments put it in the body instead. Accept either.
+    cookies = mergeCookies(r.headers, cookies);                        // carry any rotated cookies
     let token = (r.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-    if (!token) { try { const j: any = await r.json(); token = j?.token || j?.id_token || j?.access_token || ""; } catch { /* no body token */ } }
+    if (!token) { try { const j: any = await r.json(); token = j?.id_token || j?.token || j?.access_token || ""; } catch { /* no body token */ } }
     if (!token) return null;
-    inpiTok = { token, exp: now + 50 * 60_000 }; // INPI tokens last ~1h; refresh early
-    return token;
+    inpiAuthCache = { token, cookies, exp: now + 50 * 60_000 };        // tokens last ~1h; refresh early
+    return inpiAuthCache;
   } catch { return null; }
 }
 
@@ -504,31 +523,34 @@ async function inpiDebug(env: Env, rawName: string): Promise<any> {
   const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
   if (!out.credsPresent) return out;
   try {
+    const prime = await fetch(INPI_PRIME, { method: "GET" });
+    let cookies = mergeCookies(prime.headers);
+    out.primeStatus = prime.status;
+    out.gotXsrf = !!xsrfOf(cookies);
     const lr = await fetch(INPI_LOGIN_URL, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: { "content-type": "application/json", accept: "application/json", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
       body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }),
     });
     out.loginStatus = lr.status;
-    out.loginContentType = lr.headers.get("content-type");
     const authH = lr.headers.get("authorization") || "";
     out.tokenInHeader = /\S/.test(authH);
     let token = authH.replace(/^Bearer\s+/i, "").trim();
-    let bodyText = "";
-    try { bodyText = await lr.text(); } catch { /* none */ }
-    if (!token && bodyText) { try { const j = JSON.parse(bodyText); token = j?.token || j?.id_token || j?.access_token || ""; out.tokenBodyFields = Object.keys(j || {}); } catch { /* not json */ } }
+    let bodyText = ""; try { bodyText = await lr.text(); } catch { /* none */ }
+    if (!token && bodyText) { try { const j = JSON.parse(bodyText); token = j?.id_token || j?.token || j?.access_token || ""; out.tokenBodyFields = Object.keys(j || {}); } catch { /* not json */ } }
     out.gotToken = !!token;
     if (!out.gotToken) { out.loginBodySample = bodyText.slice(0, 200); return out; }
+    cookies = mergeCookies(lr.headers, cookies);
     const q = `${INPI_F_WORDING}:"${(rawName || "atlas").replace(/["\\]/g, " ")}"`;
     const sr = await fetch(INPI_SEARCH, {
       method: "POST",
-      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml" },
+      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
       body: JSON.stringify({ query: q, collections: INPI_COLLECTIONS, size: 2, position: 0, withFacets: false }),
     });
     out.searchStatus = sr.status;
     out.searchContentType = sr.headers.get("content-type");
     const st = await sr.text();
-    out.searchSample = st.slice(0, 400);
+    out.searchSample = st.slice(0, 500);
     out.searchHasMarks = /MarkVerbalElementText|TradeMark/i.test(st);
   } catch (e: any) { out.error = String(e?.message || e); }
   return out;
@@ -540,14 +562,14 @@ async function inpiCheck(env: Env, rawName: string, classes: number[]): Promise<
   const name = (rawName || "").trim();
   const unknown = { ok: false, verdict: "unknown" as const, classes, hits: [] };
   if (!name) return unknown;
-  const token = await inpiToken(env);
-  if (!token) return unknown;
+  const auth = await inpiAuth(env);
+  if (!auth) return unknown;
   try {
     const q = `${INPI_F_WORDING}:"${name.replace(/["\\]/g, " ")}"`;
     const body = { query: q, collections: INPI_COLLECTIONS, size: 50, position: 0, withFacets: false };
     const r = await fetch(INPI_SEARCH, {
       method: "POST",
-      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml" },
+      headers: { authorization: "Bearer " + auth.token, "content-type": "application/json", accept: "application/xml", "X-XSRF-TOKEN": xsrfOf(auth.cookies), cookie: auth.cookies },
       body: JSON.stringify(body),
     });
     if (!r.ok) return unknown;
