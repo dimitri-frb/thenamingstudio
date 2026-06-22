@@ -83,7 +83,7 @@ export default {
     if (phase === "inpi") {
       const name = body?.payload?.name || "";
       const classes: number[] = Array.isArray(body?.payload?.classes) ? body.payload.classes : [];
-      if (body?.payload?.debug) return json(await inpiDebug(env, name), env); // safe: statuses only, never the token
+      if (body?.payload?.debug) return json(await inpiDebug(env, body.payload), env); // safe: statuses only, never the token
       return json(await inpiCheck(env, name, classes), env);
     }
 
@@ -526,36 +526,29 @@ function inpiDead(status: string): boolean {
 // token came back, a sanitized sample of the search response) WITHOUT ever
 // returning the token, password, or login body. Used to validate the two
 // constants against a live entitled account.
-async function inpiDebug(env: Env, rawName: string): Promise<any> {
-  const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
+async function inpiDebug(env: Env, p: any): Promise<any> {
+  const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD) };
   if (!out.credsPresent) return out;
   try {
     const auth = await inpiAuth(env);
     out.gotToken = !!auth;
     if (!auth) return out;
-    const term = (rawName || "carrefour").replace(/["\\]/g, " ");
-    // Probe candidate Solr query shapes to find the wording field that the
-    // diffusion index actually accepts (the rest 500 on a bad field name).
-    const candidates: string[] = [
-      "*:*",
-      `${INPI_F_WORDING}:"${term}"`,
-      `${term}`,
-      `"${term}"`,
-      `MARK:"${term}"`,
-      `marqueVerbale:"${term}"`,
-      `markVerbalElementText:${term}`,
-      `wordMark:"${term}"`,
-    ];
-    out.probes = [];
-    for (const q of candidates) {
-      const sr = await fetch(INPI_SEARCH, {
-        method: "POST",
-        headers: { authorization: "Bearer " + auth.token, "content-type": "application/json", accept: "application/xml", "X-XSRF-TOKEN": xsrfOf(auth.cookies), cookie: auth.cookies },
-        body: JSON.stringify({ query: q, collections: ["FMARK"], size: 2, position: 0, withFacets: false }),
-      });
-      const txt = await sr.text();
-      out.probes.push({ q, status: sr.status, marks: /MarkVerbalElementText|TradeMark/i.test(txt), sample: sr.status === 200 ? txt.slice(0, 80) : (txt.match(/"detail":"([^"]{0,80})/) || ["", ""])[1] });
+    const H = { authorization: "Bearer " + auth.token, "X-XSRF-TOKEN": xsrfOf(auth.cookies), cookie: auth.cookies };
+    // Confirm the diffusion service is reachable with our token (metadata is a GET).
+    if (p?.metadata) {
+      const r = await fetch(INPI_BASE + "/services/apidiffusion/api/marques/metadata", { headers: { ...H, accept: "application/json" } });
+      out.metadataStatus = r.status; out.metadataSample = (await r.text()).slice(0, 300);
+      return out;
     }
+    // Run an arbitrary search body (so we can iterate from curl without redeploying).
+    const accept = p?.accept || "application/xml";
+    const body = p?.searchBody || { query: "*:*", collections: ["FMARK"], size: 2, position: 0, withFacets: false };
+    const sr = await fetch(INPI_SEARCH, { method: "POST", headers: { ...H, "content-type": "application/json", accept }, body: JSON.stringify(body) });
+    out.sentBody = body; out.accept = accept;
+    out.searchStatus = sr.status; out.searchContentType = sr.headers.get("content-type");
+    const txt = await sr.text();
+    out.searchHasMarks = /MarkVerbalElementText|TradeMark/i.test(txt);
+    out.searchSample = txt.slice(0, 500);
   } catch (e: any) { out.error = String(e?.message || e); }
   return out;
 }
