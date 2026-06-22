@@ -2,7 +2,7 @@
 // genuinely-available domains (real, via RDAP) with prices, INPI trademark,
 // handle, and a SMILE score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
-import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
+import { naming, fetchDomains, fetchInpi, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain, type InpiResult } from "../lib/namingApi";
 import { Dots, Head, Star, Thinking } from "./chrome";
 import { availableDomains, handleOptions, nameTests } from "./data";
 
@@ -19,6 +19,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   // Real domain availability, fetched per-name in parallel so the scored table
   // appears instantly and domains fill in as they land.
   const [dom, setDom] = useState<Record<string, Dom>>({});
+  // Real INPI trademark verdicts per name (class-aware), filled in as they land.
+  const [inpi, setInpi] = useState<Record<string, InpiResult>>({});
 
   useEffect(() => {
     if (comp) return;
@@ -39,6 +41,19 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     todo.forEach(async (name) => {
       const res = await fetchDomains(name);
       if (live) setDom((prev) => ({ ...prev, [name]: res }));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comp]);
+
+  // Real INPI trademark check per name, filtered to the brand's Nice classes.
+  useEffect(() => {
+    if (!comp) return;
+    let live = true;
+    const classes = comp.niceClasses || [];
+    comp.rows.map((r) => r.name).filter((n) => !(n in inpi)).forEach(async (name) => {
+      const res = await fetchInpi(name, classes);
+      if (live) setInpi((prev) => ({ ...prev, [name]: res }));
     });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,7 +130,16 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         ))}
                       </div>
                     </td>
-                    <td className="c"><span className={"tag " + (n.inpi ? "good" : "watch")}>{n.inpi ? "Clear" : "Check"}</span></td>
+                    <td className="c">{(() => {
+                      const ip = inpi[n.name];
+                      if (ip?.ok && ip.verdict !== "unknown") {
+                        const cl = ip.hits[0]?.classes?.[0];
+                        if (ip.verdict === "conflict") return <span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" in class ${ip.hits.flatMap((h) => h.classes).join(", ")}`}>Taken{cl ? ` · cl.${cl}` : ""}</span>;
+                        if (ip.verdict === "adjacent") return <span className="tag good" title={`Exists, but only in other classes (${ip.hits.flatMap((h) => h.classes).join(", ")})`}>Clear here</span>;
+                        return <span className="tag good" title="No conflicting mark found in your class (INPI)">Clear</span>;
+                      }
+                      return <span className={"tag " + (n.inpi ? "good" : "watch")} title="Heuristic estimate (INPI check unavailable)">{n.inpi ? "Clear?" : "Check"}</span>;
+                    })()}</td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         {handleOptions(n.name, domains).map((h) => (

@@ -57,7 +57,16 @@ export interface CompareRow {
   instagram: boolean;     // @handle appears free?
   verdict: string;
 }
-export interface Comparison { rows: CompareRow[]; recommended: string; why: string }
+export interface Comparison { rows: CompareRow[]; recommended: string; why: string; niceClasses?: number[] }
+
+// Real INPI trademark check for one name (class-aware). "unknown" means INPI wasn't
+// reachable/configured, so the UI should fall back to its heuristic estimate.
+export interface InpiResult {
+  ok: boolean;
+  verdict: "clear" | "conflict" | "adjacent" | "unknown";
+  classes: number[];
+  hits: { name: string; classes: number[] }[];
+}
 
 // The starter brand book, generated from the brief + the chosen name.
 export interface Swatch { hex: string; name: string; role: string }
@@ -170,6 +179,18 @@ export async function fetchDomains(name: string): Promise<{ domains: DomainHit[]
     } catch { /* ignore */ }
   }
   return { domains: [], suggested: [] };
+}
+
+// Real INPI trademark availability for one name, filtered to the brand's Nice
+// classes (its own request on the Worker). Not logged. Soft-fails to "unknown".
+export async function fetchInpi(name: string, classes: number[]): Promise<InpiResult> {
+  if (ENDPOINT) {
+    try {
+      const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "inpi", payload: { name, classes } }) });
+      if (res.ok) { const d = await res.json(); if (d && !d.error) return d as InpiResult; }
+    } catch { /* ignore */ }
+  }
+  return { ok: false, verdict: "unknown", classes, hits: [] };
 }
 
 // Email capture before the brand book. Logged locally and (centrally) on the

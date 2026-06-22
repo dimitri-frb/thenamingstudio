@@ -24,6 +24,8 @@ export interface Env {
   ALLOWED_ORIGIN?: string; // optional: lock CORS to your site; defaults to *
   LOG?: KVNamespace;       // optional: central request log (bind a KV namespace named LOG)
   ADMIN_KEY?: string;      // optional: required ?key= to read the log
+  INPI_LOGIN?: string;     // optional: INPI data-account login (for the trademark check)
+  INPI_PASSWORD?: string;  // optional: INPI data-account password
 }
 
 const MODEL = {
@@ -72,6 +74,16 @@ export default {
     // domains as they land.
     if (phase === "domains") {
       return json(await domainsFor(body?.payload?.name || ""), env);
+    }
+
+    // Real INPI trademark check for ONE name, class-aware: is there a live French/EU
+    // mark with this wording in the Nice classes that matter for THIS brand? A mark
+    // in a different class is fine. No Claude call. Soft-fails to "unknown" so the
+    // client keeps its heuristic when INPI isn't configured or is unreachable.
+    if (phase === "inpi") {
+      const name = body?.payload?.name || "";
+      const classes: number[] = Array.isArray(body?.payload?.classes) ? body.payload.classes : [];
+      return json(await inpiCheck(env, name, classes), env);
     }
 
     // Lead capture (email gate before the brand book). No Claude call, just logged.
@@ -257,7 +269,8 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".ai","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). ` +
     `The tagline is a short BRAND tagline (3 to 6 words) for the COMPANY if it were named this, capturing what it does or how it feels for the brief, NOT a description of the word itself (e.g. for a calm finance app: "Money, finally at peace"). ` +
     `Pick the strongest as recommended and say why. ` +
-    `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","tagline","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences"}.` }),
+    `Also pick "niceClasses": the 1 to 3 Nice classification numbers (1 to 45) that this brand would actually register in, based on what it does (e.g. software/SaaS -> 9 and 42; apparel -> 25; cosmetics -> 3; food -> 29 or 30; agency/consulting -> 35; media -> 41). ` +
+    `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","tagline","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences","niceClasses":[9,42]}.` }),
 
   brandbook: (b) => ({ model: MODEL.smart, max: 1800, prompt:
     `Brief: ${briefV1(b.brief)}.\nCreate a starter brand book for the chosen name "${b.payload?.name || ""}". ` +
@@ -412,6 +425,103 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
   });
 
   return { domains, suggested: suggested.slice(0, 3) };
+}
+
+// ───────────────────────── INPI trademark check ─────────────────────────
+// The INPI "Diffusion PI" API (api-gateway.inpi.fr). We log in once for a Bearer
+// token (cached), then search the trademark registers for a given wording and
+// decide, class by class, whether it actually conflicts with THIS brand.
+//
+// Two values below are set to INPI's documented defaults and may need a one-line
+// tweak once validated against a live, search-entitled account: AUTH (how the
+// login returns its token) and the Solr field names (INPI_F_*). Everything else
+// (collections, class logic, parsing, verdict) is settled.
+const INPI_BASE = "https://api-gateway.inpi.fr";
+const INPI_SEARCH = INPI_BASE + "/services/apidiffusion/api/marques/search";
+const INPI_LOGIN_URL = INPI_BASE + "/auth/login";
+// FR national + EU (EUTM) + international marks: all three can block a name in France.
+const INPI_COLLECTIONS = ["FMARK", "CTMARK", "TMINT"];
+// Solr fields, "INPI syntax". Isolated so they're a single change if the catalogue
+// names differ from these conventional ones.
+const INPI_F_WORDING = "markVerbalElementText";
+
+// Cached token (module scope persists across requests on a warm isolate).
+let inpiTok: { token: string; exp: number } | null = null;
+
+async function inpiToken(env: Env): Promise<string | null> {
+  if (!env.INPI_LOGIN || !env.INPI_PASSWORD) return null;
+  const now = Date.now();
+  if (inpiTok && inpiTok.exp > now + 60_000) return inpiTok.token;
+  try {
+    const r = await fetch(INPI_LOGIN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }),
+    });
+    if (!r.ok) return null;
+    // INPI returns the JWT in the Authorization response header (Bearer ...); some
+    // deployments put it in the body instead. Accept either.
+    let token = (r.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+    if (!token) { try { const j: any = await r.json(); token = j?.token || j?.id_token || j?.access_token || ""; } catch { /* no body token */ } }
+    if (!token) return null;
+    inpiTok = { token, exp: now + 50 * 60_000 }; // INPI tokens last ~1h; refresh early
+    return token;
+  } catch { return null; }
+}
+
+// Pull (wording, Nice classes, status) from each ST66 record in the XML response.
+// Tolerant by design: matches the ST66 tags but also bare local names, so a small
+// namespace/prefix difference doesn't drop everything.
+function parseInpiMarks(xml: string): { name: string; classes: number[]; status: string }[] {
+  const out: { name: string; classes: number[]; status: string }[] = [];
+  // Split into per-mark blocks (ST66 uses <TradeMark>...</TradeMark>).
+  const blocks = xml.split(/<\/(?:[a-zA-Z]+:)?TradeMark>/).slice(0, -1);
+  const grab = (s: string, tag: string) => {
+    const m = s.match(new RegExp(`<(?:[a-zA-Z]+:)?${tag}>([^<]+)</`, "i"));
+    return m ? m[1].trim() : "";
+  };
+  for (const b of blocks) {
+    const name = grab(b, "MarkVerbalElementText") || grab(b, "WordMarkSpecification");
+    const status = grab(b, "MarkCurrentStatusCode") || grab(b, "MarkFeature");
+    const classes = Array.from(b.matchAll(/<(?:[a-zA-Z]+:)?ClassNumber>\s*(\d{1,2})\s*</gi)).map((m) => parseInt(m[1], 10));
+    if (name) out.push({ name, classes: Array.from(new Set(classes)), status });
+  }
+  return out;
+}
+
+// A mark is "dead" (ignore it) only if its status clearly says so. Anything else
+// (registered, pending, unknown) counts as a live obstacle.
+function inpiDead(status: string): boolean {
+  return /expir|withdraw|retir|radi|annul|refus|reject|lapsed|abandon|expired|surrender/i.test(status || "");
+}
+
+async function inpiCheck(env: Env, rawName: string, classes: number[]): Promise<{
+  ok: boolean; verdict: "clear" | "conflict" | "adjacent" | "unknown"; classes: number[]; hits: { name: string; classes: number[] }[];
+}> {
+  const name = (rawName || "").trim();
+  const unknown = { ok: false, verdict: "unknown" as const, classes, hits: [] };
+  if (!name) return unknown;
+  const token = await inpiToken(env);
+  if (!token) return unknown;
+  try {
+    const q = `${INPI_F_WORDING}:"${name.replace(/["\\]/g, " ")}"`;
+    const body = { query: q, collections: INPI_COLLECTIONS, size: 50, position: 0, withFacets: false };
+    const r = await fetch(INPI_SEARCH, {
+      method: "POST",
+      headers: { authorization: "Bearer " + token, "content-type": "application/json", accept: "application/xml" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return unknown;
+    const xml = await r.text();
+    const low = name.toLowerCase();
+    // Live marks whose wording actually matches this name (exact, case-insensitive).
+    const live = parseInpiMarks(xml).filter((m) => !inpiDead(m.status) && m.name.toLowerCase() === low);
+    const wanted = new Set(classes);
+    const sameClass = live.filter((m) => m.classes.some((c) => wanted.has(c)));
+    const verdict = sameClass.length ? "conflict" : live.length ? "adjacent" : "clear";
+    const hits = (sameClass.length ? sameClass : live).slice(0, 5).map((m) => ({ name: m.name, classes: m.classes }));
+    return { ok: true, verdict, classes, hits };
+  } catch { return unknown; }
 }
 
 function hash(s: string): number {
