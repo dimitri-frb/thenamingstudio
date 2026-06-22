@@ -450,7 +450,15 @@ const INPI_F_WORDING = "markVerbalElementText";
 // a handshake: GET to receive an XSRF-TOKEN cookie, then POST /auth/login with that
 // token echoed in the X-XSRF-TOKEN header. We carry the cookies forward so the
 // (also POST) search passes CSRF too.
-const INPI_PRIME = INPI_BASE + "/services/uaa/api/account"; // any GET that sets the XSRF cookie
+// A throwaway login POST (dummy creds) just to receive a fresh XSRF-TOKEN cookie;
+// the gateway sets it on every response. We use a fake username so the real
+// account is never touched by the priming call.
+async function inpiPrime(): Promise<string> {
+  try {
+    const p = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "_", password: "_" }) });
+    return mergeCookies(p.headers);
+  } catch { return ""; }
+}
 
 // Merge Set-Cookie(s) from a response into a "name=value; ..." Cookie header.
 function mergeCookies(headers: Headers, prev = ""): string {
@@ -472,8 +480,7 @@ async function inpiAuth(env: Env): Promise<{ token: string; cookies: string } | 
   const now = Date.now();
   if (inpiAuthCache && inpiAuthCache.exp > now + 60_000) return inpiAuthCache;
   try {
-    const prime = await fetch(INPI_PRIME, { method: "GET" });           // 1. get the XSRF cookie
-    let cookies = mergeCookies(prime.headers);
+    let cookies = await inpiPrime();                                   // 1. get the XSRF cookie
     const r = await fetch(INPI_LOGIN_URL, {                             // 2. login with the CSRF token
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies },
@@ -523,9 +530,7 @@ async function inpiDebug(env: Env, rawName: string): Promise<any> {
   const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD), loginUrl: INPI_LOGIN_URL };
   if (!out.credsPresent) return out;
   try {
-    const prime = await fetch(INPI_PRIME, { method: "GET" });
-    let cookies = mergeCookies(prime.headers);
-    out.primeStatus = prime.status;
+    let cookies = await inpiPrime();
     out.gotXsrf = !!xsrfOf(cookies);
     const lr = await fetch(INPI_LOGIN_URL, {
       method: "POST",
