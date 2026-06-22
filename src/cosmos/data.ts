@@ -38,6 +38,26 @@ export const AVOID_FALLBACK = ["Generic name generators", "Tech-bro acronyms", "
 // real (RDAP, via the worker); they map to the live availability verdicts.
 export const TLDS = [".com", ".app", ".io"] as const;
 
+// The 45 Nice classification categories (short English labels), used to show what
+// each trademark class number means on hover in the INPI column.
+export const NICE_CLASSES: Record<number, string> = {
+  1: "Chemicals", 2: "Paints & coatings", 3: "Cosmetics & cleaning", 4: "Fuels & lubricants",
+  5: "Pharmaceuticals", 6: "Common metals & hardware", 7: "Machines & machine tools", 8: "Hand tools",
+  9: "Software, electronics & devices", 10: "Medical apparatus", 11: "Lighting, heating & appliances",
+  12: "Vehicles", 13: "Firearms & fireworks", 14: "Jewellery & watches", 15: "Musical instruments",
+  16: "Paper, stationery & print", 17: "Rubber & plastics", 18: "Leather goods & luggage",
+  19: "Non-metal building materials", 20: "Furniture", 21: "Household & kitchen utensils",
+  22: "Ropes, nets & raw textiles", 23: "Yarns & threads", 24: "Textiles & fabrics",
+  25: "Clothing, footwear & headwear", 26: "Haberdashery & trimmings", 27: "Carpets & floor coverings",
+  28: "Games, toys & sporting goods", 29: "Meat, dairy & processed foods", 30: "Coffee, bakery & staples",
+  31: "Agriculture & fresh produce", 32: "Beers & soft drinks", 33: "Alcoholic beverages (not beer)",
+  34: "Tobacco & smokers' articles", 35: "Advertising, business & retail", 36: "Finance, insurance & real estate",
+  37: "Construction & repair", 38: "Telecommunications", 39: "Transport & logistics",
+  40: "Treatment of materials", 41: "Education & entertainment", 42: "Software & tech/science services",
+  43: "Food services & accommodation", 44: "Medical, beauty & agriculture services", 45: "Legal & security services",
+};
+export const niceName = (n: number): string => NICE_CLASSES[n] || `Class ${n}`;
+
 // Rough first-year + renewal price estimates per extension, for the price column.
 export const TLD_PRICE: Record<string, [string, string]> = {
   ".com": ["$12", "$14/yr"],

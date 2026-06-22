@@ -4,7 +4,17 @@
 import { useEffect, useState } from "react";
 import { naming, fetchDomains, fetchInpi, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain, type InpiResult } from "../lib/namingApi";
 import { Dots, Head, Star, Thinking } from "./chrome";
-import { availableDomains, handleOptions, nameTests } from "./data";
+import { availableDomains, handleOptions, nameTests, niceName } from "./data";
+
+// Renders "cl. 9, 42" where each number reveals its Nice category name on hover.
+function ClassNums({ nums }: { nums: number[] }) {
+  if (!nums.length) return null;
+  return (
+    <span>cl. {nums.map((c, i) => (
+      <span key={c}>{i > 0 ? ", " : ""}<span title={niceName(c)} style={{ textDecoration: "underline dotted", textUnderlineOffset: 2, cursor: "help" }}>{c}</span></span>
+    ))}</span>
+  );
+}
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -133,18 +143,20 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                     <td>{(() => {
                       const ip = inpi[n.name];
                       const brandCls = comp.niceClasses || [];
-                      const sub = (text: string, color = "var(--ink-3)") => <span style={{ fontSize: 11, color, marginTop: 3, whiteSpace: "nowrap" }}>{text}</span>;
-                      const wrap = (tag: React.ReactNode, line: React.ReactNode) => <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0 }}>{tag}{line}</div>;
+                      const line = (label: React.ReactNode, nums: number[], color = "var(--ink-3)") => (
+                        <span style={{ fontSize: 11, color, marginTop: 3, lineHeight: 1.3 }}>{label} <ClassNums nums={nums} /></span>
+                      );
+                      const wrap = (tag: React.ReactNode, sub: React.ReactNode) => <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>{tag}{sub}</div>;
                       if (ip?.ok && ip.verdict !== "unknown") {
                         const hitCls = [...new Set(ip.hits.flatMap((h) => h.classes))];
                         if (ip.verdict === "conflict") {
                           const blocked = hitCls.filter((c) => brandCls.includes(c));
-                          return wrap(<span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" registered in class ${hitCls.join(", ")}`}>Taken</span>, sub(`in cl. ${(blocked.length ? blocked : hitCls).join(", ")}`, "var(--bad)"));
+                          return wrap(<span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" registered here`}>Risk</span>, line("taken in", blocked.length ? blocked : hitCls, "var(--bad)"));
                         }
-                        if (ip.verdict === "adjacent") return wrap(<span className="tag good" title={`The same word exists, but only in class ${hitCls.join(", ")} (not yours)`}>Clear here</span>, sub(`free in cl. ${brandCls.join(", ")} · exists in cl. ${hitCls.join(", ")}`));
-                        return wrap(<span className="tag good" title="No conflicting mark in your class (INPI)">Clear</span>, brandCls.length ? sub(`free in cl. ${brandCls.join(", ")}`) : null);
+                        if (ip.verdict === "adjacent") return wrap(<span className="tag good" title="The same word exists, but only in classes that aren't yours">Available</span>, line("free in", brandCls));
+                        return wrap(<span className="tag good" title="No conflicting mark in your class (INPI)">Available</span>, brandCls.length ? line("free in", brandCls) : null);
                       }
-                      return wrap(<span className={"tag " + (n.inpi ? "good" : "watch")} title="Heuristic estimate (live INPI check unavailable)">{n.inpi ? "Clear?" : "Check"}</span>, brandCls.length ? sub(`est. · cl. ${brandCls.join(", ")}`) : null);
+                      return wrap(<span className={"tag " + (n.inpi ? "good" : "watch")} title="Estimate (live INPI check unavailable)">{n.inpi ? "Available?" : "Risk?"}</span>, brandCls.length ? line("est.", brandCls) : null);
                     })()}</td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
