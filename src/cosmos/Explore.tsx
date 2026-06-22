@@ -58,11 +58,17 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   // In-flight relate calls, so a click and a prefetch for the same word share one
   // request instead of firing twice.
   const inflight = useRef<Map<string, Promise<Entry | null>>>(new Map());
-  // A small concurrency-limited prefetch queue: when a board loads we fetch its
-  // children in the background so the next click is (almost) instant.
-  const queue = useRef<string[]>([]);
+  // A concurrency-limited prefetch queue: when a board loads we fetch its children
+  // in the background so the next click is instant. Each item carries a remaining
+  // depth so the strongest path is pre-loaded several steps ahead.
+  const queue = useRef<{ w: string; depth: number }[]>([]);
   const running = useRef(0);
-  const MAX_CONC = 8;
+  const MAX_CONC = 10;
+  const enqueue = (w: string, depth: number) => {
+    const key = cacheKey(w);
+    if (!w || cache.current.has(key) || inflight.current.has(key) || queue.current.some((q) => q.w === w)) return;
+    queue.current.push({ w, depth });
+  };
 
   const markSeen = (e: Entry) => {
     seen.current.add((e.word || "").toLowerCase());
@@ -105,20 +111,20 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   // so we don't fire dozens of requests at once.
   function pump() {
     while (running.current < MAX_CONC && queue.current.length) {
-      const seed = queue.current.shift()!;
-      const key = cacheKey(seed);
+      const item = queue.current.shift()!;
+      const key = cacheKey(item.w);
       if (cache.current.has(key) || inflight.current.has(key)) continue;
       running.current++;
-      fetchRelate(seed).finally(() => { running.current--; pump(); });
+      fetchRelate(item.w).then((e) => {
+        // Keep going down the strongest path so 2-3 clicks ahead stay instant.
+        if (e && item.depth > 0) for (const g of e.groups) enqueue(g.words[0]?.w, item.depth - 1);
+      }).finally(() => { running.current--; pump(); });
     }
   }
   function prefetchChildren(e: Entry) {
-    // Every visible word is a likely next click, so prefetch them all.
-    const words = e.groups.flatMap((g) => g.words.slice(0, PER_GROUP).map((w) => w.w));
-    for (const w of words) {
-      const key = cacheKey(w);
-      if (!cache.current.has(key) && !inflight.current.has(key) && !queue.current.includes(w)) queue.current.push(w);
-    }
+    // Every visible word is a likely next click, so pre-load them all; the top word
+    // of each group also chains two more levels, so the likely path is 3 steps ahead.
+    for (const g of e.groups) g.words.slice(0, PER_GROUP).forEach((w, i) => enqueue(w.w, i === 0 ? 2 : 0));
     pump();
   }
 
@@ -218,9 +224,15 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
       const res = await naming.relate(brief, focus.word, world, excludeList());
       const ng = (res.groups || []).find((g) => g.rel === rel);
       if (ng?.words?.length) {
-        setGroups((gs) => gs.map((g) => (g.rel === rel ? { ...g, words: ng.words } : g)));
+        // Never resurface a word that has already appeared anywhere this session.
+        const fresh = ng.words.filter((w) => !seen.current.has((w.w || "").toLowerCase()));
+        const words = fresh.length ? fresh : ng.words;
+        setGroups((gs) => gs.map((g) => (g.rel === rel ? { ...g, words } : g)));
         setOffset((p) => ({ ...p, [rel]: 0 }));
-        for (const w of ng.words) seen.current.add((w.w || "").toLowerCase());
+        for (const w of words) seen.current.add((w.w || "").toLowerCase());
+        // Pre-load the fresh words so opening any of them is instant.
+        words.forEach((w, i) => enqueue(w.w, i === 0 ? 2 : 0));
+        pump();
       }
     } catch { /* keep the current set */ }
     finally { setRefreshing((s) => { const n = new Set(s); n.delete(rel); return n; }); }

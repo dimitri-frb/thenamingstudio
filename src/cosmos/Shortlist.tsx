@@ -1,100 +1,103 @@
-// Step 7 · Shortlist (converge). Every saved idea is a SEED — keep the seed word
-// itself, or grow coined name ideas from it (refreshable). Pick the strongest into
-// the shortlist dock (max 10); that's what flows into the comparison.
+// Step 7 · Name ideas (converge). Left: the words the founder saved while exploring
+// (their raw material). Right: our brand-name recommendations, coined from those
+// words. Pick the strongest (the seed words themselves, or our names) into the
+// shortlist that flows to the comparison.
 import { useEffect, useRef, useState } from "react";
 import { naming, type Brief, type NameIdea } from "../lib/namingApi";
-import { Anno, Head, Thinking, Info } from "./chrome";
+import { Head, Thinking, Info } from "./chrome";
 
 export interface SavedIdea { w: string; concept: string; mine?: boolean }
+export interface SeedRow { seed: string; concept: string; ideas: NameIdea[]; loading?: boolean }
 
 const MAX_SEEDS = 8;
-const PER_SEED = 6;
 const MAX_PICK = 10;
-
-export interface SeedRow { seed: string; concept: string; ideas: NameIdea[]; loading?: boolean }
 
 export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initialRows }: {
   brief: Brief; saved: SavedIdea[]; shortlist: string[];
   setShortlist: React.Dispatch<React.SetStateAction<string[]>>; onDone: () => void; initialRows?: SeedRow[];
 }) {
-  const [rows, setRows] = useState<SeedRow[] | null>(initialRows ?? null);
   const seeds = useRef(saved.slice(0, MAX_SEEDS));
+  // Our recommendations (one Opus call across all saved words), strongest first.
+  const [ideas, setIdeas] = useState<NameIdea[] | null>(initialRows ? initialRows.flatMap((r) => r.ideas) : null);
+  const [busy, setBusy] = useState(false);
 
-  // ONE name call for the whole shortlist (every saved word at once), then sort
-  // the names back under the seed each one grew from. Far faster and steadier than
-  // firing a separate Opus call per seed.
-  useEffect(() => {
-    if (initialRows) return;        // test mode: rows are pre-seeded, skip the live fetch
-    let live = true;
-    (async () => {
-      const base: SeedRow[] = seeds.current.map((s) => ({ seed: s.w, concept: s.concept, ideas: [] }));
-      try {
-        const ideas = await naming.names(brief, {
-          concepts: Array.from(new Set(seeds.current.map((s) => s.concept))),
-          words: seeds.current.map((s) => s.w),
-        });
-        const bySeed = (w?: string) => {
-          const i = seeds.current.findIndex((s) => s.w.toLowerCase() === (w || "").toLowerCase());
-          return i >= 0 ? i : 0;     // unmatched names fall under the first seed
-        };
-        for (const idea of ideas) base[bySeed(idea.seed)].ideas.push(idea);
-      } catch { /* keep empty rows; the founder can still keep seeds or swap a row */ }
-      if (live) setRows(base);
-    })();
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  async function generate(more = false) {
+    setBusy(true);
+    try {
+      const got = await naming.names(
+        brief,
+        { concepts: Array.from(new Set(seeds.current.map((s) => s.concept))), words: seeds.current.map((s) => s.w) },
+        more && ideas ? ideas.map((i) => i.name) : [],
+      );
+      setIdeas((prev) => {
+        const merged = more && prev ? [...prev, ...got] : got;
+        const seen = new Set<string>();
+        return merged.filter((i) => { const k = i.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+      });
+    } catch { if (!ideas) setIdeas([]); }
+    finally { setBusy(false); }
+  }
 
-  function pick(name: string) {
+  useEffect(() => { if (!initialRows) generate(false); /* eslint-disable-next-line */ }, []);
+
+  const pick = (name: string) =>
     setShortlist((p) => p.includes(name) ? p.filter((x) => x !== name) : p.length >= MAX_PICK ? p : [...p, name]);
-  }
-  async function refresh(i: number) {
-    const s = seeds.current[i];
-    setRows((rs) => rs!.map((r, j) => j === i ? { ...r, loading: true } : r));
-    let ideas: NameIdea[] = [];
-    try { ideas = (await naming.names(brief, { concepts: [s.concept], words: [s.w] })).slice(0, PER_SEED); } catch { /* keep */ }
-    setRows((rs) => rs!.map((r, j) => j === i ? { ...r, ideas, loading: false } : r));
-  }
 
-  if (!rows) return (
-    <>
-      <Header />
-      <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
-        <Thinking lines={["Growing name ideas from each keeper…", "Coining, blending, shaping"]} />
-      </div>
-    </>
-  );
+  const sorted = (ideas || []).slice().sort((a, b) => (b.score || 0) - (a.score || 0));
 
   return (
     <>
-      <Header />
-      <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid var(--line)", borderRadius: "var(--r3)", background: "var(--surface)", padding: "4px 22px" }}>
-        {rows.map((row, i) => (
-          <div key={row.seed} className="seed-row">
-            <div className="seed-head">
-              <span className="sw">{row.seed}</span>
-              <span className="sc">seed · {row.concept}</span>
-              <span className="refresh" onClick={() => refresh(i)} title="Replace this row with a fresh set">↻ swap for a new set</span>
-            </div>
-            <div className="idea-wrap">
-              <span className={"idea seed" + (shortlist.includes(row.seed) ? " picked" : "")} onClick={() => pick(row.seed)}>
-                <span className="seedtag">seed</span>
-                <span className="in">{row.seed}</span>
-                {shortlist.includes(row.seed) && <span style={{ color: "var(--surface)", fontSize: 12 }}>★</span>}
+      <Head eyebrow={<>Name ideas <Info>On the <b>left</b> are the words you saved while exploring. On the <b>right</b> are brand names we coined from them. Click any to add it to your shortlist.</Info></>}
+        title={<>Your words, <em>turned into names.</em></>}
+        sub="Left: what you picked. Right: our recommendations. Add your favourites (max 10) to compare." />
+
+      <div className="namecols">
+        {/* LEFT — the founder's saved words */}
+        <div className="namecol">
+          <span className="lbl">Your words · {seeds.current.length}</span>
+          <div className="wordpick">
+            {seeds.current.map((s) => (
+              <span key={s.w} className={"wchip" + (shortlist.includes(s.w) ? " on" : "")} onClick={() => pick(s.w)} title="Add this exact word to your shortlist">
+                {s.w}{shortlist.includes(s.w) && <span className="tk">✓</span>}
               </span>
-              <span style={{ width: 1, background: "var(--line)", alignSelf: "stretch", margin: "2px 4px" }} />
-              {row.loading
-                ? <span className="idea" style={{ color: "var(--ink-4)" }}><span className="in" style={{ fontSize: 14, fontFamily: "var(--sans)" }}>growing…</span></span>
-                : row.ideas.map((idea) => (
-                  <span key={idea.name} className={"idea" + (shortlist.includes(idea.name) ? " picked" : "")} onClick={() => pick(idea.name)}>
-                    <span className="in">{idea.name}</span>
-                    <span className="ig">✦</span>
-                    {shortlist.includes(idea.name) && <span style={{ color: "var(--surface)", fontSize: 12 }}>★</span>}
-                  </span>
-                ))}
-            </div>
+            ))}
+            {!seeds.current.length && <span className="rn">No words saved, step back to explore.</span>}
           </div>
-        ))}
+          <p className="namehint">These are your raw material. Keep a word as-is, or pick a name we shaped from it.</p>
+        </div>
+
+        {/* RIGHT — our recommendations */}
+        <div className="namecol">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="lbl" style={{ flex: 1 }}>Our recommendations</span>
+            <button className="btn" style={{ fontSize: 12.5 }} disabled={busy} onClick={() => generate(true)}>
+              {busy ? "Coining…" : "Show me more"}
+            </button>
+          </div>
+          {!ideas ? (
+            <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
+              <Thinking lines={["Coining brand names from your words…", "Blending, bending, inventing"]} />
+            </div>
+          ) : (
+            <div className="namegrid">
+              {sorted.map((idea) => {
+                const on = shortlist.includes(idea.name);
+                return (
+                  <button key={idea.name} className={"namecard" + (on ? " on" : "")} onClick={() => pick(idea.name)}>
+                    <div className="nc-top">
+                      <span className="nc-name">{idea.name}</span>
+                      {on ? <span className="nc-star">★</span> : <span className="nc-add">+</span>}
+                    </div>
+                    <p className="nc-why">{idea.rationale}</p>
+                    {idea.type && <span className="nc-type">{idea.type}</span>}
+                  </button>
+                );
+              })}
+              {busy && <div className="namecard ghost"><span className="rn">coining…</span></div>}
+              {!sorted.length && !busy && <span className="rn">No names yet, try Show me more.</span>}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="dock">
@@ -110,18 +113,6 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
           Compare {shortlist.length || ""} →
         </button>
       </div>
-
-      <Anno pos="down" k="Diverge, then converge" style={{ position: "static", maxWidth: "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
-        Seeds and their ideas sit at the <b>same level</b>: keep a raw word, or a coined idea.
-      </Anno>
     </>
-  );
-}
-
-function Header() {
-  return (
-    <Head eyebrow={<>Shortlist · converge <Info>A <b>seed</b> is a word you saved while exploring. An <b>idea</b> is a name built from it, generated or typed by you. Both can go on your shortlist.</Info></>}
-      title={<>Grow each keeper. <em>Cut to ten.</em></>}
-      sub="Keep a seed as-is, or grow name ideas from it. Pick your strongest (max 10) to compare." />
   );
 }

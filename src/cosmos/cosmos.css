@@ -358,6 +358,28 @@ table.cmp td.c { white-space: nowrap; }
 .meter i { width: 14px; height: 5px; border-radius: 3px; background: var(--line); }
 .meter i.on { background: var(--ink); }
 
+/* Step 7 · Name ideas — left (your words) / right (our recommendations) */
+.namecols { display: grid; grid-template-columns: 0.85fr 1.45fr; gap: 22px; flex: 1; min-height: 0; }
+.namecol { display: flex; flex-direction: column; gap: 12px; min-height: 0; border: 1px solid var(--line); border-radius: var(--r3); background: var(--surface); padding: 18px 18px 16px; }
+.namecol:first-child { background: var(--surface-2); }
+.wordpick { display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; overflow: auto; }
+.wchip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--serif); font-size: 17px; padding: 7px 13px; border: 1px solid var(--line); border-radius: var(--rp); background: var(--surface); cursor: pointer; transition: all .14s ease; }
+.wchip:hover { border-color: var(--ink-3); transform: translateY(-1px); }
+.wchip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.wchip .tk { font-size: 12px; }
+.namehint { font-size: 12.5px; color: var(--ink-3); margin: auto 0 0; line-height: 1.45; }
+.namegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: auto; flex: 1; align-content: start; }
+.namecard { text-align: left; display: flex; flex-direction: column; gap: 5px; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); cursor: pointer; transition: all .16s cubic-bezier(.2,.7,.2,1); }
+.namecard:hover { border-color: var(--ink-3); transform: translateY(-2px); box-shadow: 0 12px 26px -18px rgba(0,0,0,0.4); }
+.namecard.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.namecard.ghost { opacity: 0.5; cursor: default; align-items: center; justify-content: center; }
+.nc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nc-name { font-family: var(--serif); font-size: 21px; letter-spacing: -0.01em; line-height: 1; }
+.nc-add { color: var(--ink-4); font-size: 18px; line-height: 1; }
+.nc-star { color: var(--ink); font-size: 14px; }
+.nc-why { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; margin: 0; }
+.nc-type { font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
+
 /* back / forward nav (Pinterest-style) */
 .bf { display: inline-flex; gap: 6px; }
 .bf .nv { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; font-size: 15px; }
@@ -480,7 +502,7 @@ table.cmp td.c { white-space: nowrap; }
   .cx { --pad: 18px; }
   .cx-body { overflow: auto; gap: 14px; }
   .h1 { font-size: 28px; }
-  .intake-cols, .share-cols, .decide-cols, .explore-cols { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .intake-cols, .share-cols, .decide-cols, .explore-cols, .namecols { grid-template-columns: 1fr; grid-auto-rows: auto; }
   .cgrid, .lanegrid, .relcolsD { grid-template-columns: 1fr; }
   .seed-row { grid-template-columns: 1fr; gap: 8px; }
   .dock { flex-wrap: wrap; }

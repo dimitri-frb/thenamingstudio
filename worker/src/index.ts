@@ -260,6 +260,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
     `- Do not just return the saved word or a plain synonym of it.\n\n` +
+    (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
+      ? `Already proposed (the founder wants DIFFERENT ones, do NOT repeat or lightly vary these): ${b.payload.exclude.slice(-40).join(", ")}.\n\n`
+      : ``) +
     `Vary length and rhythm so no two feel like siblings. Order them strongest first. Score honestly 60 to 95 with real spread (most land 70 to 85; reserve 90+ for the rare exceptional one). For each, write a one-line rationale (max 14 words) that is vivid and specific to THIS brand, the kind of line that makes a founder say yes.\n` +
     `Reason silently and return ONLY minified JSON {"names":[{"name":"","type":"one of: descriptive, suggestive, compound, invented, abstract, founder, acronym, evocative, geographic, playful","rationale":"","score":0,"seed":""}]} with exactly ${n} items.` };
   },
