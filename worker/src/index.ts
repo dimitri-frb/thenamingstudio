@@ -530,17 +530,24 @@ async function inpiDebug(env: Env, p: any): Promise<any> {
   const out: any = { credsPresent: !!(env.INPI_LOGIN && env.INPI_PASSWORD) };
   if (!out.credsPresent) return out;
   try {
-    const auth = await inpiAuth(env);
-    out.gotToken = !!auth;
-    if (!auth) return out;
+    // Fresh login here (don't depend on the cache) and capture the granted scope.
+    let cookies = await inpiPrime();
+    const lr = await fetch(INPI_LOGIN_URL, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "X-XSRF-TOKEN": xsrfOf(cookies), cookie: cookies }, body: JSON.stringify({ username: env.INPI_LOGIN, password: env.INPI_PASSWORD }) });
+    out.loginStatus = lr.status;
+    const lj: any = await lr.json().catch(() => ({}));
+    const token = lj?.access_token || lj?.id_token || lj?.token || "";
+    out.gotToken = !!token;
+    out.scope = lj?.scope; out.tokenType = lj?.token_type;
+    // Decode the JWT payload's authorities/roles (claims are not secrets; never the token).
+    try { const pl = JSON.parse(atob((token.split(".")[1] || "").replace(/-/g, "+").replace(/_/g, "/"))); out.jwtClaims = { auth: pl.auth, authorities: pl.authorities, scope: pl.scope, aud: pl.aud, roles: pl.roles }; } catch { /* not a jwt */ }
+    if (!token) { out.loginBody = JSON.stringify(lj).slice(0, 200); return out; }
+    cookies = mergeCookies(lr.headers, cookies);
+    const auth = { token, cookies };
     const H = { authorization: "Bearer " + auth.token, "X-XSRF-TOKEN": xsrfOf(auth.cookies), cookie: auth.cookies };
-    // Confirm the diffusion service is reachable with our token (metadata is a GET).
-    if (p?.metadata) {
-      const r = await fetch(INPI_BASE + "/services/apidiffusion/api/marques/metadata", { headers: { ...H, accept: "application/json" } });
-      out.metadataStatus = r.status; out.metadataSample = (await r.text()).slice(0, 300);
-      return out;
-    }
-    // Run an arbitrary search body (so we can iterate from curl without redeploying).
+    // metadata GET (reachability with our token)
+    const mr = await fetch(INPI_BASE + "/services/apidiffusion/api/marques/metadata", { headers: { ...H, accept: "application/json" } });
+    out.metadataStatus = mr.status; out.metadataSample = (await mr.text()).slice(0, 160);
+    // Run a search body (overridable from curl) to capture the failure.
     const accept = p?.accept || "application/xml";
     const body = p?.searchBody || { query: "*:*", collections: ["FMARK"], size: 2, position: 0, withFacets: false };
     const sr = await fetch(INPI_SEARCH, { method: "POST", headers: { ...H, "content-type": "application/json", accept }, body: JSON.stringify(body) });
