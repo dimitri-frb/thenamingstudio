@@ -87,9 +87,15 @@ export default {
       return json(await inpiCheck(env, name, classes), env);
     }
 
-    // Lead capture (email gate before the brand book). No Claude call, just logged.
+    // Lead capture (sign-up at step 1, or the email gate). No Claude call, just logged.
     if (phase === "lead") {
-      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, { email: body?.payload?.email || "", name: body?.payload?.name || "" }));
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, body.payload || {}));
+      return json({ ok: true }, env);
+    }
+
+    // End-of-flow feedback (step 10 sliders + notes). No Claude call, just logged.
+    if (phase === "feedback") {
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "feedback", body.process, { payload: body.payload }, body.payload || {}));
       return json({ ok: true }, env);
     }
 

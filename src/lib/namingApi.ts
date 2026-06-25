@@ -222,3 +222,33 @@ export async function captureLead(brief: Brief, email: string, name: string): Pr
     } catch { /* best effort */ }
   }
 }
+
+// Sign-up captured up front (step 1): the founder's name + email, mandatory before
+// the flow. Registered as a lead so it shows in /admin from the very first step.
+export async function captureSignup(brief: Brief, fromName: string, email: string): Promise<void> {
+  if (isTestMode()) return;
+  const process = processId();
+  const payload = { email, fromName, kind: "signup" };
+  logRequest({ phase: "lead", process, source: "live", input: { brief, payload }, output: payload });
+  try { localStorage.setItem("ns.email", email); localStorage.setItem("ns.fromName", fromName); } catch { /* ignore */ }
+  if (ENDPOINT) {
+    try { await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "lead", brief, payload, process }) }); } catch { /* best effort */ }
+  }
+}
+
+// End-of-flow feedback (step 10): scores + notes. Registered centrally so it shows
+// per process in /admin.
+export interface Feedback {
+  experience: number; ux: number; found: number;        // 1..5 sliders
+  experienceNote?: string; uxNote?: string; foundNote?: string;
+  improve?: string; free?: string;
+  fromName?: string; email?: string;
+}
+export async function submitFeedback(fb: Feedback): Promise<void> {
+  if (isTestMode()) return;
+  const process = processId();
+  logRequest({ phase: "feedback", process, source: "live", input: { payload: fb }, output: fb });
+  if (ENDPOINT) {
+    try { await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "feedback", payload: fb, process }) }); } catch { /* best effort */ }
+  }
+}

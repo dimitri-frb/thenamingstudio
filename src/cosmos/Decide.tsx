@@ -3,7 +3,7 @@
 // "make it real" steps (register, buy the domain, brand book) update to match.
 import { useEffect, useState } from "react";
 import type { Comparison, CompareRow } from "../lib/namingApi";
-import { Dots, Foot, Head } from "./chrome";
+import { Dots, Head } from "./chrome";
 import { availableDomains, slugify } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
@@ -11,9 +11,9 @@ function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound +
 // The single best domain that is actually available for this name.
 const bestDomain = (r: CompareRow) => availableDomains(r.name, r.domains, r.suggested)[0];
 
-export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
+export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedback }: {
   comp: Comparison | null; chosen: string; setChosen: (n: string) => void;
-  onBack: () => void; onBrandBook: () => void;
+  onBack: () => void; onBrandBook: () => void; onFeedback?: () => void;
 }) {
   const rows = comp ? [...comp.rows].sort((a, b) => smileOf(b) - smileOf(a)) : [];
   // Which available domains the founder has ticked to go register.
@@ -145,7 +145,13 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
           })}
         </div>
       </div>
-      <Foot back="Share & vote" onBack={onBack} next={<>Lock in {pick?.name} ✓</>} onNext={onBrandBook} />
+      <div className="cx-foot">
+        <span className="link" onClick={onBack}>← Share & vote</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          {onFeedback && <span className="link" onClick={onFeedback}>Share your feedback</span>}
+          <button className="btn lg solid" onClick={onBrandBook}>Lock in {pick?.name} ✓</button>
+        </div>
+      </div>
     </>
   );
 }

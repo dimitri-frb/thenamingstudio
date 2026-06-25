@@ -3,7 +3,7 @@
 // the dev bridge in dev, the client-side studio as a fallback). The intake and
 // concept steps live here; the heavier screens are their own modules.
 import { useEffect, useRef, useState } from "react";
-import { naming, captureLead, fetchDomains, type Brief, type Concept, type Feeling } from "../lib/namingApi";
+import { naming, captureLead, captureSignup, fetchDomains, type Brief, type Concept, type Feeling } from "../lib/namingApi";
 import { setTestMode, processId, setProcessId } from "../lib/requestLog";
 import { loadFlow, saveFlow } from "../lib/flowState";
 import { recommendLanes } from "../lib/localStudio";
@@ -17,6 +17,7 @@ import { Compare } from "./Compare";
 import { Share } from "./Share";
 import { Decide } from "./Decide";
 import { EmailGate } from "./EmailGate";
+import { Feedback } from "./Feedback";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
@@ -50,6 +51,19 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  // Sign-up captured up front (step 1): name + email (email mandatory to proceed).
+  const [fromName, setFromName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem("ns.email") || ""; } catch { return ""; } });
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const signedUp = useRef(false);
+  function registerSignup() {
+    const e = email.trim();
+    if (!emailOk || signedUp.current) return;
+    signedUp.current = true;
+    captureSignup(brief, fromName.trim(), e);
+  }
   // A live, AI-reframed read of the brief, shown on the right of the brief steps so
   // the founder sees we understand them as they type (not just an echo).
   const [briefSynth, setBriefSynth] = useState<{ line: string; tags: string[] } | null>(null);
@@ -242,6 +256,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         sub="The sharper this is, the sharper your name." />
       <div className="intake-cols">
         <div className="fgrid" style={{ alignContent: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <Field label="Your name" value={fromName} onChange={setFromName} placeholder="Jane Founder" />
+            <Field label="Email" hint="· so we can send you the results" value={email} onChange={setEmail} placeholder="you@company.com" />
+          </div>
           <Field label="What it does" hint="· one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
             placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -252,7 +270,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         </div>
         <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
       </div>
-      <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()} onNext={() => goto(1)} />
+      <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim() || !emailOk}
+        onNext={() => { registerSignup(); goto(1); }} />
     </>
   );
 
@@ -378,9 +397,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     <>
       {shell(
         <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
-          onBack={() => goto(8)} onBrandBook={requestBrandBook} />
+          onBack={() => goto(8)} onBrandBook={requestBrandBook} onFeedback={() => setFeedbackOpen(true)} />
       )}
       {brandBookOpen && chosenFinal && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
+      {feedbackOpen && <Feedback fromName={fromName} email={email} onClose={() => setFeedbackOpen(false)} />}
     </>
   );
 

@@ -28,12 +28,16 @@ function procInfo(entries: ReqLog[]) {
   const cmp = [...entries].reverse().find((e) => e.phase === "compare");
   const selected: string[] = (cmp?.input?.payload?.names || []).map((n: any) => n?.name || n).filter(Boolean);
   const recommended = cmp?.output?.recommended || "";
-  const lead = entries.find((e) => e.phase === "lead");
-  const email = lead?.input?.payload?.email || "";
-  // The name locked in at the end (from the email gate / brand book), if reached.
-  const chosen = lead?.input?.payload?.name || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
+  // Leads: the sign-up (step 1, has fromName + email) and the lock-in gate (has the
+  // brand name). Pull each field from whichever lead carries it.
+  const leads = entries.filter((e) => e.phase === "lead").map((e) => e.input?.payload || {});
+  const email = leads.map((p: any) => p.email).find(Boolean) || "";
+  const fromName = leads.map((p: any) => p.fromName).find(Boolean) || "";
+  // The name locked in at the end (gate / brand book), if reached.
+  const chosen = leads.map((p: any) => p.name).find(Boolean) || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
+  const feedback = [...entries].reverse().find((e) => e.phase === "feedback")?.input?.payload || null;
   const started = Math.min(...entries.map((e) => e.at));
-  return { brief, does, selected, recommended, email, chosen, started };
+  return { brief, does, selected, recommended, email, fromName, chosen, feedback, started };
 }
 
 export function AdminPage({ onExit }: { onExit: () => void }) {
@@ -173,9 +177,25 @@ function ProcessRow({ entries, c }: { entries: ReqLog[]; c: typeof C }) {
             </div>
 
             <div style={{ marginTop: 16 }}>
-              <H label="Email" c={c} />
-              <p style={{ margin: 0, fontSize: 13.5, color: i.email ? c.good : c.ink3 }}>{i.email || "—"}</p>
+              <H label="Founder" c={c} />
+              <p style={{ margin: 0, fontSize: 13.5, color: i.fromName ? c.ink : c.ink3 }}>{i.fromName || "—"}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 13.5, color: i.email ? c.good : c.ink3 }}>{i.email || "—"}</p>
             </div>
+
+            {i.feedback && (
+              <div style={{ marginTop: 16 }}>
+                <H label="Feedback" c={c} />
+                {([["Experience", "experience", "experienceNote"], ["UX", "ux", "uxNote"], ["Found a name", "found", "foundNote"]] as const).map(([label, sk, nk]) => (
+                  <div key={sk} style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontFamily: c.sans, fontSize: 11, color: c.ink2, flex: "0 0 96px" }}>{label}</span>
+                    <span style={{ fontFamily: c.sans, fontSize: 12, color: c.ink }}>{(i.feedback as any)[sk] ?? "–"}/5</span>
+                    {(i.feedback as any)[nk] && <span style={{ fontSize: 12.5, color: c.ink2 }}>· {(i.feedback as any)[nk]}</span>}
+                  </div>
+                ))}
+                {(i.feedback as any).improve && <Kv k="Improve" v={(i.feedback as any).improve} c={c} />}
+                {(i.feedback as any).free && <Kv k="Else" v={(i.feedback as any).free} c={c} />}
+              </div>
+            )}
           </div>
         </div>
       )}
