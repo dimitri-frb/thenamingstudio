@@ -15,7 +15,7 @@ export interface Brief {
   avoid: string[];
   tone: string[];
   lanes: string[];
-  international?: boolean; // the name should be easy to say/spell across languages
+  geos?: string[]; // markets the name should work in (pronounceable / no bad meaning)
 }
 
 export interface Concept { title: string; blurb: string; lane: string }

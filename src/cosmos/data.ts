@@ -32,6 +32,8 @@ export const LANES: Lane[] = [
 // only when the live model has not produced personalised feelings yet.
 export const SIGNAL_FALLBACK = ["Velocity", "Elegance", "Joy", "Taste", "Craft", "Sharpness", "Trust", "Warmth", "Rigor", "Optimism", "Mystery", "Play"];
 export const TONE_OPTIONS = ["Witty", "Confident", "Polished", "Plain-spoken", "Bold", "Editorial", "Provocative", "Warm", "Wry"];
+// Markets the name should work in (pronounceable, no awkward meaning). Optional.
+export const GEO_OPTIONS = ["France", "Spain", "EU", "US", "UK", "Global"];
 export const AVOID_FALLBACK = ["Generic name generators", "Tech-bro acronyms", "Cutesy compounds"];
 
 // Domain extensions shown in the comparison. Only .com/.io/.ai are checked for

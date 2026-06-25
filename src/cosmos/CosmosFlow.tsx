@@ -9,7 +9,7 @@ import { loadFlow, saveFlow } from "../lib/flowState";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
 import { Cx, CXSTEPS, Head, Foot, Star, Thinking, Info } from "./chrome";
-import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES } from "./data";
+import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES, GEO_OPTIONS } from "./data";
 import type { TestSeed } from "./mock";
 import { Explore, type ExploreStore } from "./Explore";
 import { Shortlist, type SavedIdea } from "./Shortlist";
@@ -18,7 +18,7 @@ import { Share } from "./Share";
 import { Decide } from "./Decide";
 import { EmailGate } from "./EmailGate";
 
-const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], international: false };
+const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
 export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed }) {
   // Keep the request log clean: the sample/test flow is never recorded.
@@ -267,8 +267,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
               onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 5) })} />
             <PickField label="Tonal register" hint="· pick 2 to 3" options={TONE_OPTIONS} selected={brief.tone}
               onToggle={(s) => set({ tone: toggleArr(brief.tone, s, 3) })} />
-            <Toggle label="Works internationally" hint="· easy to say and spell across languages"
-              on={!!brief.international} onChange={(v) => set({ international: v })} />
+            <PickField label="Where it needs to work" hint="· optional, the name will read well in these markets" options={GEO_OPTIONS} selected={brief.geos || []}
+              onToggle={(s) => set({ geos: toggleArr(brief.geos || [], s) })} />
           </div>
           <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
         </div>
@@ -408,25 +408,6 @@ function HelpCard({ label, body, bullets, quote, tags }: {
         <div style={{ height: 1, background: "var(--line-2)", margin: "4px 0 14px" }} />
         {bullets && <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--ink-3)" }}>{bullets.map((b) => <span key={b}>· {b}</span>)}</div>}
         {tags && <div className="pickrow">{tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
-      </div>
-    </div>
-  );
-}
-
-function Toggle({ label, hint, on, onChange }: {
-  label: string; hint?: string; on: boolean; onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="fld">
-      <div onClick={() => onChange(!on)} role="switch" aria-checked={on}
-        style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "12px 14px", border: "1px solid var(--line)", borderRadius: "var(--r2)", background: on ? "var(--surface)" : "var(--surface-2)" }}>
-        <span style={{ width: 38, height: 22, borderRadius: 999, background: on ? "var(--ink)" : "var(--line)", position: "relative", flex: "0 0 auto", transition: "background .14s ease" }}>
-          <span style={{ position: "absolute", top: 2, left: on ? 18 : 2, width: 18, height: 18, borderRadius: "50%", background: "var(--surface)", transition: "left .14s ease" }} />
-        </span>
-        <span style={{ display: "flex", flexDirection: "column" }}>
-          <span className="flabel">{label}</span>
-          {hint && <span className="fhint">{hint}</span>}
-        </span>
       </div>
     </div>
   );

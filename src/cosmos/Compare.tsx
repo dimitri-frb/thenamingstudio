@@ -3,7 +3,23 @@
 // SMILE score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
 import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
-import { Dots, Head, Star, Thinking } from "./chrome";
+import { Head, Star, Thinking, Info } from "./chrome";
+
+// A lively SMILE score: coloured pips (green/amber by strength) plus the number,
+// far friendlier than flat black dots.
+function SmileScore({ score }: { score: number }) {
+  const color = score >= 4 ? "var(--good)" : score >= 3 ? "var(--watch)" : "var(--bad)";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+      <span style={{ display: "inline-flex", gap: 3 }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i < score ? color : "var(--line)", transition: "background .2s ease" }} />
+        ))}
+      </span>
+      <span style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 500, color }}>{score}</span>
+    </span>
+  );
+}
 import { availableDomains, nameTests } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
@@ -82,7 +98,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                 <th style={{ width: "19%" }}>Why it works</th>
                 <th style={{ width: "24%" }}>Available domains</th>
                 <th style={{ width: "14%" }}>Name tests</th>
-                <th>SMILE</th>
+                <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>SMILE <Info align="right">A quick brand-name score out of 5: <b>S</b>uggestive, <b>M</b>emorable, <b>I</b>magery, <b>L</b>egs, <b>E</b>motional.</Info></span></th>
                 <th>Verdict</th>
               </tr>
             </thead>
@@ -125,7 +141,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         </div>
                       ); })()}
                     </td>
-                    <td className="c"><Dots score={smileOf(n)} /></td>
+                    <td className="c"><SmileScore score={smileOf(n)} /></td>
                     <td className="c"><span className={"tag " + (verdict === "Strong" ? "fill" : verdict === "Solid" ? "" : "bad")}>{verdict}</span></td>
                   </tr>
                 );
@@ -134,11 +150,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
           </table>
         </div>
         <div style={{ padding: "12px 16px", borderTop: "1px solid var(--line-2)", display: "flex", alignItems: "center", gap: 14, background: "var(--surface-2)" }}>
-          <span className="lbl">SMILE</span>
-          <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
-            <b style={{ color: "var(--ink-2)" }}>S</b>uggestive · <b style={{ color: "var(--ink-2)" }}>M</b>emorable · <b style={{ color: "var(--ink-2)" }}>I</b>magery · <b style={{ color: "var(--ink-2)" }}>L</b>egs · <b style={{ color: "var(--ink-2)" }}>E</b>motional
-          </span>
-          <span style={{ flex: 1 }} />
+          <span className="lbl" style={{ flex: "0 0 auto" }}>Our take</span>
           <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "var(--ink-2)" }}>{comp.why}</span>
         </div>
       </div>

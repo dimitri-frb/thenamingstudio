@@ -590,6 +590,8 @@ table.cmp td.c { white-space: nowrap; }
 .info-pop::after { content: ''; position: absolute; left: 7px; width: 9px; height: 9px; background: var(--ink); transform: rotate(45deg); }
 .info.down .info-pop::after { top: -4px; }
 .info.up .info-pop::after { bottom: -4px; }
+.info.r .info-pop { left: auto; right: -2px; }
+.info.r .info-pop::after { left: auto; right: 7px; }
 
 /* tap feedback for the Copy button */
 @keyframes copied-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }

@@ -188,7 +188,7 @@ const briefV1 = (b: any) => [
   `The name SHOULD signal: ${(b?.signal || []).join(", ") || "n/a"}`,
   `Brand tone: ${(b?.tone || []).join(", ") || "n/a"}`,
   `Naming lanes to explore: ${(b?.lanes || []).join(", ") || "any"}`,
-  `International reach: ${b?.international ? "YES, the name must be easy to pronounce and spell across languages (a global audience)" : "not a stated requirement"}`,
+  `Markets it must work in: ${(b?.geos || []).join(", ") || "not specified"}`,
 ].join("\n");
 const briefV2 = (b: any) => JSON.stringify(b || {});
 
@@ -261,7 +261,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
     `- Do not just return the saved word or a plain synonym of it.\n` +
-    (b.brief?.international ? `- INTERNATIONAL: it must read and sound clean across languages, easy to say and spell for a global audience. No accented characters, no sounds awkward in English/Spanish/German, no unfortunate meaning in a major language.\n` : ``) +
+    (Array.isArray(b.brief?.geos) && b.brief.geos.length ? `- MARKETS: the name must read and sound clean in these markets: ${b.brief.geos.join(", ")}. Easy to say and spell there, no accented characters, no unfortunate meaning in their languages.\n` : ``) +
     `\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
       ? `Already proposed (the founder wants DIFFERENT ones, do NOT repeat or lightly vary these): ${b.payload.exclude.slice(-40).join(", ")}.\n\n`
@@ -274,8 +274,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `BRIEF:\n${briefV1(b.brief)}.\nScore these names: ${JSON.stringify((b.payload?.names || []).map((n: any) => n.name))}.\n` +
     `For each give intuitive, visual, sound, emotional (each 3-6), total (their sum), a one-line verdict, a "tagline" and BEST-GUESS availability estimates: ` +
     `domains [{"tld":".com","available":bool},{"tld":".io","available":bool},{"tld":".ai","available":bool}], inpi (bool, trademark looks clear), inpiNote, instagram (bool, handle free). ` +
+    `STAY POSITIVE: the founder loved every one of these names enough to shortlist it, so the "verdict" and "why" must LEAD WITH what is genuinely good about each name. Find the real strength in every one, be warm and constructive, never harsh or dismissive. The verdict is an encouraging one-liner, not a critique. ` +
     `The tagline is a short BRAND tagline (3 to 6 words) for the COMPANY if it were named this, capturing what it does or how it feels for the brief, NOT a description of the word itself (e.g. for a calm finance app: "Money, finally at peace"). ` +
-    `Pick the strongest as recommended and say why. ` +
+    `Pick the strongest as recommended and say why (celebrate it). ` +
     `Also pick "niceClasses": the 1 to 3 Nice classification numbers (1 to 45) that this brand would actually register in, based on what it does (e.g. software/SaaS -> 9 and 42; apparel -> 25; cosmetics -> 3; food -> 29 or 30; agency/consulting -> 35; media -> 41). ` +
     `Return JSON {"rows":[{"name","intuitive","visual","sound","emotional","total","tagline","domains","inpi","inpiNote","instagram","verdict"}],"recommended":"Name","why":"2-3 sentences","niceClasses":[9,42]}.` }),
 
