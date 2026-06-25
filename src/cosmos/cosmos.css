@@ -576,6 +576,24 @@ table.cmp td.c { white-space: nowrap; }
 }
 .info-pop-fixed b { color: #fff; font-weight: 600; }
 
+/* Step 10 · locked-in celebration */
+.celebrate { position: relative; flex: 1; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; }
+.celebrate-inner { position: relative; z-index: 1; width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 0 32px; }
+.celebrate-name { font-family: var(--serif); font-size: clamp(56px, 11vw, 104px); line-height: 0.9; letter-spacing: -0.03em; color: var(--ink); animation: celebrate-pop .6s cubic-bezier(.2,.9,.3,1.2) both; }
+.celebrate-msg { font-size: 15.5px; line-height: 1.55; color: var(--ink-2); max-width: 440px; margin: 4px 0 6px; }
+.make-real { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.mr-card { display: flex; align-items: center; gap: 14px; width: 100%; border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); padding: 14px 16px; cursor: pointer; transition: border-color .16s ease, transform .18s cubic-bezier(.2,.7,.2,1); }
+.mr-card:hover { border-color: var(--ink-3); transform: translateY(-2px); }
+.mr-card.disabled { cursor: default; opacity: 0.6; }
+.mr-card.disabled:hover { border-color: var(--line); transform: none; }
+.mr-card .mr-cta { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-2); flex: 0 0 auto; font-family: var(--mono); }
+.beta { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; vertical-align: middle; margin-left: 4px; }
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.confetti span { position: absolute; top: -6%; border-radius: 1.5px; opacity: 0; }
+@keyframes confetti-fall { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(82vh) rotate(620deg); opacity: 0; } }
+@keyframes celebrate-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } .celebrate-name { animation: none; } }
+
 /* soft hover lift — gentle rise + scale, like the Cosmos cards */
 .concept, .lane, .ncard { transition: border-color .16s ease, box-shadow .2s ease, transform .2s cubic-bezier(.22,1,.36,1); }
 .concept:hover, .lane:hover, .ncard:hover { border-color: var(--ink-3); box-shadow: 0 14px 30px -18px rgba(26,25,22,0.42); transform: translateY(-3px); }

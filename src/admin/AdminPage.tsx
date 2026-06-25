@@ -22,7 +22,11 @@ function fmtTime(t: number) {
 
 // Everything we want to show per process, distilled from its requests.
 function procInfo(entries: ReqLog[]) {
-  const brief = (entries.find((e) => e.input?.brief?.does) || entries.find((e) => e.input?.brief))?.input?.brief || {};
+  // Merge every brief this process logged, latest wins. The step-1 sign-up captures a
+  // partial brief (just what-it-does + industry); later generation/lock-in requests
+  // carry the full brief, so we always end up with the complete one even once a name
+  // is chosen.
+  const brief: any = Object.assign({}, ...entries.map((e) => e.input?.brief).filter(Boolean));
   const does = brief.does || "(no brief captured)";
   // The names the founder shortlisted for comparison (the input to the compare step).
   const cmp = [...entries].reverse().find((e) => e.phase === "compare");
@@ -159,6 +163,7 @@ function ProcessRow({ entries, c }: { entries: ReqLog[]; c: typeof C }) {
             <Kv k="Signal" v={(i.brief.signal || []).join(", ")} c={c} />
             <Kv k="Tone" v={(i.brief.tone || []).join(", ")} c={c} />
             <Kv k="Lanes" v={(i.brief.lanes || []).join(", ")} c={c} />
+            <Kv k="Markets" v={(i.brief.geos || []).join(", ")} c={c} />
           </div>
           {/* outcome */}
           <div>
