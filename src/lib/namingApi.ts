@@ -172,14 +172,29 @@ export const naming = {
 
 // Real domain availability for one name (its own request on the Worker, so it's
 // fast and thorough). Not logged. Returns empty on any failure.
-export async function fetchDomains(name: string): Promise<{ domains: DomainHit[]; suggested: SuggestedDomain[] }> {
-  if (ENDPOINT) {
-    try {
-      const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domains", payload: { name } }) });
-      if (res.ok) { const d = await res.json(); if (!d?.error) return { domains: d.domains || [], suggested: d.suggested || [] }; }
-    } catch { /* ignore */ }
-  }
-  return { domains: [], suggested: [] };
+// Memoized + de-duped by name: pre-searching a name on the previous step warms
+// this cache, so the comparison step shows domains instantly. Failed/empty
+// results are not cached, so they can be retried.
+type DomResult = { domains: DomainHit[]; suggested: SuggestedDomain[] };
+const domainCache = new Map<string, Promise<DomResult>>();
+export function fetchDomains(name: string): Promise<DomResult> {
+  const key = (name || "").trim().toLowerCase();
+  if (!key) return Promise.resolve({ domains: [], suggested: [] });
+  const hit = domainCache.get(key);
+  if (hit) return hit;
+  const p = (async (): Promise<DomResult> => {
+    if (ENDPOINT) {
+      try {
+        const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domains", payload: { name } }) });
+        if (res.ok) { const d = await res.json(); if (!d?.error) return { domains: d.domains || [], suggested: d.suggested || [] }; }
+      } catch { /* ignore */ }
+    }
+    return { domains: [], suggested: [] };
+  })();
+  domainCache.set(key, p);
+  // Don't keep a failed/empty result around; allow a later real fetch to retry.
+  p.then((r) => { if (!r.domains.length && !r.suggested.length) domainCache.delete(key); }).catch(() => domainCache.delete(key));
+  return p;
 }
 
 // Real INPI trademark availability for one name, filtered to the brand's Nice

@@ -31,7 +31,9 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
   const slug = slugify(pick?.name || "");
   const best = pick ? bestDomain(pick) : undefined;
   const buyList = doms.filter((d) => picked.has(d.domain)).map((d) => d.domain);
-  const godaddy = `https://www.godaddy.com/domainsearch/bulk-domain-search?domainsToCheck=${(buyList.length ? buyList : [best?.domain || slug + ".com"]).join(",")}`;
+  // GoDaddy's working search page takes a single domain via ?domainToCheck=.
+  const godaddyFor = buyList[0] || best?.domain || `${slug}.com`;
+  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(godaddyFor)}`;
   const toggle = (d: string) => setPicked((p) => { const n = new Set(p); n.has(d) ? n.delete(d) : n.add(d); return n; });
 
   return (

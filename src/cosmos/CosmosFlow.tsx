@@ -3,7 +3,7 @@
 // the dev bridge in dev, the client-side studio as a fallback). The intake and
 // concept steps live here; the heavier screens are their own modules.
 import { useEffect, useRef, useState } from "react";
-import { naming, captureLead, type Brief, type Concept, type Feeling } from "../lib/namingApi";
+import { naming, captureLead, fetchDomains, type Brief, type Concept, type Feeling } from "../lib/namingApi";
 import { setTestMode, processId, setProcessId } from "../lib/requestLog";
 import { loadFlow, saveFlow } from "../lib/flowState";
 import { recommendLanes } from "../lib/localStudio";
@@ -175,6 +175,27 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, chosen, concepts]);
 
+  // Pre-warm the comparison (scoring + domains) while the founder is still on the
+  // shortlist step, keyed by the exact shortlist, so step 8 opens instantly. We
+  // only keep `comp` if it matches the shortlist the founder actually carries over.
+  const compWarm = useRef<{ sig: string; inflight: string }>({ sig: "", inflight: "" });
+  const sigOf = (names: string[]) => [...names].sort().join("|");
+  useEffect(() => {
+    if (test || step !== 6 || shortlist.length < 1) return;
+    const sig = sigOf(shortlist);
+    if (compWarm.current.sig === sig || compWarm.current.inflight === sig) return;
+    const t = setTimeout(() => {
+      compWarm.current.inflight = sig;
+      shortlist.forEach((n) => { void fetchDomains(n); });
+      naming.compare(brief, shortlist.map((name) => ({ name, type: "", rationale: "", score: 0 })))
+        .then((c) => { compWarm.current.sig = sig; setComp(c); })
+        .catch(() => { /* Compare will fetch on mount */ })
+        .finally(() => { if (compWarm.current.inflight === sig) compWarm.current.inflight = ""; });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, shortlist]);
+
   // Persist the in-progress process so a refresh resumes exactly here.
   useEffect(() => {
     if (test) return;
@@ -336,7 +357,8 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   );
 
   if (step === 6) return shell(
-    <Shortlist brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist} onDone={() => goto(7)} initialRows={test?.shortlistRows} />,
+    <Shortlist brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
+      onDone={() => { if (!test && compWarm.current.sig !== sigOf(shortlist)) setComp(null); goto(7); }} initialRows={test?.shortlistRows} />,
     { barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>{shortlist.length} / 10 shortlisted</span> }
   );
 
