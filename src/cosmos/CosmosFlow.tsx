@@ -168,6 +168,26 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.does, brief.problem, brief.audience, brief.uvp, brief.industry, brief.signal, brief.tone]);
 
+  // Pre-generate the concepts while the founder is still on the naming-strategy step
+  // (lanes are pre-recommended on arrival), keyed by the brief, so "Generate concepts"
+  // is instant. Re-runs if they change lanes.
+  const conceptSig = () => [brief.does, (brief.signal || []).join(","), (brief.tone || []).join(","), (brief.lanes || []).join(","), (brief.geos || []).join(",")].join("|");
+  const conceptsWarm = useRef<{ sig: string; inflight: string }>({ sig: "", inflight: "" });
+  useEffect(() => {
+    if (test || step !== 3 || brief.lanes.length < 1) return;
+    const sig = conceptSig();
+    if (conceptsWarm.current.sig === sig || conceptsWarm.current.inflight === sig) return;
+    const t = setTimeout(() => {
+      conceptsWarm.current.inflight = sig;
+      naming.concepts(brief)
+        .then((cs) => { conceptsWarm.current.sig = sig; setConcepts(cs); })
+        .catch(() => { /* Generate will fetch on click */ })
+        .finally(() => { if (conceptsWarm.current.inflight === sig) conceptsWarm.current.inflight = ""; });
+    }, 450);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, brief.lanes, brief.does, brief.signal, brief.tone, brief.geos]);
+
   // Warm the FIRST exploration board while the founder is still picking concepts,
   // so step 6 opens with words already on screen instead of a cold load.
   const exploreWarm = useRef<string | null>(null);
@@ -349,7 +369,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         </span>
       </div>
       <Foot back="Emotional value" onBack={() => goto(2)} next="Generate concepts →" disabled={brief.lanes.length < 1}
-        onNext={() => generate(["Thinking like a strategist…", "Building the worlds your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4)} />
+        onNext={() => {
+          if (conceptsWarm.current.sig === conceptSig() && concepts.length) goto(4); // prewarmed → instant
+          else generate(["Thinking like a strategist…", "Building the worlds your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);
+        }} />
     </>
   );
 
