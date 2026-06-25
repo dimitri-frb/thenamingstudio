@@ -103,6 +103,20 @@ export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Whether the exact "name.com" is registered. RDAP can only tell us registered vs
+// free, NOT whether the owner is reselling it. So a "registered" .com may still be
+// buyable on the aftermarket (sometimes premium, hundreds to thousands). We label
+// that honestly and send the founder to GoDaddy to see the real price.
+// Returns: true = registered, false = free, undefined = not checked yet.
+export function comTaken(domains?: { tld: string; available: boolean }[]): boolean | undefined {
+  const com = (domains || []).find((d) => d.tld === ".com");
+  return com ? !com.available : undefined;
+}
+
+export function godaddyUrl(domain: string): string {
+  return `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
+}
+
 // The classic quick naming "tests", computed simply from the name itself so they
 // render instantly everywhere. Conservative: a cross only shows for a clear miss.
 export interface NameTests { bar: boolean; pronounce: boolean; spell: boolean; short: boolean }

@@ -20,7 +20,7 @@ function SmileScore({ score }: { score: number }) {
     </span>
   );
 }
-import { availableDomains, nameTests } from "./data";
+import { availableDomains, nameTests, slugify, comTaken, godaddyUrl } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -129,7 +129,11 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         {!dinfo && <span className="meta">checking…</span>}
-                        {dinfo && domains.length === 0 && <span className="meta">none found</span>}
+                        {dinfo && domains.length === 0 && (
+                          comTaken(dinfo.domains) === true
+                            ? <a href={godaddyUrl(`${slugify(n.name)}.com`)} target="_blank" rel="noreferrer" className="meta" style={{ textDecoration: "none", whiteSpace: "nowrap" }} title="Registered, but may be for sale on the aftermarket">.com registered · may be for sale →</a>
+                            : <span className="meta">none free</span>
+                        )}
                         {domains.map((d) => (
                           <span key={d.domain} style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
                             <span style={{ color: "var(--good)", fontSize: 12, flex: "0 0 auto" }}>✓</span>
