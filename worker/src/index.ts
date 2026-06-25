@@ -226,7 +226,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   relate: (b) => ({ model: MODEL.fast, max: 800, prompt:
     `Brief: ${briefV1(b.brief)}.\nThe founder is exploring naming material in the world "${b.payload?.world || ""}". ` +
     `Focus word: "${b.payload?.seed || b.payload?.world || ""}".\n` +
-    `Pick the single best focus word (the focus word itself if it is a real, evocative word, else the strongest word for this world), give a one-line definition, ` +
+    (b.payload?.seed
+      ? `The focus word is "${b.payload.seed}". Use it EXACTLY as the focus word ("word"), never substitute a different word for it. Give a one-line definition of it, `
+      : `Pick the single strongest focus word for this world, give a one-line definition, `) +
     `then list words RELATED to that focus word, grouped by HOW they relate. Each group: 5 items, each with the word and a UNIQUE 2-4 word note specific to THAT exact word (its own meaning, image or flavour). The note must NEVER restate the group name or use a generic line like "same field" or "related word"; translations also include a 2-letter language code. ` +
     `Groups: related (same lexical field), metaphor (symbols/images), translation (the idea in other tongues), root (Latin/Greek/Old etymological roots), mythic (famous people, places, myths). ` +
     `Favour distinctive, varied words; avoid generic choices and do not repeat across groups.` +
@@ -266,7 +268,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       ? `- Compounds are welcome here (the founder chose the Compound lane): fuse two real words into one fresh, ownable name. Make it surprising, never a lazy category mashup like SmartPay or QuickHire.\n`
       : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
-    `- Do not just return the saved word or a plain synonym of it.\n` +
+    `- CRITICAL: never output any of the saved words verbatim, capitalised, or as a trivial variant. Every name must be a NEW coinage you built FROM that material (bent, blended, rooted, translated), not the input word itself.\n` +
     (Array.isArray(b.brief?.geos) && b.brief.geos.length ? `- MARKETS: the name must read and sound clean in these markets: ${b.brief.geos.join(", ")}. Easy to say and spell there, no accented characters, no unfortunate meaning in their languages.\n` : ``) +
     `\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
@@ -347,24 +349,27 @@ const RDAP_BASE: Record<string, string> = {
 // The alternative TLDs we check alongside .com, in the order founders care about.
 const ALT_TLDS = ["io", "ai", "app"];
 
-async function rdap(slug: string, tld: string): Promise<"available" | "taken" | "unknown"> {
+async function rdapOnce(slug: string, tld: string, ms: number): Promise<"available" | "taken" | "unknown"> {
   const base = RDAP_BASE[tld];
   if (!base || !slug) return "unknown";
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 3000);
+  const timer = setTimeout(() => ctrl.abort(), ms);
   try {
-    const res = await fetch(`${base}domain/${slug}.${tld}`, {
-      headers: { accept: "application/rdap+json" },
-      signal: ctrl.signal,
-    });
+    const res = await fetch(`${base}domain/${slug}.${tld}`, { headers: { accept: "application/rdap+json" }, signal: ctrl.signal });
     if (res.status === 404) return "available";
     if (res.status === 200) return "taken";
     return "unknown";
-  } catch {
-    return "unknown";
-  } finally {
-    clearTimeout(timer);
-  }
+  } catch { return "unknown"; }
+  finally { clearTimeout(timer); }
+}
+
+// Two passes: a fast first try, then one slower retry for anything that came back
+// "unknown" (a timeout or a hiccup), so a genuinely-free domain is far less likely
+// to be hidden as "not available". 404 = free, 200 = taken.
+async function rdap(slug: string, tld: string): Promise<"available" | "taken" | "unknown"> {
+  const first = await rdapOnce(slug, tld, 4000);
+  if (first !== "unknown") return first;
+  return rdapOnce(slug, tld, 6000);
 }
 
 // Claude does not know a stable id, timestamp, or true availability, so we stamp

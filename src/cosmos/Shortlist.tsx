@@ -29,11 +29,14 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
         { concepts: Array.from(new Set(seeds.current.map((s) => s.concept))), words: seeds.current.map((s) => s.w) },
         more && ideas ? ideas.map((i) => i.name) : [],
       );
+      // Recommendations must be coined names, never the founder's own saved words.
+      const savedWords = new Set(seeds.current.map((s) => s.w.toLowerCase()));
+      const coined = got.filter((i) => i.name && !savedWords.has(i.name.toLowerCase()));
       // Pre-search domains for every name the moment we have it, so the comparison
       // step (which reads the same cache) is instant.
-      got.forEach((i) => { void fetchDomains(i.name); });
+      coined.forEach((i) => { void fetchDomains(i.name); });
       setIdeas((prev) => {
-        const merged = more && prev ? [...prev, ...got] : got;
+        const merged = more && prev ? [...prev, ...coined] : coined;
         const seen = new Set<string>();
         return merged.filter((i) => { const k = i.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
       });

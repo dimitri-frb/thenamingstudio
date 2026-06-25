@@ -372,7 +372,7 @@ table.cmp td.c { white-space: nowrap; }
 .wchip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .wchip .tk { font-size: 12px; }
 .namehint { font-size: 12.5px; color: var(--ink-3); margin: auto 0 0; line-height: 1.45; }
-.namegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: auto; flex: 1; align-content: start; }
+.namegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow-y: auto; overflow-x: hidden; flex: 1; align-content: start; padding: 4px 2px; }
 .namecard { text-align: left; display: flex; flex-direction: column; gap: 5px; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); cursor: pointer; transition: all .16s cubic-bezier(.2,.7,.2,1); }
 .namecard:hover { border-color: var(--ink-3); transform: translateY(-2px); box-shadow: 0 12px 26px -18px rgba(0,0,0,0.4); }
 .namecard.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -422,7 +422,7 @@ table.cmp td.c { white-space: nowrap; }
 .focuspane { border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 28px; background: var(--surface); }
 .focusword { font-family: var(--serif); font-size: 58px; line-height: 0.95; letter-spacing: -0.025em; }
 .relcols { overflow: auto; padding: 18px 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 22px; align-content: start; }
-.relgroup .gh { display: flex; align-items: center; gap: 7px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--line-2); }
+.relgroup .gh { display: flex; align-items: center; gap: 7px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--ink-3); }
 .relgroup .gh .g { font-size: 12px; color: var(--ink-3); }
 .relgroup .gh .t { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 .relgroup .items { display: flex; flex-direction: column; gap: 4px; }
@@ -435,7 +435,7 @@ table.cmp td.c { white-space: nowrap; }
 
 /* ── Option D · compact focus + dual-action word rows ── */
 .focusD { position: relative; flex: 1; min-height: 0; border: 1px solid var(--line); border-radius: var(--r3); background: var(--surface-2); display: flex; flex-direction: column; overflow: hidden; }
-.focusD-head { display: flex; align-items: flex-start; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
+.focusD-head { display: flex; align-items: flex-start; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .focusD-head .seedmark { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
 .focusD-head .seedmark .k { font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
 .focusD-head .seedmark .w { font-family: var(--serif); font-size: 34px; line-height: 1; letter-spacing: -0.02em; }
@@ -551,19 +551,30 @@ table.cmp td.c { white-space: nowrap; }
   .eyebrow, .sub { animation: cx-fade .5s ease .05s both; }
 
   :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick,
-      .relcolsD .relgroup, .seed-row, table.cmp tbody tr) {
+      .relcolsD .relgroup, .seed-row) {
     /* `backwards` (not `both`) so the card reverts to its base state after the
        entrance, leaving `transform` free for the hover lift below. */
     animation: cx-rise .42s cubic-bezier(.2,.7,.2,1) backwards;
   }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(2) { animation-delay: .04s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(3) { animation-delay: .08s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(4) { animation-delay: .12s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(5) { animation-delay: .16s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(6) { animation-delay: .20s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(7) { animation-delay: .24s; }
-  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row, table.cmp tbody tr):nth-child(n+8) { animation-delay: .28s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(2) { animation-delay: .04s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(3) { animation-delay: .08s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(4) { animation-delay: .12s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(5) { animation-delay: .16s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(6) { animation-delay: .20s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(7) { animation-delay: .24s; }
+  :is(.cgrid .concept, .lanegrid .lane, .names-grid .ncard, .pickrow .pick, .relcolsD .relgroup, .seed-row):nth-child(n+8) { animation-delay: .28s; }
 }
+
+/* Portalled Info tooltip — fixed, never clipped. Colours hardcoded since it renders
+   on document.body, outside the .cx token scope. */
+.info-pop-fixed {
+  width: max-content; max-width: 250px;
+  background: #0D0D0D; color: #F4F3EF; border-radius: 13px; padding: 10px 13px;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; font-weight: 400;
+  line-height: 1.45; text-align: left; letter-spacing: 0; text-transform: none;
+  box-shadow: 0 16px 34px -16px rgba(0,0,0,0.5); pointer-events: none;
+}
+.info-pop-fixed b { color: #fff; font-weight: 600; }
 
 /* soft hover lift — gentle rise + scale, like the Cosmos cards */
 .concept, .lane, .ncard { transition: border-color .16s ease, box-shadow .2s ease, transform .2s cubic-bezier(.22,1,.36,1); }

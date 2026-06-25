@@ -127,8 +127,10 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     pump();
   }
 
-  function applyBoard(e: Entry) {
-    setFocus({ word: e.word, def: e.def });
+  // `displayWord` overrides the headline focus word: when the founder clicks a word
+  // to explore it, THAT word must appear on top (not a model-substituted one).
+  function applyBoard(e: Entry, displayWord?: string) {
+    setFocus({ word: displayWord && displayWord.trim() ? displayWord : e.word, def: e.def });
     setGroups(e.groups);
     setOffset({});
     setLoading(false);
@@ -139,7 +141,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     const hit = cache.current.get(cacheKey(seed));
     if (hit) {
       reqId.current++;
-      applyBoard(hit);
+      applyBoard(hit, seed);
       prefetchChildren(hit);
       return;
     }
@@ -148,9 +150,34 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     setLoading(true);
     const entry = await fetchRelate(seed);
     if (id !== reqId.current) return;
-    if (entry) { applyBoard(entry); prefetchChildren(entry); }
+    if (entry) { applyBoard(entry, seed); prefetchChildren(entry); }
     else setLoading(false);
   }
+
+  // Pre-load EVERY concept world's opening board in the background, so switching
+  // between worlds on the left is instant instead of a cold fetch each time.
+  const worldsWarm = useRef(false);
+  useEffect(() => {
+    if (worldsWarm.current || !concepts.length) return;
+    worldsWarm.current = true;
+    let live = true;
+    (async () => {
+      for (const c of concepts) {
+        if (!live) return;
+        const key = c.title + "::";
+        if (cache.current.has(key)) continue;
+        try {
+          const res = await naming.relate(brief, "", c.title, excludeList());
+          const entry = { word: res.word, def: res.def, groups: res.groups || [] };
+          cache.current.set(key, entry);
+          cache.current.set(c.title + "::" + (entry.word || "").toLowerCase(), entry);
+          markSeen(entry);
+        } catch { /* the world will load on demand */ }
+      }
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concepts.length]);
 
   // Mirror the live board into the persisted store so returning to this step
   // restores it (the cache + seen set are already the store's own instances).

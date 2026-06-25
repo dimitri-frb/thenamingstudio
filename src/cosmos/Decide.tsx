@@ -1,13 +1,14 @@
 // Step 10 · Decision. The signals sit in one table — SMILE, domain, trademark —
 // and the founder makes the call. The chosen name gets the hero treatment and the
 // "make it real" steps (register, buy the domain, brand book) update to match.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Comparison, CompareRow } from "../lib/namingApi";
 import { Dots, Head } from "./chrome";
 import { availableDomains, slugify } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
-function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
+function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Perfect" : t >= 16 ? "Great" : "Solid"; }
+const verdictClass = (v: string) => (v === "Perfect" ? "fill" : v === "Great" ? "good" : "");
 // The single best domain that is actually available for this name.
 const bestDomain = (r: CompareRow) => availableDomains(r.name, r.domains, r.suggested)[0];
 
@@ -23,8 +24,15 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
 
   const pick = rows.find((r) => r.name === chosen) || rows[0];
   const doms = pick ? availableDomains(pick.name, pick.domains, pick.suggested) : [];
-  // Default-tick the top available domain whenever the chosen name changes.
-  useEffect(() => { setPicked(doms[0] ? new Set([doms[0].domain]) : new Set()); /* eslint-disable-next-line */ }, [chosen, doms[0]?.domain]);
+  // Default-tick the top domain ONLY when the chosen name actually changes — not on
+  // every render (which was wiping the founder's ticks, so it behaved like radios).
+  const defaultedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (defaultedFor.current === chosen) return;
+    defaultedFor.current = chosen;
+    setPicked(doms[0] ? new Set([doms[0].domain]) : new Set());
+    /* eslint-disable-next-line */
+  }, [chosen, doms.length]);
 
   if (!comp) return <Head eyebrow="The decision" title={<>Make the call.</>} />;
 
@@ -69,7 +77,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
                       <td className="c">{(() => { const d = bestDomain(n); return d
                         ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ color: "var(--good)", fontSize: 12 }}>✓</span><span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span></span>
                         : <span style={{ color: "var(--ink-4)" }}>—</span>; })()}</td>
-                      <td className="c"><span className={"tag " + (v === "Strong" ? "fill" : v === "Solid" ? "" : "bad")}>{v}</span></td>
+                      <td className="c"><span className={"tag " + verdictClass(v)}>{v}</span></td>
                     </tr>
                   );
                 })}
@@ -89,7 +97,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
             {pick && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <span className="tag good">SMILE {smileOf(pick)}</span>
-                {best && <span className="tag good" style={{ textTransform: "none" }}>{best.domain} · {best.price}</span>}
+                {best && <span className="tag good" style={{ textTransform: "none" }}>{best.domain}</span>}
               </div>
             )}
           </div>
@@ -114,7 +122,6 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
                     </span>
                     <input type="checkbox" checked={on} onChange={() => toggle(d.domain)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
                     <span style={{ fontFamily: "var(--serif)", fontSize: 16, flex: 1 }}>{d.domain}</span>
-                    <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{d.price}{d.premium ? " · premium" : ""}</span>
                   </label>
                 );
               })}

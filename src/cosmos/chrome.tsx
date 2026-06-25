@@ -1,6 +1,7 @@
 // The Cosmos shell + shared atoms, ported from the design's cosmos-chrome.jsx and
 // wired to the live flow (rail jumps to reached steps, back/leave callbacks).
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import "./cosmos.css";
 
 export const CXSTEPS = [
@@ -85,10 +86,26 @@ export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack
 
 // A quiet "i" badge that reveals an explanation on hover/focus. Lets us keep the
 // standing copy short and move the "what is this?" detail out of the way.
+// A quiet "i" badge that reveals an explanation on hover/focus. The popover renders
+// in a portal at fixed coords, so it never gets clipped by an overflow:hidden
+// ancestor (the boards and tables all clip their overflow).
 export function Info({ children, pos = "down", align = "left" }: { children: ReactNode; pos?: "up" | "down"; align?: "left" | "right" }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [box, setBox] = useState<DOMRect | null>(null);
+  const open = () => { const r = ref.current?.getBoundingClientRect(); if (r) setBox(r); };
+  const close = () => setBox(null);
   return (
-    <span className={"info " + pos + (align === "right" ? " r" : "")} tabIndex={0} role="button" aria-label="What's this?">
-      i<span className="info-pop">{children}</span>
+    <span ref={ref} className="info" tabIndex={0} role="button" aria-label="What's this?"
+      onMouseEnter={open} onMouseLeave={close} onFocus={open} onBlur={close}>
+      i
+      {box && createPortal(
+        <span className="info-pop-fixed" style={{
+          position: "fixed", zIndex: 999,
+          ...(pos === "up" ? { bottom: window.innerHeight - box.top + 8 } : { top: box.bottom + 8 }),
+          ...(align === "right" ? { right: Math.max(8, window.innerWidth - box.right) } : { left: Math.max(8, box.left - 2) }),
+        }}>{children}</span>,
+        document.body,
+      )}
     </span>
   );
 }

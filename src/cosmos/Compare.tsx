@@ -25,13 +25,16 @@ import { availableDomains, nameTests } from "./data";
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
-function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Strong" : t >= 15 ? "Solid" : "Risky"; }
+function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Perfect" : t >= 16 ? "Great" : "Solid"; }
+const verdictClass = (v: string) => (v === "Perfect" ? "fill" : v === "Great" ? "good" : "");
 
 export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
   setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void;
 }) {
   const [sortSmile, setSortSmile] = useState(false);
+  // The founder's pick (starred). Defaults to our recommendation; click any name to change it.
+  const [starred, setStarred] = useState("");
   // Real domain availability, fetched per-name in parallel so the scored table
   // appears instantly and domains fill in as they land.
   const [dom, setDom] = useState<Record<string, Dom>>({});
@@ -77,8 +80,13 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     </>
   );
 
+  const star = starred || comp.recommended || comp.rows[0]?.name || "";
+  // Starring a name makes it the founder's pick everywhere downstream (lock-in, decision).
+  const chooseStar = (name: string) => { setStarred(name); setComp({ ...comp, recommended: name }); };
   let rows = [...comp.rows];
   if (sortSmile) rows.sort((a, b) => smileOf(b) - smileOf(a));
+  // The founder's starred pick always sits at the top (stable for the rest).
+  rows.sort((a, b) => (a.name === star ? -1 : b.name === star ? 1 : 0));
 
   return (
     <>
@@ -105,14 +113,16 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
             <tbody>
               {rows.map((n) => {
                 const verdict = verdictOf(n);
-                const win = n.name === comp.recommended;
+                const win = n.name === star;
                 const dinfo = dom[n.name];
                 const domains = dinfo ? availableDomains(n.name, dinfo.domains, dinfo.suggested) : [];
                 return (
                   <tr key={n.name} className={win ? "win" : ""}>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span className="nm">{n.name}</span>{win && <Star on />}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+                        onClick={() => chooseStar(n.name)} title="Make this your pick">
+                        <span className="nm">{n.name}</span>
+                        <Star on={win} onClick={(e) => { e.stopPropagation(); chooseStar(n.name); }} />
                       </div>
                     </td>
                     <td style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
@@ -124,7 +134,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                           <span key={d.domain} style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
                             <span style={{ color: "var(--good)", fontSize: 12, flex: "0 0 auto" }}>✓</span>
                             <span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span>
-                            <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.price}{d.premium ? " · premium" : ""}</span>
                           </span>
                         ))}
                       </div>
@@ -142,7 +151,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                       ); })()}
                     </td>
                     <td className="c"><SmileScore score={smileOf(n)} /></td>
-                    <td className="c"><span className={"tag " + (verdict === "Strong" ? "fill" : verdict === "Solid" ? "" : "bad")}>{verdict}</span></td>
+                    <td className="c"><span className={"tag " + verdictClass(verdict)}>{verdict}</span></td>
                   </tr>
                 );
               })}
