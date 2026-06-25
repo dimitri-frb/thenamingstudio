@@ -106,19 +106,32 @@ h1, h2, h3 {
 
 /* a soft ambient glow that slowly drifts behind the hero (movement) */
 @keyframes glow-drift {
-  0%   { transform: translate(-4%, -2%) scale(1); }
-  50%  { transform: translate(5%, 4%) scale(1.12); }
-  100% { transform: translate(-4%, -2%) scale(1); }
+  0%   { transform: translate(-5%, -3%) scale(1); }
+  33%  { transform: translate(4%, 3%) scale(1.1); }
+  66%  { transform: translate(-3%, 4%) scale(1.06); }
+  100% { transform: translate(-5%, -3%) scale(1); }
 }
+@keyframes glow-drift-2 {
+  0%   { transform: translate(3%, 2%) scale(1.05); }
+  50%  { transform: translate(-4%, -3%) scale(1); }
+  100% { transform: translate(3%, 2%) scale(1.05); }
+}
+/* Two soft, near-black clouds drifting in opposite directions, monochrome to keep
+   the cosmos.so register. Present enough to feel alive, soft enough to stay quiet. */
 .hero-glow {
-  position: absolute; inset: -20% -10% auto -10%; height: 120%;
-  pointer-events: none; z-index: 0; filter: blur(40px); opacity: 0.7;
+  position: absolute; inset: -30% -18% auto -18%; height: 150%;
+  pointer-events: none; z-index: 0; filter: blur(54px); opacity: 0.95;
   background:
-    radial-gradient(40% 44% at 28% 26%, oklch(0 0 0 / 0.05), transparent 70%),
-    radial-gradient(38% 40% at 75% 24%, oklch(0 0 0 / 0.04), transparent 70%);
-  animation: glow-drift 16s ease-in-out infinite;
+    radial-gradient(40% 46% at 26% 30%, oklch(0 0 0 / 0.07), transparent 72%),
+    radial-gradient(46% 48% at 54% 94%, oklch(0 0 0 / 0.05), transparent 72%);
+  animation: glow-drift 20s ease-in-out infinite;
 }
-@media (prefers-reduced-motion: reduce) { .hero-glow { animation: none; } }
+.hero-glow::after {
+  content: ""; position: absolute; inset: 0; filter: blur(54px);
+  background: radial-gradient(42% 44% at 78% 22%, oklch(0 0 0 / 0.06), transparent 72%);
+  animation: glow-drift-2 26s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .hero-glow, .hero-glow::after { animation: none; } }
 
 /* gentle press/scale spring shared by the hero CTAs */
 .spring { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, opacity 0.2s ease, border-color 0.2s ease; }
