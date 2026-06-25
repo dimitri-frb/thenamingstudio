@@ -7,7 +7,7 @@ import { copyFileSync } from "node:fs";
 // On GitHub Pages the app is served from https://<user>.github.io/brandr/,
 // so production assets need the "/brandr/" base. Dev stays at "/".
 export default defineConfig(({ command }) => ({
-  base: command === "build" ? "/brandr/" : "/",
+  base: command === "build" ? "/thenamingstudio/" : "/",
   plugins: [react(), tailwindcss(), claudeBridge(), spa404()],
 }));
 
