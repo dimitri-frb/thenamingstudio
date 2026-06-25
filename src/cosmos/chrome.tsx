@@ -70,7 +70,7 @@ export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack
         <div className="cx-top">
           <CxBrand />
           <div className="right">
-            {topRight || <span className="lbl">🇫🇷 INPI-ready</span>}
+            {topRight}
           </div>
         </div>
         {!wide && <CxRail step={step} reached={reached ?? step} onJump={onJump} onLeave={onLeave} />}

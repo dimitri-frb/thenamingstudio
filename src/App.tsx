@@ -277,9 +277,6 @@ function Header({ onLogo }: { onLogo: () => void }) {
         <BrandMark />
         <Wordmark />
       </button>
-      <div className="hidden items-center gap-6 font-mono text-xs uppercase tracking-widest text-ink/45 sm:flex">
-        <span className="rounded-full border border-ink/15 px-3 py-1">🇫🇷 INPI-ready</span>
-      </div>
     </header>
   );
 }

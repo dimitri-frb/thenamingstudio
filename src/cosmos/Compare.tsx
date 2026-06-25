@@ -1,20 +1,10 @@
 // Step 8 · Comparison — the shortlist side by side in one table: meaning, three
-// genuinely-available domains (real, via RDAP) with prices, INPI trademark,
-// handle, and a SMILE score. Every name leaves with domains it can register.
+// genuinely-available domains (real, via RDAP) with prices, handle, and a SMILE
+// score. Every name leaves with domains it can register.
 import { useEffect, useState } from "react";
-import { naming, fetchDomains, fetchInpi, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain, type InpiResult } from "../lib/namingApi";
+import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
 import { Dots, Head, Star, Thinking } from "./chrome";
-import { availableDomains, handleOptions, nameTests, niceName } from "./data";
-
-// Renders "cl. 9, 42" where each number reveals its Nice category name on hover.
-function ClassNums({ nums }: { nums: number[] }) {
-  if (!nums.length) return null;
-  return (
-    <span>cl. {nums.map((c, i) => (
-      <span key={c}>{i > 0 ? ", " : ""}<span title={niceName(c)} style={{ textDecoration: "underline dotted", textUnderlineOffset: 2, cursor: "help" }}>{c}</span></span>
-    ))}</span>
-  );
-}
+import { availableDomains, handleOptions, nameTests } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -29,8 +19,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   // Real domain availability, fetched per-name in parallel so the scored table
   // appears instantly and domains fill in as they land.
   const [dom, setDom] = useState<Record<string, Dom>>({});
-  // Real INPI trademark verdicts per name (class-aware), filled in as they land.
-  const [inpi, setInpi] = useState<Record<string, InpiResult>>({});
 
   useEffect(() => {
     if (comp) return;
@@ -56,19 +44,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp]);
 
-  // Real INPI trademark check per name, filtered to the brand's Nice classes.
-  useEffect(() => {
-    if (!comp) return;
-    let live = true;
-    const classes = comp.niceClasses || [];
-    comp.rows.map((r) => r.name).filter((n) => !(n in inpi)).forEach(async (name) => {
-      const res = await fetchInpi(name, classes);
-      if (live) setInpi((prev) => ({ ...prev, [name]: res }));
-    });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comp]);
-
   useEffect(() => {
     if (!comp || !comp.rows.length) return;
     if (!comp.rows.every((r) => dom[r.name])) return;
@@ -81,7 +56,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     <>
       <HeadC />
       <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
-        <Thinking lines={["Scoring each name and hunting available domains…", "SMILE · domains · INPI · handle"]} />
+        <Thinking lines={["Scoring each name and hunting available domains…", "SMILE · domains · handle"]} />
       </div>
     </>
   );
@@ -105,9 +80,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
               <tr>
                 <th style={{ width: "12%" }}>Name</th>
                 <th style={{ width: "19%" }}>Why it works</th>
-                <th style={{ width: "20%" }}>Available domains</th>
-                <th>Trademark · INPI</th>
-                <th style={{ width: "13%" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><InstagramGlyph size={12} /> Instagram</span></th>
+                <th style={{ width: "22%" }}>Available domains</th>
+                <th style={{ width: "14%" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><InstagramGlyph size={12} /> Instagram</span></th>
                 <th style={{ width: "12%" }}>Name tests</th>
                 <th>SMILE</th>
                 <th>Verdict</th>
@@ -140,24 +114,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         ))}
                       </div>
                     </td>
-                    <td>{(() => {
-                      const ip = inpi[n.name];
-                      const brandCls = comp.niceClasses || [];
-                      const line = (label: React.ReactNode, nums: number[], color = "var(--ink-3)") => (
-                        <span style={{ fontSize: 11, color, marginTop: 3, lineHeight: 1.3 }}>{label} <ClassNums nums={nums} /></span>
-                      );
-                      const wrap = (tag: React.ReactNode, sub: React.ReactNode) => <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>{tag}{sub}</div>;
-                      if (ip?.ok && ip.verdict !== "unknown") {
-                        const hitCls = [...new Set(ip.hits.flatMap((h) => h.classes))];
-                        if (ip.verdict === "conflict") {
-                          const blocked = hitCls.filter((c) => brandCls.includes(c));
-                          return wrap(<span className="tag bad" title={`Live mark "${ip.hits[0]?.name}" registered here`}>Risk</span>, line("taken in", blocked.length ? blocked : hitCls, "var(--bad)"));
-                        }
-                        if (ip.verdict === "adjacent") return wrap(<span className="tag good" title="The same word exists, but only in classes that aren't yours">Available</span>, line("free in", brandCls));
-                        return wrap(<span className="tag good" title="No conflicting mark in your class (INPI)">Available</span>, brandCls.length ? line("free in", brandCls) : null);
-                      }
-                      return wrap(<span className={"tag " + (n.inpi ? "good" : "watch")} title="Estimate (live INPI check unavailable)">{n.inpi ? "Available?" : "Risk?"}</span>, brandCls.length ? line("est.", brandCls) : null);
-                    })()}</td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         {handleOptions(n.name, domains).map((h) => (
@@ -214,7 +170,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
 function HeadC() {
   return (
     <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="We analyse each name for you: domain availability, French trademark (INPI), Instagram handles, and a SMILE score, all in one table. Where the plain domain is gone, we surface close ones you can still claim." />
+      sub="We analyse each name for you: domain availability, Instagram handles, and a SMILE score, all in one table. Where the plain domain is gone, we surface close ones you can still claim." />
   );
 }
 

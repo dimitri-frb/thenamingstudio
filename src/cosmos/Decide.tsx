@@ -32,13 +32,12 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
   const best = pick ? bestDomain(pick) : undefined;
   const buyList = doms.filter((d) => picked.has(d.domain)).map((d) => d.domain);
   const godaddy = `https://www.godaddy.com/domainsearch/bulk-domain-search?domainsToCheck=${(buyList.length ? buyList : [best?.domain || slug + ".com"]).join(",")}`;
-  const inpi = "https://procedures.inpi.fr/?/";
   const toggle = (d: string) => setPicked((p) => { const n = new Set(p); n.has(d) ? n.delete(d) : n.add(d); return n; });
 
   return (
     <>
       <Head eyebrow="The decision" title={<>The signals are in. <em>You make the call.</em></>}
-        sub="SMILE, domain and trademark sit side by side as the case for each name. Pick the row that's right; the next steps update to match." />
+        sub="SMILE and domain sit side by side as the case for each name. Pick the row that's right; the next steps update to match." />
       <div className="decide-cols">
         <div className="table-wrap">
           <div className="table-scroll">
@@ -49,7 +48,6 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
                   <th>Name</th>
                   <th>SMILE</th>
                   <th>Domain</th>
-                  <th>INPI</th>
                   <th>Verdict</th>
                 </tr>
               </thead>
@@ -69,7 +67,6 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
                       <td className="c">{(() => { const d = bestDomain(n); return d
                         ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ color: "var(--good)", fontSize: 12 }}>✓</span><span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span></span>
                         : <span style={{ color: "var(--ink-4)" }}>—</span>; })()}</td>
-                      <td className="c"><span className={"tag " + (n.inpi ? "good" : "watch")}>{n.inpi ? "Clear" : "Check"}</span></td>
                       <td className="c"><span className={"tag " + (v === "Strong" ? "fill" : v === "Solid" ? "" : "bad")}>{v}</span></td>
                     </tr>
                   );
@@ -91,7 +88,6 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <span className="tag good">SMILE {smileOf(pick)}</span>
                 {best && <span className="tag good" style={{ textTransform: "none" }}>{best.domain} · {best.price}</span>}
-                <span className={"tag " + (pick.inpi ? "good" : "watch")}>INPI {pick.inpi ? "clear" : "check"}</span>
               </div>
             )}
           </div>
@@ -128,8 +124,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook }: {
           </div>
 
           {[
-            { n: "02", a: "Register the name", b: "Protect it at INPI 🇫🇷", c: "OPEN INPI →", href: inpi as string | undefined, onClick: undefined as (() => void) | undefined },
-            { n: "03", a: "Brand book & logo", b: "Story, voice, type", c: "CREATE →", href: undefined, onClick: onBrandBook },
+            { n: "02", a: "Brand book & logo", b: "Story, voice, type", c: "CREATE →", href: undefined as string | undefined, onClick: onBrandBook as (() => void) | undefined },
           ].map((s, i) => {
             const inner = (
               <>
