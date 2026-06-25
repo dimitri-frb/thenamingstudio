@@ -61,7 +61,7 @@ export default function App() {
       const names = (p.get("vote") || "").split("|").map((s) => s.trim()).filter(Boolean).slice(0, 10);
       if (!names.length) return null;
       const notes = (p.get("notes") || "").split("|").map((s) => s.trim());
-      return { names, notes, by: (p.get("by") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180) };
+      return { names, notes, by: (p.get("by") || p.get("from") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180) };
     } catch { return null; }
   });
   // "?brandbook" (optionally "?brandbook=YourName") jumps straight to a demo
