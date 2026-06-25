@@ -188,6 +188,7 @@ const briefV1 = (b: any) => [
   `The name SHOULD signal: ${(b?.signal || []).join(", ") || "n/a"}`,
   `Brand tone: ${(b?.tone || []).join(", ") || "n/a"}`,
   `Naming lanes to explore: ${(b?.lanes || []).join(", ") || "any"}`,
+  `International reach: ${b?.international ? "YES, the name must be easy to pronounce and spell across languages (a global audience)" : "not a stated requirement"}`,
 ].join("\n");
 const briefV2 = (b: any) => JSON.stringify(b || {});
 
@@ -259,7 +260,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       ? `- Compounds are welcome here (the founder chose the Compound lane): fuse two real words into one fresh, ownable name. Make it surprising, never a lazy category mashup like SmartPay or QuickHire.\n`
       : `- No two obvious words mashed together (SmartPay, QuickHire).\n`) +
     `- Nothing unpronounceable, nothing over 3 syllables, nothing a famous company already owns.\n` +
-    `- Do not just return the saved word or a plain synonym of it.\n\n` +
+    `- Do not just return the saved word or a plain synonym of it.\n` +
+    (b.brief?.international ? `- INTERNATIONAL: it must read and sound clean across languages, easy to say and spell for a global audience. No accented characters, no sounds awkward in English/Spanish/German, no unfortunate meaning in a major language.\n` : ``) +
+    `\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
       ? `Already proposed (the founder wants DIFFERENT ones, do NOT repeat or lightly vary these): ${b.payload.exclude.slice(-40).join(", ")}.\n\n`
       : ``) +
