@@ -245,9 +245,17 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   // The evolving "brief, so far" card (right side of the brief steps): an AI reframe
   // once it lands, otherwise the founder's own words.
   const briefLine = briefSynth?.line || brief.does || "A naming studio for founders who care about taste.";
-  const briefTags = briefSynth?.tags?.length
+  const baseTags = briefSynth?.tags?.length
     ? briefSynth.tags
     : [brief.industry || "creator tools", stage.split("·")[0].trim() || "pre-launch"];
+  // Fold the founder's live selections (signal, tone, markets) into the brief card
+  // so they build it up as they choose, deduped, case-insensitively.
+  const briefTags = (() => {
+    const seen = new Set<string>();
+    return [...baseTags, ...(brief.signal || []), ...(brief.tone || []), ...(brief.geos || [])]
+      .map((t) => String(t).trim()).filter(Boolean)
+      .filter((t) => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  })();
 
   // ── Steps 1–4 · intake + concepts (loading shows inside the same shell) ──
   if (step === 0) return shell(
