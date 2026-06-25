@@ -3,7 +3,8 @@
 /* Tailwind color tokens backed by CSS vars (text-ink/55, from-accent, …). */
 @theme {
   --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: "Instrument Serif", "Source Serif Pro", Cambria, Georgia, serif;
+  /* cosmos.so uses a single grotesque, so "serif" headings now resolve to Geist. */
+  --font-serif: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
   --color-ink: var(--c-ink);
   --color-accent: var(--c-accent);
@@ -16,19 +17,17 @@
    (oklch hue 35), warm-black ink, Geist + Instrument Serif + Geist Mono. */
 :root {
   color-scheme: light;
-  --c-ink: oklch(0.2 0.012 60); /* warm near-black */
-  --c-accent: oklch(0.58 0.14 35); /* terracotta / clay */
-  --c-accent2: oklch(0.72 0.13 30); /* warm coral highlight */
-  --c-accent3: oklch(0.78 0.06 70); /* soft tan */
-  --page: #f0ece3; /* canvas */
-  --surface-solid: oklch(0.995 0.004 80); /* near-white card */
-  --glass-bg: oklch(0.995 0.004 80 / 0.6);
-  --glass-border: oklch(0.87 0.01 70); /* hairline rule */
-  --mesh:
-    radial-gradient(60% 55% at 12% 8%, oklch(0.58 0.14 35 / 0.1), transparent 62%),
-    radial-gradient(50% 50% at 88% 6%, oklch(0.72 0.13 30 / 0.1), transparent 60%),
-    radial-gradient(70% 60% at 50% 100%, oklch(0.78 0.06 70 / 0.1), transparent 60%);
-  --grain-opacity: 0.45;
+  /* Palette matched to cosmos.so: pure white, near-black, monochrome neutrals. */
+  --c-ink: oklch(0.14 0 0); /* near-black */
+  --c-accent: oklch(0.14 0 0); /* monochrome: accents are ink */
+  --c-accent2: oklch(0.55 0 0); /* mid grey */
+  --c-accent3: oklch(0.82 0 0); /* light grey */
+  --page: #ffffff; /* canvas */
+  --surface-solid: oklch(1 0 0); /* white card */
+  --glass-bg: oklch(1 0 0 / 0.7);
+  --glass-border: oklch(0.9 0 0); /* hairline rule */
+  --mesh: none;
+  --grain-opacity: 0;
 }
 
 html {
@@ -115,9 +114,8 @@ h1, h2, h3 {
   position: absolute; inset: -20% -10% auto -10%; height: 120%;
   pointer-events: none; z-index: 0; filter: blur(40px); opacity: 0.7;
   background:
-    radial-gradient(38% 42% at 22% 28%, oklch(0.58 0.14 35 / 0.22), transparent 70%),
-    radial-gradient(34% 38% at 78% 22%, oklch(0.72 0.13 30 / 0.20), transparent 70%),
-    radial-gradient(46% 40% at 55% 88%, oklch(0.78 0.06 70 / 0.22), transparent 70%);
+    radial-gradient(40% 44% at 28% 26%, oklch(0 0 0 / 0.05), transparent 70%),
+    radial-gradient(38% 40% at 75% 24%, oklch(0 0 0 / 0.04), transparent 70%);
   animation: glow-drift 16s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) { .hero-glow { animation: none; } }
