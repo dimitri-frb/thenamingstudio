@@ -38,6 +38,12 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
                 …or just talk it through
               </button>
             )}
+
+            {/* Non-blocking nudge: phones can run the whole flow, but it shines on
+                a wider screen. Shown only on small viewports (hidden at sm+). */}
+            <p className="sm:hidden mt-2 max-w-[17rem] text-center text-sm leading-relaxed text-ink/45">
+              The studio runs on your phone, but it's best on a desktop.
+            </p>
           </div>
         </div>
       </section>
