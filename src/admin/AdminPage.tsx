@@ -97,6 +97,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={load} style={btn(C)}>↻ Refresh</button>
             {mode === "local" && <button onClick={() => { if (confirm("Clear the request log on this browser?")) { clearRequests(); setItems([]); } }} style={btn(C)}>Clear</button>}
+            <a href={`${import.meta.env.BASE_URL || "/"}test`} target="_blank" rel="noreferrer" style={{ ...btn(C), textDecoration: "none" }}>↗ Test process</a>
             <button onClick={onExit} style={btn(C)}>← Studio</button>
           </div>
         </div>

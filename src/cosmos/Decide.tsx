@@ -110,6 +110,15 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
               </div>
               <span className="mr-cta" style={{ color: "var(--ink-4)" }}>COMING SOON</span>
             </div>
+
+            <div className="mr-card disabled">
+              <span className="lbl" style={{ fontSize: 9.5, flex: "0 0 auto" }}>04</span>
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 17 }}>Launch your website</div>
+                <p style={{ fontSize: 12, color: "var(--ink-4)", margin: 0 }}>A first page to claim your name online</p>
+              </div>
+              <span className="mr-cta" style={{ color: "var(--ink-4)" }}>COMING SOON</span>
+            </div>
           </div>
 
           {onFeedback && (
