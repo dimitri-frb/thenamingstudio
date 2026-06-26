@@ -4,7 +4,7 @@
 //  · Central  — every process from every user, read from the Worker's KV store.
 //  · This browser — the localStorage log (works offline / in dev).
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getRequests, clearRequests, type ReqLog } from "../lib/requestLog";
+import { getRequests, type ReqLog } from "../lib/requestLog";
 
 const WORKER = (import.meta.env.VITE_NAMING_API || "").replace(/\/$/, "");
 const KEY_STORE = "ns.admin.key";
@@ -96,7 +96,6 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={load} style={btn(C)}>↻ Refresh</button>
-            {mode === "local" && <button onClick={() => { if (confirm("Clear the request log on this browser?")) { clearRequests(); setItems([]); } }} style={btn(C)}>Clear</button>}
             <a href={`${import.meta.env.BASE_URL || "/"}test`} target="_blank" rel="noreferrer" style={{ ...btn(C), textDecoration: "none" }}>↗ Test process</a>
             <button onClick={onExit} style={btn(C)}>← Studio</button>
           </div>
