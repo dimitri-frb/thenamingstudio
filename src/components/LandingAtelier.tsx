@@ -1,7 +1,15 @@
 // The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
+import { useState } from "react";
+
+// The 10-step studio isn't mobile-ready yet, so on a phone we don't drop people
+// into a broken flow: we tell them, honestly, to come back on a desktop.
+const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 680px)").matches;
 
 export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
+  const [mobileNote, setMobileNote] = useState(false);
+  const start = () => (isMobile() ? setMobileNote(true) : onNext());
+  const talk = () => (isMobile() ? setMobileNote(true) : onTalk());
   return (
     <div>
       {/* hero */}
@@ -20,7 +28,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
 
           <div className="reveal mt-10 flex flex-col items-center gap-4" style={{ animationDelay: "0.46s" }}>
             <button
-              onClick={onNext}
+              onClick={start}
               className="spring group flex items-center gap-3 rounded-full bg-ink px-10 py-5 text-xl font-medium text-[var(--page)] shadow-lg shadow-ink/10 hover:shadow-xl hover:shadow-ink/20"
             >
               Start a brief
@@ -29,7 +37,7 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
 
             {canTalk && (
               <button
-                onClick={onTalk}
+                onClick={talk}
                 className="group inline-flex items-center gap-2 font-serif text-lg italic text-ink/50 transition hover:text-accent"
               >
                 <span className="grid h-7 w-7 place-items-center rounded-full border border-ink/20 text-ink/60 transition group-hover:border-accent group-hover:text-accent">
@@ -37,6 +45,13 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
                 </span>
                 …or just talk it through
               </button>
+            )}
+
+            {mobileNote && (
+              <div role="status" className="mt-2 max-w-xs rounded-2xl border border-ink/12 bg-[var(--page)]/80 px-6 py-5 text-center backdrop-blur">
+                <p className="font-serif text-lg leading-snug text-ink">The studio is best on desktop.</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink/55">For now, open this on a computer for the full naming experience. A mobile version is on the way.</p>
+              </div>
             )}
           </div>
         </div>
