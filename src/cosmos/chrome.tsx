@@ -12,7 +12,13 @@ export const CXSTEPS = [
 export function CxBrand() {
   return (
     <div className="cx-brand">
-      <span className="gl">✳</span>
+      {/* SVG asterisk (matches the landing mark). The literal ✳ character renders
+          as a colour emoji on phones, which looked off, this stays monochrome. */}
+      <span className="gl" aria-hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5" />
+        </svg>
+      </span>
       <span className="nm">the naming studio</span>
     </div>
   );
