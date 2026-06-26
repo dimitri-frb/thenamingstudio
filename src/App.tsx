@@ -124,8 +124,10 @@ export default function App() {
     return <AdminPage onExit={() => window.location.assign(import.meta.env.BASE_URL || "/")} />;
   }
 
-  // Test mode (?test): step through every page with sample data, no real run.
-  if (new URLSearchParams(window.location.search).has("test")) {
+  // Test mode (/test, ?test, or #test): step through every page with sample data,
+  // no real run. The 404.html SPA fallback lets the /test path serve the app.
+  const isTest = /(?:^|\/)test\/?$/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("test") || window.location.hash.replace(/^#\/?/, "") === "test";
+  if (isTest) {
     return <CosmosFlow test={MOCK} initialDoes="" onRestart={() => { window.location.assign(window.location.pathname); }} />;
   }
 

@@ -32,7 +32,19 @@ const brief: Brief = {
   avoid: ["Generic name generators", "Tech-bro acronyms"],
   tone: ["Confident", "Polished"],
   lanes: ["suggestive", "evocative", "invented"],
+  geos: ["France", "EU", "US"],
 };
+
+// Pre-filled "signal" feelings so the emotional step (3) shows real chips without
+// a live call when walking the test flow forward.
+const feelings: Feeling[] = [
+  { word: "Clarity", why: "the relief of finally seeing the name clearly" },
+  { word: "Momentum", why: "a brief that turns into motion, fast" },
+  { word: "Craft", why: "made with the care of a senior studio" },
+  { word: "Confidence", why: "a name you can stand behind in any room" },
+  { word: "Warmth", why: "human and inviting, never clinical" },
+  { word: "Precision", why: "every word earns its place" },
+];
 
 const concepts: Concept[] = [
   { title: "The Exhale Moment", blurb: "The relief of finally landing the right name.", lane: "evocative" },
@@ -108,7 +120,7 @@ const comp: Comparison = {
 
 export const MOCK: TestSeed = {
   step: 0, brief, stage: "Pre-launch · building MVP", workingName: "Untitled",
-  feelings: [], concepts, chosen: ["The Exhale Moment", "The Forge"], saved,
+  feelings, concepts, chosen: ["The Exhale Moment", "The Forge"], saved,
   exploreSeed: { focus: { word: "dawn", def: "The first light that breaks the darkness, signaling a new beginning." }, groups },
   shortlistRows, shortlist, comp, taglines: {}, chosenFinal: "Aurova",
 };
