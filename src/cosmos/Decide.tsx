@@ -141,17 +141,17 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
                   const v = verdictOf(n);
                   return (
                     <tr key={n.name} className={isChosen ? "win" : ""} style={{ cursor: "pointer" }} onClick={() => setChosen(n.name)}>
-                      <td className="c">
+                      <td className="c" data-label="">
                         <span style={{ width: 18, height: 18, borderRadius: "50%", border: "1.5px solid " + (isChosen ? "var(--ink)" : "var(--line)"), background: isChosen ? "var(--ink)" : "transparent", display: "inline-grid", placeItems: "center" }}>
                           {isChosen && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--surface)" }} />}
                         </span>
                       </td>
-                      <td><span className="nm" style={{ fontSize: 21 }}>{n.name}</span></td>
-                      <td className="c"><Dots score={smileOf(n)} /></td>
-                      <td className="c">{(() => { const d = bestDomain(n); return d
+                      <td data-label="Name"><span className="nm" style={{ fontSize: 21 }}>{n.name}</span></td>
+                      <td className="c" data-label="SMILE"><Dots score={smileOf(n)} /></td>
+                      <td className="c" data-label="Domain">{(() => { const d = bestDomain(n); return d
                         ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><span style={{ color: "var(--good)", fontSize: 12 }}>✓</span><span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span></span>
                         : <span style={{ color: "var(--ink-4)" }}>—</span>; })()}</td>
-                      <td className="c"><span className={"tag " + verdictClass(v)}>{v}</span></td>
+                      <td className="c" data-label="Verdict"><span className={"tag " + verdictClass(v)}>{v}</span></td>
                     </tr>
                   );
                 })}

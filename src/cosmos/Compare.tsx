@@ -118,15 +118,15 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                 const domains = dinfo ? availableDomains(n.name, dinfo.domains, dinfo.suggested) : [];
                 return (
                   <tr key={n.name} className={win ? "win" : ""}>
-                    <td>
+                    <td data-label="Name">
                       <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
                         onClick={() => chooseStar(n.name)} title="Make this your pick">
                         <span className="nm">{n.name}</span>
                         <Star on={win} onClick={(e) => { e.stopPropagation(); chooseStar(n.name); }} />
                       </div>
                     </td>
-                    <td style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
-                    <td>
+                    <td data-label="Why" style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
+                    <td data-label="Domains">
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                         {!dinfo && <span className="meta">checking…</span>}
                         {dinfo && domains.length === 0 && (
@@ -142,7 +142,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         ))}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Tests">
                       {(() => { const t = nameTests(n.name); return (
                         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                           {([["Bar test", t.bar], ["Pronounce", t.pronounce], ["Spell", t.spell], ["Short", t.short]] as const).map(([label, ok]) => (
@@ -154,8 +154,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                         </div>
                       ); })()}
                     </td>
-                    <td className="c"><SmileScore score={smileOf(n)} /></td>
-                    <td className="c"><span className={"tag " + verdictClass(verdict)}>{verdict}</span></td>
+                    <td className="c" data-label="SMILE"><SmileScore score={smileOf(n)} /></td>
+                    <td className="c" data-label="Verdict"><span className={"tag " + verdictClass(verdict)}>{verdict}</span></td>
                   </tr>
                 );
               })}

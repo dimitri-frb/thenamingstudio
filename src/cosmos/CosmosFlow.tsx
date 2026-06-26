@@ -284,13 +284,13 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         sub="The sharper this is, the sharper your name." />
       <div className="intake-cols">
         <div className="fgrid" style={{ alignContent: "start" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="pairgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Your name" value={fromName} onChange={setFromName} placeholder="Jane Founder" />
             <Field label="Email" hint="· so we can send you the results" value={email} onChange={setEmail} placeholder="you@company.com" />
           </div>
           <Field label="What it does" hint="· one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
             placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="pairgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Industry" value={brief.industry} onChange={(v) => set({ industry: v })} placeholder="Start typing…" options={INDUSTRIES} />
             <SelectField label="Stage" value={stage} onChange={setStage} options={STAGES} />
           </div>
