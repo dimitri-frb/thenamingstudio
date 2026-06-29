@@ -13,12 +13,9 @@
    (solid buttons, the active rail row, selected pills, the progress bar) so they
    pick up the blue accent instead. */
 
-/* ─────────────────────────── the desktop ─────────────────────────── */
-.cosmos-root.skin-beta {
-  background: #ececef;
-  display: grid;
-  place-items: center;
-}
+/* ─────────────────────────── the surface ─────────────────────────── */
+/* Full-bleed: the app fills the viewport (no desktop-behind-a-window frame). */
+.cosmos-root.skin-beta { background: #ffffff; }
 
 /* ─────────────────────────── design tokens ───────────────────────── */
 .cx.skin-beta {
@@ -78,32 +75,21 @@
   --good:  #1a9c3e;
 }
 
-/* ─────────────────────────── the window ──────────────────────────── */
+/* ─────────────────────────── the shell (full-bleed) ──────────────── */
 .cx.skin-beta {
-  width: min(1200px, 100vw - 48px);
-  height: min(880px, 100vh - 48px);
-  border: 1px solid var(--sep);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  grid-template-rows: 46px 1fr;   /* slimmer, titlebar-height top */
+  grid-template-rows: 52px 1fr;   /* slim app titlebar */
   letter-spacing: -0.01em;
 }
 
-/* glass titlebar with traffic lights */
+/* glass titlebar, full width */
 .cx.skin-beta .cx-top {
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--sep2);
-  padding: 0 16px;
+  padding: 0 22px;
   gap: 14px;
 }
-.cx.skin-beta .cx-traffic { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.cx.skin-beta .cx-traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
-.cx.skin-beta .cx-traffic i:nth-child(1) { background: #ff5f57; }
-.cx.skin-beta .cx-traffic i:nth-child(2) { background: #febc2e; }
-.cx.skin-beta .cx-traffic i:nth-child(3) { background: #28c840; }
 
 /* brand mark → accent square, wordmark → plain SF */
 .cx.skin-beta .cx-brand { gap: 9px; }
@@ -194,11 +180,54 @@
 .cx.skin-beta .tag.good,
 .cx.skin-beta .tag.fill { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 
-/* ─────────────────────────── small viewports ─────────────────────── */
-@media (max-width: 920px) {
-  .cosmos-root.skin-beta { place-items: stretch; }
-  .cx.skin-beta {
-    width: 100%; height: 100%;
-    border: none; border-radius: 0; box-shadow: none;
-  }
+/* ══════════════════════ faithful beta screens ══════════════════════ */
+
+/* shared field block */
+.cx.skin-beta .bfield { display: flex; flex-direction: column; gap: 9px; }
+.cx.skin-beta .bflabel { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.cx.skin-beta .bfhint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink-3); }
+.cx.skin-beta .binput {
+  font-family: var(--sans); font-size: 15.5px; line-height: 1.5; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--sep); border-radius: var(--r2);
+  padding: 12px 15px; width: 100%; resize: none; transition: border-color .15s, box-shadow .15s;
+}
+.cx.skin-beta .binput::placeholder { color: var(--ink-3); }
+.cx.skin-beta .binput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.cx.skin-beta .barea { line-height: 1.55; }
+
+/* selectable chips */
+.cx.skin-beta .bchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cx.skin-beta .bchip {
+  font-family: var(--sans); font-size: 13.5px; color: var(--ink-2);
+  padding: 7px 14px; border-radius: 9px; border: 1px solid var(--sep);
+  background: transparent; cursor: pointer; transition: all .14s;
+}
+.cx.skin-beta .bchip:hover:not(:disabled) { border-color: var(--ink-3); }
+.cx.skin-beta .bchip.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+.cx.skin-beta .bchip:disabled { opacity: .4; cursor: default; }
+
+/* segmented control — hugs its content, wraps tidily if the row is too narrow */
+.cx.skin-beta .bseg { display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 3px; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--sep); }
+.cx.skin-beta .bseg-i {
+  flex: 0 0 auto; white-space: nowrap; text-align: center;
+  font-family: var(--sans); font-size: 13px; color: var(--ink-2);
+  padding: 8px 14px; border-radius: 8px; border: none; background: transparent; cursor: pointer; transition: all .18s;
+}
+.cx.skin-beta .bseg-i:hover { color: var(--ink); }
+.cx.skin-beta .bseg-i.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+
+/* two-column intake (form + reframe card) */
+.cx.skin-beta .bintake { display: grid; grid-template-columns: 1fr 320px; gap: 34px; flex: 1; min-height: 0; }
+.cx.skin-beta .bintake-main { display: flex; flex-direction: column; gap: 22px; align-content: start; min-width: 0; }
+
+/* the "brief, so far" reframe card */
+.cx.skin-beta .breframe { position: sticky; top: 0; align-self: start; border-radius: var(--r3); background: var(--surface-2); border: 1px solid var(--sep); padding: 22px; }
+.cx.skin-beta .brlabel { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
+.cx.skin-beta .brquote { font-size: 18px; line-height: 1.45; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+.cx.skin-beta .brsep { height: 1px; background: var(--sep); margin: 18px 0; }
+.cx.skin-beta .brtags { display: flex; flex-wrap: wrap; gap: 7px; }
+.cx.skin-beta .brtag { font-size: 12px; padding: 5px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--sep); color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .cx.skin-beta .bintake { grid-template-columns: 1fr; }
 }

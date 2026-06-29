@@ -18,6 +18,7 @@ import { Share } from "./Share";
 import { Decide } from "./Decide";
 import { EmailGate } from "./EmailGate";
 import { Feedback } from "./Feedback";
+import { BetaBrief } from "../beta/BetaBrief";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
@@ -287,7 +288,12 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   })();
 
   // ── Steps 1–4 · the brief / intake (loading shows inside the same shell) ──
+  const startNext = () => { registerSignup(); goto(1); };
   if (step === 0) return shell(
+    skin === "beta" ? (
+      <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} workingName={workingName} setWorkingName={setWorkingName}
+        briefLine={briefLine} briefTags={briefTags} onBack={onRestart} onNext={startNext} />
+    ) : (
     <>
       <Head eyebrow="The brief · 1 of 4" title={<>First, what does the <em>company</em> do?</>}
         sub="The sharper this is, the sharper your name." />
@@ -304,8 +310,9 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
         <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
       </div>
       <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()}
-        onNext={() => { registerSignup(); goto(1); }} />
+        onNext={startNext} />
     </>
+    )
   );
 
   if (step === 1) return shell(

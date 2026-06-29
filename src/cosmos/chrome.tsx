@@ -82,9 +82,6 @@ export function Cx({ step, total = CXSTEPS.length, wide, reached, skin, topRight
     <div className={"cosmos-root" + (skin ? " skin-" + skin : "")}>
       <div className={"cx" + (wide ? " wide" : "") + (skin ? " skin-" + skin : "")}>
         <div className="cx-top">
-          {skin === "beta" && (
-            <span className="cx-traffic" aria-hidden><i /><i /><i /></span>
-          )}
           <CxBrand />
           <div className="right">
             {topRight}
