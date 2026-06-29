@@ -245,11 +245,13 @@
 
 /* selectable cards across the card-based steps (Concepts, Strategy, Name ideas)
    pick up the blue accent instead of near-black ink when chosen */
-.cx.skin-beta .concept, .cx.skin-beta .lane, .cx.skin-beta .ncard { border-radius: var(--r3); }
 .cx.skin-beta .concept.on,
-.cx.skin-beta .lane.on,
-.cx.skin-beta .ncard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .lane.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .namecard.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cx.skin-beta .wchip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .cx.skin-beta .lane .star.on, .cx.skin-beta .concept .star.on { color: var(--accent); }
+/* selected name cards show a ★ in ink by default — tint to accent */
+.cx.skin-beta .namecard.on .star, .cx.skin-beta .namecard.on .pin { color: var(--accent); }
 
 @media (max-width: 900px) {
   .cx.skin-beta .bintake { grid-template-columns: 1fr; }
