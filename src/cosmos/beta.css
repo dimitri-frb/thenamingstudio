@@ -243,6 +243,14 @@
 .cx.skin-beta .bdomstatus.nego { color: var(--watch); }
 .cx.skin-beta .bdomstatus.taken { color: var(--ink-3); }
 
+/* selectable cards across the card-based steps (Concepts, Strategy, Name ideas)
+   pick up the blue accent instead of near-black ink when chosen */
+.cx.skin-beta .concept, .cx.skin-beta .lane, .cx.skin-beta .ncard { border-radius: var(--r3); }
+.cx.skin-beta .concept.on,
+.cx.skin-beta .lane.on,
+.cx.skin-beta .ncard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .lane .star.on, .cx.skin-beta .concept .star.on { color: var(--accent); }
+
 @media (max-width: 900px) {
   .cx.skin-beta .bintake { grid-template-columns: 1fr; }
 }

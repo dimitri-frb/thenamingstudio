@@ -19,6 +19,7 @@ import { Decide } from "./Decide";
 import { EmailGate } from "./EmailGate";
 import { Feedback } from "./Feedback";
 import { BetaBrief } from "../beta/BetaBrief";
+import { BetaBrand, BetaEmotional } from "../beta/BetaIntake";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
@@ -316,6 +317,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   );
 
   if (step === 1) return shell(
+    skin === "beta" ? (
+      <BetaBrand brief={brief} set={set} briefLine={briefLine} briefTags={briefTags}
+        onBack={() => goto(0)} onNext={goEmotional} />
+    ) : (
     <>
       <Head eyebrow="The brief · 2 of 4" title={<>Now the <em>brand</em>: who it's for, why it matters.</>}
         sub="The problem you solve, who you solve it for, and what only you can claim." />
@@ -333,11 +338,17 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
       <Foot back="Company context" onBack={() => goto(0)} next="Next: emotional value →" disabled={!brief.problem.trim()}
         onNext={goEmotional} />
     </>
+    )
   );
 
   if (step === 2) {
     const signalOpts = feelings.length ? feelings.map((f) => f.word) : SIGNAL_FALLBACK;
     return shell(
+      skin === "beta" ? (
+        <BetaEmotional brief={brief} set={set} toggleArr={toggleArr} signalOpts={signalOpts}
+          briefLine={briefLine} briefTags={briefTags} onBack={() => goto(1)}
+          onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
+      ) : (
       <>
         <Head eyebrow="The brief · 3 of 4" title={<>What should the name <em>signal</em>?</>}
           sub="Pick the feelings it should carry." />
@@ -355,6 +366,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
         <Foot back="Brand context" onBack={() => goto(1)} next="Next: naming strategy →" disabled={brief.signal.length < 1}
           onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
       </>
+      )
     );
   }
 
