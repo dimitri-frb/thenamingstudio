@@ -156,7 +156,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
 
             {board.source === "rdap" && (
               <p style={{ fontSize: 12, color: "var(--ink-4)", margin: "12px 2px 0", lineHeight: 1.45 }}>
-                Showing registrable domains (live). Negotiable, aftermarket listings with prices light up once Domainr is connected.
+                Showing registrable domains (live, via RDAP). Negotiable (for-sale) listings appear once the Fastly domain key is connected.
               </p>
             )}
           </>
