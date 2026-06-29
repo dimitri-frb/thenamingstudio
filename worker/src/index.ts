@@ -27,7 +27,9 @@ export interface Env {
   INPI_LOGIN?: string;     // optional: INPI data-account login (for the trademark check)
   INPI_PASSWORD?: string;  // optional: INPI data-account password
   FASTLY_KEY?: string;     // optional: Fastly API token for the Domain Research API
-                           // (Domainr, now part of Fastly): available / negotiable / taken + offers
+                           // (Domainr, now part of Fastly): available / for-sale / taken
+  GODADDY_KEY?: string;    // optional: GoDaddy API key (buy-now prices for for-sale domains)
+  GODADDY_SECRET?: string; // optional: GoDaddy API secret (paired with GODADDY_KEY)
 }
 
 const MODEL = {
@@ -584,6 +586,29 @@ async function fastlyStatus(env: Env, domains: string[]): Promise<Record<string,
   return out;
 }
 
+// GoDaddy buy-now price for a for-sale domain (Afternic "Fast Transfer" inventory
+// shows up as available:true with a price). Price is in micro-units (USD * 1e6),
+// e.g. 1500000000 = $1,500; we read defensively. Soft-fails to null.
+async function godaddyPrice(env: Env, domain: string): Promise<{ price: string } | null> {
+  if (!env.GODADDY_KEY || !env.GODADDY_SECRET) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const url = `https://api.godaddy.com/v1/domains/available?domain=${encodeURIComponent(domain)}&checkType=FULL`;
+    const res = await fetch(url, { signal: ctrl.signal, headers: { authorization: `sso-key ${env.GODADDY_KEY}:${env.GODADDY_SECRET}`, accept: "application/json" } });
+    if (!res.ok) return null;
+    const d: any = await res.json();
+    const raw = Number(d?.price);
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    const dollars = raw >= 100000 ? raw / 1e6 : raw; // micro-units vs plain dollars
+    const cur = String(d?.currency || "USD").toUpperCase();
+    const sym = cur === "USD" ? "$" : cur === "EUR" ? "€" : cur === "GBP" ? "£" : "";
+    const price = sym ? `${sym}${Math.round(dollars).toLocaleString("en-US")}` : `${Math.round(dollars).toLocaleString("en-US")} ${cur}`;
+    return { price };
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
 async function domainBoard(env: Env, name: string): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
@@ -608,14 +633,24 @@ async function domainBoard(env: Env, name: string): Promise<any> {
     Promise.all(variants.map(statusFor)),
   ]);
 
+  // For the for-sale extensions, fetch GoDaddy's buy-now price in parallel, only
+  // those domains, so the founder sees an actual number where one exists.
+  const priceByDomain: Record<string, string> = {};
+  if (env.GODADDY_KEY && env.GODADDY_SECRET) {
+    const forSale = BOARD_TLDS.filter((_, i) => exactStatuses[i].status === "negotiable").map((t) => `${slug}.${t}`);
+    const prices = await Promise.all(forSale.map((d) => godaddyPrice(env, d)));
+    forSale.forEach((d, i) => { if (prices[i]?.price) priceByDomain[d] = prices[i]!.price; });
+  }
+
   const tlds = BOARD_TLDS.map((t, i) => {
     const st = exactStatuses[i];
     const [price, renewal] = BOARD_PRICE[t] || ["$15", "$18/yr"];
+    const dom = `${slug}.${t}`;
     return {
-      domain: `${slug}.${t}`, tld: "." + t, status: st.status, premium: st.premium,
+      domain: dom, tld: "." + t, status: st.status, premium: st.premium,
       price: st.status === "available" && !st.premium ? price : undefined,
       renewal: st.status === "available" && !st.premium ? renewal : undefined,
-      offerPrice: st.offerPrice, offerUrl: st.offerUrl,
+      offerPrice: priceByDomain[dom] || st.offerPrice, offerUrl: st.offerUrl,
     };
   });
   const variantHits = variants
