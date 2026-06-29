@@ -1,17 +1,18 @@
 // Step 10 · Decision. Pick the name from the table, then "Lock in" to celebrate and
 // make it real: grab the domain, the brand book (beta), the logo (coming soon).
 import { useEffect, useRef, useState } from "react";
-import type { Comparison, CompareRow } from "../lib/namingApi";
+import type { Brief, Comparison, CompareRow } from "../lib/namingApi";
 import { Dots, Head } from "./chrome";
-import { availableDomains, slugify, comTaken, godaddyUrl } from "./data";
+import { availableDomains, slugify } from "./data";
+import { DomainContext } from "./DomainContext";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Perfect" : t >= 16 ? "Great" : "Solid"; }
 const verdictClass = (v: string) => (v === "Perfect" ? "fill" : v === "Great" ? "good" : "");
 const bestDomain = (r: CompareRow) => availableDomains(r.name, r.domains, r.suggested)[0];
 
-export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedback }: {
-  comp: Comparison | null; chosen: string; setChosen: (n: string) => void;
+export function Decide({ comp, brief, chosen, setChosen, onBack, onBrandBook, onFeedback }: {
+  comp: Comparison | null; brief: Brief; chosen: string; setChosen: (n: string) => void;
   onBack: () => void; onBrandBook: () => void; onFeedback?: () => void;
 }) {
   const rows = comp ? [...comp.rows].sort((a, b) => smileOf(b) - smileOf(a)) : [];
@@ -33,7 +34,6 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
   if (!comp) return <Head eyebrow="The decision" title={<>Make the call.</>} />;
 
   const slug = slugify(pick?.name || "");
-  const comIsTaken = comTaken(pick?.domains) === true;
   const best = pick ? bestDomain(pick) : undefined;
   const buyList = doms.filter((d) => picked.has(d.domain)).map((d) => d.domain);
   const godaddyFor = buyList[0] || best?.domain || `${slug}.com`;
@@ -64,12 +64,7 @@ export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedbac
           );
         })}
       </div>
-      {comIsTaken && (
-        <a href={godaddyUrl(`${slug}.com`)} target="_blank" rel="noreferrer"
-          style={{ display: "block", marginTop: 10, padding: "9px 11px", borderRadius: "var(--r2)", background: "var(--surface-2)", border: "1px solid var(--line)", fontSize: 12, color: "var(--ink-3)", textDecoration: "none", lineHeight: 1.45 }}>
-          <b style={{ color: "var(--ink-2)", fontWeight: 500 }}>{slug}.com</b> is registered, but registered names are often still for sale on the aftermarket (sometimes premium, hundreds to thousands). Check the price on GoDaddy →
-        </a>
-      )}
+      {pick && <div style={{ marginTop: 10 }}><DomainContext name={pick.name} brief={brief} domains={pick.domains} compact /></div>}
       <a href={godaddy} target="_blank" rel="noreferrer"
         style={{ display: "flex", justifyContent: "center", marginTop: 10, padding: "9px 12px", borderRadius: "var(--rp)", background: "var(--ink)", color: "var(--bg)", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", ...(picked.size ? {} : { opacity: 0.45, pointerEvents: "none" }) }}>
         REGISTER {picked.size > 1 ? `${picked.size} DOMAINS` : "AT GODADDY"} →

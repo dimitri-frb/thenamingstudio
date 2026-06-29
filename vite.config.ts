@@ -52,6 +52,12 @@ function claudeBridge() {
               res.end(JSON.stringify({ ok: false, verdict: "unknown", classes: payload?.classes || [], hits: [] }));
               return;
             }
+            // Live site context for a taken domain (mirrors the Worker's siteInfo).
+            if (phase === "siteinfo") {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify(await siteInfoNode(payload?.domain || "", brief)));
+              return;
+            }
             const prompt = buildPrompt(phase, brief, payload);
             const raw = await runClaude(prompt);
             const json = extractJson(raw);
@@ -84,6 +90,41 @@ function runClaude(prompt: string): Promise<string> {
       else reject(new Error(err.trim() || `claude exited with code ${code}`));
     });
   });
+}
+
+// Dev-only site context (mirrors the Worker's siteInfo): fetch the live page,
+// read title + description, then one claude -p call for the competitor read.
+function decodeEntitiesNode(s: string): string {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, " ").trim();
+}
+async function siteInfoNode(domain: string, brief: any): Promise<any> {
+  const clean = (domain || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!clean || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(clean)) return { ok: false };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
+  let html = "", finalUrl = `https://${clean}`;
+  try {
+    const res = await fetch(`https://${clean}`, { redirect: "follow", signal: ctrl.signal,
+      headers: { "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0)", accept: "text/html" } });
+    finalUrl = res.url || finalUrl;
+    if (res.ok) html = (await res.text()).slice(0, 120000);
+  } catch { /* unreachable */ } finally { clearTimeout(timer); }
+  if (!html) return { ok: false, url: finalUrl };
+  const pick = (re: RegExp) => { const m = html.match(re); return m ? decodeEntitiesNode(m[1]) : ""; };
+  const title = pick(/<title[^>]*>([^<]{1,200})<\/title>/i) || pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+  const desc = pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{1,400})["']/i)
+    || pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{1,400})["']/i);
+  const blob = (title + " " + desc).toLowerCase();
+  const parked = /domain (is )?for sale|buy this domain|is parked|sedo|afternic|dan\.com|hugedomains/.test(blob) && blob.length < 140;
+  let competitor = false, note = "";
+  if ((title + desc).trim().length > 8 && !parked && brief?.does) {
+    try {
+      const out = extractJson(await runClaude(`Brief: "${String(brief.does).slice(0, 300)}" (industry: ${brief.industry || "n/a"}). The wanted domain is used by a site: Title: ${title} Description: ${desc}. Is this an ACTUAL company in the SAME space (a real naming conflict), not unrelated/personal/parked? Reply ONLY JSON: {"competitor": true|false, "note": "<max 12 words: what the site is>"}`));
+      if (out) { competitor = !!out.competitor; note = String(out.note || "").slice(0, 90); }
+    } catch { /* keep competitor=false */ }
+  }
+  return { ok: true, url: finalUrl, title: title.slice(0, 120), desc: desc.slice(0, 240), parked, competitor, note };
 }
 
 // Dev-only RDAP domain availability (mirrors the Worker's domainsFor).

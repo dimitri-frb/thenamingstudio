@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
 import { Head, Star, Thinking, Info } from "./chrome";
+import { DomainContext } from "./DomainContext";
 
 // A lively SMILE score: coloured pips (green/amber by strength) plus the number,
 // far friendlier than flat black dots.
@@ -167,6 +168,10 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
           <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "var(--ink-2)" }}>{comp.why}</span>
         </div>
       </div>
+
+      {/* For the founder's pick, look up who actually holds the .com (safe play vs
+          a real competitor in their space). One lazy lookup, only for the star. */}
+      {star && <DomainContext name={star} brief={brief} domains={dom[star]?.domains ?? comp.rows.find((r) => r.name === star)?.domains} />}
 
       <div className="cx-foot">
         <span className="link" onClick={onBack}>← Name ideas</span>

@@ -76,6 +76,13 @@ export default {
       return json(await domainsFor(body?.payload?.name || ""), env);
     }
 
+    // What's actually on a (taken) domain, plus whether it looks like a real
+    // competitor in the founder's space. Fetches the live site, reads title +
+    // description, then one fast Claude call for the "same-space?" read.
+    if (phase === "siteinfo") {
+      return json(await siteInfo(env, body?.payload?.domain || "", body?.brief), env);
+    }
+
     // Real INPI trademark check for ONE name, class-aware: is there a live French/EU
     // mark with this wording in the Nice classes that matter for THIS brand? A mark
     // in a different class is fine. No Claude call. Soft-fails to "unknown" so the
@@ -412,6 +419,56 @@ const PRICE: Record<string, [string, string]> = {
 const NAME_TWEAKS = (slug: string) => [
   `join${slug}`, `try${slug}`, `get${slug}`, `use${slug}`, `the${slug}`, `${slug}app`, `${slug}hq`,
 ];
+
+function decodeEntities(s: string): string {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, " ").trim();
+}
+
+// Best-effort look at who's behind a (taken) domain: fetch the live site, read its
+// title + description, then one fast Claude call for "is this a real competitor in
+// the founder's space?". Soft-fails to {ok:false} so the UI degrades gracefully.
+async function siteInfo(env: Env, domain: string, brief: any): Promise<any> {
+  const clean = (domain || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!clean || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(clean)) return { ok: false };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 7000);
+  let html = "", finalUrl = `https://${clean}`;
+  try {
+    const res = await fetch(`https://${clean}`, {
+      redirect: "follow", signal: ctrl.signal,
+      headers: { "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0; +https://thenamingstudio)", accept: "text/html" },
+    });
+    finalUrl = res.url || finalUrl;
+    if (res.ok) html = (await res.text()).slice(0, 120000);
+  } catch { /* unreachable / blocked / timeout */ }
+  finally { clearTimeout(t); }
+  if (!html) return { ok: false, url: finalUrl };
+
+  const pick = (re: RegExp) => { const m = html.match(re); return m ? decodeEntities(m[1]) : ""; };
+  const title = pick(/<title[^>]*>([^<]{1,200})<\/title>/i)
+    || pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+  const desc = pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{1,400})["']/i)
+    || pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{1,400})["']/i)
+    || pick(/<meta[^>]+content=["']([^"']{1,400})["'][^>]+name=["']description["']/i);
+
+  // Parked / for-sale placeholder, never treat as a competitor.
+  const blob = (title + " " + desc).toLowerCase();
+  const parked = /domain (is )?for sale|buy this domain|is parked|sedo|afternic|dan\.com|hugedomains/.test(blob) && blob.length < 140;
+
+  let competitor = false, note = "";
+  if ((title + desc).trim().length > 8 && !parked && brief?.does) {
+    try {
+      const prompt = `A founder is naming a company. Their brief: "${String(brief.does).slice(0, 300)}" (industry: ${brief.industry || "n/a"}).\n\n` +
+        `The domain they wanted is already used by a site:\nTitle: ${title}\nDescription: ${desc}\n\n` +
+        `Is this existing site an ACTUAL company operating in the SAME space (a real naming/brand conflict), as opposed to unrelated, a personal site, or parked? ` +
+        `Reply ONLY JSON: {"competitor": true|false, "note": "<max 12 words: what the site is>"}`;
+      const out = parseJSON(await callClaude(env, MODEL.fast, prompt, 120));
+      if (out) { competitor = !!out.competitor; note = String(out.note || "").slice(0, 90); }
+    } catch { /* leave competitor=false if the read fails */ }
+  }
+  return { ok: true, url: finalUrl, title: title.slice(0, 120), desc: desc.slice(0, 240), parked, competitor, note };
+}
 
 // Real availability for ONE name, in the founder's priority order:
 //   1. the name itself on .com, .app, .io (each verified via RDAP)

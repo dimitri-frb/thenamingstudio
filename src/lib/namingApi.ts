@@ -197,6 +197,29 @@ export function fetchDomains(name: string): Promise<DomResult> {
   return p;
 }
 
+// Who's behind a (taken) domain: the live site's title + description, and whether
+// it looks like a real competitor in the founder's space. Cached per domain.
+export interface SiteInfo { ok: boolean; url?: string; title?: string; desc?: string; parked?: boolean; competitor?: boolean; note?: string }
+const siteCache = new Map<string, Promise<SiteInfo>>();
+export function fetchSiteInfo(domain: string, brief?: Brief): Promise<SiteInfo> {
+  const key = (domain || "").trim().toLowerCase();
+  if (!key) return Promise.resolve({ ok: false });
+  const hit = siteCache.get(key);
+  if (hit) return hit;
+  const p = (async (): Promise<SiteInfo> => {
+    if (ENDPOINT) {
+      try {
+        const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "siteinfo", brief, payload: { domain } }) });
+        if (res.ok) { const d = await res.json(); if (d && !d.error) return d as SiteInfo; }
+      } catch { /* ignore */ }
+    }
+    return { ok: false };
+  })();
+  siteCache.set(key, p);
+  p.then((r) => { if (!r.ok) siteCache.delete(key); }).catch(() => siteCache.delete(key));
+  return p;
+}
+
 // Real INPI trademark availability for one name, filtered to the brand's Nice
 // classes (its own request on the Worker). Not logged. Soft-fails to "unknown".
 export async function fetchInpi(name: string, classes: number[]): Promise<InpiResult> {
