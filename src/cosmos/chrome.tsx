@@ -61,7 +61,7 @@ function CxBar({ step, total, reached = step, onBack, onForward, right }: { step
       <button className="back" onClick={onBack} title="Back">←</button>
       <button className="back" onClick={onForward} disabled={!canFwd} title="Forward"
         style={canFwd ? undefined : { opacity: 0.3, cursor: "default" }}>→</button>
-      <span className="sno">{String(step + 1).padStart(2, "0")} / {total}</span>
+      <span className="sno">{String(step + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}</span>
       <div className="cx-prog">
         {Array.from({ length: total }).map((_, i) => <span key={i} className={i <= step ? "on" : ""} />)}
       </div>
