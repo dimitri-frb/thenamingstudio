@@ -269,10 +269,13 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", flex: "0 0 auto" }}>
         <h1 className="h1" style={{ fontSize: 24, display: "inline-flex", alignItems: "center", gap: 8 }}>
           One word in focus. <em>Its world, listed.</em>
-          <Info>Each column groups words by <b>how they relate</b> to your focus word, by meaning, sound, roots, translation, and more. Hover a word for two moves: <b>explore</b> it (make it the new focus) or <b>save</b> it to your shortlist.</Info>
+          <Info>Each column groups words by <b>how they relate</b> to your focus word, by meaning, sound, roots, translation, and more. <b>Click a word</b> to dive into its world; press <b>Save</b> to keep one for your shortlist.</Info>
         </h1>
-        <span className="sub" style={{ fontSize: 14, flex: 1, minWidth: 200 }}>
-          Hover any word to explore it deeper, or save it for later.
+        {/* Plain legend so the two moves are obvious (testers missed the old icons). */}
+        <span className="explore-legend">
+          <span><b>Click a word</b> to explore its world</span>
+          <span className="sep">·</span>
+          <span><b>Save</b> the ones you like, they gather on the right →</span>
         </span>
       </div>
 
@@ -314,10 +317,10 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
                   <span className="src">← from {world}</span>
                 </div>
                 <p className="seeddef">{focus.def}</p>
-                <span className="acts seedsave" style={{ opacity: 1 }}>
-                  <span className="a savebtn" style={{ fontSize: 12, padding: "7px 14px" }} onClick={() => toggleSave(focus.word)}>
-                    {isSaved(focus.word) ? "✓ saved" : `★ save “${focus.word}”`}
-                  </span>
+                <span className="seedsave">
+                  <button className={"savepill lg" + (isSaved(focus.word) ? " on" : "")} onClick={() => toggleSave(focus.word)}>
+                    {isSaved(focus.word) ? "✓ Saved" : `+ Save “${focus.word}”`}
+                  </button>
                 </span>
               </div>
               <div className="relcolsD">
@@ -332,14 +335,16 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
                       {wordsFor(rel).map((w, wi) => {
                         const sv = isSaved(w.w);
                         return (
-                          <div key={w.w + wi} className={"rwrow" + (sv ? " saved" : "")}>
-                            <span className="rw">{w.w}</span>
-                            <span className="rn">{w.lang ? w.lang + " · " : ""}{w.note}</span>
-                            {sv && <span className="savedflag">★</span>}
-                            <span className="acts">
-                              <span className="a go" title={`Explore “${w.w}”`} onClick={() => explore(w.w)}>→</span>
-                              <span className="a savebtn" title={sv ? "Saved" : "Save to shortlist"} onClick={() => toggleSave(w.w)}>{sv ? "✓" : "★"}</span>
+                          <div key={w.w + wi} className={"wordrow" + (sv ? " saved" : "")} onClick={() => explore(w.w)} title={`Explore “${w.w}”`}>
+                            <span className="wr-main">
+                              <span className="rw">{w.w}</span>
+                              <span className="rn">{w.lang ? w.lang + " · " : ""}{w.note}</span>
                             </span>
+                            <span className="wr-explore">explore →</span>
+                            <button className={"savepill" + (sv ? " on" : "")} title={sv ? "Saved, click to remove" : "Save to shortlist"}
+                              onClick={(e) => { e.stopPropagation(); toggleSave(w.w); }}>
+                              {sv ? "✓ Saved" : "+ Save"}
+                            </button>
                           </div>
                         );
                       })}

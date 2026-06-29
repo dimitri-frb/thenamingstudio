@@ -473,6 +473,40 @@ table.cmp td.c { white-space: nowrap; }
 .rwrow.saved .acts .a.savebtn { color: var(--ink); border-color: var(--ink-3); }
 .rwrow .savedflag { color: var(--ink); font-size: 13px; flex: 0 0 auto; }
 
+/* ─────────── Step 6 · redesigned word rows (clear, labeled actions) ───────────
+   Click the whole row to explore that word; an always-visible, labeled Save pill
+   keeps it for the shortlist. Replaces the cryptic hover-only star/arrow icons. */
+.explore-legend { display: inline-flex; align-items: center; gap: 9px; flex-wrap: wrap; flex: 1; min-width: 200px; font-size: 13px; color: var(--ink-3); line-height: 1.4; }
+.explore-legend b { color: var(--ink-2); font-weight: 600; }
+.explore-legend .sep { color: var(--ink-4); }
+
+.relcolsD .items { gap: 2px; }
+.wordrow {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 6px 9px; border-radius: var(--r1); cursor: pointer; position: relative;
+  transition: background .12s ease;
+}
+.wordrow:hover { background: var(--surface-3); }
+.wordrow.saved { background: var(--surface-3); }
+.wordrow .wr-main { display: flex; flex-direction: column; gap: 0; min-width: 0; flex: 1; }
+.wordrow .rw { font-family: var(--serif); font-size: 16px; line-height: 1.15; letter-spacing: -0.005em; color: var(--ink); }
+.wordrow .rn { font-size: 10.5px; color: var(--ink-3); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wordrow .wr-explore {
+  flex: 0 0 auto; font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3); opacity: 0; transition: opacity .12s ease; white-space: nowrap;
+}
+.wordrow:hover .wr-explore { opacity: 1; }
+
+/* labeled Save pill, shared by the rows and the focus header (.lg) */
+.savepill {
+  flex: 0 0 auto; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: var(--rp); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  cursor: pointer; white-space: nowrap; transition: border-color .14s ease, color .14s ease, background .14s ease;
+}
+.savepill:hover { border-color: var(--ink-3); color: var(--ink); }
+.savepill.on { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.savepill.lg { font-size: 10.5px; padding: 7px 14px; }
+
 
 /* Full-screen host for the flow inside the app (the design assumed the whole viewport). */
 .cosmos-root { position: fixed; inset: 0; z-index: 40; background: #F4F3EF; }
@@ -536,9 +570,10 @@ table.cmp td.c { white-space: nowrap; }
   .focusD-head .seeddef { border-left: none; padding-left: 0; padding-top: 0; flex-basis: 100%; }
   .focusD-head .seedsave { margin-left: 0; }
   .relcolsD { padding: 12px 14px; gap: 14px; }
-  .relcolsD .rwrow { height: auto; flex-direction: row; align-items: center; padding: 7px 0; }
-  .relcolsD .rwrow .acts { position: static; transform: none; padding-left: 8px; margin-left: auto; background: none; }
-  .relcolsD .rwrow .rn { display: none; }
+  /* compact word rows on phones: hide the relation note, keep the Save pill */
+  .wordrow { padding: 8px 8px; }
+  .wordrow .rn { display: none; }
+  .wordrow .wr-explore { display: none; }
 
   /* Step 7 (Name ideas) — stack the two columns, each at its natural height. */
   .namecols { display: flex; flex-direction: column; }
