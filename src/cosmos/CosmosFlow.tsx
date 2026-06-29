@@ -410,7 +410,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   if (step === 8) return (
     <>
       {shell(
-        <Decide comp={comp} brief={brief} chosen={chosenFinal} setChosen={setChosenFinal}
+        <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
           onBack={() => goto(7)} onBrandBook={requestBrandBook} onFeedback={() => setFeedbackOpen(true)} />
       )}
       {brandBookOpen && chosenFinal && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}

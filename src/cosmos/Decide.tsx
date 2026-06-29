@@ -1,22 +1,22 @@
 // Step 10 · Decision. Pick the name from the table, then "Lock in" to celebrate and
 // make it real: grab the domain, the brand book (beta), the logo (coming soon).
 import { useEffect, useRef, useState } from "react";
-import type { Brief, Comparison, CompareRow } from "../lib/namingApi";
+import type { Comparison, CompareRow } from "../lib/namingApi";
 import { Dots, Head } from "./chrome";
-import { availableDomains, slugify } from "./data";
-import { DomainContext } from "./DomainContext";
+import { availableDomains, slugify, godaddyUrl } from "./data";
 
 function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.intuitive + r.visual + r.sound + r.emotional) / 4))); }
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Perfect" : t >= 16 ? "Great" : "Solid"; }
 const verdictClass = (v: string) => (v === "Perfect" ? "fill" : v === "Great" ? "good" : "");
 const bestDomain = (r: CompareRow) => availableDomains(r.name, r.domains, r.suggested)[0];
 
-export function Decide({ comp, brief, chosen, setChosen, onBack, onBrandBook, onFeedback }: {
-  comp: Comparison | null; brief: Brief; chosen: string; setChosen: (n: string) => void;
+export function Decide({ comp, chosen, setChosen, onBack, onBrandBook, onFeedback }: {
+  comp: Comparison | null; chosen: string; setChosen: (n: string) => void;
   onBack: () => void; onBrandBook: () => void; onFeedback?: () => void;
 }) {
   const rows = comp ? [...comp.rows].sort((a, b) => smileOf(b) - smileOf(a)) : [];
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // Exactly one domain can be locked; "Register" then opens that domain's link.
+  const [picked, setPicked] = useState<string>("");
   const [locked, setLocked] = useState(false);
 
   useEffect(() => { if (!chosen && comp) setChosen(comp.recommended || comp.rows[0]?.name || ""); /* eslint-disable-next-line */ }, [comp]);
@@ -27,7 +27,7 @@ export function Decide({ comp, brief, chosen, setChosen, onBack, onBrandBook, on
   useEffect(() => {
     if (defaultedFor.current === chosen) return;
     defaultedFor.current = chosen;
-    setPicked(doms[0] ? new Set([doms[0].domain]) : new Set());
+    setPicked(doms[0]?.domain || "");
     /* eslint-disable-next-line */
   }, [chosen, doms.length]);
 
@@ -35,10 +35,9 @@ export function Decide({ comp, brief, chosen, setChosen, onBack, onBrandBook, on
 
   const slug = slugify(pick?.name || "");
   const best = pick ? bestDomain(pick) : undefined;
-  const buyList = doms.filter((d) => picked.has(d.domain)).map((d) => d.domain);
-  const godaddyFor = buyList[0] || best?.domain || `${slug}.com`;
-  const godaddy = `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(godaddyFor)}`;
-  const toggle = (d: string) => setPicked((p) => { const n = new Set(p); n.has(d) ? n.delete(d) : n.add(d); return n; });
+  // The one locked domain decides where "Register" goes (its own registrar link).
+  const claimDomain = picked || best?.domain || `${slug}.com`;
+  const claimUrl = godaddyUrl(claimDomain);
 
   // ── The domain "grab" block, shared by both views ──
   const domainBlock = (
@@ -47,27 +46,27 @@ export function Decide({ comp, brief, chosen, setChosen, onBack, onBrandBook, on
         <span className="lbl" style={{ fontSize: 9.5 }}>01</span>
         <div style={{ fontFamily: "var(--serif)", fontSize: 17, letterSpacing: "-0.01em" }}>Grab the domain</div>
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{picked.size} selected</span>
+        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>pick one</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {doms.length === 0 && <span style={{ fontSize: 13, color: "var(--ink-4)" }}>No exact domain free, the name may still be worth it, or try a variant.</span>}
         {doms.map((d) => {
-          const on = picked.has(d.domain);
+          const on = picked === d.domain;
           return (
             <label key={d.domain} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", cursor: "pointer" }}>
-              <span style={{ width: 17, height: 17, flex: "0 0 auto", borderRadius: 5, border: "1.5px solid " + (on ? "var(--ink)" : "var(--line)"), background: on ? "var(--ink)" : "transparent", display: "grid", placeItems: "center" }}>
-                {on && <span style={{ color: "var(--surface)", fontSize: 11, lineHeight: 1 }}>✓</span>}
+              <span style={{ width: 17, height: 17, flex: "0 0 auto", borderRadius: "50%", border: "1.5px solid " + (on ? "var(--ink)" : "var(--line)"), display: "grid", placeItems: "center" }}>
+                {on && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ink)" }} />}
               </span>
-              <input type="checkbox" checked={on} onChange={() => toggle(d.domain)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+              <input type="radio" name="lockdomain" checked={on} onChange={() => setPicked(d.domain)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
               <span style={{ fontFamily: "var(--serif)", fontSize: 16, flex: 1 }}>{d.domain}</span>
+              {d.price && <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{d.price}</span>}
             </label>
           );
         })}
       </div>
-      {pick && <div style={{ marginTop: 10 }}><DomainContext name={pick.name} brief={brief} domains={pick.domains} compact /></div>}
-      <a href={godaddy} target="_blank" rel="noreferrer"
-        style={{ display: "flex", justifyContent: "center", marginTop: 10, padding: "9px 12px", borderRadius: "var(--rp)", background: "var(--ink)", color: "var(--bg)", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", ...(picked.size ? {} : { opacity: 0.45, pointerEvents: "none" }) }}>
-        REGISTER {picked.size > 1 ? `${picked.size} DOMAINS` : "AT GODADDY"} →
+      <a href={claimUrl} target="_blank" rel="noreferrer"
+        style={{ display: "flex", justifyContent: "center", marginTop: 10, padding: "9px 12px", borderRadius: "var(--rp)", background: "var(--ink)", color: "var(--bg)", fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", ...(picked ? {} : { opacity: 0.45, pointerEvents: "none" }) }}>
+        {picked ? `REGISTER ${picked.toUpperCase()} →` : "PICK A DOMAIN →"}
       </a>
     </div>
   );
