@@ -25,7 +25,7 @@ function Pips({ score }: { score: number }) {
     <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < score ? color : "var(--line)" }} />)}</span>;
 }
 
-const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "Negotiable", taken: "Taken", unknown: "Unknown" };
+const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "For sale", taken: "Taken", unknown: "Unknown" };
 const STATUS_CLASS: Record<string, string> = { available: "avail", negotiable: "nego", taken: "taken", unknown: "taken" };
 
 export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn }: {
@@ -122,7 +122,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
           <span style={{ fontFamily: "var(--serif)", fontSize: 30, letterSpacing: "-0.02em" }}>{active?.name}</span>
           <span className={"tag " + verdictClass(verdict)}>{verdict}</span>
-          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{availCount} available{negoCount ? ` · ${negoCount} negotiable` : ""}</span>
+          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{availCount} available{negoCount ? ` · ${negoCount} for sale` : ""}</span>
           <span style={{ flex: 1 }} />
           {active?.verdict && <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14.5, color: "var(--ink-2)", maxWidth: 360, textAlign: "right" }}>{active.verdict}</span>}
         </div>
@@ -156,7 +156,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
 
             {board.source === "rdap" && (
               <p style={{ fontSize: 12, color: "var(--ink-4)", margin: "12px 2px 0", lineHeight: 1.45 }}>
-                Showing registrable domains (live, via RDAP). Negotiable (for-sale) listings appear once the Fastly domain key is connected.
+                Showing registrable domains (live, via RDAP). For-sale (aftermarket) listings appear once the Fastly domain key is connected.
               </p>
             )}
           </>
@@ -187,7 +187,7 @@ function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
       <span className={"dchip " + cls}>● {label}{card.status === "available" && card.price ? ` · ${card.price}` : ""}{card.status === "negotiable" && card.offerPrice ? ` · ${card.offerPrice}` : ""}</span>
       <div style={{ marginTop: "auto", paddingTop: 6 }}>
         {card.status === "available" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Register →</a>}
-        {card.status === "negotiable" && <a href={card.offerUrl || godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">{card.offerPrice ? "Buy / make an offer →" : "Make an offer →"}</a>}
+        {card.status === "negotiable" && <a href={card.offerUrl || godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">{card.offerPrice ? `Buy · ${card.offerPrice} →` : "See price →"}</a>}
         {card.status === "taken" && card.tld === ".com"
           ? <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink" style={{ color: "var(--ink-3)" }} title="See who's on it below">Taken</a>
           : card.status === "taken" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Taken</span>}
@@ -201,7 +201,7 @@ function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
 
 function HeadC() {
   return (
-    <Head eyebrow={<>The domains <Info>For your pick we check a broad set of extensions live. <b>Available</b> you can register now (with price), <b>Negotiable</b> is taken but for sale on the aftermarket, <b>Taken</b> is in use, hover the .com to see who.</Info></>}
+    <Head eyebrow={<>The domains <Info>For your pick we check a broad set of extensions live. <b>Available</b> you can register now (with price), <b>For sale</b> is taken but listed on the aftermarket (click to see the price), <b>Taken</b> is in use, hover the .com to see who.</Info></>}
       title={<>Now, <em>claim the domain.</em></>}
       sub="A great name is only great if you can own it. Here's where your pick can live, what you can register, and what's up for negotiation." />
   );
