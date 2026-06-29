@@ -41,9 +41,9 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   const [feelings, setFeelings] = useState<Feeling[]>(R?.feelings ?? test?.feelings ?? []);
   const [feelingsBusy, setFeelingsBusy] = useState(false);   // feelings load in the background, so step 2->3 is instant
   const [concepts, setConcepts] = useState<Concept[]>(R?.concepts ?? test?.concepts ?? []);
-  // Concepts are auto-generated (no manual pick step); `chosen` only carries a
-  // restored/test selection, so exploration can still honour a pre-seeded subset.
-  const [chosen] = useState<Set<string>>(new Set(R?.chosen ?? test?.chosen ?? []));
+  // Concepts are generated behind the scenes, then the founder picks the territories
+  // to explore on the Concepts step; `chosen` holds that pick (and seeds exploration).
+  const [chosen, setChosen] = useState<Set<string>>(new Set(R?.chosen ?? test?.chosen ?? []));
 
   const [saved, setSaved] = useState<SavedIdea[]>(R?.saved ?? test?.saved ?? []);          // step 5 → 6
   const [shortlist, setShortlist] = useState<string[]>(R?.shortlist ?? test?.shortlist ?? []); // step 6 → 7
@@ -88,7 +88,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   // moving to the decision screen.
   function lockIn(name: string) {
     if (name) setChosenFinal(name);
-    openGate(name, () => goto(8));
+    openGate(name, () => goto(9));
   }
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -223,7 +223,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   const compWarm = useRef<{ sig: string; inflight: string }>({ sig: "", inflight: "" });
   const sigOf = (names: string[]) => [...names].sort().join("|");
   useEffect(() => {
-    if (test || step !== 5 || shortlist.length < 1) return;
+    if (test || step !== 6 || shortlist.length < 1) return;
     const sig = sigOf(shortlist);
     if (compWarm.current.sig === sig || compWarm.current.inflight === sig) return;
     const t = setTimeout(() => {
@@ -254,7 +254,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
       step={step}
       wide={opts?.wide}
       skin={skin}
-      reached={test ? 8 : maxReached}
+      reached={test ? 9 : maxReached}
       barRight={opts?.barRight}
       topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : opts?.topRight}
       onBack={() => (step > 0 ? goto(step - 1) : onRestart())}
@@ -373,7 +373,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
           {brief.lanes.length ? brief.lanes.map((k) => LANES.find((l) => l.key === k)?.name).filter(Boolean).join(" · ") : "Pick a few lanes to focus the search."}
         </span>
       </div>
-      <Foot back="Emotional value" onBack={() => goto(2)} next="Explore the words →" disabled={brief.lanes.length < 1}
+      <Foot back="Emotional value" onBack={() => goto(2)} next="See the concepts →" disabled={brief.lanes.length < 1}
         onNext={() => {
           if (concepts.length) goto(4); // already warmed (or seeded) → instant
           else generate(["Thinking like a strategist…", "Mapping the worlds your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);
@@ -381,38 +381,65 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
     </>
   );
 
-  // ── Heavier screens (own modules), each loads its own data on mount ──
-  // Concepts are generated behind the scenes (no manual pick step); explore them all.
+  // Concepts (territories) are generated from the brief; the founder picks which
+  // ones to explore here, and that pick seeds exploration's "← from X" provenance.
+  // No pick = explore them all.
   const chosenConcepts = chosen.size ? concepts.filter((c) => chosen.has(c.title)) : concepts;
+  const toggleConcept = (title: string) =>
+    setChosen((prev) => { const n = new Set(prev); n.has(title) ? n.delete(title) : n.add(title); return n; });
 
+  // ── Step 5 · Concepts — pick the territories to explore ──
   if (step === 4) return shell(
-    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(5)} initial={test?.exploreSeed} store={exploreStore.current} />,
+    <>
+      <Head eyebrow="The territories" title={<>The <em>worlds</em> your brand could live in.</>}
+        sub="Each is a different angle on your story. Pick the ones that feel right, the word exploration starts from there." />
+      <div className="cgrid">
+        {concepts.map((c) => {
+          const on = chosen.has(c.title);
+          return (
+            <div key={c.title} className={"concept" + (on ? " on" : "")} onClick={() => toggleConcept(c.title)}>
+              <div className="ct">{c.title}<Star on={on} /></div>
+              {c.lane && <span className="tag" style={{ alignSelf: "flex-start" }}>{c.lane}</span>}
+              <p className="cd">{c.blurb}</p>
+            </div>
+          );
+        })}
+      </div>
+      <Foot back="Naming strategy" onBack={() => goto(3)} next="Explore the words →"
+        onNext={() => goto(5)} />
+    </>,
+    { barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>{chosen.size || "all"} {chosen.size === 1 ? "world" : "worlds"}</span> }
+  );
+
+  // ── Heavier screens (own modules), each loads its own data on mount ──
+  if (step === 5) return shell(
+    <Explore brief={brief} concepts={chosenConcepts} saved={saved} setSaved={setSaved} onDone={() => goto(6)} initial={test?.exploreSeed} store={exploreStore.current} />,
     { wide: true, topRight: <span className="lbl">Exploration</span>, barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>★ {saved.length} saved</span> }
   );
 
-  if (step === 5) return shell(
+  if (step === 6) return shell(
     <Shortlist brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
-      onDone={() => { if (!test && compWarm.current.sig !== sigOf(shortlist)) setComp(null); goto(6); }} initialRows={test?.shortlistRows} />,
+      onDone={() => { if (!test && compWarm.current.sig !== sigOf(shortlist)) setComp(null); goto(7); }} initialRows={test?.shortlistRows} />,
     { barRight: <span className="lbl" style={{ flex: "0 0 auto" }}>{shortlist.length} / 10 shortlisted</span> }
   );
 
-  if (step === 6) return shell(
+  if (step === 7) return shell(
     <Compare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
-      onBack={() => goto(5)} onDone={() => goto(7)}
+      onBack={() => goto(6)} onDone={() => goto(8)}
       onLockIn={() => lockIn(comp?.recommended || comp?.rows?.[0]?.name || chosenFinal)} />
   );
 
-  if (step === 7) return shell(
+  if (step === 8) return shell(
     <Share brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
-      onBack={() => goto(6)} onSkip={() => goto(8)} onDone={() => goto(8)}
+      onBack={() => goto(7)} onSkip={() => goto(9)} onDone={() => goto(9)}
       onCapture={(email) => captureLead(brief, email, chosenFinal || comp?.recommended || "")} />
   );
 
-  if (step === 8) return (
+  if (step === 9) return (
     <>
       {shell(
         <Decide comp={comp} chosen={chosenFinal} setChosen={setChosenFinal}
-          onBack={() => goto(7)} onBrandBook={requestBrandBook} onFeedback={() => setFeedbackOpen(true)} />
+          onBack={() => goto(8)} onBrandBook={requestBrandBook} onFeedback={() => setFeedbackOpen(true)} />
       )}
       {brandBookOpen && chosenFinal && <BrandBook brief={brief} name={chosenFinal} onClose={() => setBrandBookOpen(false)} />}
       {feedbackOpen && <Feedback fromName={fromName} email={email} onClose={() => setFeedbackOpen(false)} />}

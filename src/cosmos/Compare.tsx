@@ -9,7 +9,6 @@ import {
   type DomainBoardData, type DomainCard,
 } from "../lib/namingApi";
 import { Head, Thinking, Info } from "./chrome";
-import { godaddyUrl } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -147,10 +146,10 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
                 <span className="lbl">Also free, a close variant</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                   {board.variants.map((v) => (
-                    <a key={v.domain} href={godaddyUrl(v.domain)} target="_blank" rel="noreferrer" className="dvar">
+                    <span key={v.domain} className="dvar">
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--good)" }} />
                       <span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{v.domain}</span>
-                      <span style={{ fontSize: 11, color: "var(--good)" }}>{v.price}</span>
-                    </a>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -187,7 +186,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   );
 }
 
-// One claimable domain card: name, status chip (with price), and its action.
+// One domain card: name + availability status only. Claiming/registering happens
+// later, on the Decision screen, so there are no register/price/buy actions here.
 function DomainCardView({ card }: { card: DomainCard }) {
   const cls = STATUS_CLASS[card.status] || "taken";
   const label = STATUS_LABEL[card.status] || "Taken";
@@ -197,19 +197,15 @@ function DomainCardView({ card }: { card: DomainCard }) {
         <span className="dom">{card.domain}</span>
         {card.premium && <span className="lbl" style={{ fontSize: 8.5, color: "var(--watch)" }}>Premium</span>}
       </div>
-      <span className={"dchip " + cls}>● {label}{card.status === "available" && card.price ? ` · ${card.price}` : ""}{card.status === "negotiable" && card.offerPrice ? ` · ${card.offerPrice}` : ""}</span>
-      <div style={{ marginTop: "auto", paddingTop: 6 }}>
-        {card.status === "available" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Register →</a>}
-        {card.status === "negotiable" && <a href={card.offerUrl || godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">{card.offerPrice ? `Buy · ${card.offerPrice} →` : "See price →"}</a>}
-      </div>
+      <span className={"dchip " + cls}>● {label}</span>
     </div>
   );
 }
 
 function HeadC() {
   return (
-    <Head eyebrow={<>The domains <Info>For your pick we check a broad set of extensions live. <b>Available</b> you can register now (with price), <b>For sale</b> is taken but listed on the aftermarket (click to see the price), <b>Taken</b> is in use, hover the .com to see who.</Info></>}
-      title={<>Now, <em>claim the domain.</em></>}
-      sub="A great name is only great if you can own it. Here's where your pick can live, what you can register, and what's up for negotiation." />
+    <Head eyebrow={<>The domains <Info>For your pick we check a broad set of extensions live. <b>Available</b> is free to register, <b>For sale</b> is taken but listed on the aftermarket, <b>Taken</b> is in use. You register your final pick at the very end.</Info></>}
+      title={<>Now, <em>see where it can live.</em></>}
+      sub="A great name is only great if you can own it. Here's where your pick is open, for sale, or taken. You'll register the one you choose at the end." />
   );
 }

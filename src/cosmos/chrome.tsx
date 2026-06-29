@@ -12,7 +12,7 @@ export type Skin = "beta" | undefined;
 
 export const CXSTEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Exploration", "Name ideas", "Comparison", "Share & vote", "Decision",
+  "Concepts", "Exploration", "Name ideas", "Comparison", "Share & vote", "Decision",
 ];
 
 export function CxBrand() {
