@@ -31,7 +31,9 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
 }) {
   // A restored board (we've been here before) takes priority over the test seed.
   const restored = store && store.focus ? store : null;
-  const [active, setActive] = useState(restored?.active ?? 0);
+  // Concepts now seed exploration behind the scenes (no on-page world switcher);
+  // we anchor to the first generated world. `active` is kept for the prefetch cache.
+  const [active] = useState(restored?.active ?? 0);
   const world = concepts[active]?.title || "your idea";
 
   const [focus, setFocus] = useState<{ word: string; def: string }>(restored?.focus ?? initial?.focus ?? { word: "", def: "" });
@@ -281,28 +283,15 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
 
       <div className="explore-cols">
 
-        {/* LEFT — nav + concept worlds */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* MAIN — back/forward nav + explore input + focus + word lists */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="bf">
               <span className={"nv" + (hist.length ? "" : " off")} onClick={back} title="Back">←</span>
               <span className={"nv" + (future.length ? "" : " off")} onClick={fwd} title="Forward">→</span>
             </span>
+            <div style={{ flex: 1, minWidth: 0 }}><ExploreInput onSubmit={explore} /></div>
           </div>
-          <span className="lbl">Concept · world</span>
-          <div className="cswitch">
-            {concepts.map((c, i) => (
-              <button key={c.title} className={"cbtn" + (i === active ? " on" : "")} onClick={() => setActive(i)}>
-                <span className="ct">{c.title}</span>
-                <span className="cg">{i === active ? "exploring this world" : c.lane}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* CENTER — explore input + focus + word lists (all relation groups always shown) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0, minWidth: 0 }}>
-          <ExploreInput onSubmit={explore} />
 
           {loading ? (
             <div className="focusD" style={{ alignItems: "center", justifyContent: "center" }}>
