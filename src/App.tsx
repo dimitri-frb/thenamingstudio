@@ -12,6 +12,7 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
+import { StartGate } from "./cosmos/StartGate";
 import { MOCK } from "./cosmos/mock";
 import { AdminPage } from "./admin/AdminPage";
 import { newProcess } from "./lib/requestLog";
@@ -53,6 +54,16 @@ export default function App() {
   const [results, setResults] = useState<NameIdea[]>([]);
   const [checkout, setCheckout] = useState<PlanId | null>(null);
   const [seedBrief, setSeedBrief] = useState<StudioBrief | null>(null);
+  // "Connect" gate shown on Start a brief: capture an email (ideally via Google)
+  // so we can send the results. Skipped once we already have one. `pendingStart`
+  // holds where to go after connecting.
+  const [startGate, setStartGate] = useState<null | "classic" | "talk">(null);
+  const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
+  const beginFlow = (to: "classic" | "talk") => {
+    if (to === "classic") newProcess();
+    if (hasEmail()) { setScreen(to); return; }
+    setStartGate(to);
+  };
   // A shared "?vote=Name1|Name2&by=…&about=…" link drops friends straight into
   // the swipe vote, with context on who's asking and what the project is.
   const [friendVote, setFriendVote] = useState<{ names: string[]; notes: string[]; by: string; about: string } | null>(() => {
@@ -166,9 +177,19 @@ export default function App() {
         {screen === "landing" && (
           /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
           <LandingAtelier
-            onNext={() => { newProcess(); setScreen("classic"); }}
-            onTalk={() => setScreen("talk")}
+            onNext={() => beginFlow("classic")}
+            onTalk={() => beginFlow("talk")}
             canTalk
+          />
+        )}
+
+        {startGate && (
+          <StartGate
+            onComplete={({ name, email }) => {
+              try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
+              const to = startGate; setStartGate(null); setScreen(to);
+            }}
+            onClose={() => setStartGate(null)}
           />
         )}
 

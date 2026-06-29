@@ -31,6 +31,9 @@ jobs:
           # Unset => the site runs on the built-in demo engine (current behaviour).
           VITE_NAMING_API: ${{ vars.STUDIO_API_URL }}
           VITE_STUDIO_API: ${{ vars.STUDIO_API_URL }}
+          # Set repo variable GOOGLE_CLIENT_ID to a Google OAuth Web client id to
+          # enable "Continue with Google" on the start gate. Unset => email only.
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

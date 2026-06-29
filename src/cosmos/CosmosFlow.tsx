@@ -56,8 +56,10 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Sign-up captured up front (step 1): name + email (email mandatory to proceed).
-  const [fromName, setFromName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
-  const [email, setEmail] = useState(() => { try { return localStorage.getItem("ns.email") || ""; } catch { return ""; } });
+  // Captured up front by the StartGate (connect with Google or email) before the
+  // flow opens; read here for the lead record and the Step 9 feedback.
+  const [fromName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
+  const [email] = useState(() => { try { return localStorage.getItem("ns.email") || ""; } catch { return ""; } });
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const signedUp = useRef(false);
   function registerSignup() {
@@ -286,10 +288,6 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         sub="The sharper this is, the sharper your name." />
       <div className="intake-cols">
         <div className="fgrid" style={{ alignContent: "start" }}>
-          <div className="pairgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Field label="Your name" value={fromName} onChange={setFromName} placeholder="Jane Founder" />
-            <Field label="Email" hint="· so we can send you the results" value={email} onChange={setEmail} placeholder="you@company.com" />
-          </div>
           <Field label="What it does" hint="· one plain sentence" area value={brief.does} onChange={(v) => set({ does: v })}
             placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
           <div className="pairgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -300,7 +298,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
         </div>
         <HelpCard label="The brief, so far" quote={`"${briefLine}"`} tags={briefTags} />
       </div>
-      <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim() || !emailOk}
+      <Foot back="Welcome" onBack={onRestart} next="Next: brand context →" disabled={!brief.does.trim()}
         onNext={() => { registerSignup(); goto(1); }} />
     </>
   );
