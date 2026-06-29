@@ -6,7 +6,7 @@ import "./cosmos.css";
 
 export const CXSTEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Concepts", "Exploration", "Name ideas", "Comparison", "Share & vote", "Decision",
+  "Exploration", "Name ideas", "Comparison", "Share & vote", "Decision",
 ];
 
 export function CxBrand() {
@@ -65,7 +65,7 @@ function CxBar({ step, total, reached = step, onBack, onForward, right }: { step
 }
 
 // Full shell with rail. `wide` drops the rail for the board-width screens.
-export function Cx({ step, total = 10, wide, reached, topRight, barRight, onBack, onJump, onLeave, children }: {
+export function Cx({ step, total = CXSTEPS.length, wide, reached, topRight, barRight, onBack, onJump, onLeave, children }: {
   step: number; total?: number; wide?: boolean; reached?: number;
   topRight?: ReactNode; barRight?: ReactNode;
   onBack: () => void; onJump: (n: number) => void; onLeave: () => void;
