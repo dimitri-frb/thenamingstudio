@@ -197,6 +197,32 @@ export function fetchDomains(name: string): Promise<DomResult> {
   return p;
 }
 
+// The full domain board for one name: a broad set of extensions (+ variants), each
+// tagged available / negotiable / taken. Cached per name. Negotiable needs Domainr
+// (a DOMAINR_KEY on the Worker); without it the Worker falls back to RDAP.
+export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean }
+export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string }
+const boardCache = new Map<string, Promise<DomainBoardData>>();
+export function fetchDomainBoard(name: string): Promise<DomainBoardData> {
+  const key = (name || "").trim().toLowerCase();
+  const empty: DomainBoardData = { name, tlds: [], variants: [], source: "none" };
+  if (!key) return Promise.resolve(empty);
+  const hit = boardCache.get(key);
+  if (hit) return hit;
+  const p = (async (): Promise<DomainBoardData> => {
+    if (ENDPOINT) {
+      try {
+        const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domainboard", payload: { name } }) });
+        if (res.ok) { const d = await res.json(); if (d && !d.error) return d as DomainBoardData; }
+      } catch { /* ignore */ }
+    }
+    return empty;
+  })();
+  boardCache.set(key, p);
+  p.then((r) => { if (!r.tlds.length) boardCache.delete(key); }).catch(() => boardCache.delete(key));
+  return p;
+}
+
 // Who's behind a (taken) domain: the live site's title + description, and whether
 // it looks like a real competitor in the founder's space. Cached per domain.
 export interface SiteInfo { ok: boolean; url?: string; title?: string; desc?: string; parked?: boolean; competitor?: boolean; note?: string }

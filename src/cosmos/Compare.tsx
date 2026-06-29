@@ -1,27 +1,16 @@
-// Step 8 · Comparison — the shortlist side by side in one table: meaning, three
-// genuinely-available domains (real, via RDAP) with prices, name tests, and a
-// SMILE score. Every name leaves with domains it can register.
+// Step 7 · Domains — the heart of the studio. For the founder's pick we lay out a
+// generous board of extensions, each tagged Available (with price), Negotiable
+// (aftermarket, via Domainr) or Taken (hover to see who's there). The brand score
+// sits quietly alongside: at the end of the day, a great domain is the prize.
 import { useEffect, useState } from "react";
-import { naming, fetchDomains, type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain } from "../lib/namingApi";
-import { Head, Star, Thinking, Info } from "./chrome";
+import {
+  naming, fetchDomains, fetchDomainBoard,
+  type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain,
+  type DomainBoardData, type DomainCard,
+} from "../lib/namingApi";
+import { Head, Thinking, Info } from "./chrome";
 import { DomainContext } from "./DomainContext";
-
-// A lively SMILE score: coloured pips (green/amber by strength) plus the number,
-// far friendlier than flat black dots.
-function SmileScore({ score }: { score: number }) {
-  const color = score >= 4 ? "var(--good)" : score >= 3 ? "var(--watch)" : "var(--bad)";
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-      <span style={{ display: "inline-flex", gap: 3 }}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i < score ? color : "var(--line)", transition: "background .2s ease" }} />
-        ))}
-      </span>
-      <span style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 500, color }}>{score}</span>
-    </span>
-  );
-}
-import { availableDomains, nameTests, slugify, comTaken, godaddyUrl } from "./data";
+import { godaddyUrl } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -29,17 +18,25 @@ function smileOf(r: CompareRow) { return Math.max(1, Math.min(5, Math.round((r.i
 function verdictOf(r: CompareRow) { const t = r.intuitive + r.visual + r.sound + r.emotional; return t >= 20 ? "Perfect" : t >= 16 ? "Great" : "Solid"; }
 const verdictClass = (v: string) => (v === "Perfect" ? "fill" : v === "Great" ? "good" : "");
 
+// Small coloured SMILE pips + number, shown on each name pill.
+function Pips({ score }: { score: number }) {
+  const color = score >= 4 ? "var(--good)" : score >= 3 ? "var(--watch)" : "var(--bad)";
+  return <span style={{ display: "inline-flex", gap: 2.5 }}>{Array.from({ length: 5 }).map((_, i) =>
+    <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < score ? color : "var(--line)" }} />)}</span>;
+}
+
+const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "Negotiable", taken: "Taken", unknown: "Unknown" };
+const STATUS_CLASS: Record<string, string> = { available: "avail", negotiable: "nego", taken: "taken", unknown: "taken" };
+
 export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
   setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void;
 }) {
-  const [sortSmile, setSortSmile] = useState(false);
-  // The founder's pick (starred). Defaults to our recommendation; click any name to change it.
   const [starred, setStarred] = useState("");
-  // Real domain availability, fetched per-name in parallel so the scored table
-  // appears instantly and domains fill in as they land.
   const [dom, setDom] = useState<Record<string, Dom>>({});
+  const [boards, setBoards] = useState<Record<string, DomainBoardData>>({});
 
+  // Score the shortlist (gives SMILE + verdict + a recommended pick).
   useEffect(() => {
     if (comp) return;
     let live = true;
@@ -49,21 +46,20 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch real domains for every name (each its own fast request), then persist
-  // them back into comp so the Decision and Share screens have them too.
+  // The full domain board per name (the hero of this screen), plus the lighter
+  // 3-TLD `domains`/`suggested` that the Decision + Share screens still read.
   useEffect(() => {
     if (!comp) return;
     let live = true;
-    const todo = comp.rows.map((r) => r.name).filter((n) => !(n in dom));
-    if (!todo.length) return;
-    todo.forEach(async (name) => {
-      const res = await fetchDomains(name);
-      if (live) setDom((prev) => ({ ...prev, [name]: res }));
+    comp.rows.map((r) => r.name).forEach(async (name) => {
+      if (!(name in boards)) { const b = await fetchDomainBoard(name); if (live) setBoards((p) => ({ ...p, [name]: b })); }
+      if (!(name in dom)) { const d = await fetchDomains(name); if (live) setDom((p) => ({ ...p, [name]: d })); }
     });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp]);
 
+  // Persist the 3-TLD availability back into comp for the downstream screens.
   useEffect(() => {
     if (!comp || !comp.rows.length) return;
     if (!comp.rows.every((r) => dom[r.name])) return;
@@ -76,107 +72,91 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     <>
       <HeadC />
       <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
-        <Thinking lines={["Scoring each name and hunting available domains…", "SMILE · domains · handle"]} />
+        <Thinking lines={["Scoring each name and hunting domains you can claim…", "Available · negotiable · taken"]} />
       </div>
     </>
   );
 
   const star = starred || comp.recommended || comp.rows[0]?.name || "";
-  // Starring a name makes it the founder's pick everywhere downstream (lock-in, decision).
   const chooseStar = (name: string) => { setStarred(name); setComp({ ...comp, recommended: name }); };
-  let rows = [...comp.rows];
-  if (sortSmile) rows.sort((a, b) => smileOf(b) - smileOf(a));
-  // The founder's starred pick always sits at the top (stable for the rest).
-  rows.sort((a, b) => (a.name === star ? -1 : b.name === star ? 1 : 0));
+  const active = comp.rows.find((r) => r.name === star) || comp.rows[0];
+  const board = boards[star];
+  const verdict = active ? verdictOf(active) : "Solid";
+
+  // Available first, then negotiable, then taken: read it as a list of what you can claim.
+  const order: Record<string, number> = { available: 0, negotiable: 1, unknown: 2, taken: 3 };
+  const sortedTlds = board ? [...board.tlds].sort((a, b) => (order[a.status] - order[b.status])) : [];
+  const availCount = sortedTlds.filter((t) => t.status === "available").length;
+  const negoCount = sortedTlds.filter((t) => t.status === "negotiable").length;
 
   return (
     <>
       <HeadC />
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span className="lbl">Each name shows three domains you can actually register today</span>
-        <span style={{ flex: 1 }} />
-        <button className="btn" style={{ fontSize: 13 }} onClick={() => setSortSmile((s) => !s)}>Sort by SMILE {sortSmile ? "↓" : "·"}</button>
+
+      {/* Name selector — the shortlist as pills; the pick drives the board below. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span className="lbl" style={{ flex: "0 0 auto" }}>Your pick</span>
+        {comp.rows.map((r) => {
+          const on = r.name === star;
+          return (
+            <button key={r.name} className={"npill" + (on ? " on" : "")} onClick={() => chooseStar(r.name)}>
+              <span className="nm" style={{ fontSize: 16 }}>{r.name}</span>
+              <Pips score={smileOf(r)} />
+            </button>
+          );
+        })}
       </div>
 
-      <div className="table-wrap">
-        <div className="table-scroll">
-          <table className="cmp">
-            <thead>
-              <tr>
-                <th style={{ width: "12%" }}>Name</th>
-                <th style={{ width: "19%" }}>Why it works</th>
-                <th style={{ width: "24%" }}>Available domains</th>
-                <th style={{ width: "14%" }}>Name tests</th>
-                <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>SMILE <Info align="right">A quick brand-name score out of 5: <b>S</b>uggestive, <b>M</b>emorable, <b>I</b>magery, <b>L</b>egs, <b>E</b>motional.</Info></span></th>
-                <th>Verdict</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((n) => {
-                const verdict = verdictOf(n);
-                const win = n.name === star;
-                const dinfo = dom[n.name];
-                const domains = dinfo ? availableDomains(n.name, dinfo.domains, dinfo.suggested) : [];
-                return (
-                  <tr key={n.name} className={win ? "win" : ""}>
-                    <td data-label="Name">
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
-                        onClick={() => chooseStar(n.name)} title="Make this your pick">
-                        <span className="nm">{n.name}</span>
-                        <Star on={win} onClick={(e) => { e.stopPropagation(); chooseStar(n.name); }} />
-                      </div>
-                    </td>
-                    <td data-label="Why" style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>{n.verdict}</td>
-                    <td data-label="Domains">
-                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                        {!dinfo && <span className="meta">checking…</span>}
-                        {dinfo && domains.length === 0 && (
-                          comTaken(dinfo.domains) === true
-                            ? <a href={godaddyUrl(`${slugify(n.name)}.com`)} target="_blank" rel="noreferrer" className="meta" style={{ textDecoration: "none", whiteSpace: "nowrap" }} title="Registered, but may be for sale on the aftermarket">.com registered · may be for sale →</a>
-                            : <span className="meta">none free</span>
-                        )}
-                        {domains.map((d) => (
-                          <span key={d.domain} style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
-                            <span style={{ color: "var(--good)", fontSize: 12, flex: "0 0 auto" }}>✓</span>
-                            <span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{d.domain}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td data-label="Tests">
-                      {(() => { const t = nameTests(n.name); return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                          {([["Bar test", t.bar], ["Pronounce", t.pronounce], ["Spell", t.spell], ["Short", t.short]] as const).map(([label, ok]) => (
-                            <span key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--ink-2)", whiteSpace: "nowrap" }}>
-                              <span style={{ color: ok ? "var(--good)" : "var(--bad)", fontSize: 12, flex: "0 0 auto", width: 11, textAlign: "center" }}>{ok ? "✓" : "✗"}</span>
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      ); })()}
-                    </td>
-                    <td className="c" data-label="SMILE"><SmileScore score={smileOf(n)} /></td>
-                    <td className="c" data-label="Verdict"><span className={"tag " + verdictClass(verdict)}>{verdict}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* The domain board for the pick. */}
+      <div className="dboard-wrap">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+          <span style={{ fontFamily: "var(--serif)", fontSize: 30, letterSpacing: "-0.02em" }}>{active?.name}</span>
+          <span className={"tag " + verdictClass(verdict)}>{verdict}</span>
+          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{availCount} available{negoCount ? ` · ${negoCount} negotiable` : ""}</span>
+          <span style={{ flex: 1 }} />
+          {active?.verdict && <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14.5, color: "var(--ink-2)", maxWidth: 360, textAlign: "right" }}>{active.verdict}</span>}
         </div>
-        <div style={{ padding: "12px 16px", borderTop: "1px solid var(--line-2)", display: "flex", alignItems: "center", gap: 14, background: "var(--surface-2)" }}>
-          <span className="lbl" style={{ flex: "0 0 auto" }}>Our take</span>
-          <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "var(--ink-2)" }}>{comp.why}</span>
-        </div>
-      </div>
 
-      {/* For the founder's pick, look up who actually holds the .com (safe play vs
-          a real competitor in their space). One lazy lookup, only for the star. */}
-      {star && <DomainContext name={star} brief={brief} domains={dom[star]?.domains ?? comp.rows.find((r) => r.name === star)?.domains} />}
+        {!board ? (
+          <div style={{ padding: "30px 0", display: "grid", placeItems: "center" }}><Thinking lines={["Checking every extension…"]} /></div>
+        ) : (
+          <>
+            <div className="dboard">
+              {sortedTlds.map((d) => <DomainCardView key={d.domain} card={d} brief={brief} />)}
+            </div>
+
+            {board.variants.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <span className="lbl">Also free, a close variant</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  {board.variants.map((v) => (
+                    <a key={v.domain} href={godaddyUrl(v.domain)} target="_blank" rel="noreferrer" className="dvar">
+                      <span style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{v.domain}</span>
+                      <span style={{ fontSize: 11, color: "var(--good)" }}>{v.price}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* If the exact .com is gone, show who's actually on it. */}
+            <div style={{ marginTop: 12 }}>
+              <DomainContext name={star} brief={brief} domains={dom[star]?.domains} />
+            </div>
+
+            {board.source === "rdap" && (
+              <p style={{ fontSize: 12, color: "var(--ink-4)", margin: "12px 2px 0", lineHeight: 1.45 }}>
+                Showing registrable domains (live). Negotiable, aftermarket listings with prices light up once Domainr is connected.
+              </p>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="cx-foot">
         <span className="link" onClick={onBack}>← Name ideas</span>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button className="btn" onClick={onLockIn}>Lock in my selection →</button>
+          <button className="btn" onClick={onLockIn}>Lock in {active?.name} →</button>
           <button className="btn lg solid" onClick={onDone}>Get a gut check →</button>
         </div>
       </div>
@@ -184,9 +164,35 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   );
 }
 
+// One domain card: name, status chip, and the right action.
+function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
+  const cls = STATUS_CLASS[card.status] || "taken";
+  const label = STATUS_LABEL[card.status] || "Taken";
+  return (
+    <div className={"dcard " + cls}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <span className="dom">{card.domain}</span>
+        {card.premium && <span className="lbl" style={{ fontSize: 8.5, color: "var(--watch)" }}>Premium</span>}
+      </div>
+      <span className={"dchip " + cls}>● {label}{card.status === "available" && card.price ? ` · ${card.price}` : ""}</span>
+      <div style={{ marginTop: "auto", paddingTop: 6 }}>
+        {card.status === "available" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Register →</a>}
+        {card.status === "negotiable" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Make an offer →</a>}
+        {card.status === "taken" && card.tld === ".com"
+          ? <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink" style={{ color: "var(--ink-3)" }} title="See who's on it below">Taken</a>
+          : card.status === "taken" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Taken</span>}
+        {card.status === "unknown" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Couldn't check</span>}
+      </div>
+      {/* keep brief referenced for potential future per-card context */}
+      {false && <span hidden>{brief.does}</span>}
+    </div>
+  );
+}
+
 function HeadC() {
   return (
-    <Head eyebrow="The comparison" title={<>Your shortlist, <em>side by side</em>.</>}
-      sub="We analyse each name for you: domain availability and a SMILE score, all in one table. Where the plain domain is gone, we surface close ones you can still claim." />
+    <Head eyebrow={<>The domains <Info>For your pick we check a broad set of extensions live. <b>Available</b> you can register now (with price), <b>Negotiable</b> is taken but for sale on the aftermarket, <b>Taken</b> is in use, hover the .com to see who.</Info></>}
+      title={<>Now, <em>claim the domain.</em></>}
+      sub="A great name is only great if you can own it. Here's where your pick can live, what you can register, and what's up for negotiation." />
   );
 }

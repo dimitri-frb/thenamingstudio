@@ -3,7 +3,7 @@
 // words. Pick the strongest (the seed words themselves, or our names) into the
 // shortlist that flows to the comparison.
 import { useEffect, useRef, useState } from "react";
-import { naming, fetchDomains, type Brief, type NameIdea } from "../lib/namingApi";
+import { naming, fetchDomains, fetchDomainBoard, type Brief, type NameIdea } from "../lib/namingApi";
 import { Head, Thinking, Info } from "./chrome";
 
 export interface SavedIdea { w: string; concept: string; mine?: boolean }
@@ -38,7 +38,7 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
       const coined = got.filter((i) => i.name && !savedWords.has(i.name.toLowerCase()));
       // Pre-search domains for every name the moment we have it, so the comparison
       // step (which reads the same cache) is instant.
-      coined.forEach((i) => { void fetchDomains(i.name); });
+      coined.forEach((i) => { void fetchDomains(i.name); void fetchDomainBoard(i.name); });
       setIdeas((prev) => {
         const merged = more && prev ? [...prev, ...coined] : coined;
         const seen = new Set<string>();

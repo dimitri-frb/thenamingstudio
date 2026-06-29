@@ -219,6 +219,31 @@ table.cmp .nm { font-family: var(--serif); font-size: 23px; letter-spacing: -0.0
 table.cmp .meta { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
 table.cmp td.c { white-space: nowrap; }
 
+/* ─────────── Step 7 · domain board ─────────── */
+.npill { display: inline-flex; align-items: center; gap: 9px; padding: 8px 14px; border-radius: var(--rp); border: 1px solid var(--line); background: var(--surface); cursor: pointer; transition: all .14s ease; }
+.npill:hover { border-color: var(--ink-3); }
+.npill.on { background: var(--ink); border-color: var(--ink); }
+.npill.on .nm { color: var(--surface); }
+.npill .nm { font-family: var(--serif); }
+
+.dboard-wrap { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: var(--r3); background: var(--surface-2); padding: 18px 20px; }
+.dboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(186px, 1fr)); gap: 10px; }
+.dcard { display: flex; flex-direction: column; gap: 6px; min-height: 96px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); padding: 13px 14px; transition: border-color .14s ease, transform .18s cubic-bezier(.2,.7,.2,1); }
+.dcard.avail { border-color: #CFE0D3; }
+.dcard.avail:hover { border-color: var(--good); transform: translateY(-2px); }
+.dcard.nego { border-color: #E6DCC4; }
+.dcard.nego:hover { border-color: var(--watch); transform: translateY(-2px); }
+.dcard.taken { background: var(--surface-2); }
+.dcard .dom { font-family: var(--serif); font-size: 17px; letter-spacing: -0.01em; }
+.dchip { display: inline-flex; align-items: center; gap: 4px; width: max-content; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 8px; border-radius: var(--rp); }
+.dchip.avail { color: var(--good); background: #EEF4EF; }
+.dchip.nego { color: var(--watch); background: #F5EFE0; }
+.dchip.taken { color: var(--ink-3); background: var(--surface-3); }
+.dlink { font-size: 11.5px; font-weight: 500; color: var(--ink); text-decoration: none; }
+.dlink:hover { text-decoration: underline; }
+.dvar { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: var(--rp); border: 1px solid var(--line); background: var(--surface); text-decoration: none; }
+.dvar:hover { border-color: var(--ink-3); }
+
 /* ─────────── deck (keep/skip card) ─────────── */
 .deck { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; }
 .deck-card { width: 460px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r4); padding: 40px 40px 30px; box-shadow: 0 30px 60px -34px rgba(26,25,22,0.22); display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 3; }

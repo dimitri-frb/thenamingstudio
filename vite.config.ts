@@ -58,6 +58,12 @@ function claudeBridge() {
               res.end(JSON.stringify(await siteInfoNode(payload?.domain || "", brief)));
               return;
             }
+            // Domain board (dev: RDAP-only, so available/taken; no Domainr key).
+            if (phase === "domainboard") {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify(await domainBoardNode(payload?.name || "")));
+              return;
+            }
             const prompt = buildPrompt(phase, brief, payload);
             const raw = await runClaude(prompt);
             const json = extractJson(raw);
@@ -127,12 +133,41 @@ async function siteInfoNode(domain: string, brief: any): Promise<any> {
   return { ok: true, url: finalUrl, title: title.slice(0, 120), desc: desc.slice(0, 240), parked, competitor, note };
 }
 
+// Dev-only domain board (RDAP-only; the deployed Worker adds Domainr for the
+// negotiable/aftermarket signal). Mirrors the Worker's domainBoard shape.
+const BOARD_TLDS_NODE = ["com", "co", "io", "ai", "app", "dev", "xyz", "net"];
+const BOARD_PRICE_NODE: Record<string, [string, string]> = {
+  com: ["$12", "$14/yr"], co: ["$24", "$30/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
+  app: ["$14", "$18/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"], net: ["$12", "$15/yr"],
+};
+async function domainBoardNode(name: string): Promise<any> {
+  const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!slug) return { name, tlds: [], variants: [], source: "none" };
+  const variantSlugs = [`get${slug}`, `try${slug}`, `join${slug}`, `${slug}app`, `${slug}hq`];
+  const [exactStates, variantStates] = await Promise.all([
+    Promise.all(BOARD_TLDS_NODE.map((t) => rdapNode(slug, t))),
+    Promise.all(variantSlugs.map((v) => rdapNode(v, "com"))),
+  ]);
+  const tlds = BOARD_TLDS_NODE.map((t, i) => {
+    const r = exactStates[i];
+    const [price, renewal] = BOARD_PRICE_NODE[t] || ["$15", "$18/yr"];
+    return { domain: `${slug}.${t}`, tld: "." + t, status: r === "available" ? "available" : r === "taken" ? "taken" : "unknown", premium: false, price: r === "available" ? price : undefined, renewal: r === "available" ? renewal : undefined };
+  });
+  const variants = variantSlugs
+    .map((v, i) => ({ domain: `${v}.com`, status: variantStates[i], price: BOARD_PRICE_NODE.com[0], renewal: BOARD_PRICE_NODE.com[1] }))
+    .filter((v) => v.status === "available");
+  return { name, tlds, variants, source: "rdap" };
+}
+
 // Dev-only RDAP domain availability (mirrors the Worker's domainsFor).
 const RDAP_BASE_NODE: Record<string, string> = {
   com: "https://rdap.verisign.com/com/v1/",
+  net: "https://rdap.verisign.com/net/v1/",
   io: "https://rdap.identitydigital.services/rdap/",
   ai: "https://rdap.identitydigital.services/rdap/",
   app: "https://pubapi.registry.google/rdap/",
+  dev: "https://pubapi.registry.google/rdap/",
+  xyz: "https://rdap.centralnic.com/xyz/",
 };
 async function rdapNode(slug: string, tld: string): Promise<"available" | "taken" | "unknown"> {
   const base = RDAP_BASE_NODE[tld];

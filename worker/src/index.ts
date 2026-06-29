@@ -26,6 +26,7 @@ export interface Env {
   ADMIN_KEY?: string;      // optional: required ?key= to read the log
   INPI_LOGIN?: string;     // optional: INPI data-account login (for the trademark check)
   INPI_PASSWORD?: string;  // optional: INPI data-account password
+  DOMAINR_KEY?: string;    // optional: RapidAPI key for Domainr (available/negotiable/taken)
 }
 
 const MODEL = {
@@ -74,6 +75,13 @@ export default {
     // domains as they land.
     if (phase === "domains") {
       return json(await domainsFor(body?.payload?.name || ""), env);
+    }
+
+    // The full domain board for ONE name: a broad set of TLDs (+ variants) each
+    // tagged available / negotiable / taken. Uses Domainr when a key is set (real
+    // aftermarket signal), else RDAP (available vs taken only).
+    if (phase === "domainboard") {
+      return json(await domainBoard(env, body?.payload?.name || ""), env);
     }
 
     // What's actually on a (taken) domain, plus whether it looks like a real
@@ -504,6 +512,85 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
   });
 
   return { domains, suggested: suggested.slice(0, 3) };
+}
+
+// ───────────────────────── domain board (Domainr + RDAP) ─────────────────────────
+// A generous spread of extensions the exact name could live on, each tagged so the
+// founder can see, at a glance, what they can register, what's negotiable on the
+// aftermarket, and what's gone. Domainr (when keyed) is the only source that knows
+// "negotiable"; RDAP can only tell available vs taken.
+const BOARD_TLDS = ["com", "co", "io", "ai", "app", "dev", "xyz", "net"];
+const BOARD_PRICE: Record<string, [string, string]> = {
+  com: ["$12", "$14/yr"], co: ["$24", "$30/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
+  app: ["$14", "$18/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"], net: ["$12", "$15/yr"],
+};
+type DomStatus = "available" | "negotiable" | "taken" | "unknown";
+
+// Map a Domainr status/summary string to our three buckets.
+function classifyDomainr(tokens: string): { status: DomStatus; premium: boolean } {
+  const t = (tokens || "").toLowerCase();
+  const premium = /premium/.test(t);
+  if (/inactive|undelegated/.test(t)) return { status: "available", premium };
+  if (/marketed|priced|parked|transferable|aftermarket/.test(t)) return { status: "negotiable", premium };
+  if (/active|claimed|reserved|disallowed|dpml|tld|zone/.test(t)) return { status: "taken", premium };
+  return { status: "unknown", premium };
+}
+
+async function domainrStatus(env: Env, domains: string[]): Promise<Record<string, { status: DomStatus; premium: boolean }>> {
+  const out: Record<string, { status: DomStatus; premium: boolean }> = {};
+  if (!env.DOMAINR_KEY) return out;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const url = `https://domainr.p.rapidapi.com/v2/status?domain=${encodeURIComponent(domains.join(","))}`;
+    const res = await fetch(url, { signal: ctrl.signal, headers: { "X-RapidAPI-Key": env.DOMAINR_KEY, "X-RapidAPI-Host": "domainr.p.rapidapi.com" } });
+    if (res.ok) {
+      const data: any = await res.json();
+      for (const s of (data?.status || [])) out[s.domain] = classifyDomainr(s.status || s.summary || "");
+    }
+  } catch { /* fall back to whatever RDAP can fill in */ }
+  finally { clearTimeout(timer); }
+  return out;
+}
+
+async function domainBoard(env: Env, name: string): Promise<any> {
+  const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!slug) return { name, tlds: [], variants: [], source: "none" };
+  const exact = BOARD_TLDS.map((t) => `${slug}.${t}`);
+  const variantSlugs = [`get${slug}`, `try${slug}`, `join${slug}`, `${slug}app`, `${slug}hq`];
+  const variants = variantSlugs.map((v) => `${v}.com`);
+
+  const dr = await domainrStatus(env, [...exact, ...variants]);
+  const source = env.DOMAINR_KEY && Object.keys(dr).length ? "domainr" : "rdap";
+
+  // For anything Domainr didn't resolve (or no key), fall back to RDAP where we can.
+  async function statusFor(domain: string): Promise<{ status: DomStatus; premium: boolean }> {
+    if (dr[domain]) return dr[domain];
+    const dot = domain.lastIndexOf(".");
+    const s = domain.slice(0, dot), tld = domain.slice(dot + 1);
+    const r = await rdap(s, tld);
+    return { status: r === "available" ? "available" : r === "taken" ? "taken" : "unknown", premium: false };
+  }
+
+  const [exactStatuses, variantStatuses] = await Promise.all([
+    Promise.all(exact.map(statusFor)),
+    Promise.all(variants.map(statusFor)),
+  ]);
+
+  const tlds = BOARD_TLDS.map((t, i) => {
+    const st = exactStatuses[i];
+    const [price, renewal] = BOARD_PRICE[t] || ["$15", "$18/yr"];
+    return {
+      domain: `${slug}.${t}`, tld: "." + t, status: st.status, premium: st.premium,
+      price: st.status === "available" && !st.premium ? price : undefined,
+      renewal: st.status === "available" && !st.premium ? renewal : undefined,
+    };
+  });
+  const variantHits = variants
+    .map((d, i) => ({ domain: d, status: variantStatuses[i].status, price: BOARD_PRICE.com[0], renewal: BOARD_PRICE.com[1] }))
+    .filter((v) => v.status === "available");
+
+  return { name, tlds, variants: variantHits, source };
 }
 
 // ───────────────────────── INPI trademark check ─────────────────────────
