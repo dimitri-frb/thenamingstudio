@@ -8,7 +8,7 @@ import { setTestMode, processId, setProcessId } from "../lib/requestLog";
 import { loadFlow, saveFlow } from "../lib/flowState";
 import { recommendLanes } from "../lib/localStudio";
 import { BrandBook } from "../components/BrandBook";
-import { Cx, CXSTEPS, Head, Foot, Star, Thinking } from "./chrome";
+import { Cx, CXSTEPS, Head, Foot, Star, Thinking, type Skin } from "./chrome";
 import { LANES, TONE_OPTIONS, SIGNAL_FALLBACK, INDUSTRIES, STAGES, GEO_OPTIONS } from "./data";
 import type { TestSeed } from "./mock";
 import { Explore, type ExploreStore } from "./Explore";
@@ -21,7 +21,7 @@ import { Feedback } from "./Feedback";
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
-export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed }) {
+export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { initialDoes: string; seedBrief?: Brief | null; onRestart: () => void; test?: TestSeed; skin?: Skin }) {
   // Keep the request log clean: the sample/test flow is never recorded.
   setTestMode(!!test);
   // Restore an in-progress process from a previous session (read once). Test mode
@@ -253,6 +253,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
     <Cx
       step={step}
       wide={opts?.wide}
+      skin={skin}
       reached={test ? 8 : maxReached}
       barRight={opts?.barRight}
       topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : opts?.topRight}

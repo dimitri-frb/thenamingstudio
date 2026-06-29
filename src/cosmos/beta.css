@@ -1,0 +1,204 @@
+/* beta.css — "the naming studio", reimagined as an Apple desktop app.
+   A scoped reskin of the Cosmos flow: every rule lives under .cosmos-root.skin-beta
+   or .cx.skin-beta, so the classic flow is byte-for-byte untouched. Imported by
+   chrome.tsx; activated by <Cx skin="beta"> (threaded from CosmosFlow).
+
+   The look, lifted from the Claude Design import (The Naming Studio.dc.html):
+   a cool grey desktop, a white rounded app window with a glass titlebar and
+   traffic lights, SF system type, a single blue accent, and pill buttons.
+
+   How it works: the cosmos components are token-driven (var(--ink), --surface,
+   --line, --serif…). We override that token block here, then add a handful of
+   targeted rules for the surfaces the classic skin paints in near-black ink
+   (solid buttons, the active rail row, selected pills, the progress bar) so they
+   pick up the blue accent instead. */
+
+/* ─────────────────────────── the desktop ─────────────────────────── */
+.cosmos-root.skin-beta {
+  background: #ececef;
+  display: grid;
+  place-items: center;
+}
+
+/* ─────────────────────────── design tokens ───────────────────────── */
+.cx.skin-beta {
+  /* surfaces */
+  --bg:        #ffffff;   /* window interior */
+  --surface:   #ffffff;
+  --surface-2: #f4f4f6;   /* cards */
+  --surface-3: #ececef;
+  --panel:     #f6f6f8;   /* sidebar */
+
+  /* ink */
+  --ink:   #1d1d1f;
+  --ink-2: #56565b;
+  --ink-3: #8a8a8f;
+  --ink-4: #b6b6bb;
+
+  /* hairlines */
+  --line:   rgba(0,0,0,.10);
+  --line-2: rgba(0,0,0,.06);
+  --line-3: rgba(0,0,0,.04);
+  --sep:    rgba(0,0,0,.10);
+  --sep2:   rgba(0,0,0,.055);
+
+  /* the one accent (blue by default; graphite variant below) */
+  --accent:      #0071e3;
+  --accent2:     #0a84ff;
+  --on-accent:   #ffffff;
+  --accent-soft: rgba(0,113,227,.10);
+  --ring:        rgba(0,113,227,.45);
+
+  /* functional tones, nudged to macOS hues */
+  --good:  #1a9c3e;
+  --watch: #b07a12;
+  --bad:   #d63a30;
+
+  /* glass + elevation */
+  --glass:  rgba(255,255,255,.72);
+  --shadow: 0 36px 90px -34px rgba(0,0,0,.34);
+
+  /* SF system type — no serif, no italics in this language */
+  --serif: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --sans:  -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif;
+  --mono:  ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --r2: 12px;
+  --r3: 16px;
+  --r4: 20px;
+}
+
+/* graphite accent variant (.cx.skin-beta.graphite) — a quiet monochrome alternative */
+.cx.skin-beta.graphite {
+  --accent:      #1d1d1f;
+  --accent2:     #000000;
+  --on-accent:   #ffffff;
+  --accent-soft: rgba(0,0,0,.07);
+  --ring:        rgba(0,0,0,.32);
+  --good:  #1a9c3e;
+}
+
+/* ─────────────────────────── the window ──────────────────────────── */
+.cx.skin-beta {
+  width: min(1200px, 100vw - 48px);
+  height: min(880px, 100vh - 48px);
+  border: 1px solid var(--sep);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  grid-template-rows: 46px 1fr;   /* slimmer, titlebar-height top */
+  letter-spacing: -0.01em;
+}
+
+/* glass titlebar with traffic lights */
+.cx.skin-beta .cx-top {
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--sep2);
+  padding: 0 16px;
+  gap: 14px;
+}
+.cx.skin-beta .cx-traffic { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.cx.skin-beta .cx-traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.cx.skin-beta .cx-traffic i:nth-child(1) { background: #ff5f57; }
+.cx.skin-beta .cx-traffic i:nth-child(2) { background: #febc2e; }
+.cx.skin-beta .cx-traffic i:nth-child(3) { background: #28c840; }
+
+/* brand mark → accent square, wordmark → plain SF */
+.cx.skin-beta .cx-brand { gap: 9px; }
+.cx.skin-beta .cx-brand .gl {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--accent); color: var(--on-accent);
+}
+.cx.skin-beta .cx-brand .nm { font-size: 14.5px; font-weight: 600; font-style: normal; letter-spacing: -0.01em; }
+
+/* ─────────────────────────── the sidebar ─────────────────────────── */
+.cx.skin-beta .cx-rail {
+  background: var(--panel);
+  border-right: 1px solid var(--sep2);
+  padding: 18px 0 14px;
+}
+.cx.skin-beta .cx-rail .grp { padding: 0 22px 10px; }
+.cx.skin-beta .cx-rail li {
+  margin: 1px 10px; padding: 7px 12px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500; color: var(--ink-2);
+}
+.cx.skin-beta .cx-rail li .n { font-size: 11px; color: var(--ink-3); }
+.cx.skin-beta .cx-rail li.active { background: var(--accent-soft); color: var(--accent); }
+.cx.skin-beta .cx-rail li.active .n { color: var(--accent); opacity: 1; }
+.cx.skin-beta .cx-rail li.done { color: var(--ink-2); }
+/* a quiet check on completed steps, mirroring the design */
+.cx.skin-beta .cx-rail li.done::after {
+  content: "✓"; grid-column: 2; justify-self: end;
+  font-size: 11px; color: var(--accent); opacity: .7;
+}
+.cx.skin-beta .cx-rail li { grid-template-columns: 16px 1fr auto; }
+.cx.skin-beta .cx-rail .leave { padding: 12px 22px 0; font-size: 12.5px; }
+
+/* ─────────────────────────── the step bar ────────────────────────── */
+.cx.skin-beta .cx-bar .back {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--sep); background: var(--surface-2); color: var(--ink-2);
+}
+.cx.skin-beta .cx-bar .sno { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.cx.skin-beta .cx-prog span { height: 4px; border-radius: 2px; max-width: 24px; background: var(--sep); }
+.cx.skin-beta .cx-prog span.on { background: var(--accent); }
+
+/* let a fixed-height window scroll its body */
+.cx.skin-beta .cx-body { overflow: auto; }
+
+/* ─────────────────────────── type ────────────────────────────────── */
+.cx.skin-beta .h1 { font-weight: 600; letter-spacing: -0.025em; }
+.cx.skin-beta .h1 em { font-style: normal; color: var(--accent); }
+.cx.skin-beta .eyebrow,
+.cx.skin-beta .lbl,
+.cx.skin-beta .fld .flabel { letter-spacing: 0.06em; }
+
+/* ─────────────────────────── buttons → pills ─────────────────────── */
+.cx.skin-beta .btn { border-radius: var(--rp); font-weight: 500; }
+.cx.skin-beta .btn.solid {
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  box-shadow: 0 8px 22px -10px var(--ring);
+}
+.cx.skin-beta .btn.solid:hover { background: var(--accent2); box-shadow: 0 14px 30px -12px var(--ring); }
+.cx.skin-beta .link { color: var(--accent); }
+
+/* inputs */
+.cx.skin-beta .inp, .cx.skin-beta .txa { border-radius: var(--r2); background: var(--surface-2); }
+.cx.skin-beta .inp:focus, .cx.skin-beta .txa:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.cx.skin-beta .helpcard { background: var(--surface-2); border-radius: var(--r3); }
+
+/* ─────────────────────────── name pills ──────────────────────────── */
+.cx.skin-beta .npill { border-radius: var(--r2); background: var(--surface-2); }
+.cx.skin-beta .npill.on { background: var(--accent); border-color: var(--accent); }
+.cx.skin-beta .npill.on .nm { color: var(--on-accent); }
+
+/* exploration: word cards + saved rail */
+.cx.skin-beta .wordrow { border-radius: var(--r2); }
+.cx.skin-beta .wordrow:hover { background: var(--accent-soft); }
+.cx.skin-beta .wordrow .wr-explore { color: var(--accent); }
+.cx.skin-beta .savepill { border-radius: var(--rp); }
+.cx.skin-beta .savepill.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.cx.skin-beta .focusD, .cx.skin-beta .dboard-wrap { background: var(--surface-2); border-radius: var(--r3); }
+.cx.skin-beta .chip { background: var(--surface-2); border: 1px solid var(--sep); }
+.cx.skin-beta .chip.dark { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+/* ─────────────────────────── the domain board ────────────────────── */
+.cx.skin-beta .dcard { border-radius: var(--r2); }
+.cx.skin-beta .dcard.avail { border-color: rgba(0,113,227,.22); }
+.cx.skin-beta .dcard.avail:hover { border-color: var(--accent); }
+.cx.skin-beta .dchip.avail { color: var(--good); background: rgba(40,200,64,.10); }
+.cx.skin-beta .dlink { color: var(--accent); font-weight: 600; }
+.cx.skin-beta .dvar { border-radius: var(--rp); background: var(--surface); }
+.cx.skin-beta .tag.good,
+.cx.skin-beta .tag.fill { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+
+/* ─────────────────────────── small viewports ─────────────────────── */
+@media (max-width: 920px) {
+  .cosmos-root.skin-beta { place-items: stretch; }
+  .cx.skin-beta {
+    width: 100%; height: 100%;
+    border: none; border-radius: 0; box-shadow: none;
+  }
+}

@@ -24,7 +24,7 @@ import { BrandMark, Wordmark } from "./components/Logo";
 import { type PlanId } from "./lib/plans";
 import { type Brief as StudioBrief } from "./lib/namingApi";
 
-type Screen = "landing" | "talk" | "classic" | "vibe" | "types" | "refine" | "generating" | "results";
+type Screen = "landing" | "talk" | "classic" | "beta" | "vibe" | "types" | "refine" | "generating" | "results";
 
 const VIBES: { key: Vibe; emoji: string; hint: string }[] = [
   { key: "Modern", emoji: "✨", hint: "clean, current" },
@@ -57,10 +57,10 @@ export default function App() {
   // "Connect" gate shown on Start a brief: capture an email (ideally via Google)
   // so we can send the results. Skipped once we already have one. `pendingStart`
   // holds where to go after connecting.
-  const [startGate, setStartGate] = useState<null | "classic" | "talk">(null);
+  const [startGate, setStartGate] = useState<null | "classic" | "talk" | "beta">(null);
   const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
-  const beginFlow = (to: "classic" | "talk") => {
-    if (to === "classic") newProcess();
+  const beginFlow = (to: "classic" | "talk" | "beta") => {
+    if (to === "classic" || to === "beta") newProcess();
     if (hasEmail()) { setScreen(to); return; }
     setStartGate(to);
   };
@@ -139,7 +139,10 @@ export default function App() {
   // no real run. The 404.html SPA fallback lets the /test path serve the app.
   const isTest = /(?:^|\/)test\/?$/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("test") || window.location.hash.replace(/^#\/?/, "") === "test";
   if (isTest) {
-    return <CosmosFlow test={MOCK} initialDoes="" onRestart={() => { window.location.assign(window.location.pathname); }} />;
+    // `?test&beta` (or `#test` + beta) previews the new Apple-desktop skin with
+    // mock data, so every screen can be stepped through instantly via the TestBar.
+    const betaTest = new URLSearchParams(window.location.search).has("beta") || /beta/.test(window.location.hash);
+    return <CosmosFlow test={MOCK} initialDoes="" skin={betaTest ? "beta" : undefined} onRestart={() => { window.location.assign(window.location.pathname); }} />;
   }
 
   // Direct brand-book demo (?brandbook): show only the brand book.
@@ -176,7 +179,7 @@ export default function App() {
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
           /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
-          <LandingAtelier onNext={() => beginFlow("classic")} />
+          <LandingAtelier onNext={() => beginFlow("classic")} onBeta={() => beginFlow("beta")} />
         )}
 
         {startGate && (
@@ -198,6 +201,9 @@ export default function App() {
         )}
 
         {screen === "classic" && <CosmosFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
+
+        {/* The same flow, in the new Apple-desktop design (opt-in beta). */}
+        {screen === "beta" && <CosmosFlow initialDoes={description} onRestart={restart} skin="beta" />}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
           <Wizard>

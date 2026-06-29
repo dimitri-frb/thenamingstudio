@@ -1,7 +1,7 @@
 // The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
 
-export function LandingAtelier({ onNext }: { onNext: () => void }) {
+export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?: () => void }) {
   return (
     <div>
       {/* hero */}
@@ -19,13 +19,26 @@ export function LandingAtelier({ onNext }: { onNext: () => void }) {
           </h1>
 
           <div className="reveal mt-10 flex flex-col items-center gap-4" style={{ animationDelay: "0.46s" }}>
-            <button
-              onClick={onNext}
-              className="spring group flex items-center gap-3 rounded-full bg-ink px-10 py-5 text-xl font-medium text-[var(--page)] shadow-lg shadow-ink/10 hover:shadow-xl hover:shadow-ink/20"
-            >
-              Start a brief
-              <kbd className="grid h-6 w-6 place-items-center rounded-full border border-[var(--page)]/30 text-xs leading-none">⏎</kbd>
-            </button>
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
+              <button
+                onClick={onNext}
+                className="spring group flex items-center gap-3 rounded-full bg-ink px-10 py-5 text-xl font-medium text-[var(--page)] shadow-lg shadow-ink/10 hover:shadow-xl hover:shadow-ink/20"
+              >
+                Start a brief
+                <kbd className="grid h-6 w-6 place-items-center rounded-full border border-[var(--page)]/30 text-xs leading-none">⏎</kbd>
+              </button>
+
+              {/* The new design, opt-in. Same studio, reimagined as a macOS app. */}
+              {onBeta && (
+                <button
+                  onClick={onBeta}
+                  className="spring group flex items-center gap-2.5 rounded-full border border-ink/15 bg-[var(--surface-solid)] px-8 py-5 text-xl font-medium text-ink/70 transition hover:border-ink/30 hover:text-ink"
+                >
+                  Start a brief
+                  <span className="rounded-full bg-ink/8 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink/55">beta</span>
+                </button>
+              )}
+            </div>
 
             {/* Non-blocking nudge: phones can run the whole flow, but it shines on
                 a wider screen. Shown only on small viewports (hidden at sm+). */}

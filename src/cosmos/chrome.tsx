@@ -3,6 +3,12 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "./cosmos.css";
+import "./beta.css";
+
+// Optional visual skin. "beta" reskins the whole flow as a macOS desktop app
+// (cool palette, SF fonts, blue accent, window chrome) without touching the
+// classic Cosmos look. Threaded down from CosmosFlow; default is the classic skin.
+export type Skin = "beta" | undefined;
 
 export const CXSTEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
@@ -65,16 +71,20 @@ function CxBar({ step, total, reached = step, onBack, onForward, right }: { step
 }
 
 // Full shell with rail. `wide` drops the rail for the board-width screens.
-export function Cx({ step, total = CXSTEPS.length, wide, reached, topRight, barRight, onBack, onJump, onLeave, children }: {
-  step: number; total?: number; wide?: boolean; reached?: number;
+// `skin="beta"` opts the whole shell into the macOS-desktop reskin (see beta.css).
+export function Cx({ step, total = CXSTEPS.length, wide, reached, skin, topRight, barRight, onBack, onJump, onLeave, children }: {
+  step: number; total?: number; wide?: boolean; reached?: number; skin?: Skin;
   topRight?: ReactNode; barRight?: ReactNode;
   onBack: () => void; onJump: (n: number) => void; onLeave: () => void;
   children: ReactNode;
 }) {
   return (
-    <div className="cosmos-root">
-      <div className={"cx" + (wide ? " wide" : "")}>
+    <div className={"cosmos-root" + (skin ? " skin-" + skin : "")}>
+      <div className={"cx" + (wide ? " wide" : "") + (skin ? " skin-" + skin : "")}>
         <div className="cx-top">
+          {skin === "beta" && (
+            <span className="cx-traffic" aria-hidden><i /><i /><i /></span>
+          )}
           <CxBrand />
           <div className="right">
             {topRight}
