@@ -9,7 +9,6 @@ import {
   type DomainBoardData, type DomainCard,
 } from "../lib/namingApi";
 import { Head, Thinking, Info } from "./chrome";
-import { DomainContext } from "./DomainContext";
 import { godaddyUrl } from "./data";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
@@ -93,11 +92,13 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   const board = boards[star];
   const verdict = active ? verdictOf(active) : "Solid";
 
-  // Available first, then negotiable, then taken: read it as a list of what you can claim.
-  const order: Record<string, number> = { available: 0, negotiable: 1, unknown: 2, taken: 3 };
-  const sortedTlds = board ? [...board.tlds].sort((a, b) => (order[a.status] - order[b.status])) : [];
-  const availCount = sortedTlds.filter((t) => t.status === "available").length;
-  const negoCount = sortedTlds.filter((t) => t.status === "negotiable").length;
+  // Lead with what you can claim (available, then for-sale); the taken ones drop to
+  // a quiet row so the board reads as opportunity, not a wall of "taken".
+  const order: Record<string, number> = { available: 0, negotiable: 1 };
+  const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable").sort((a, b) => order[a.status] - order[b.status]) : [];
+  const takenList = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  const availCount = claimable.filter((t) => t.status === "available").length;
+  const negoCount = claimable.filter((t) => t.status === "negotiable").length;
 
   return (
     <>
@@ -131,12 +132,18 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
           <div style={{ padding: "30px 0", display: "grid", placeItems: "center" }}><Thinking lines={["Checking every extension…"]} /></div>
         ) : (
           <>
-            <div className="dboard">
-              {sortedTlds.map((d) => <DomainCardView key={d.domain} card={d} brief={brief} />)}
-            </div>
+            {claimable.length > 0 ? (
+              <div className="dboard">
+                {claimable.map((d) => <DomainCardView key={d.domain} card={d} />)}
+              </div>
+            ) : (
+              <p style={{ fontSize: 14, color: "var(--ink-3)", margin: "6px 2px 0", lineHeight: 1.5 }}>
+                The exact name is taken across these extensions. A close variant below may be your move.
+              </p>
+            )}
 
             {board.variants.length > 0 && (
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 14 }}>
                 <span className="lbl">Also free, a close variant</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                   {board.variants.map((v) => (
@@ -149,13 +156,19 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
               </div>
             )}
 
-            {/* If the exact .com is gone, show who's actually on it. */}
-            <div style={{ marginTop: 12 }}>
-              <DomainContext name={star} brief={brief} domains={dom[star]?.domains} />
-            </div>
+            {takenList.length > 0 && (
+              <div style={{ marginTop: 16, display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+                <span className="lbl" style={{ flex: "0 0 auto" }}>Already taken</span>
+                {takenList.map((t, i) => (
+                  <span key={t.domain} style={{ fontFamily: "var(--serif)", fontSize: 14, color: "var(--ink-4)" }}>
+                    {t.domain}{i < takenList.length - 1 ? <span style={{ color: "var(--ink-4)", margin: "0 2px" }}> · </span> : ""}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {board.source === "rdap" && (
-              <p style={{ fontSize: 12, color: "var(--ink-4)", margin: "12px 2px 0", lineHeight: 1.45 }}>
+              <p style={{ fontSize: 12, color: "var(--ink-4)", margin: "16px 2px 0", lineHeight: 1.45 }}>
                 Showing registrable domains (live, via RDAP). For-sale (aftermarket) listings appear once the Fastly domain key is connected.
               </p>
             )}
@@ -174,8 +187,8 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   );
 }
 
-// One domain card: name, status chip, and the right action.
-function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
+// One claimable domain card: name, status chip (with price), and its action.
+function DomainCardView({ card }: { card: DomainCard }) {
   const cls = STATUS_CLASS[card.status] || "taken";
   const label = STATUS_LABEL[card.status] || "Taken";
   return (
@@ -188,13 +201,7 @@ function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
       <div style={{ marginTop: "auto", paddingTop: 6 }}>
         {card.status === "available" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Register →</a>}
         {card.status === "negotiable" && <a href={card.offerUrl || godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">{card.offerPrice ? `Buy · ${card.offerPrice} →` : "See price →"}</a>}
-        {card.status === "taken" && card.tld === ".com"
-          ? <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink" style={{ color: "var(--ink-3)" }} title="See who's on it below">Taken</a>
-          : card.status === "taken" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Taken</span>}
-        {card.status === "unknown" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Couldn't check</span>}
       </div>
-      {/* keep brief referenced for potential future per-card context */}
-      {false && <span hidden>{brief.does}</span>}
     </div>
   );
 }
