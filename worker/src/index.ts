@@ -82,6 +82,13 @@ export default {
     // tagged available / negotiable / taken. Uses Domainr when a key is set (real
     // aftermarket signal), else RDAP (available vs taken only).
     if (phase === "domainboard") {
+      // TEMP debug: ?raw returns Fastly's exact response for one domain (no token,
+      // just public domain-status data) so we can confirm the offers/price shape.
+      if (body?.payload?.raw && env.FASTLY_KEY) {
+        const dom = String(body.payload.raw);
+        const r = await fetch(`https://api.fastly.com/domain-management/v1/tools/status?domain=${encodeURIComponent(dom)}`, { headers: { "Fastly-Key": env.FASTLY_KEY, accept: "application/json" } });
+        return json({ httpStatus: r.status, body: await r.json().catch(() => null) }, env);
+      }
       return json(await domainBoard(env, body?.payload?.name || ""), env);
     }
 
