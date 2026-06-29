@@ -491,11 +491,13 @@ table.cmp td.c { white-space: nowrap; }
 .wordrow .wr-main { display: flex; flex-direction: column; gap: 0; min-width: 0; flex: 1; }
 .wordrow .rw { font-family: var(--serif); font-size: 16px; line-height: 1.15; letter-spacing: -0.005em; color: var(--ink); }
 .wordrow .rn { font-size: 10.5px; color: var(--ink-3); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Persistent (not hover-only) so it's obvious the word itself explores deeper. */
 .wordrow .wr-explore {
   flex: 0 0 auto; font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--ink-3); opacity: 0; transition: opacity .12s ease; white-space: nowrap;
+  color: var(--ink-4); white-space: nowrap; transition: color .12s ease;
 }
-.wordrow:hover .wr-explore { opacity: 1; }
+.wordrow:hover .rw { text-decoration: underline; text-decoration-color: var(--ink-4); text-underline-offset: 3px; }
+.wordrow:hover .wr-explore { color: var(--ink); }
 
 /* labeled Save pill, shared by the rows and the focus header (.lg) */
 .savepill {
@@ -570,10 +572,9 @@ table.cmp td.c { white-space: nowrap; }
   .focusD-head .seeddef { border-left: none; padding-left: 0; padding-top: 0; flex-basis: 100%; }
   .focusD-head .seedsave { margin-left: 0; }
   .relcolsD { padding: 12px 14px; gap: 14px; }
-  /* compact word rows on phones: hide the relation note, keep the Save pill */
+  /* compact word rows on phones: hide the relation note, keep Explore + Save */
   .wordrow { padding: 8px 8px; }
   .wordrow .rn { display: none; }
-  .wordrow .wr-explore { display: none; }
 
   /* Step 7 (Name ideas) — stack the two columns, each at its natural height. */
   .namecols { display: flex; flex-direction: column; }

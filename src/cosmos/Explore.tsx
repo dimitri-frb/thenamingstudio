@@ -340,7 +340,7 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
                               <span className="rw">{w.w}</span>
                               <span className="rn">{w.lang ? w.lang + " · " : ""}{w.note}</span>
                             </span>
-                            <span className="wr-explore">explore →</span>
+                            <span className="wr-explore">Explore →</span>
                             <button className={"savepill" + (sv ? " on" : "")} title={sv ? "Saved, click to remove" : "Save to shortlist"}
                               onClick={(e) => { e.stopPropagation(); toggleSave(w.w); }}>
                               {sv ? "✓ Saved" : "+ Save"}
