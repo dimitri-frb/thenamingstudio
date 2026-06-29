@@ -23,9 +23,6 @@ export const LANES: Lane[] = [
   { key: "invented",    name: "Invented",    ex: "Kodak, Verso",           d: "Pure coinage. Max distinctiveness, zero meaning." },
   { key: "compound",    name: "Compound",    ex: "Facebook, YouTube",      d: "Two real words fused. Easy to grasp, can cliche." },
   { key: "acronym",     name: "Acronym",     ex: "IBM, BMW",               d: "Initials. Corporate, hard to love." },
-  { key: "geographic",  name: "Geographic",  ex: "Patagonia, Cisco",       d: "Place-anchored. Carries a story." },
-  { key: "founder",     name: "Founder",     ex: "Ford, Disney",           d: "Eponymous. Personal, hard to sell later." },
-  { key: "playful",     name: "Playful",     ex: "Slack, Yahoo",           d: "Real words used cheekily. Memorable, sometimes too cute." },
 ];
 
 // Emotional value (step 3) option lists. The "signal" list is a fallback used
@@ -33,7 +30,8 @@ export const LANES: Lane[] = [
 export const SIGNAL_FALLBACK = ["Velocity", "Elegance", "Joy", "Taste", "Craft", "Sharpness", "Trust", "Warmth", "Rigor", "Optimism", "Mystery", "Play"];
 export const TONE_OPTIONS = ["Witty", "Confident", "Polished", "Plain-spoken", "Bold", "Editorial", "Provocative", "Warm", "Wry"];
 // Markets the name should work in (pronounceable, no awkward meaning). Optional.
-export const GEO_OPTIONS = ["France", "Spain", "EU", "US", "UK", "Global"];
+// Kept broad on purpose (regions, not single countries) per user testing.
+export const GEO_OPTIONS = ["EU", "US", "UK", "Global"];
 export const AVOID_FALLBACK = ["Generic name generators", "Tech-bro acronyms", "Cutesy compounds"];
 
 // Domain extensions shown in the comparison. Only .com/.io/.ai are checked for
@@ -146,8 +144,8 @@ export const INDUSTRIES = [
   "Gaming", "Climate / Energy", "Travel & hospitality", "Media & entertainment",
 ];
 
-// Options for the Stage dropdown.
+// Options for the Stage dropdown. Plain-spoken, less "startuppy" per user testing.
 export const STAGES = [
-  "Just an idea", "Pre-launch · building MVP", "Private beta", "Just launched",
-  "Early revenue", "Growing / scaling", "Established",
+  "Just an idea", "Building it", "In early testing", "Just launched",
+  "First customers", "Growing", "Established",
 ];

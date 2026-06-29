@@ -35,7 +35,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
 
   const [step, setStep] = useState(R?.step ?? test?.step ?? 0);
   const [brief, setBrief] = useState<Brief>(R?.brief ?? test?.brief ?? { ...empty, does: initialDoes || "" });
-  const [stage, setStage] = useState(R?.stage ?? test?.stage ?? "Pre-launch · building MVP");
+  const [stage, setStage] = useState(R?.stage ?? test?.stage ?? "Building it");
   const [workingName, setWorkingName] = useState(R?.workingName ?? test?.workingName ?? "");
 
   const [feelings, setFeelings] = useState<Feeling[]>(R?.feelings ?? test?.feelings ?? []);

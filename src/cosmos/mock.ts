@@ -32,7 +32,7 @@ const brief: Brief = {
   avoid: ["Generic name generators", "Tech-bro acronyms"],
   tone: ["Confident", "Polished"],
   lanes: ["suggestive", "evocative", "invented"],
-  geos: ["France", "EU", "US"],
+  geos: ["EU", "US"],
 };
 
 // Pre-filled "signal" feelings so the emotional step (3) shows real chips without
@@ -119,7 +119,7 @@ const comp: Comparison = {
 };
 
 export const MOCK: TestSeed = {
-  step: 0, brief, stage: "Pre-launch · building MVP", workingName: "Untitled",
+  step: 0, brief, stage: "Building it", workingName: "Untitled",
   feelings, concepts, chosen: ["The Exhale Moment", "The Forge"], saved,
   exploreSeed: { focus: { word: "dawn", def: "The first light that breaks the darkness, signaling a new beginning." }, groups },
   shortlistRows, shortlist, comp, taglines: {}, chosenFinal: "Aurova",
