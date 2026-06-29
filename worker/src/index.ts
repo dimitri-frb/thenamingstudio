@@ -225,7 +225,10 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // the brief steps as the founder types. Cheap + fast; reframes, never echoes.
   synthesize: (b) => ({ model: MODEL.fast, max: 140, prompt:
     `Here is a founder's brief, in progress: ${briefV1(b.brief)}.\n` +
-    `Write ONE sharp sentence (max 22 words) that reframes what this brand really is, in plain confident language, showing you understand it, do NOT just repeat their words. ` +
+    (b.payload?.prev
+      ? `You already wrote this one-line reframe: "${String(b.payload.prev).slice(0, 200)}". ` +
+        `KEEP IT. Only adjust it slightly to fold in any genuinely new detail above, change as few words as possible, and if nothing material changed, return it unchanged. Do not rewrite it from scratch or swap the angle.\n`
+      : `Write ONE sharp sentence (max 22 words) that reframes what this brand really is, in plain confident language, showing you understand it, do NOT just repeat their words.\n`) +
     `Then give 2 or 3 short lowercase tags (1-2 words each) that capture its character. ` +
     `Return ONLY JSON {"line":"...","tags":["...","..."]}.` }),
 

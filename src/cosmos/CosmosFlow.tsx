@@ -162,12 +162,16 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test }: { initia
   }, [step, brief.does, brief.problem, brief.audience, brief.uvp]);
 
   // Reframe the brief live (debounced) while the founder fills the brief steps, so
-  // the "brief, so far" card shows we understand it instead of echoing their words.
+  // the "brief, so far" card shows we understand it. We pass the line we already
+  // have so the model REFINES it (small edits to fold in new info) instead of
+  // rewriting from scratch, and we wait a beat longer so it settles, not churns.
+  const synthLine = useRef("");
+  synthLine.current = briefSynth?.line || "";
   useEffect(() => {
     if (test || step > 2 || !brief.does.trim()) return;
     const t = setTimeout(() => {
-      naming.synthesize(brief).then((s) => { if (s?.line) setBriefSynth(s); }).catch(() => { /* keep last */ });
-    }, 650);
+      naming.synthesize(brief, synthLine.current).then((s) => { if (s?.line) setBriefSynth(s); }).catch(() => { /* keep last */ });
+    }, 1100);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.does, brief.problem, brief.audience, brief.uvp, brief.industry, brief.signal, brief.tone]);

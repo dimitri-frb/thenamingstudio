@@ -161,7 +161,7 @@ export const naming = {
   interview: (messages: Msg[]) => call<InterviewTurn>("interview", EMPTY_BRIEF, { messages }),
   concepts: (brief: Brief) => call<{ concepts: Concept[] }>("concepts", brief).then((d) => d.concepts),
   feelings: (brief: Brief) => call<{ feelings: Feeling[] }>("feelings", brief).then((d) => d.feelings),
-  synthesize: (brief: Brief) => call<{ line: string; tags: string[] }>("synthesize", brief),
+  synthesize: (brief: Brief, prev = "") => call<{ line: string; tags: string[] }>("synthesize", brief, { prev }),
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
   relate: (brief: Brief, seed: string, world: string, exclude: string[] = []) => call<RelateResult>("relate", brief, { seed, world, exclude }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),

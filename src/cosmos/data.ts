@@ -23,6 +23,9 @@ export const LANES: Lane[] = [
   { key: "invented",    name: "Invented",    ex: "Kodak, Verso",           d: "Pure coinage. Max distinctiveness, zero meaning." },
   { key: "compound",    name: "Compound",    ex: "Facebook, YouTube",      d: "Two real words fused. Easy to grasp, can cliche." },
   { key: "acronym",     name: "Acronym",     ex: "IBM, BMW",               d: "Initials. Corporate, hard to love." },
+  { key: "geographic",  name: "Geographic",  ex: "Patagonia, Cisco",       d: "Place-anchored. Carries a story." },
+  { key: "founder",     name: "Founder",     ex: "Ford, Disney",           d: "Eponymous. Personal, hard to sell later." },
+  { key: "playful",     name: "Playful",     ex: "Slack, Yahoo",           d: "Real words used cheekily. Memorable, sometimes too cute." },
 ];
 
 // Emotional value (step 3) option lists. The "signal" list is a fallback used
