@@ -200,7 +200,7 @@ export function fetchDomains(name: string): Promise<DomResult> {
 // The full domain board for one name: a broad set of extensions (+ variants), each
 // tagged available / negotiable / taken. Cached per name. Negotiable needs Domainr
 // (a DOMAINR_KEY on the Worker); without it the Worker falls back to RDAP.
-export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean }
+export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }
 export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string }
 const boardCache = new Map<string, Promise<DomainBoardData>>();
 export function fetchDomainBoard(name: string): Promise<DomainBoardData> {

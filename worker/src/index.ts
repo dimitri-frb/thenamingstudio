@@ -26,7 +26,8 @@ export interface Env {
   ADMIN_KEY?: string;      // optional: required ?key= to read the log
   INPI_LOGIN?: string;     // optional: INPI data-account login (for the trademark check)
   INPI_PASSWORD?: string;  // optional: INPI data-account password
-  DOMAINR_KEY?: string;    // optional: RapidAPI key for Domainr (available/negotiable/taken)
+  FASTLY_KEY?: string;     // optional: Fastly API token for the Domain Research API
+                           // (Domainr, now part of Fastly): available / negotiable / taken + offers
 }
 
 const MODEL = {
@@ -517,20 +518,22 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
   return { domains, suggested: suggested.slice(0, 3) };
 }
 
-// ───────────────────────── domain board (Domainr + RDAP) ─────────────────────────
+// ───────────────────────── domain board (Fastly Domain Research + RDAP) ─────────────────────────
 // A generous spread of extensions the exact name could live on, each tagged so the
 // founder can see, at a glance, what they can register, what's negotiable on the
-// aftermarket, and what's gone. Domainr (when keyed) is the only source that knows
-// "negotiable"; RDAP can only tell available vs taken.
+// aftermarket (with the asking price), and what's gone. Fastly's Domain Research
+// API (formerly Domainr) is the only source that knows "negotiable" and the offer
+// price; RDAP can only tell available vs taken.
 const BOARD_TLDS = ["com", "co", "io", "ai", "app", "dev", "xyz", "net"];
 const BOARD_PRICE: Record<string, [string, string]> = {
   com: ["$12", "$14/yr"], co: ["$24", "$30/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
   app: ["$14", "$18/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"], net: ["$12", "$15/yr"],
 };
 type DomStatus = "available" | "negotiable" | "taken" | "unknown";
+type DrInfo = { status: DomStatus; premium: boolean; offerPrice?: string; offerUrl?: string };
 
-// Map a Domainr status/summary string to our three buckets.
-function classifyDomainr(tokens: string): { status: DomStatus; premium: boolean } {
+// Map a Domainr/Fastly status token string to our three buckets.
+function classifyStatus(tokens: string): { status: DomStatus; premium: boolean } {
   const t = (tokens || "").toLowerCase();
   const premium = /premium/.test(t);
   if (/inactive|undelegated/.test(t)) return { status: "available", premium };
@@ -539,20 +542,45 @@ function classifyDomainr(tokens: string): { status: DomStatus; premium: boolean 
   return { status: "unknown", premium };
 }
 
-async function domainrStatus(env: Env, domains: string[]): Promise<Record<string, { status: DomStatus; premium: boolean }>> {
-  const out: Record<string, { status: DomStatus; premium: boolean }> = {};
-  if (!env.DOMAINR_KEY) return out;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const url = `https://domainr.p.rapidapi.com/v2/status?domain=${encodeURIComponent(domains.join(","))}`;
-    const res = await fetch(url, { signal: ctrl.signal, headers: { "X-RapidAPI-Key": env.DOMAINR_KEY, "X-RapidAPI-Host": "domainr.p.rapidapi.com" } });
-    if (res.ok) {
-      const data: any = await res.json();
-      for (const s of (data?.status || [])) out[s.domain] = classifyDomainr(s.status || s.summary || "");
+// Pull a usable asking price (and link) out of Fastly's `offers` array. Shapes vary
+// by vendor, so read defensively; an offer with no number still means "for sale".
+function pickOffer(offers: any): { price?: string; url?: string } | null {
+  if (!Array.isArray(offers) || !offers.length) return null;
+  for (const o of offers) {
+    const raw = o?.price ?? o?.amount ?? o?.priceUsd ?? o?.value;
+    const num = raw != null ? Number(String(raw).replace(/[^0-9.]/g, "")) : NaN;
+    if (Number.isFinite(num) && num > 0) {
+      const cur = String(o?.currency || "USD").toUpperCase();
+      const sym = cur === "USD" ? "$" : cur === "EUR" ? "€" : cur === "GBP" ? "£" : "";
+      const price = sym ? `${sym}${Math.round(num).toLocaleString("en-US")}` : `${Math.round(num).toLocaleString("en-US")} ${cur}`;
+      return { price, url: o?.url || o?.link || "" };
     }
-  } catch { /* fall back to whatever RDAP can fill in */ }
-  finally { clearTimeout(timer); }
+  }
+  return { url: offers[0]?.url || offers[0]?.link || "" };
+}
+
+// Fastly Domain Research "status" lookups (one per domain, in parallel). Soft-fails
+// to {} so the board falls back to RDAP when the key is absent or the call errors.
+async function fastlyStatus(env: Env, domains: string[]): Promise<Record<string, DrInfo>> {
+  const out: Record<string, DrInfo> = {};
+  if (!env.FASTLY_KEY) return out;
+  await Promise.all(domains.map(async (domain) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 7000);
+    try {
+      const url = `https://api.fastly.com/domain-management/v1/tools/status?domain=${encodeURIComponent(domain)}`;
+      const res = await fetch(url, { signal: ctrl.signal, headers: { "Fastly-Key": env.FASTLY_KEY!, accept: "application/json" } });
+      if (!res.ok) return;
+      const data: any = await res.json();
+      const item = Array.isArray(data?.results) ? data.results[0] : Array.isArray(data?.status) ? data.status[0] : data;
+      const cl = classifyStatus(String(item?.status || item?.summary || ""));
+      const offer = pickOffer(item?.offers);
+      // An offer means it's for sale, even if the status string didn't say so.
+      const status: DomStatus = offer && cl.status !== "available" ? "negotiable" : cl.status;
+      out[domain] = { status, premium: cl.premium, offerPrice: offer?.price, offerUrl: offer?.url };
+    } catch { /* leave to RDAP fallback */ }
+    finally { clearTimeout(timer); }
+  }));
   return out;
 }
 
@@ -563,11 +591,11 @@ async function domainBoard(env: Env, name: string): Promise<any> {
   const variantSlugs = [`get${slug}`, `try${slug}`, `join${slug}`, `${slug}app`, `${slug}hq`];
   const variants = variantSlugs.map((v) => `${v}.com`);
 
-  const dr = await domainrStatus(env, [...exact, ...variants]);
-  const source = env.DOMAINR_KEY && Object.keys(dr).length ? "domainr" : "rdap";
+  const dr = await fastlyStatus(env, [...exact, ...variants]);
+  const source = env.FASTLY_KEY && Object.keys(dr).length ? "fastly" : "rdap";
 
-  // For anything Domainr didn't resolve (or no key), fall back to RDAP where we can.
-  async function statusFor(domain: string): Promise<{ status: DomStatus; premium: boolean }> {
+  // For anything Fastly didn't resolve (or no key), fall back to RDAP where we can.
+  async function statusFor(domain: string): Promise<DrInfo> {
     if (dr[domain]) return dr[domain];
     const dot = domain.lastIndexOf(".");
     const s = domain.slice(0, dot), tld = domain.slice(dot + 1);
@@ -587,6 +615,7 @@ async function domainBoard(env: Env, name: string): Promise<any> {
       domain: `${slug}.${t}`, tld: "." + t, status: st.status, premium: st.premium,
       price: st.status === "available" && !st.premium ? price : undefined,
       renewal: st.status === "available" && !st.premium ? renewal : undefined,
+      offerPrice: st.offerPrice, offerUrl: st.offerUrl,
     };
   });
   const variantHits = variants

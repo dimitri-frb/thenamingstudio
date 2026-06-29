@@ -46,18 +46,29 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The full domain board per name (the hero of this screen), plus the lighter
-  // 3-TLD `domains`/`suggested` that the Decision + Share screens still read.
+  // The light 3-TLD lookup (RDAP, cheap) for every name, so the Decision + Share
+  // screens still have domains.
   useEffect(() => {
     if (!comp) return;
     let live = true;
     comp.rows.map((r) => r.name).forEach(async (name) => {
-      if (!(name in boards)) { const b = await fetchDomainBoard(name); if (live) setBoards((p) => ({ ...p, [name]: b })); }
       if (!(name in dom)) { const d = await fetchDomains(name); if (live) setDom((p) => ({ ...p, [name]: d })); }
     });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp]);
+
+  // The full domain board (the hero of this screen). Fastly's Domain Research API
+  // is metered, so we fetch it ONLY for the name the founder is looking at, and
+  // cache it, switching pills loads that name once, then it's instant.
+  const star = starred || comp?.recommended || comp?.rows?.[0]?.name || "";
+  useEffect(() => {
+    if (!star || star in boards) return;
+    let live = true;
+    fetchDomainBoard(star).then((b) => { if (live) setBoards((p) => ({ ...p, [star]: b })); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [star]);
 
   // Persist the 3-TLD availability back into comp for the downstream screens.
   useEffect(() => {
@@ -77,7 +88,6 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
     </>
   );
 
-  const star = starred || comp.recommended || comp.rows[0]?.name || "";
   const chooseStar = (name: string) => { setStarred(name); setComp({ ...comp, recommended: name }); };
   const active = comp.rows.find((r) => r.name === star) || comp.rows[0];
   const board = boards[star];
@@ -174,10 +184,10 @@ function DomainCardView({ card, brief }: { card: DomainCard; brief: Brief }) {
         <span className="dom">{card.domain}</span>
         {card.premium && <span className="lbl" style={{ fontSize: 8.5, color: "var(--watch)" }}>Premium</span>}
       </div>
-      <span className={"dchip " + cls}>● {label}{card.status === "available" && card.price ? ` · ${card.price}` : ""}</span>
+      <span className={"dchip " + cls}>● {label}{card.status === "available" && card.price ? ` · ${card.price}` : ""}{card.status === "negotiable" && card.offerPrice ? ` · ${card.offerPrice}` : ""}</span>
       <div style={{ marginTop: "auto", paddingTop: 6 }}>
         {card.status === "available" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Register →</a>}
-        {card.status === "negotiable" && <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">Make an offer →</a>}
+        {card.status === "negotiable" && <a href={card.offerUrl || godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink">{card.offerPrice ? "Buy / make an offer →" : "Make an offer →"}</a>}
         {card.status === "taken" && card.tld === ".com"
           ? <a href={godaddyUrl(card.domain)} target="_blank" rel="noreferrer" className="dlink" style={{ color: "var(--ink-3)" }} title="See who's on it below">Taken</a>
           : card.status === "taken" && <span style={{ fontSize: 11.5, color: "var(--ink-4)" }}>Taken</span>}
