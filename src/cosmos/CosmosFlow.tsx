@@ -431,7 +431,7 @@ export function CosmosFlow({ initialDoes, seedBrief, onRestart, test, skin }: { 
   );
 
   if (step === 7) return shell(
-    <Compare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
+    <Compare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp} skin={skin}
       onBack={() => goto(6)} onDone={() => goto(8)}
       onLockIn={() => lockIn(comp?.recommended || comp?.rows?.[0]?.name || chosenFinal)} />
   );

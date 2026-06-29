@@ -8,7 +8,7 @@ import {
   type Brief, type Comparison, type CompareRow, type DomainHit, type SuggestedDomain,
   type DomainBoardData, type DomainCard,
 } from "../lib/namingApi";
-import { Head, Thinking, Info } from "./chrome";
+import { Head, Thinking, Info, type Skin } from "./chrome";
 
 type Dom = { domains: DomainHit[]; suggested: SuggestedDomain[] };
 
@@ -26,9 +26,9 @@ function Pips({ score }: { score: number }) {
 const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "For sale", taken: "Taken", unknown: "Unknown" };
 const STATUS_CLASS: Record<string, string> = { available: "avail", negotiable: "nego", taken: "taken", unknown: "taken" };
 
-export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn }: {
+export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn, skin }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
-  setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void;
+  setComp: (c: Comparison) => void; onBack: () => void; onDone: () => void; onLockIn: () => void; skin?: Skin;
 }) {
   const [starred, setStarred] = useState("");
   const [dom, setDom] = useState<Record<string, Dom>>({});
@@ -132,9 +132,15 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
         ) : (
           <>
             {claimable.length > 0 ? (
-              <div className="dboard">
-                {claimable.map((d) => <DomainCardView key={d.domain} card={d} />)}
-              </div>
+              skin === "beta" ? (
+                <div className="bdomlist">
+                  {claimable.map((d) => <DomainRow key={d.domain} card={d} />)}
+                </div>
+              ) : (
+                <div className="dboard">
+                  {claimable.map((d) => <DomainCardView key={d.domain} card={d} />)}
+                </div>
+              )
             ) : (
               <p style={{ fontSize: 14, color: "var(--ink-3)", margin: "6px 2px 0", lineHeight: 1.5 }}>
                 The exact name is taken across these extensions. A close variant below may be your move.
@@ -198,6 +204,22 @@ function DomainCardView({ card }: { card: DomainCard }) {
         {card.premium && <span className="lbl" style={{ fontSize: 8.5, color: "var(--watch)" }}>Premium</span>}
       </div>
       <span className={"dchip " + cls}>● {label}</span>
+    </div>
+  );
+}
+
+// Beta · one domain as a row (design 1f): status dot, domain, status label. No
+// register/price — claiming happens later on the Decision screen.
+function DomainRow({ card }: { card: DomainCard }) {
+  const cls = STATUS_CLASS[card.status] || "taken";
+  const label = STATUS_LABEL[card.status] || "Taken";
+  const dot = card.status === "available" ? "#28c840" : card.status === "negotiable" ? "var(--watch)" : "var(--ink-4)";
+  return (
+    <div className={"bdomrow " + cls}>
+      <span className="bdomdot" style={{ background: dot }} />
+      <span className="bdomname">{card.domain}</span>
+      {card.premium && <span className="lbl" style={{ fontSize: 9, color: "var(--watch)" }}>Premium</span>}
+      <span className={"bdomstatus " + cls}>{label}</span>
     </div>
   );
 }
