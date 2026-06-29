@@ -1,7 +1,7 @@
 // The home, a calm, editorial hero. "Start a brief" leads into the flow;
 // the brief itself is captured there, not on the landing.
 
-export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void; onTalk: () => void; canTalk: boolean }) {
+export function LandingAtelier({ onNext }: { onNext: () => void }) {
   return (
     <div>
       {/* hero */}
@@ -26,18 +26,6 @@ export function LandingAtelier({ onNext, onTalk, canTalk }: { onNext: () => void
               Start a brief
               <kbd className="grid h-6 w-6 place-items-center rounded-full border border-[var(--page)]/30 text-xs leading-none">⏎</kbd>
             </button>
-
-            {canTalk && (
-              <button
-                onClick={onTalk}
-                className="group inline-flex items-center gap-2 font-serif text-lg italic text-ink/50 transition hover:text-accent"
-              >
-                <span className="grid h-7 w-7 place-items-center rounded-full border border-ink/20 text-ink/60 transition group-hover:border-accent group-hover:text-accent">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
-                </span>
-                …or just talk it through
-              </button>
-            )}
 
             {/* Non-blocking nudge: phones can run the whole flow, but it shines on
                 a wider screen. Shown only on small viewports (hidden at sm+). */}

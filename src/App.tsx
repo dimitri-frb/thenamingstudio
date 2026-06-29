@@ -176,11 +176,7 @@ export default function App() {
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {screen === "landing" && (
           /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
-          <LandingAtelier
-            onNext={() => beginFlow("classic")}
-            onTalk={() => beginFlow("talk")}
-            canTalk
-          />
+          <LandingAtelier onNext={() => beginFlow("classic")} />
         )}
 
         {startGate && (

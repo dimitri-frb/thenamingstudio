@@ -64,11 +64,14 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
   // depth so the strongest path is pre-loaded several steps ahead.
   const queue = useRef<{ w: string; depth: number }[]>([]);
   const running = useRef(0);
-  const MAX_CONC = 10;
-  const enqueue = (w: string, depth: number) => {
+  const MAX_CONC = 14;
+  // `front` jumps the queue: the board the founder is looking at RIGHT NOW gets its
+  // children fetched before any stale deeper-chain items left over from earlier hops.
+  const enqueue = (w: string, depth: number, front = false) => {
     const key = cacheKey(w);
     if (!w || cache.current.has(key) || inflight.current.has(key) || queue.current.some((q) => q.w === w)) return;
-    queue.current.push({ w, depth });
+    if (front) queue.current.unshift({ w, depth });
+    else queue.current.push({ w, depth });
   };
 
   const markSeen = (e: Entry) => {
@@ -123,9 +126,13 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     }
   }
   function prefetchChildren(e: Entry) {
-    // Every visible word is a likely next click, so pre-load them all; the top word
-    // of each group also chains two more levels, so the likely path is 3 steps ahead.
-    for (const g of e.groups) g.words.slice(0, PER_GROUP).forEach((w, i) => enqueue(w.w, i === 0 ? 2 : 0));
+    // Every visible word is a likely next click, so pre-load them ALL one level deep
+    // (so the click-after is warm too); the top word of each group chains deeper.
+    // Prepend (front) so the current board's children always fetch before any stale
+    // leftovers, that's what keeps it instant even deep into a session.
+    const kids: { w: string; depth: number }[] = [];
+    for (const g of e.groups) g.words.slice(0, PER_GROUP).forEach((w, i) => kids.push({ w: w.w, depth: i === 0 ? 2 : 1 }));
+    for (let i = kids.length - 1; i >= 0; i--) enqueue(kids[i].w, kids[i].depth, true);
     pump();
   }
 
@@ -155,31 +162,6 @@ export function Explore({ brief, concepts, saved, setSaved, onDone, initial, sto
     if (entry) { applyBoard(entry, seed); prefetchChildren(entry); }
     else setLoading(false);
   }
-
-  // Pre-load EVERY concept world's opening board in the background, so switching
-  // between worlds on the left is instant instead of a cold fetch each time.
-  const worldsWarm = useRef(false);
-  useEffect(() => {
-    if (worldsWarm.current || !concepts.length) return;
-    worldsWarm.current = true;
-    let live = true;
-    (async () => {
-      for (const c of concepts) {
-        if (!live) return;
-        const key = c.title + "::";
-        if (cache.current.has(key)) continue;
-        try {
-          const res = await naming.relate(brief, "", c.title, excludeList());
-          const entry = { word: res.word, def: res.def, groups: res.groups || [] };
-          cache.current.set(key, entry);
-          cache.current.set(c.title + "::" + (entry.word || "").toLowerCase(), entry);
-          markSeen(entry);
-        } catch { /* the world will load on demand */ }
-      }
-    })();
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [concepts.length]);
 
   // Mirror the live board into the persisted store so returning to this step
   // restores it (the cache + seen set are already the store's own instances).
