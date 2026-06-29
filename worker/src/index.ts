@@ -252,6 +252,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `BRIEF:\n${briefV1(b.brief)}.\n` +
     `Creative direction(s) the founder chose: ${JSON.stringify(b.payload?.sketch?.concepts || [])}.\n` +
     `Word(s) the founder saved and responded to (your primary raw material): ${JSON.stringify(words)}.\n\n` +
+    (b.payload?.refine
+      ? `THE FOUNDER'S STEER (weight this ABOVE everything else, every name must honour it): "${String(b.payload.refine).slice(0, 240)}".\n\n`
+      : ``) +
     `Coin ${n} brand names built from and around that material. They must feel genuinely interesting, original and alive, the opposite of generic AI output. A founder should read the list and feel a spark. Every single one must be a name you would stake the studio's reputation on: no filler to reach the count, no near-duplicates.\n\n` +
     (words.length > 1 ? `Treat the saved words as your palette: you need NOT use every one. Lean into the words with the most naming potential and coin the strongest possible names. Quality over coverage. Tag each with "seed" = the saved word it grew from (or the closest one).\n\n` : `Tag each name with "seed" = "${words[0] || ""}".\n\n`) +
     `WHAT GREAT LOOKS LIKE:\n` +

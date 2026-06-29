@@ -20,6 +20,9 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
   // Our recommendations (one Opus call across all saved words), strongest first.
   const [ideas, setIdeas] = useState<NameIdea[] | null>(initialRows ? initialRows.flatMap((r) => r.ideas) : null);
   const [busy, setBusy] = useState(false);
+  // Free-text steer the founder can feed in to push the next batch (shorter, more
+  // playful, avoid a theme, lean on one word). Persists, so "Show me more" keeps it.
+  const [refine, setRefine] = useState("");
 
   async function generate(more = false) {
     setBusy(true);
@@ -28,6 +31,7 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
         brief,
         { concepts: Array.from(new Set(seeds.current.map((s) => s.concept))), words: seeds.current.map((s) => s.w) },
         more && ideas ? ideas.map((i) => i.name) : [],
+        refine.trim(),
       );
       // Recommendations must be coined names, never the founder's own saved words.
       const savedWords = new Set(seeds.current.map((s) => s.w.toLowerCase()));
@@ -80,6 +84,17 @@ export function Shortlist({ brief, saved, shortlist, setShortlist, onDone, initi
               {busy ? "Coining…" : "Show me more"}
             </button>
           </div>
+          {/* Refine: feed a steer and regenerate a fresh batch that honours it. */}
+          <label className="addidea" style={{ borderColor: "var(--ink-3)", background: "var(--surface)" }}>
+            <span className="plus" style={{ fontSize: 15 }}>⌕</span>
+            <input className="ph" style={{ border: "none", outline: "none", background: "transparent", flex: 1, fontFamily: "var(--sans)", fontSize: 13.5, color: "var(--ink)" }}
+              placeholder="Refine: shorter, more playful, avoid water themes…"
+              value={refine} onChange={(e) => setRefine(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && refine.trim() && !busy) generate(false); }} />
+            <button className="btn" style={{ fontSize: 11.5, padding: "6px 12px" }} disabled={busy || !refine.trim()} onClick={() => generate(false)}>
+              {busy ? "…" : "Refine →"}
+            </button>
+          </label>
           {!ideas ? (
             <div style={{ flex: 1, display: "grid", placeItems: "center" }}>
               <Thinking lines={["Coining brand names from your words…", "Blending, bending, inventing"]} />

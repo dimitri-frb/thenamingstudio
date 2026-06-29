@@ -165,7 +165,7 @@ export const naming = {
   explore: (brief: Brief, concept: Concept) => call<TerritoryWorld>("explore", brief, { concept }),
   relate: (brief: Brief, seed: string, world: string, exclude: string[] = []) => call<RelateResult>("relate", brief, { seed, world, exclude }),
   suggest: (brief: Brief, field: string) => call<{ suggestions: string[] }>("suggest", brief, { field }).then((d) => d.suggestions),
-  names: (brief: Brief, sketch: Sketch, exclude: string[] = []) => call<{ names: NameIdea[] }>("names", brief, { sketch, exclude }).then((d) => d.names),
+  names: (brief: Brief, sketch: Sketch, exclude: string[] = [], refine = "") => call<{ names: NameIdea[] }>("names", brief, { sketch, exclude, refine }).then((d) => d.names),
   compare: (brief: Brief, names: NameIdea[]) => call<Comparison>("compare", brief, { names }),
   brandbook: (brief: Brief, name: string) => call<BrandBook>("brandbook", brief, { name }),
 };
