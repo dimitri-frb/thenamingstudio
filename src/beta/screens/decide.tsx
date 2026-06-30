@@ -88,8 +88,10 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
 export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, onLockIn }: {
   brief: Brief; comp: Comparison | null; initialPick?: string; onBack: () => void; onVote: () => void; onLockIn: (name: string) => void;
 }) {
-  const names = (comp?.rows || []).map((r) => r.name);
-  const [pick, setPick] = useState(initialPick || comp?.recommended || names[0] || "");
+  const allNames = (comp?.rows || []).map((r) => r.name);
+  const [pick, setPick] = useState(initialPick || comp?.recommended || allNames[0] || "");
+  // Selected name always first in the pill row.
+  const names = pick ? [pick, ...allNames.filter((n) => n !== pick)] : allNames;
   const [boards, setBoards] = useState<Record<string, DomainBoardData>>({});
   useEffect(() => {
     if (!pick || boards[pick]) return;
@@ -100,12 +102,14 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
   }, [pick]);
 
   const board = boards[pick];
-  // Merge exact TLDs + variants into one flat list; cap at 6.
+  // Merge exact TLDs + variants; cap at 6.
   const claimable = board ? [
     ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
     ...board.variants.filter((d) => d.status === "available" || d.status === "negotiable"),
   ].slice(0, 6) : [];
   const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  // Pad with taken domains so the list is always at least 6 rows.
+  const takenFill = takenAll.slice(0, Math.max(0, 6 - claimable.length));
 
   const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
 
@@ -127,37 +131,25 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
             {board && <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length} option{claimable.length !== 1 ? "s" : ""} available</span>}
           </div>
           {!board ? <Thinking lines={["Checking every extension…"]} /> : (
-            <>
-              {claimable.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {claimable.map((d) => (
-                    <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
-                      className="bdomrow avail" style={{ textDecoration: "none" }}>
-                      <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
-                      <span className="bdomname">{d.domain}</span>
-                      <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
-                        {d.status === "available" ? "Available" : "Negotiable"}
-                      </span>
-                    </a>
-                  ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {claimable.map((d) => (
+                <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
+                  className="bdomrow avail" style={{ textDecoration: "none" }}>
+                  <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
+                  <span className="bdomname">{d.domain}</span>
+                  <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
+                    {d.status === "available" ? "Available" : "Negotiable"}
+                  </span>
+                </a>
+              ))}
+              {takenFill.map((d) => (
+                <div key={d.domain} className="bdomrow">
+                  <span className="bdomdot" style={{ background: "#ff5f57" }} />
+                  <span className="bdomname" style={{ opacity: 0.4, textDecoration: "line-through" }}>{d.domain}</span>
+                  <span className="bdomstatus" style={{ color: "var(--ink-4)" }}>Taken</span>
                 </div>
-              )}
-              {claimable.length === 0 && (
-                <p style={{ fontSize: 14, color: "var(--ink-3)" }}>No free extensions found for this name.</p>
-              )}
-              {takenAll.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 10px" }}>Already taken</p>
-                  <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                    {takenAll.map((d) => (
-                      <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", textDecoration: "line-through" }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57" }} />{d.domain}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
         </div>
       </div>
