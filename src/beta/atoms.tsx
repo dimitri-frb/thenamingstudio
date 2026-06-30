@@ -2,6 +2,34 @@
 // import. Presentational only; all live under the .cx.skin-beta scope (see beta.css).
 import type { ReactNode } from "react";
 
+// The title block at the top of a screen body (eyebrow · uppercase, h1, sub).
+export function BHead({ eyebrow, title, sub }: { eyebrow: ReactNode; title: ReactNode; sub?: ReactNode }) {
+  return (
+    <div>
+      <p className="beyebrow">{eyebrow}</p>
+      <h1 className="bh1">{title}</h1>
+      {sub && <p className="bsub">{sub}</p>}
+    </div>
+  );
+}
+
+// The bottom action bar: a back link on the left, a primary (and optional
+// secondary) button on the right. Spans the body with a hairline above it.
+export function BFoot({ back, onBack, next, onNext, disabled, secondary, onSecondary }: {
+  back: ReactNode; onBack: () => void; next: ReactNode; onNext: () => void; disabled?: boolean;
+  secondary?: ReactNode; onSecondary?: () => void;
+}) {
+  return (
+    <div className="bfoot">
+      <span className="blink" onClick={onBack}>{back}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {secondary && <button className="bbtn ghost" onClick={onSecondary}>{secondary}</button>}
+        <button className="bbtn" onClick={onNext} disabled={disabled} style={disabled ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>{next}</button>
+      </div>
+    </div>
+  );
+}
+
 // A labelled field block (uppercase micro-label + optional hint).
 export function BField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (

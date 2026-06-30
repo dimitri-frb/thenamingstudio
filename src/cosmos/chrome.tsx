@@ -30,14 +30,14 @@ export function CxBrand() {
   );
 }
 
-function CxRail({ step, reached, onJump, onLeave }: {
-  step: number; reached: number; onJump: (n: number) => void; onLeave: () => void;
+function CxRail({ step, reached, steps = CXSTEPS, onJump, onLeave }: {
+  step: number; reached: number; steps?: string[]; onJump: (n: number) => void; onLeave: () => void;
 }) {
   return (
     <aside className="cx-rail">
       <div className="grp"><span className="lbl">The process</span></div>
       <ol>
-        {CXSTEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li
             key={s}
             className={i < step ? "done" : i === step ? "active" : ""}
@@ -72,8 +72,8 @@ function CxBar({ step, total, reached = step, onBack, onForward, right }: { step
 
 // Full shell with rail. `wide` drops the rail for the board-width screens.
 // `skin="beta"` opts the whole shell into the macOS-desktop reskin (see beta.css).
-export function Cx({ step, total = CXSTEPS.length, wide, reached, skin, topRight, barRight, onBack, onJump, onLeave, children }: {
-  step: number; total?: number; wide?: boolean; reached?: number; skin?: Skin;
+export function Cx({ step, steps = CXSTEPS, total = steps.length, wide, reached, skin, topRight, barRight, onBack, onJump, onLeave, children }: {
+  step: number; steps?: string[]; total?: number; wide?: boolean; reached?: number; skin?: Skin;
   topRight?: ReactNode; barRight?: ReactNode;
   onBack: () => void; onJump: (n: number) => void; onLeave: () => void;
   children: ReactNode;
@@ -87,7 +87,7 @@ export function Cx({ step, total = CXSTEPS.length, wide, reached, skin, topRight
             {topRight}
           </div>
         </div>
-        {!wide && <CxRail step={step} reached={reached ?? step} onJump={onJump} onLeave={onLeave} />}
+        {!wide && <CxRail step={step} reached={reached ?? step} steps={steps} onJump={onJump} onLeave={onLeave} />}
         <div className="cx-main">
           <CxBar step={step} total={total} reached={reached ?? step} onBack={onBack} onForward={() => onJump(Math.min(total - 1, step + 1))} right={barRight} />
           <div className="cx-body">{children}</div>

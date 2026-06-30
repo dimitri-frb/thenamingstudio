@@ -12,6 +12,7 @@ import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
 import { LandingAtelier } from "./components/LandingAtelier";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
+import { BetaFlow } from "./beta/BetaFlow";
 import { StartGate } from "./cosmos/StartGate";
 import { MOCK } from "./cosmos/mock";
 import { AdminPage } from "./admin/AdminPage";
@@ -142,7 +143,10 @@ export default function App() {
     // `?test&beta` (or `#test` + beta) previews the new Apple-desktop skin with
     // mock data, so every screen can be stepped through instantly via the TestBar.
     const betaTest = new URLSearchParams(window.location.search).has("beta") || /beta/.test(window.location.hash);
-    return <CosmosFlow test={MOCK} initialDoes="" skin={betaTest ? "beta" : undefined} onRestart={() => { window.location.assign(window.location.pathname); }} />;
+    const restartTest = () => { window.location.assign(window.location.pathname); };
+    return betaTest
+      ? <BetaFlow test={MOCK} initialDoes="" onRestart={restartTest} />
+      : <CosmosFlow test={MOCK} initialDoes="" onRestart={restartTest} />;
   }
 
   // Direct brand-book demo (?brandbook): show only the brand book.
@@ -202,8 +206,8 @@ export default function App() {
 
         {screen === "classic" && <CosmosFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
 
-        {/* The same flow, in the new Apple-desktop design (opt-in beta). */}
-        {screen === "beta" && <CosmosFlow initialDoes={description} onRestart={restart} skin="beta" />}
+        {/* The studio rebuilt to the Apple-desktop redesign (opt-in beta). */}
+        {screen === "beta" && <BetaFlow initialDoes={description} onRestart={restart} />}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
           <Wizard>
