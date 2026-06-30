@@ -79,12 +79,12 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
                     {wordsFor(q.id).slice(0, 4).map((w, i) => {
                       const on = isSaved(w.w);
                       return (
-                        <div key={w.w + i} className="bword" onClick={() => explore(w.w)}>
+                        <div key={w.w + i} className={"bword" + (on ? " on" : "")} onClick={() => toggle(w.w)}>
                           <span className="bword-w">{w.w}</span>
                           <span className="bword-g">{w.lang ? w.lang + " · " : ""}{w.note}</span>
                           <div className="bword-foot">
-                            <span className="bword-explore">Explore &rarr;</span>
-                            <span className={"bword-save" + (on ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggle(w.w); }}>{on ? "✓ Saved" : "+ Save"}</span>
+                            <span className="bword-explore" onClick={(e) => { e.stopPropagation(); explore(w.w); }}>Explore &rarr;</span>
+                            <span className={"bword-save" + (on ? " on" : "")}>{on ? "✓ Saved" : "+ Save"}</span>
                           </div>
                         </div>
                       );
