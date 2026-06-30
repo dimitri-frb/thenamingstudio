@@ -15,8 +15,8 @@ import { type ExploreStore } from "../cosmos/Explore";
 import { type SavedIdea } from "../cosmos/Shortlist";
 import { BrandBook } from "../components/BrandBook";
 import { BetaBrief, BetaBrand, BetaEmotional, BetaStrategy } from "./screens/intake";
-import { BetaExplore, BetaNameIdeas } from "./screens/explore";
-import { BetaCompare, BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
+import { BetaExplore, BetaNamesCompare } from "./screens/explore";
+import { BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
 
 export const BETA_STEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
@@ -88,9 +88,10 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
   const emotionOpts = feelings.length ? feelings.map((f) => f.word) : SIGNAL_FALLBACK;
   const northStar = brief.signal[0] || "";
 
-  const shell = (node: React.ReactNode, opts?: { wide?: boolean; barRight?: React.ReactNode }) => (
+  const shell = (node: React.ReactNode, opts?: { wide?: boolean; barRight?: React.ReactNode; stepLabel?: string }) => (
     <Cx step={step} steps={BETA_STEPS} skin="beta" wide={opts?.wide}
       reached={test ? BETA_STEPS.length - 1 : maxReached}
+      stepLabel={opts?.stepLabel}
       barRight={opts?.barRight}
       topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : undefined}
       onBack={() => (step > 0 ? goto(step - 1) : onRestart())} onJump={goto} onLeave={onRestart}>
@@ -141,22 +142,27 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
     { wide: true, barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {saved.length} saved</span> }
   );
 
-  // 06 — Name ideas
-  if (step === 5) return shell(
-    <BetaNameIdeas brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
-      initialRows={test?.shortlistRows} onNext={() => { setComp(null); goto(6); }} />,
-    { barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {shortlist.length} shortlisted</span> }
-  );
-
-  // 07 — Comparison (scored)
-  if (step === 6) return shell(
-    <BetaCompare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
-      onBack={() => goto(5)} onVote={() => goto(8)} onNext={(name) => { setChosenFinal(name); goto(7); }} />
+  // 06+07 — Names & Comparison (merged)
+  if (step === 5 || step === 6) return shell(
+    <BetaNamesCompare brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
+      initialRows={test?.shortlistRows}
+      onBack={() => goto(4)}
+      onVote={() => goto(8)}
+      onNext={(name, allNames) => {
+        const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
+        setChosenFinal(name);
+        setShortlist(top);
+        gen(["Scoring names against your brief…", "Checking domains and trademark room…"], async () => {
+          const c = await naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })));
+          setComp(c);
+        }, 7);
+      }} />,
+    { stepLabel: "06-07" }
   );
 
   // 08 — Domains
   if (step === 7) return shell(
-    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(6)} onVote={() => goto(8)}
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(5)} onVote={() => goto(8)}
       onLockIn={(name) => { setChosenFinal(name); goto(9); }} />
   );
 

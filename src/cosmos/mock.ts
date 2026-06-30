@@ -82,12 +82,36 @@ const saved: SavedIdea[] = [
   { w: "alba", concept: "First Light" }, { w: "first light", concept: "First Light", mine: true },
 ];
 
-const idea = (name: string, type = "invented"): NameIdea => ({ name, type, rationale: "", score: 88 });
+const idea = (name: string, score: number, type = "invented", rationale = "", seed = ""): NameIdea => ({ name, type, rationale, score, seed });
 const shortlistRows: SeedRow[] = [
-  { seed: "dawn", concept: "The Exhale Moment", ideas: [idea("Dawnly"), idea("Aurova"), idea("Daybreak"), idea("Dawnara"), idea("Lumen")] },
-  { seed: "ember", concept: "The Forge", ideas: [idea("Embra"), idea("Emberly"), idea("Embero"), idea("Glow"), idea("Emberhaus")] },
-  { seed: "alba", concept: "First Light", ideas: [idea("Albara"), idea("Albo"), idea("Albright"), idea("Alvenly"), idea("Alva")] },
-  { seed: "spark", concept: "The Forge", ideas: [idea("Sparkly"), idea("Sparko"), idea("Sparkhaus"), idea("Ignite"), idea("Sparq")] },
+  { seed: "dawn", concept: "The Exhale Moment", ideas: [
+    idea("Aurova", 97, "evocative", "Dawn made luminous and new. The clearest, most ownable of the set.", "aurora + nova"),
+    idea("Daybreak", 87, "real-word", "The moment everything starts. Poetic and direct, but harder to trademark.", "day + break"),
+    idea("Dawnly", 80, "invented", "Friendly and native to SaaS, though it gives up some distinctiveness.", "dawn + -ly"),
+    idea("Lumen", 73, "real-word", "The unit of light itself. Clean and trusted, but in crowded territory.", "Latin · light"),
+    idea("Dawnara", 66, "invented", "Expansive and feminine, with a global feel. Slightly harder to pronounce.", "dawn + ara"),
+  ]},
+  { seed: "ember", concept: "The Forge", ideas: [
+    idea("Embra", 87, "invented", "A quiet glow with confidence. Punchy, warm and instantly easy to say.", "ember + bravo"),
+    idea("Emberly", 76, "invented", "Warmer but softer. Works well for consumer brands.", "ember + -ly"),
+    idea("Glow", 70, "real-word", "Pure and visceral. Generic risk is high.", ""),
+    idea("Embero", 63, "invented", "Italian-tinged and distinctive. Needs some teaching.", "ember + -o"),
+    idea("Emberhaus", 58, "invented", "Strong craft feel. Too niche for a broad SaaS play.", "ember + haus"),
+  ]},
+  { seed: "alba", concept: "First Light", ideas: [
+    idea("Albara", 80, "invented", "Italian dawn made musical. Elegant and distinctive, a touch long.", "alba + clara"),
+    idea("Alva", 72, "real-word", "Short, sharp, Scandinavian. Could be a person's name.", "Old Norse · elf"),
+    idea("Albright", 67, "real-word", "Authority and light in one word. Leans formal.", "alba + right"),
+    idea("Alvenly", 60, "invented", "Heavenly register. Romantic, but harder to say fast.", "alven + -ly"),
+    idea("Albo", 55, "invented", "Very short and punchy. Informal feel.", "alba + -o"),
+  ]},
+  { seed: "spark", concept: "The Forge", ideas: [
+    idea("Sparq", 80, "invented", "The flash that starts everything. Digital and punchy, needs teaching.", "spark, respelled"),
+    idea("Ignite", 74, "real-word", "Visceral and direct. Highly competitive space.", ""),
+    idea("Sparko", 62, "invented", "Playful and energetic. Works for consumer, less for enterprise.", "spark + -o"),
+    idea("Sparkhaus", 56, "invented", "A craft workshop feel. Too literal for a naming studio.", "spark + haus"),
+    idea("Sparkly", 50, "real-word", "Descriptive and friendly. Lacks naming-studio gravitas.", "spark + -ly"),
+  ]},
 ];
 
 const shortlist = ["Aurova", "Embra", "Albara", "Lumen", "Sparq"];

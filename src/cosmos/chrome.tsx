@@ -54,14 +54,15 @@ function CxRail({ step, reached, steps = CXSTEPS, onJump, onLeave }: {
   );
 }
 
-function CxBar({ step, total, reached = step, onBack, onForward, right }: { step: number; total: number; reached?: number; onBack: () => void; onForward?: () => void; right?: ReactNode }) {
+function CxBar({ step, total, reached = step, stepLabel, onBack, onForward, right }: { step: number; total: number; reached?: number; stepLabel?: string; onBack: () => void; onForward?: () => void; right?: ReactNode }) {
   const canFwd = step < reached;
+  const sno = stepLabel ?? String(step + 1).padStart(2, "0");
   return (
     <div className="cx-bar">
       <button className="back" onClick={onBack} title="Back">←</button>
       <button className="back" onClick={onForward} disabled={!canFwd} title="Forward"
         style={canFwd ? undefined : { opacity: 0.3, cursor: "default" }}>→</button>
-      <span className="sno">{String(step + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}</span>
+      <span className="sno">{sno} / {String(total).padStart(2, "0")}</span>
       <div className="cx-prog">
         {Array.from({ length: total }).map((_, i) => <span key={i} className={i <= step ? "on" : ""} />)}
       </div>
@@ -72,9 +73,9 @@ function CxBar({ step, total, reached = step, onBack, onForward, right }: { step
 
 // Full shell with rail. `wide` drops the rail for the board-width screens.
 // `skin="beta"` opts the whole shell into the macOS-desktop reskin (see beta.css).
-export function Cx({ step, steps = CXSTEPS, total = steps.length, wide, reached, skin, topRight, barRight, onBack, onJump, onLeave, children }: {
+export function Cx({ step, steps = CXSTEPS, total = steps.length, wide, reached, skin, stepLabel, topRight, barRight, onBack, onJump, onLeave, children }: {
   step: number; steps?: string[]; total?: number; wide?: boolean; reached?: number; skin?: Skin;
-  topRight?: ReactNode; barRight?: ReactNode;
+  stepLabel?: string; topRight?: ReactNode; barRight?: ReactNode;
   onBack: () => void; onJump: (n: number) => void; onLeave: () => void;
   children: ReactNode;
 }) {
@@ -89,7 +90,7 @@ export function Cx({ step, steps = CXSTEPS, total = steps.length, wide, reached,
         </div>
         {!wide && <CxRail step={step} reached={reached ?? step} steps={steps} onJump={onJump} onLeave={onLeave} />}
         <div className="cx-main">
-          <CxBar step={step} total={total} reached={reached ?? step} onBack={onBack} onForward={() => onJump(Math.min(total - 1, step + 1))} right={barRight} />
+          <CxBar step={step} total={total} reached={reached ?? step} stepLabel={stepLabel} onBack={onBack} onForward={() => onJump(Math.min(total - 1, step + 1))} right={barRight} />
           <div className="cx-body">{children}</div>
         </div>
       </div>

@@ -188,6 +188,123 @@ export function BetaNameIdeas({ brief, saved, shortlist, setShortlist, initialRo
   );
 }
 
+// 06+07 — Names & Comparison (merged): one hero card for the top pick, 2-col grid for the rest.
+export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShortlist: _setShortlist, initialRows, onBack, onVote, onNext }: {
+  brief: Brief; saved: SavedIdea[];
+  shortlist: string[]; setShortlist: React.Dispatch<React.SetStateAction<string[]>>;
+  initialRows?: { seed: string; concept: string; ideas: NameIdea[] }[];
+  onBack: () => void; onVote: () => void; onNext: (name: string, allNames: string[]) => void;
+}) {
+  const seedIdeas = () => (initialRows || []).flatMap((r) => r.ideas);
+  const [ideas, setIdeas] = useState<NameIdea[]>(seedIdeas());
+  const [busy, setBusy] = useState(!ideas.length);
+  const [chosen, setChosen] = useState("");
+  const did = useRef(false);
+
+  const generate = (more: boolean) => {
+    setBusy(true);
+    const words = saved.map((s) => s.w);
+    naming.names(brief, { concepts: [], words } as any, more ? ideas.map((i) => i.name) : [])
+      .then((res) => { setIdeas((p) => dedupe(more ? [...p, ...res] : res)); })
+      .catch(() => { /* keep */ }).finally(() => setBusy(false));
+  };
+  useEffect(() => { if (did.current || ideas.length) return; did.current = true; generate(false); /* eslint-disable-next-line */ }, []);
+
+  const sorted = [...ideas].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
+  const leader = sorted[0]?.name || "";
+  const pick = chosen || leader;
+  const hero = sorted.find((i) => i.name === pick) || sorted[0];
+  const rest = sorted.filter((i) => i.name !== pick);
+  const pct = (idea: NameIdea) => Math.min(99, Math.max(40, Math.round(idea.score || 70)));
+
+  const Bar = ({ p, accent }: { p: number; accent: boolean }) => (
+    <div style={{ height: 3, borderRadius: 999, background: "var(--sep)", marginTop: 8 }}>
+      <div style={{ height: "100%", width: p + "%", borderRadius: 999, background: accent ? "var(--accent)" : "var(--ink-3)", transition: "width 0.5s ease" }} />
+    </div>
+  );
+
+  return (
+    <>
+      <div className="bbody">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+          <BHead eyebrow="Names &amp; Comparison" title={<>Every name, already scored.</>}
+            sub="Built from your saved words and graded against the brief the moment they appear. Shortlist as you go." />
+          {!busy && (
+            <button className="bbtn ghost" onClick={() => generate(true)} style={{ flexShrink: 0, marginTop: 4 }}>
+              &#8635; Generate more
+            </button>
+          )}
+        </div>
+        {brief.does && (
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderRadius: 12, background: "var(--accent-soft, #EEF3FF)", border: "1px solid var(--accent)" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)", flex: "0 0 auto", paddingTop: 2 }}>Brief</span>
+            <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>&ldquo;{brief.does}&rdquo;</span>
+          </div>
+        )}
+        {busy && !ideas.length ? (
+          <Thinking lines={["Coining names from your words…", "Grading against your brief…"]} />
+        ) : hero ? (
+          <>
+            {/* Hero card — the current top pick */}
+            <div className="bcmp lead chosen" style={{ cursor: "default", display: "flex", alignItems: "flex-start", gap: 14, padding: "18px 20px" }}>
+              <span className="bcmp-rank lead" style={{ flexShrink: 0, marginTop: 3 }}>♔</span>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                  <span className="bcmp-name lead">{hero.name}</span>
+                  {hero.seed && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{hero.seed}</span>}
+                  {hero.type && <span className="bidea-tag" style={{ fontSize: 10.5, padding: "2px 8px" }}>{hero.type}</span>}
+                </div>
+                {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
+                <Bar p={pct(hero)} accent />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0, width: 72, marginTop: 3 }}>
+                <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--accent)", lineHeight: 1 }}>{pct(hero)}%</span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-3)" }}>Brief fit</span>
+              </div>
+            </div>
+
+            {/* Other contenders grid */}
+            {rest.length > 0 && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                    Other contenders &middot; pick one to compare
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--sep)" }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {rest.map((idea) => {
+                    const p = pct(idea);
+                    return (
+                      <div key={idea.name} className="bcmp" style={{ cursor: "pointer", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4 }}
+                        onClick={() => setChosen(idea.name)}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em" }}>{idea.name}</span>
+                            {idea.seed && <span style={{ fontSize: 11.5, color: "var(--ink-3)", marginLeft: 7 }}>{idea.seed}</span>}
+                          </div>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", flexShrink: 0 }}>{p}%</span>
+                        </div>
+                        {idea.type && <span className="bidea-tag" style={{ fontSize: 10, padding: "2px 7px", alignSelf: "flex-start" }}>{idea.type}</span>}
+                        {idea.rationale && <span style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.4 }}>{idea.rationale}</span>}
+                        <Bar p={p} accent={false} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        ) : null}
+      </div>
+      <BFoot back="&larr; Exploration" onBack={onBack}
+        secondary="Take it to a vote &rarr;" onSecondary={onVote}
+        next={pick ? "Check domain names for " + pick + " →" : "Select a name first"} disabled={!pick}
+        onNext={() => onNext(pick, sorted.map((i) => i.name))} />
+    </>
+  );
+}
+
 function dedupe(list: NameIdea[]): NameIdea[] {
   const seen = new Set<string>(); const out: NameIdea[] = [];
   for (const i of list) { const k = i.name.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(i); } }
