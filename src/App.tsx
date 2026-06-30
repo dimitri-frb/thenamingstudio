@@ -60,11 +60,8 @@ export default function App() {
   // holds where to go after connecting.
   const [startGate, setStartGate] = useState<null | "classic" | "talk" | "beta">(null);
   const [userName, setUserName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
-  const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
   const beginFlow = (to: "classic" | "talk" | "beta") => {
     if (to === "classic" || to === "beta") newProcess();
-    // Beta always shows the lead-capture gate; classic/talk skip it if email already known.
-    if (to !== "beta" && hasEmail()) { setScreen(to); return; }
     setStartGate(to);
   };
   // A shared "?vote=Name1|Name2&by=…&about=…" link drops friends straight into
@@ -185,7 +182,7 @@ export default function App() {
         <LandingAtelier onNext={() => beginFlow("classic")} onBeta={() => beginFlow("beta")} />
         {startGate && (
           <StartGate
-            variant={startGate === "beta" ? "beta" : undefined}
+            variant="beta"
             onComplete={({ name, email }) => {
               try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
               if (name) setUserName(name);
@@ -205,7 +202,7 @@ export default function App() {
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
         {startGate && (
           <StartGate
-            variant={startGate === "beta" ? "beta" : undefined}
+            variant="beta"
             onComplete={({ name, email }) => {
               try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
               if (name) setUserName(name);

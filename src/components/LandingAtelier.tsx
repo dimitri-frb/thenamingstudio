@@ -28,20 +28,6 @@ export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?
           <Mark size={28} />
           <span style={{ fontSize: 14, fontWeight: 500, color: INK, letterSpacing: "-0.01em" }}>The Naming Studio</span>
         </div>
-        {/* Theme switcher — visual only, future wiring */}
-        <div style={{ display: "flex", gap: 1, background: "rgba(0,0,0,0.07)", borderRadius: 9, padding: 3 }}>
-          {(["Light", "Dark", "Blue", "Graphite"] as const).map((t) => {
-            const active = t === "Blue";
-            return (
-              <button key={t}
-                style={{ padding: "5px 13px", borderRadius: 6, border: "none", fontSize: 12.5, fontWeight: active ? 600 : 400, cursor: "pointer", fontFamily: SANS,
-                  background: active ? "#fff" : "transparent", color: active ? INK : INK3,
-                  boxShadow: active ? "0 1px 3px rgba(0,0,0,0.14)" : "none" }}>
-                {t}
-              </button>
-            );
-          })}
-        </div>
       </header>
 
       {/* Hero */}
