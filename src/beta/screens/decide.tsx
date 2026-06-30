@@ -260,9 +260,6 @@ export function BetaDecide({ comp, chosenFinal, onBack, onBrandBook }: {
         <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 18px" }}>Your name</p>
         <h1 className="breveal">{chosenFinal || "Aurova"}</h1>
         <p style={{ fontSize: 19, color: "var(--ink-2)", margin: "18px 0 0", maxWidth: "42ch", lineHeight: 1.5 }}>{row?.verdict || row?.tagline || "Clear, premium, and unmistakably yours."}</p>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginTop: 24, padding: "10px 20px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--sep)", fontSize: 15, fontFamily: "var(--mono)", color: "var(--ink-2)" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#28c840" }} />{chosenFinal.toLowerCase()}.com &middot; available
-        </div>
       </div>
       <div style={{ position: "relative", display: "flex", justifyContent: "center", padding: "0 40px 36px" }}>
         <div style={{ width: "100%", maxWidth: 520, borderRadius: 18, background: "var(--surface-2)", border: "1px solid var(--sep)", padding: "22px 24px", textAlign: "left" }}>
