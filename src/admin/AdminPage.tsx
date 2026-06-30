@@ -96,7 +96,8 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={load} style={btn(C)}>↻ Refresh</button>
-            <a href={`${import.meta.env.BASE_URL || "/"}test`} target="_blank" rel="noreferrer" style={{ ...btn(C), textDecoration: "none" }}>↗ Test process</a>
+            <a href={`${import.meta.env.BASE_URL || "/"}?test`} target="_blank" rel="noreferrer" style={{ ...btn(C), textDecoration: "none" }}>↗ Test classic</a>
+            <a href={`${import.meta.env.BASE_URL || "/"}?test&beta`} target="_blank" rel="noreferrer" style={{ ...btn(C), textDecoration: "none" }}>↗ Test beta</a>
             <button onClick={onExit} style={btn(C)}>← Studio</button>
           </div>
         </div>
