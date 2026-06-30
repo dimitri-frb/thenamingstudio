@@ -41,7 +41,7 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
     <>
       <div className="bbody">
         <BHead eyebrow="The shortlist" title={<>{rows.length} names, side by side.</>}
-          sub={<>Scored against what your brief said matters. <span style={{ color: "var(--accent)", fontWeight: 600 }}>{leader}</span> leads &mdash; but the call is yours.</>} />
+          sub={<>Scored against what your brief said matters. <span style={{ color: "var(--accent)", fontWeight: 600 }}>{leader}</span> leads, but the call is yours.</>} />
         <p style={{ fontSize: 13, color: "var(--ink-3)", margin: "-6px 0 0", lineHeight: 1.5 }}>
           Brief-fit score, built from <span style={{ color: "var(--ink-2)" }}>meaning &middot; memorability &middot; sayability &middot; distinctiveness &middot; .com room &middot; trademark room</span>.
         </p>
@@ -157,7 +157,7 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
 }
 
 // 09 — Share & vote (design 1l): a shareable link, live results, voters.
-export function BetaShare({ comp, chosenFinal, onBack, onDone }: {
+export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
   brief: Brief; comp: Comparison | null; taglines: Record<string, string>; setTaglines: (t: Record<string, string>) => void;
   chosenFinal?: string; onBack: () => void; onDone: () => void; onCapture?: (email: string) => void;
 }) {
@@ -166,7 +166,10 @@ export function BetaShare({ comp, chosenFinal, onBack, onDone }: {
   // Demo tallies (no live votes yet): weight by rank so the board reads as the design.
   const weights = [52, 30, 11, 7];
   const total = 27;
-  const shareUrl = `studio.name/${(names[0] || "vote").toLowerCase()}-vote`;
+  // Build a real ?vote= URL that the PublicVote component reads.
+  const shareUrl = window.location.origin + window.location.pathname
+    + "?vote=" + names.map(encodeURIComponent).join("|")
+    + (brief.does ? "&about=" + encodeURIComponent(brief.does.slice(0, 180)) : "");
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
@@ -177,12 +180,12 @@ export function BetaShare({ comp, chosenFinal, onBack, onDone }: {
   return (
     <>
       <div className="bbody">
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-          <BHead eyebrow="The vote" title={<>Let the room weigh in.</>}
-            sub="Share a link to your shortlist. No login — your team taps a name and it lands here, live." />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 16px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--sep)" }}>
-            <span style={{ fontSize: 13.5, fontFamily: "var(--mono)", color: "var(--ink-2)" }}>{shareUrl}</span>
-            <button className="bbtn" style={{ padding: "8px 16px", fontSize: 13 }} onClick={copyLink}>{copied ? "Copied ✓" : "Copy link"}</button>
+        <BHead eyebrow="The vote" title={<>Let the room weigh in.</>}
+          sub="Share a link to your shortlist. No login, your team taps a name and it lands here, live." />
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 16px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--sep)", maxWidth: "100%", overflow: "hidden" }}>
+            <span style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}>{shareUrl}</span>
+            <button className="bbtn" style={{ padding: "8px 16px", fontSize: 13, flexShrink: 0 }} onClick={copyLink}>{copied ? "Copied ✓" : "Copy link"}</button>
           </div>
         </div>
         <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -260,7 +263,7 @@ export function BetaDecide({ comp, chosenFinal, onBack, onBrandBook }: {
         <div style={{ width: "100%", maxWidth: 520, borderRadius: 18, background: "var(--surface-2)", border: "1px solid var(--sep)", padding: "22px 24px", textAlign: "left" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", fontSize: 13, flex: "0 0 auto" }}>&#10003;</span>
-            <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>We&rsquo;ve got a name &mdash; here&rsquo;s what&rsquo;s next</span>
+            <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>We&rsquo;ve got a name. Here&rsquo;s what&rsquo;s next</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
 

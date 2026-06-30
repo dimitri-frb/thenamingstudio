@@ -76,7 +76,7 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, onBack,
               sub="A name only works in context. Two plain sentences is enough." />
             <BField label="The problem you solve">
               <textarea className="binput barea active" rows={2} value={brief.problem} onChange={(e) => set({ problem: e.target.value })}
-                placeholder="Founders lose weeks and thousands to naming — agencies are slow, generators are generic." />
+                placeholder="Founders lose weeks and thousands to naming. Agencies are slow, generators are generic." />
             </BField>
             <BField label="Who it's for">
               <textarea className="binput barea" rows={2} value={brief.audience} onChange={(e) => set({ audience: e.target.value })}
@@ -105,7 +105,7 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
         <div className="bintake">
           <div className="bintake-main">
             <BHead eyebrow="The brief · 3 of 4" title={<>How should the name make people feel?</>}
-              sub="Pick a few. One becomes your north star — the feeling every name is judged against." />
+              sub="Pick a few. One becomes your north star, the feeling every name is judged against." />
             <div className="bemotions">
               {options.map((o) => {
                 const on = selected.includes(o);
@@ -126,7 +126,7 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
               <div className="bnorthstar">★ {northStar || "Pick one"}</div>
             </div>
             <p style={{ fontSize: 15, lineHeight: 1.5, color: "var(--ink-2)", margin: 0 }}>
-              Every name from here will be measured first by how <span style={{ color: "var(--accent)", fontWeight: 600 }}>{(northStar || "clear").toLowerCase()}</span> it feels{selected.length > 1 ? <> — then by {selected.slice(1, 4).map((s) => s.toLowerCase()).join(", ")}.</> : "."}
+              Every name from here will be measured first by how <span style={{ color: "var(--accent)", fontWeight: 600 }}>{(northStar || "clear").toLowerCase()}</span> it feels{selected.length > 1 ? <>, then by {selected.slice(1, 4).map((s) => s.toLowerCase()).join(", ")}.</> : "."}
             </p>
           </div>
         </div>
