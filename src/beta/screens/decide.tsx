@@ -52,7 +52,7 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
             return (
               <div key={r.name} className={"bcmp" + (lead ? " lead" : "") + (sel ? " chosen" : "")}
                 style={{ cursor: "pointer" }} onClick={() => setChosen(r.name)}>
-                <span className={"bcmp-rank" + (lead ? " lead" : "")}>{idx === 0 || sel ? "♔" : idx + 1}</span>
+                <span className={"bcmp-rank" + (lead ? " lead" : "")}>{sel ? "♔" : idx + 1}</span>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                     <span className={"bcmp-name" + (lead ? " lead" : "")}>{r.name}</span>
