@@ -66,13 +66,13 @@ export default function App() {
   };
   // A shared "?vote=Name1|Name2&by=…&about=…" link drops friends straight into
   // the swipe vote, with context on who's asking and what the project is.
-  const [friendVote, setFriendVote] = useState<{ names: string[]; notes: string[]; by: string; about: string } | null>(() => {
+  const [friendVote, setFriendVote] = useState<{ names: string[]; notes: string[]; by: string; about: string; session: string } | null>(() => {
     try {
       const p = new URLSearchParams(window.location.search);
       const names = (p.get("vote") || "").split("|").map((s) => s.trim()).filter(Boolean).slice(0, 10);
       if (!names.length) return null;
       const notes = (p.get("notes") || "").split("|").map((s) => s.trim());
-      return { names, notes, by: (p.get("by") || p.get("from") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180) };
+      return { names, notes, by: (p.get("by") || p.get("from") || "").trim().slice(0, 40), about: (p.get("about") || "").trim().slice(0, 180), session: (p.get("session") || "").trim() };
     } catch { return null; }
   });
   // "?brandbook" (optionally "?brandbook=YourName") jumps straight to a demo
@@ -169,6 +169,7 @@ export default function App() {
           items={friendVote.names.map((n, i) => ({ name: n, note: friendVote.notes[i] || undefined }))}
           by={friendVote.by}
           about={friendVote.about}
+          sessionId={friendVote.session || undefined}
           onClose={() => { setFriendVote(null); try { window.history.replaceState(null, "", window.location.pathname); } catch { /* noop */ } }}
         />
       </div>

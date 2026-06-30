@@ -117,6 +117,41 @@ export default {
       return json({ ok: true }, env);
     }
 
+    // Vote sessions (step 8 Share & vote). Stored in LOG KV with "vote:" prefix, 14-day TTL.
+    if (phase === "vote-create") {
+      if (!env.LOG) return json({ sessionId: "" }, env);
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      const id = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * 36)]).join("");
+      const names: string[] = Array.isArray(body.names) ? body.names : [];
+      const session = { names, about: String(body.about || ""), votes: Object.fromEntries(names.map((n: string) => [n, 0])), voters: [] as string[] };
+      await env.LOG.put(`vote:${id}`, JSON.stringify(session), { expirationTtl: 60 * 60 * 24 * 14 });
+      return json({ sessionId: id }, env);
+    }
+
+    if (phase === "vote-cast") {
+      if (!env.LOG) return json({ ok: true }, env);
+      const raw = await env.LOG.get(`vote:${body.sessionId}`);
+      if (!raw) return json({ error: "not found" }, env, 404);
+      const session = JSON.parse(raw);
+      const voterId: string = String(body.voterId || "");
+      if (voterId && (session.voters as string[]).includes(voterId)) return json({ ok: true, duplicate: true }, env);
+      const liked: string[] = Array.isArray(body.liked) ? body.liked : [];
+      liked.forEach((n: string) => { if (session.votes[n] !== undefined) session.votes[n]++; });
+      if (voterId) (session.voters as string[]).push(voterId);
+      await env.LOG.put(`vote:${body.sessionId}`, JSON.stringify(session), { expirationTtl: 60 * 60 * 24 * 14 });
+      return json({ ok: true }, env);
+    }
+
+    if (phase === "vote-results") {
+      if (!env.LOG) return json({ votes: {}, total: 0, voters: 0 }, env);
+      const raw = await env.LOG.get(`vote:${body.sessionId}`);
+      if (!raw) return json({ votes: {}, total: 0, voters: 0 }, env);
+      const session = JSON.parse(raw);
+      const votes: Record<string, number> = session.votes || {};
+      const total = (Object.values(votes) as number[]).reduce((a, b) => a + b, 0);
+      return json({ votes, total, voters: (session.voters || []).length }, env);
+    }
+
     const spec = PROMPTS[phase];
     if (!spec) return json({ error: `unknown phase: ${phase}` }, env, 400);
 

@@ -2,7 +2,8 @@
 // (09, design 1l) and decision (10, design 1m).
 import { useEffect, useRef, useState } from "react";
 import {
-  naming, fetchDomainBoard, type Brief, type Comparison, type CompareRow, type DomainBoardData,
+  naming, fetchDomainBoard, createVoteSession, getVoteResults,
+  type Brief, type Comparison, type CompareRow, type DomainBoardData,
 } from "../../lib/namingApi";
 import { Thinking } from "../../cosmos/chrome";
 import { BHead, BFoot } from "../atoms";
@@ -168,21 +169,46 @@ export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
 }) {
   const names = (comp?.rows || []).map((r) => r.name).slice(0, 4);
   if (!comp) return <div className="bbody"><Thinking lines={["Loading comparison…"]} /></div>;
+
   const [copied, setCopied] = useState(false);
-  // Demo tallies (no live votes yet): weight by rank so the board reads as the design.
-  const weights = [52, 30, 11, 7];
-  const total = 27;
-  // Build a real ?vote= URL that the PublicVote component reads.
+  const [sessionId, setSessionId] = useState("");
+  const [results, setResults] = useState<{ votes: Record<string, number>; total: number; voters: number }>({ votes: {}, total: 0, voters: 0 });
+
+  // Create a vote session once on mount.
+  useEffect(() => {
+    createVoteSession(names, brief.does.slice(0, 180)).then((id) => { if (id) setSessionId(id); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll for live results every 5 s while the tab is visible.
+  useEffect(() => {
+    if (!sessionId) return;
+    getVoteResults(sessionId).then(setResults);
+    const t = window.setInterval(() => { getVoteResults(sessionId).then(setResults); }, 5000);
+    return () => window.clearInterval(t);
+  }, [sessionId]);
+
+  const voteFor = (n: string) => results.votes[n] ?? 0;
+  const pct = (n: string) => results.total > 0 ? Math.round(100 * voteFor(n) / results.total) : 0;
+
   const shareUrl = window.location.origin + window.location.pathname
     + "?vote=" + names.map(encodeURIComponent).join("|")
+    + (sessionId ? "&session=" + sessionId : "")
     + (brief.does ? "&about=" + encodeURIComponent(brief.does.slice(0, 180)) : "");
+
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => { /* ignore */ });
   };
+
   const lockName = chosenFinal || names[0] || "your name";
+  // Sort names by votes desc for the display (highest first), but keep score order initially.
+  const ranked = results.total > 0
+    ? [...names].sort((a, b) => voteFor(b) - voteFor(a))
+    : names;
+
   return (
     <>
       <div className="bbody">
@@ -190,37 +216,39 @@ export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
           sub="Share a link to your shortlist. No login, your team taps a name and it lands here, live." />
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 16px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--sep)", maxWidth: "100%", overflow: "hidden" }}>
-            <span style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}>{shareUrl}</span>
-            <button className="bbtn" style={{ padding: "8px 16px", fontSize: 13, flexShrink: 0 }} onClick={copyLink}>{copied ? "Copied ✓" : "Copy link"}</button>
+            <span style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}>{sessionId ? shareUrl : "Creating session…"}</span>
+            <button className="bbtn" style={{ padding: "8px 16px", fontSize: 13, flexShrink: 0 }} onClick={copyLink} disabled={!sessionId}>{copied ? "Copied ✓" : "Copy link"}</button>
           </div>
         </div>
         <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 320, display: "flex", flexDirection: "column", gap: 10 }}>
-            {names.map((n, i) => {
-              const lead = i === 0; const pct = weights[i] ?? 4;
+            {ranked.map((n, i) => {
+              const lead = i === 0 && results.total > 0;
+              const p = pct(n);
               return (
                 <div key={n} className={"bvote" + (lead ? " lead" : "")}>
                   <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", width: 84, flex: "0 0 auto" }}>{n}</span>
                   <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: pct + "%", borderRadius: 999, background: lead ? "var(--accent)" : "var(--ink-3)" }} />
+                    <div style={{ height: "100%", width: p + "%", borderRadius: 999, background: lead ? "var(--accent)" : "var(--ink-3)", transition: "width 0.6s ease" }} />
                   </div>
-                  <span style={{ fontSize: 13, color: "var(--ink-2)", width: 36, textAlign: "right", flex: "0 0 auto" }}>{pct}%</span>
-                  <span style={{ fontSize: 13, color: "var(--ink-3)", width: 64, textAlign: "right", flex: "0 0 auto" }}>{Math.round(total * pct / 100)} votes</span>
+                  <span style={{ fontSize: 13, color: "var(--ink-2)", width: 36, textAlign: "right", flex: "0 0 auto" }}>{p}%</span>
+                  <span style={{ fontSize: 13, color: "var(--ink-3)", width: 64, textAlign: "right", flex: "0 0 auto" }}>{voteFor(n)} vote{voteFor(n) === 1 ? "" : "s"}</span>
                 </div>
               );
             })}
           </div>
           <div style={{ width: 240, flex: "0 0 auto" }} className="bsaved">
-            <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 12px" }}>{total} voted</p>
-            <div style={{ display: "flex", marginBottom: 14 }}>
-              {["DF", "MK", "JL", "RA", "TS", "PN", "EO", "GB"].map((a, idx) => (
-                <span key={a} style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: "50%", fontSize: 11, fontWeight: 600, color: "var(--ink-2)", background: "var(--surface-2)", border: "2px solid var(--surface)", marginLeft: idx === 0 ? 0 : -8 }}>{a}</span>
-              ))}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}><span style={{ fontSize: 12.5, fontWeight: 600 }}>Maya K.</span><span style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>&ldquo;{names[0] || "It"} just sounds like a brand already.&rdquo;</span></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}><span style={{ fontSize: 12.5, fontWeight: 600 }}>Jon L.</span><span style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>&ldquo;{names[3] || "The last one"}&rsquo;s nice but feels taken.&rdquo;</span></div>
-            </div>
+            {results.voters === 0 ? (
+              <>
+                <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 8px" }}>Waiting for votes</p>
+                <p style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>Share the link above with your team or cofounders. Their votes appear here in real time.</p>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 8px" }}>{results.voters} {results.voters === 1 ? "person" : "people"} voted</p>
+                <p style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{results.total} total vote{results.total === 1 ? "" : "s"} · updates every 5 seconds</p>
+              </>
+            )}
           </div>
         </div>
       </div>

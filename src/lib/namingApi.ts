@@ -285,6 +285,29 @@ export async function captureSignup(brief: Brief, fromName: string, email: strin
   }
 }
 
+// Vote session for step 8 (Share & vote). Stored in the Worker's KV for 14 days.
+export async function createVoteSession(names: string[], about: string): Promise<string> {
+  if (!ENDPOINT) return "";
+  try {
+    const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "vote-create", names, about }) });
+    const data = await res.json() as { sessionId?: string };
+    return data.sessionId || "";
+  } catch { return ""; }
+}
+
+export async function castVote(sessionId: string, liked: string[], voterId: string): Promise<void> {
+  if (!ENDPOINT || !sessionId) return;
+  try { await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "vote-cast", sessionId, liked, voterId }) }); } catch { /* best effort */ }
+}
+
+export async function getVoteResults(sessionId: string): Promise<{ votes: Record<string, number>; total: number; voters: number }> {
+  if (!ENDPOINT || !sessionId) return { votes: {}, total: 0, voters: 0 };
+  try {
+    const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "vote-results", sessionId }) });
+    return await res.json() as { votes: Record<string, number>; total: number; voters: number };
+  } catch { return { votes: {}, total: 0, voters: 0 }; }
+}
+
 // End-of-flow feedback (step 10): scores + notes. Registered centrally so it shows
 // per process in /admin.
 export interface Feedback {

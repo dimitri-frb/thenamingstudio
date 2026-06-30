@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "../cosmos/cosmos.css"; // the .votepage reskin lives here
-
-// "Public vote", a swipe deck to gut-check the shortlist (the Figma mock).
-// Single-device for now (no backend); shows a tally at the end.
+import { castVote } from "../lib/namingApi";
 
 export interface VoteItem { name: string; type?: string; note?: string }
 
-export function PublicVote({ items, onClose, by, about }: { items: VoteItem[]; onClose: () => void; by?: string; about?: string }) {
+function getVoterId(): string {
+  let id = localStorage.getItem("ns.voterId");
+  if (!id) { id = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem("ns.voterId", id); }
+  return id;
+}
+
+export function PublicVote({ items, onClose, by, about, sessionId }: { items: VoteItem[]; onClose: () => void; by?: string; about?: string; sessionId?: string }) {
   const [i, setI] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [hist, setHist] = useState<boolean[]>([]);
@@ -27,6 +31,15 @@ export function PublicVote({ items, onClose, by, about }: { items: VoteItem[]; o
 
   const done = i >= items.length;
   const item = items[i];
+
+  // Submit the final vote to the backend once the user finishes all cards.
+  const voteSubmitted = useRef(false);
+  useEffect(() => {
+    if (!done || voteSubmitted.current || !sessionId) return;
+    voteSubmitted.current = true;
+    castVote(sessionId, liked, getVoterId()).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
 
   function vote(like: boolean) {
     if (done) return;
@@ -64,7 +77,7 @@ export function PublicVote({ items, onClose, by, about }: { items: VoteItem[]; o
         {intro ? (
           <Intro by={by} about={about} count={items.length} onStart={() => setIntro(false)} />
         ) : done ? (
-          <Result liked={liked} items={items} onClose={onClose} />
+          <Result liked={liked} items={items} onClose={onClose} sessionId={sessionId} />
         ) : (
           <>
             {/* card stack */}
@@ -122,7 +135,7 @@ function Intro({ by, about, count, onStart }: { by?: string; about?: string; cou
   );
 }
 
-function Result({ liked, items, onClose }: { liked: string[]; items: VoteItem[]; onClose: () => void }) {
+function Result({ liked, items, onClose, sessionId }: { liked: string[]; items: VoteItem[]; onClose: () => void; sessionId?: string }) {
   return (
     <div className="animate-in w-full max-w-sm text-center">
       <p className="font-mono text-xs uppercase tracking-widest text-ink/40">Your vote</p>
@@ -137,7 +150,7 @@ function Result({ liked, items, onClose }: { liked: string[]; items: VoteItem[];
           </div>
         ))}
       </div>
-      <p className="mt-6 text-sm text-ink/45">Share this link with 3–5 people and compare. (Multi-person tallies come with the backend.)</p>
+      <p className="mt-6 text-sm text-ink/45">{sessionId ? "Your vote has been recorded. The founder will see it live." : "Share this link with 3–5 people to compare."}</p>
       <button onClick={onClose} className="mt-6 rounded-xl bg-ink px-6 py-3 font-serif text-lg italic text-[var(--page)] transition hover:opacity-90">Back to the studio</button>
     </div>
   );
