@@ -102,6 +102,13 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
   const board = boards[pick];
   const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable") : [];
   const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  // When the exact name has no free extensions, promote variants into the main column.
+  const noExact = board && claimable.length === 0;
+  const mainRows = noExact ? [] : claimable;
+  const variantsInMain = noExact ? (board?.variants || []) : [];
+  const variantsInCard = noExact ? [] : (board?.variants || []);
+
+  const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
 
   return (
     <>
@@ -119,16 +126,18 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>
-              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length ? `${claimable.length} available` : "exact name is taken — try a variant"}</span>
+              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
+                {noExact ? "exact name is taken — variants available below" : `${claimable.length} available`}
+              </span>
             </div>
             {!board ? <Thinking lines={["Checking every extension…"]} /> : (
               <>
-                {claimable.length > 0 ? (
+                {mainRows.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {claimable.map((d) => {
+                    {mainRows.map((d) => {
                       const dot = d.status === "available" ? "#28c840" : "var(--watch)";
                       return (
-                        <div key={d.domain} className="bdomrow avail">
+                        <div key={d.domain} className="bdomrow avail" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
                           <span className="bdomdot" style={{ background: dot }} />
                           <span className="bdomname">{d.domain}</span>
                           <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>{d.status === "available" ? "Available" : "For sale"}</span>
@@ -137,8 +146,21 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
                       );
                     })}
                   </div>
-                ) : (
-                  <p style={{ fontSize: 14, color: "var(--ink-3)", margin: 0 }}>No extensions free right now — check the variants on the right.</p>
+                )}
+                {variantsInMain.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: 0 }}>Available variants</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {variantsInMain.map((d) => (
+                        <div key={d.domain} className="bdomrow avail" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
+                          <span className="bdomdot" style={{ background: "#28c840" }} />
+                          <span className="bdomname">{d.domain}</span>
+                          <span className="bdomstatus avail">Available</span>
+                          {d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
                 {takenAll.length > 0 && (
                   <div>
@@ -155,13 +177,16 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
               </>
             )}
           </div>
-          {board && board.variants.length > 0 && (
+          {variantsInCard.length > 0 && (
             <div style={{ width: 248, flex: "0 0 auto" }}>
               <div className="bsaved">
                 <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 12px" }}>Also free · a close variant</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {board.variants.map((d) => (
-                    <div key={d.domain} className="bvar"><span style={{ fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-2)" }}>{d.domain}</span><span style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink-3)" }}>{d.price || "$12"}</span></div>
+                  {variantsInCard.map((d) => (
+                    <div key={d.domain} className="bvar" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-2)" }}>{d.domain}</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink-3)" }}>{d.price || "$12"}</span>
+                    </div>
                   ))}
                 </div>
               </div>
