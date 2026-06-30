@@ -163,10 +163,11 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
 
 // 09 — Share & vote (design 1l): a shareable link, live results, voters.
 export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
-  brief: Brief; comp: Comparison | null; taglines: Record<string, string>; setTaglines: (t: Record<string, string>) => void;
-  chosenFinal?: string; onBack: () => void; onDone: () => void; onCapture?: (email: string) => void;
+  brief: Brief; comp: Comparison | null;
+  chosenFinal?: string; onBack: () => void; onDone: () => void;
 }) {
   const names = (comp?.rows || []).map((r) => r.name).slice(0, 4);
+  if (!comp) return <div className="bbody"><Thinking lines={["Loading comparison…"]} /></div>;
   const [copied, setCopied] = useState(false);
   // Demo tallies (no live votes yet): weight by rank so the board reads as the design.
   const weights = [52, 30, 11, 7];

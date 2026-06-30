@@ -4,7 +4,7 @@
 // `naming` API + data layer. Classic CosmosFlow is left entirely untouched.
 import { useEffect, useRef, useState } from "react";
 import {
-  naming, captureLead, type Brief, type Comparison, type Concept, type Feeling,
+  naming, type Brief, type Comparison, type Concept, type Feeling,
 } from "../lib/namingApi";
 import { setTestMode } from "../lib/requestLog";
 import { recommendLanes } from "../lib/localStudio";
@@ -39,7 +39,6 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const [saved, setSaved] = useState<SavedIdea[]>(test?.saved ?? []);
   const [shortlist, setShortlist] = useState<string[]>(test?.shortlist ?? []);
   const [comp, setComp] = useState<Comparison | null>(test?.comp ?? null);
-  const [taglines, setTaglines] = useState<Record<string, string>>(test?.taglines ?? {});
   const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [loading, setLoading] = useState<string[] | null>(null);
@@ -57,6 +56,9 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     catch (e: any) { setError(e?.message || String(e)); }
     finally { setLoading(null); }
   }
+
+  // Scroll to top whenever the step changes.
+  useEffect(() => { window.scrollTo(0, 0); }, [step]);
 
   // Warm feelings (emotions) in the background once the brief has a sentence.
   const feelingsBusy = useRef(false);
@@ -168,10 +170,8 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // 08 — Share & vote
   if (step === 7) return shell(
-    <BetaShare brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
-      chosenFinal={chosenFinal}
-      onBack={() => goto(6)} onDone={() => goto(8)}
-      onCapture={(email) => captureLead(brief, email, chosenFinal || comp?.recommended || "")} />
+    <BetaShare brief={brief} comp={comp} chosenFinal={chosenFinal}
+      onBack={() => goto(6)} onDone={() => goto(8)} />
   );
 
   // 09 — Decision
