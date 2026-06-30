@@ -100,11 +100,11 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
   }, [pick]);
 
   const board = boards[pick];
-  // Merge exact TLDs + variants into one flat list; show all available/negotiable together.
+  // Merge exact TLDs + variants into one flat list; cap at 6.
   const claimable = board ? [
     ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
     ...board.variants.filter((d) => d.status === "available" || d.status === "negotiable"),
-  ] : [];
+  ].slice(0, 6) : [];
   const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
 
   const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
