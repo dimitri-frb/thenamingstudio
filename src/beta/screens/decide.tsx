@@ -47,16 +47,13 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {rows.map(({ r, sc }, idx) => {
-            const lead = idx === 0;
             const sel = r.name === pick;
             return (
-              <div key={r.name} className={"bcmp" + (lead ? " lead" : "") + (sel ? " chosen" : "")}
+              <div key={r.name} className={"bcmp" + (sel ? " lead chosen" : "")}
                 style={{ cursor: "pointer" }} onClick={() => setChosen(r.name)}>
-                <span className={"bcmp-rank" + (lead ? " lead" : "")}>{sel ? "♔" : idx + 1}</span>
+                <span className={"bcmp-rank" + (sel ? " lead" : "")}>{sel ? "♔" : idx + 1}</span>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                    <span className={"bcmp-name" + (lead ? " lead" : "")}>{r.name}</span>
-                  </div>
+                  <span className={"bcmp-name" + (sel ? " lead" : "")}>{r.name}</span>
                   <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{r.verdict || r.tagline || "A strong, ownable option."}</span>
                 </div>
                 <div className="bcmp-bars">
@@ -71,7 +68,7 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flex: "0 0 auto", width: 118 }}>
                   <span className="bcmp-pct" style={{ color: sel ? "var(--accent)" : "var(--ink)" }}>{pctOf(sc)}%</span>
-                  <span className={"bcmp-standout" + (lead ? " lead" : "")}>{STANDOUT[idx] || "Contender"}</span>
+                  <span className={"bcmp-standout" + (sel ? " lead" : "")}>{STANDOUT[idx] || "Contender"}</span>
                 </div>
               </div>
             );
