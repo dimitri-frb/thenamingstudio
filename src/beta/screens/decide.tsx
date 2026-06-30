@@ -100,13 +100,12 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
   }, [pick]);
 
   const board = boards[pick];
-  const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable") : [];
+  // Merge exact TLDs + variants into one flat list; show all available/negotiable together.
+  const claimable = board ? [
+    ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
+    ...board.variants.filter((d) => d.status === "available" || d.status === "negotiable"),
+  ] : [];
   const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
-  // When the exact name has no free extensions, promote variants into the main column.
-  const noExact = board && claimable.length === 0;
-  const mainRows = noExact ? [] : claimable;
-  const variantsInMain = noExact ? (board?.variants || []) : [];
-  const variantsInCard = noExact ? [] : (board?.variants || []);
 
   const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
 
@@ -121,76 +120,44 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
             <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>{n}</button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>
-              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
-                {noExact ? "exact name is taken — variants available below" : `${claimable.length} available`}
-              </span>
-            </div>
-            {!board ? <Thinking lines={["Checking every extension…"]} /> : (
-              <>
-                {mainRows.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {mainRows.map((d) => {
-                      const dot = d.status === "available" ? "#28c840" : "var(--watch)";
-                      return (
-                        <div key={d.domain} className="bdomrow avail" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
-                          <span className="bdomdot" style={{ background: dot }} />
-                          <span className="bdomname">{d.domain}</span>
-                          <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>{d.status === "available" ? "Available" : "For sale"}</span>
-                          {d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {variantsInMain.length > 0 && (
-                  <>
-                    <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: 0 }}>Available variants</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {variantsInMain.map((d) => (
-                        <div key={d.domain} className="bdomrow avail" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
-                          <span className="bdomdot" style={{ background: "#28c840" }} />
-                          <span className="bdomname">{d.domain}</span>
-                          <span className="bdomstatus avail">Available</span>
-                          {d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {takenAll.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 10px" }}>Already taken</p>
-                    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                      {takenAll.map((d) => (
-                        <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", textDecoration: "line-through" }}>
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57" }} />{d.domain}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+        <div style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>
+            {board && <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length} option{claimable.length !== 1 ? "s" : ""} available</span>}
           </div>
-          {variantsInCard.length > 0 && (
-            <div style={{ width: 248, flex: "0 0 auto" }}>
-              <div className="bsaved">
-                <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 12px" }}>Also free &middot; a close variant</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {variantsInCard.map((d) => (
-                    <div key={d.domain} className="bvar" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-2)" }}>{d.domain}</span>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink-3)" }}>{d.price || "$12"}</span>
-                    </div>
+          {!board ? <Thinking lines={["Checking every extension…"]} /> : (
+            <>
+              {claimable.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {claimable.map((d) => (
+                    <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
+                      className="bdomrow avail" style={{ textDecoration: "none" }}>
+                      <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
+                      <span className="bdomname">{d.domain}</span>
+                      <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
+                        {d.status === "available" ? "Available" : "Negotiable"}
+                      </span>
+                    </a>
                   ))}
                 </div>
-              </div>
-            </div>
+              )}
+              {claimable.length === 0 && (
+                <p style={{ fontSize: 14, color: "var(--ink-3)" }}>No free extensions found for this name.</p>
+              )}
+              {takenAll.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 10px" }}>Already taken</p>
+                  <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+                    {takenAll.map((d) => (
+                      <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", textDecoration: "line-through" }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57" }} />{d.domain}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -324,13 +291,14 @@ export function BetaDecide({ comp, chosenFinal, onBack, onBrandBook }: {
                   ) : claimable.length === 0 ? (
                     <span style={{ fontSize: 13, color: "var(--ink-3)" }}>No free extensions found.</span>
                   ) : claimable.map((d) => (
-                    <div key={d.domain} className="bdomrow avail" onClick={() => window.open(gd(d.domain), "_blank", "noopener")}>
+                    <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
+                      className="bdomrow avail" style={{ textDecoration: "none" }}>
                       <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
                       <span className="bdomname">{d.domain}</span>
                       <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
-                        {d.status === "available" ? "Available" : "For sale"}
+                        {d.status === "available" ? "Available" : "Negotiable"}
                       </span>
-                    </div>
+                    </a>
                   ))}
                 </div>
               )}

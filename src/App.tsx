@@ -62,7 +62,8 @@ export default function App() {
   const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
   const beginFlow = (to: "classic" | "talk" | "beta") => {
     if (to === "classic" || to === "beta") newProcess();
-    if (hasEmail()) { setScreen(to); return; }
+    // Beta always shows the lead-capture gate; classic/talk skip it if email already known.
+    if (to !== "beta" && hasEmail()) { setScreen(to); return; }
     setStartGate(to);
   };
   // A shared "?vote=Name1|Name2&by=…&about=…" link drops friends straight into
