@@ -259,7 +259,6 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                       <span className={"bcmp-name" + (heroSel ? " lead" : "")}>{hero.name}</span>
                       {hero.seed && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{hero.seed}</span>}
-                      {hero.type && <span className="bidea-tag" style={{ fontSize: 10.5, padding: "2px 8px" }}>{hero.type}</span>}
                     </div>
                     {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
                     <Bar p={p} sel={heroSel} />
@@ -287,7 +286,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                     const p = pct(idea);
                     return (
                       <div key={idea.name} className={"bcmp" + (sel ? " lead chosen" : "")}
-                        style={{ cursor: "pointer", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}
+                        style={{ cursor: "pointer", padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6 }}
                         onClick={() => setChosen(idea.name)}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
@@ -296,7 +295,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                           </div>
                           <span style={{ fontSize: 15, fontWeight: 700, color: sel ? "var(--accent)" : "var(--ink)", flexShrink: 0 }}>{p}%</span>
                         </div>
-                        {idea.type && <span className="bidea-tag" style={{ fontSize: 10, padding: "2px 7px", alignSelf: "flex-start" }}>{idea.type}</span>}
+                        {idea.type && <span className="bidea-tag" style={{ fontSize: 10, padding: "2px 7px", width: "fit-content" }}>{idea.type}</span>}
                         {idea.rationale && <span style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.4 }}>{idea.rationale}</span>}
                         <Bar p={p} sel={sel} />
                       </div>
