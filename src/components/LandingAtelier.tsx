@@ -1,58 +1,84 @@
-// The home, a calm, editorial hero. "Start a brief" leads into the flow;
-// the brief itself is captured there, not on the landing.
+// Home page — redesigned to match "The Naming Studio - Home" design.
+// Inline styles so it's self-contained and doesn't inherit beta/cosmos tokens.
+const ACCENT = "#0071e3";
+const INK = "#1d1d1f";
+const INK3 = "#636366";
+const INK4 = "#aeaeb2";
+const SANS = "-apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif";
+const BG = "#e8e8ed";
+
+function Mark({ size = 28 }: { size?: number }) {
+  const r = Math.round(size * 0.28);
+  return (
+    <div style={{ width: size, height: size, borderRadius: r, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg viewBox="0 0 24 24" width={size * 0.5} height={size * 0.5} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+        <path d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5" />
+      </svg>
+    </div>
+  );
+}
 
 export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?: () => void }) {
   return (
-    <div>
-      {/* hero */}
-      <section className="relative mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-2 text-center">
-        <div className="hero-glow" aria-hidden />
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: BG, fontFamily: SANS }}>
 
-        <div className="relative z-10 flex flex-col items-center">
-          <p className="reveal font-mono text-xs uppercase tracking-[0.3em] text-ink/40" style={{ animationDelay: "0.05s" }}>A studio for the unnamed</p>
-
-          <h1 className="mt-7 text-6xl leading-[1.0] sm:text-7xl">
-            <span className="reveal block" style={{ animationDelay: "0.14s" }}>Name your</span>
-            <span className="reveal block" style={{ animationDelay: "0.26s" }}>
-              company, <span className="accent-underline italic text-accent">properly.</span>
-            </span>
-          </h1>
-
-          <div className="reveal mt-10 flex flex-col items-center gap-4" style={{ animationDelay: "0.46s" }}>
-            <div className="flex flex-col items-center gap-3 sm:flex-row">
-              <button
-                onClick={onNext}
-                className="spring group flex items-center gap-3 rounded-full bg-ink px-10 py-5 text-xl font-medium text-[var(--page)] shadow-lg shadow-ink/10 hover:shadow-xl hover:shadow-ink/20"
-              >
-                Start a brief
-                <kbd className="grid h-6 w-6 place-items-center rounded-full border border-[var(--page)]/30 text-xs leading-none">⏎</kbd>
+      {/* Header */}
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <Mark size={28} />
+          <span style={{ fontSize: 14, fontWeight: 500, color: INK, letterSpacing: "-0.01em" }}>The Naming Studio</span>
+        </div>
+        {/* Theme switcher — visual only, future wiring */}
+        <div style={{ display: "flex", gap: 1, background: "rgba(0,0,0,0.07)", borderRadius: 9, padding: 3 }}>
+          {(["Light", "Dark", "Blue", "Graphite"] as const).map((t) => {
+            const active = t === "Blue";
+            return (
+              <button key={t}
+                style={{ padding: "5px 13px", borderRadius: 6, border: "none", fontSize: 12.5, fontWeight: active ? 600 : 400, cursor: "pointer", fontFamily: SANS,
+                  background: active ? "#fff" : "transparent", color: active ? INK : INK3,
+                  boxShadow: active ? "0 1px 3px rgba(0,0,0,0.14)" : "none" }}>
+                {t}
               </button>
+            );
+          })}
+        </div>
+      </header>
 
-              {/* The new design, opt-in. Same studio, reimagined as a macOS app. */}
-              {onBeta && (
-                <button
-                  onClick={onBeta}
-                  className="spring group flex items-center gap-2.5 rounded-full border border-ink/15 bg-[var(--surface-solid)] px-8 py-5 text-xl font-medium text-ink/70 transition hover:border-ink/30 hover:text-ink"
-                >
-                  Start a brief
-                  <span className="rounded-full bg-ink/8 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink/55">beta</span>
-                </button>
-              )}
-            </div>
-
-            {/* Non-blocking nudge: phones can run the whole flow, but it shines on
-                a wider screen. Shown only on small viewports (hidden at sm+). */}
-            <p className="sm:hidden mt-2 max-w-[17rem] text-center text-sm leading-relaxed text-ink/45">
-              The studio runs on your phone, but it's best on a desktop.
-            </p>
-          </div>
+      {/* Hero */}
+      <section style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "60px 24px" }}>
+        <h1 style={{ fontSize: "clamp(48px, 7vw, 76px)", fontWeight: 700, letterSpacing: "-0.035em", lineHeight: 1.06, margin: 0, color: INK }}>
+          Name it.{" "}<span style={{ color: ACCENT }}>Own it.</span>
+        </h1>
+        <p style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: INK3, maxWidth: 400 }}>
+          Describe what you're building. Walk out with a name you love and the domain to match.
+        </p>
+        <div style={{ marginTop: 36, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+          <button onClick={onNext}
+            style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 50, padding: "15px 30px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: SANS, boxShadow: "0 2px 12px rgba(0,113,227,0.35)" }}>
+            Start a brief
+          </button>
+          {onBeta && (
+            <button onClick={onBeta}
+              style={{ background: "rgba(255,255,255,0.7)", color: INK, border: "none", borderRadius: 50, padding: "15px 30px", fontSize: 16, fontWeight: 500, cursor: "pointer", fontFamily: SANS, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+              Start a brief
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(0,0,0,0.07)", padding: "3px 8px", borderRadius: 5, color: INK3 }}>BETA</span>
+            </button>
+          )}
         </div>
       </section>
 
-      {/* footer bar */}
-      <footer className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-2 border-t border-ink/10 px-2 py-7 font-mono text-[11px] uppercase tracking-widest text-ink/35 sm:flex-row">
-        <span>© 2026</span>
-        <span className="text-ink/45">Strategy → Concept → Word → Name</span>
+      {/* Footer */}
+      <footer style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderTop: "1px solid rgba(0,0,0,0.07)", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Mark size={20} />
+          <span style={{ fontSize: 12.5, color: INK3 }}>A project by <strong style={{ color: INK, fontWeight: 600 }}>The Naming Studio</strong></span>
+        </div>
+        <div style={{ display: "flex", gap: 20, fontSize: 12.5, color: INK4 }}>
+          <span style={{ cursor: "pointer" }}>Privacy</span>
+          <span style={{ cursor: "pointer" }}>Terms</span>
+          <span style={{ cursor: "pointer" }}>Contact</span>
+          <span>© 2026</span>
+        </div>
       </footer>
     </div>
   );

@@ -10,9 +10,9 @@ import { recommendLanes } from "../../lib/localStudio";
 import { BField, Chips, Segmented, ReframeCard, BHead, BFoot } from "../atoms";
 
 // 01 — Company context (design 1d)
-export function BetaBrief({ brief, set, stage, setStage, workingName, setWorkingName, firstName, briefLine, briefTags, onBack, onNext }: {
+export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, briefTags, onBack, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; stage: string; setStage: (s: string) => void;
-  workingName: string; setWorkingName: (s: string) => void; firstName?: string; briefLine: string; briefTags: string[];
+  firstName?: string; briefLine: string; briefTags: string[];
   onBack: () => void; onNext: () => void;
 }) {
   const [custom, setCustom] = useState(false);
@@ -45,14 +45,7 @@ export function BetaBrief({ brief, set, stage, setStage, workingName, setWorking
                 )}
               </div>
             </BField>
-            <div style={{ display: "flex", gap: 30, flexWrap: "wrap", alignItems: "flex-start" }}>
-              <BField label="Stage"><Segmented options={BETA_STAGES} value={stage} onChange={setStage} /></BField>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <BField label="Working name" hint="· optional">
-                  <input className="binput" value={workingName} onChange={(e) => setWorkingName(e.target.value)} placeholder="We won't be bound by it…" />
-                </BField>
-              </div>
-            </div>
+            <BField label="Stage"><Segmented options={BETA_STAGES} value={stage} onChange={setStage} /></BField>
           </div>
           <ReframeCard line={briefLine} tags={briefTags} />
         </div>

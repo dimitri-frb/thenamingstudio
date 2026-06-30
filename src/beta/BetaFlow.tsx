@@ -33,7 +33,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const [maxReached, setMaxReached] = useState(test?.step ?? 0);
   const [brief, setBrief] = useState<Brief>(test?.brief ?? { ...empty, does: initialDoes || "" });
   const [stage, setStage] = useState(test?.stage ?? "Building it");
-  const [workingName, setWorkingName] = useState(test?.workingName ?? "");
+
   const [feelings, setFeelings] = useState<Feeling[]>(test?.feelings ?? []);
   const [concepts, setConcepts] = useState<Concept[]>(test?.concepts ?? []);
   const [saved, setSaved] = useState<SavedIdea[]>(test?.saved ?? []);
@@ -104,7 +104,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // 01 — Company context
   if (step === 0) return shell(
-    <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} workingName={workingName} setWorkingName={setWorkingName} firstName={firstName}
+    <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} firstName={firstName}
       briefLine={briefLine} briefTags={briefTags} onBack={onRestart} onNext={() => goto(1)} />
   );
 

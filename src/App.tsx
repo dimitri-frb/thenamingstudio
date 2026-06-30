@@ -178,16 +178,31 @@ export default function App() {
     );
   }
 
+  // Landing: full-bleed, no App chrome (header/max-width)
+  if (screen === "landing") {
+    return (
+      <>
+        <LandingAtelier onNext={() => beginFlow("classic")} onBeta={() => beginFlow("beta")} />
+        {startGate && (
+          <StartGate
+            variant={startGate === "beta" ? "beta" : undefined}
+            onComplete={({ name, email }) => {
+              try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
+              if (name) setUserName(name);
+              const to = startGate; setStartGate(null); setScreen(to);
+            }}
+            onClose={() => setStartGate(null)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen mesh">
       <Header onLogo={restart} />
       {showJourney && <JourneyRail activeIndex={journeyIndex} onCheckout={setCheckout} />}
       <main className="mx-auto w-full max-w-5xl px-5 pb-24">
-        {screen === "landing" && (
-          /* Works everywhere: real Claude via the bridge in dev, client-side studio fallback on static hosting. */
-          <LandingAtelier onNext={() => beginFlow("classic")} onBeta={() => beginFlow("beta")} />
-        )}
-
         {startGate && (
           <StartGate
             variant={startGate === "beta" ? "beta" : undefined}
