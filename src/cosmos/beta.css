@@ -238,6 +238,7 @@
 }
 .cx.skin-beta .bdomrow.avail { cursor: pointer; }
 .cx.skin-beta .bdomrow.avail:hover { border-color: var(--accent); }
+.cx.skin-beta .bdomrow.avail.chosen { border-color: var(--accent); background: var(--accent-soft); }
 .cx.skin-beta .bvar { cursor: pointer; }
 .cx.skin-beta .bvar:hover { border-color: var(--accent); }
 .cx.skin-beta .bdomdot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
@@ -345,6 +346,9 @@
 /* domains: pick pills + close-variant rows */
 .cx.skin-beta .bpick { padding: 8px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--sep); background: var(--surface-2); color: var(--ink-2); transition: all .15s; }
 .cx.skin-beta .bpick.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+/* Hide blinking cursor artifact from the classic .stream class */
+.cx.skin-beta .stream::after { display: none; }
+
 .cx.skin-beta .bvar { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--sep); }
 
 /* share: vote rows */

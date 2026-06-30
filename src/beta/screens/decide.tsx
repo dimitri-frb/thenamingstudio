@@ -87,11 +87,11 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
 }) {
   const allNames = (comp?.rows || []).map((r) => r.name);
   const [pick, setPick] = useState(initialPick || comp?.recommended || allNames[0] || "");
-  // Selected name always first in the pill row.
-  const names = pick ? [pick, ...allNames.filter((n) => n !== pick)] : allNames;
+  const [lockedDomain, setLockedDomain] = useState<string>("");
   const [boards, setBoards] = useState<Record<string, DomainBoardData>>({});
   useEffect(() => {
     if (!pick || boards[pick]) return;
+    setLockedDomain(""); // reset domain selection when name changes
     let live = true;
     fetchDomainBoard(pick).then((b) => { if (live) setBoards((p) => ({ ...p, [pick]: b })); });
     return () => { live = false; };
@@ -99,25 +99,27 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
   }, [pick]);
 
   const board = boards[pick];
-  // Merge exact TLDs + variants; cap at 6.
+  // Show all available/negotiable (at least 6 if they exist), then max 2 taken below.
   const claimable = board ? [
     ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
     ...board.variants.filter((d) => d.status === "available" || d.status === "negotiable"),
-  ].slice(0, 6) : [];
-  const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
-  // Pad with taken domains so the list is always at least 6 rows.
-  const takenFill = takenAll.slice(0, Math.max(0, 6 - claimable.length));
+  ] : [];
+  const takenRows = board ? [
+    ...board.tlds.filter((t) => t.status === "taken"),
+    ...board.variants.filter((t) => t.status === "taken"),
+  ].slice(0, 2) : [];
 
-  const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
+  const lockLabel = lockedDomain ? `Lock in ${lockedDomain} →` : `Lock in ${pick} →`;
 
   return (
     <>
       <div className="bbody">
         <BHead eyebrow="The domains" title={<>Now, claim the domain.</>}
           sub="A great name is only great if you can own it. Here's where your pick can live, and what's up for negotiation." />
+        {/* Name pills — fixed order, no reorder on selection */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", marginRight: 4 }}>Your pick</span>
-          {names.map((n) => (
+          {allNames.map((n) => (
             <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>{n}</button>
           ))}
         </div>
@@ -129,17 +131,20 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
           </div>
           {!board ? <Thinking lines={["Checking every extension…"]} /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {claimable.map((d) => (
-                <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
-                  className="bdomrow avail" style={{ textDecoration: "none" }}>
-                  <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
-                  <span className="bdomname">{d.domain}</span>
-                  <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
-                    {d.status === "available" ? "Available" : "Negotiable"}
-                  </span>
-                </a>
-              ))}
-              {takenFill.map((d) => (
+              {claimable.map((d) => {
+                const sel = d.domain === lockedDomain;
+                return (
+                  <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
+                    style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
+                    <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
+                    <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
+                    <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
+                      {sel ? "✓ Selected" : d.status === "available" ? "Available" : "Negotiable"}
+                    </span>
+                  </div>
+                );
+              })}
+              {takenRows.map((d) => (
                 <div key={d.domain} className="bdomrow">
                   <span className="bdomdot" style={{ background: "#ff5f57" }} />
                   <span className="bdomname" style={{ opacity: 0.4, textDecoration: "line-through" }}>{d.domain}</span>
@@ -151,7 +156,7 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
         </div>
       </div>
       <BFoot back="&larr; Comparison" onBack={onBack} secondary="Get a gut check &rarr;" onSecondary={onVote}
-        next={`Lock in ${pick} →`} onNext={() => onLockIn(pick)} />
+        next={lockLabel} onNext={() => onLockIn(pick)} />
     </>
   );
 }
