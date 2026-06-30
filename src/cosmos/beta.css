@@ -299,10 +299,11 @@
 .cx.skin-beta .bstrat-ex { font-size: 12.5px; font-family: var(--mono); color: var(--ink-3); margin-top: auto; }
 
 /* exploration: concept banner + quadrants + saved rail */
-.cx.skin-beta .bconcept-banner { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 26px; border-radius: 16px; background: var(--accent-soft); border: 1px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .bconcept-banner { display: flex; flex-direction: column; gap: 8px; padding: 22px 26px; border-radius: 16px; background: var(--accent-soft); border: 1px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .bconcept-row { display: flex; align-items: baseline; gap: 12px; }
 .cx.skin-beta .bconcept-k { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
 .cx.skin-beta .bconcept-w { font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
-.cx.skin-beta .bconcept-q { font-size: 12px; color: var(--ink-2); margin-left: auto; max-width: 360px; line-height: 1.4; text-align: right; }
+.cx.skin-beta .bconcept-q { font-size: 12px; color: var(--ink-2); line-height: 1.4; max-width: 52ch; }
 .cx.skin-beta .bquads { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
 .cx.skin-beta .bquad { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .cx.skin-beta .bquad-h { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }

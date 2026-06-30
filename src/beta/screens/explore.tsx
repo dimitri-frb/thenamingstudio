@@ -57,8 +57,10 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
         <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
             <div className="bconcept-banner">
-              <span className="bconcept-k">{focus ? "Exploring" : "Concept"}</span>
-              <span className="bconcept-w">{focus || world}</span>
+              <div className="bconcept-row">
+                <span className="bconcept-k">{focus ? "Exploring" : "Concept"}</span>
+                <span className="bconcept-w">{focus || world}</span>
+              </div>
               {focus
                 ? <span className="bconcept-q" style={{ cursor: "pointer" }} onClick={resetToWorld}>&larr; back to {world}</span>
                 : <span className="bconcept-q">&ldquo;{brief.does || fallback}&rdquo;</span>
