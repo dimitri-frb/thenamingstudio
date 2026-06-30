@@ -110,7 +110,7 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
     ...board.variants.filter((t) => t.status === "taken"),
   ].slice(0, 2) : [];
 
-  const lockLabel = lockedDomain ? `Lock in ${lockedDomain} →` : `Lock in ${pick} →`;
+  const lockLabel = lockedDomain ? `Confirm ${lockedDomain} →` : `Confirm ${pick} →`;
 
   return (
     <>
@@ -156,6 +156,9 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
           )}
         </div>
       </div>
+      <p style={{ fontSize: 12, color: "var(--ink-3)", textAlign: "center", margin: "0 0 4px" }}>
+        Confirming doesn't register the domain — we'll help you claim it on the next screen.
+      </p>
       <BFoot back="&larr; Comparison" onBack={onBack} secondary="Get a gut check &rarr;" onSecondary={onVote}
         next={lockLabel} onNext={() => onLockIn(pick)} />
     </>
@@ -165,9 +168,9 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
 // 09 — Share & vote (design 1l): a shareable link, live results, voters.
 // names is passed directly so this screen works whether the user arrived from
 // the comparison step (full comp) or jumped here early from the name ideas step.
-export function BetaShare({ brief, names, chosenFinal, onBack, onDone }: {
+export function BetaShare({ brief, names, onBack, onDone }: {
   brief: Brief; names: string[];
-  chosenFinal?: string; onBack: () => void; onDone: () => void;
+  onBack: () => void; onDone: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState("");
@@ -204,7 +207,6 @@ export function BetaShare({ brief, names, chosenFinal, onBack, onDone }: {
     }).catch(() => { /* ignore */ });
   };
 
-  const lockName = chosenFinal || names[0] || "your name";
   // Sort names by votes desc for the display (highest first), but keep score order initially.
   const ranked = results.total > 0
     ? [...names].sort((a, b) => voteFor(b) - voteFor(a))
@@ -253,7 +255,7 @@ export function BetaShare({ brief, names, chosenFinal, onBack, onDone }: {
           </div>
         </div>
       </div>
-      <BFoot back="&larr; Domains" onBack={onBack} next={`Lock in ${lockName} →`} onNext={onDone} />
+      <BFoot back="&larr; Domains" onBack={onBack} next="Continue to decision →" onNext={onDone} />
     </>
   );
 }

@@ -15,9 +15,10 @@ const QUADS: { id: string; glyph: string; label: string }[] = [
 ];
 
 // 05 — Exploration (design 1e): a concept banner over four word quadrants + a saved rail.
-export function BetaExplore({ brief, concept, saved, setSaved, store, initial, onDone }: {
+export function BetaExplore({ brief, concept, saved, setSaved, store, initial, onBack, onDone }: {
   brief: Brief; concept?: Concept; saved: SavedIdea[]; setSaved: React.Dispatch<React.SetStateAction<SavedIdea[]>>;
-  store: ExploreStore; initial?: { focus: { word: string; def: string }; groups: RelGroupData[] }; onDone: () => void;
+  store: ExploreStore; initial?: { focus: { word: string; def: string }; groups: RelGroupData[] };
+  onBack?: () => void; onDone: () => void;
 }) {
   const world = concept?.title || "your idea";
   const [groups, setGroups] = useState<RelGroupData[]>(initial?.groups ?? store.groups ?? []);
@@ -91,9 +92,11 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
   return (
     <>
       <div className="bbody" style={{ paddingBottom: 26 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink-2)" }}>Your brief, turned into words.</span>
-          <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>Click any word to explore its own world &middot; save the ones you like &rarr;</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Your brief, turned into words.</span>
+          <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+            Save the words that resonate — names are built from them. Click <span style={{ fontWeight: 600 }}>Explore &rarr;</span> on any word to dive into its world.
+          </span>
         </div>
         <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -155,6 +158,7 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
           </div>
         </div>
       </div>
+      {onBack && <BFoot back="← Strategy" onBack={onBack} />}
     </>
   );
 }

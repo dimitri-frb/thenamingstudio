@@ -19,6 +19,7 @@ function Mark({ size = 28 }: { size?: number }) {
 }
 
 export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?: () => void }) {
+  const start = onBeta ?? onNext;
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: BG, fontFamily: SANS }}>
 
@@ -28,6 +29,7 @@ export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?
           <Mark size={28} />
           <span style={{ fontSize: 14, fontWeight: 500, color: INK, letterSpacing: "-0.01em" }}>The Naming Studio</span>
         </div>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(0,113,227,0.1)", color: ACCENT, padding: "4px 10px", borderRadius: 6 }}>BETA</span>
       </header>
 
       {/* Hero */}
@@ -38,18 +40,11 @@ export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?
         <p style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: INK3, maxWidth: 400 }}>
           Describe what you're building. Walk out with a name you love and the domain to match.
         </p>
-        <div style={{ marginTop: 36, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-          <button onClick={onNext}
-            style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 50, padding: "15px 30px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: SANS, boxShadow: "0 2px 12px rgba(0,113,227,0.35)" }}>
+        <div style={{ marginTop: 36 }}>
+          <button onClick={start}
+            style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 50, padding: "15px 34px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: SANS, boxShadow: "0 2px 12px rgba(0,113,227,0.35)" }}>
             Start a brief
           </button>
-          {onBeta && (
-            <button onClick={onBeta}
-              style={{ background: "rgba(255,255,255,0.7)", color: INK, border: "none", borderRadius: 50, padding: "15px 30px", fontSize: 16, fontWeight: 500, cursor: "pointer", fontFamily: SANS, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-              Start a brief
-              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(0,0,0,0.07)", padding: "3px 8px", borderRadius: 5, color: INK3 }}>BETA</span>
-            </button>
-          )}
         </div>
       </section>
 
@@ -60,9 +55,6 @@ export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?
           <span style={{ fontSize: 12.5, color: INK3 }}>A project by <strong style={{ color: INK, fontWeight: 600 }}>The Naming Studio</strong></span>
         </div>
         <div style={{ display: "flex", gap: 20, fontSize: 12.5, color: INK4 }}>
-          <span style={{ cursor: "pointer" }}>Privacy</span>
-          <span style={{ cursor: "pointer" }}>Terms</span>
-          <span style={{ cursor: "pointer" }}>Contact</span>
           <span>© 2026</span>
         </div>
       </footer>

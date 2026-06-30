@@ -16,7 +16,7 @@ export function BHead({ eyebrow, title, sub }: { eyebrow: ReactNode; title: Reac
 // The bottom action bar: a back link on the left, a primary (and optional
 // secondary) button on the right. Spans the body with a hairline above it.
 export function BFoot({ back, onBack, next, onNext, disabled, secondary, onSecondary }: {
-  back: ReactNode; onBack: () => void; next: ReactNode; onNext: () => void; disabled?: boolean;
+  back: ReactNode; onBack: () => void; next?: ReactNode; onNext?: () => void; disabled?: boolean;
   secondary?: ReactNode; onSecondary?: () => void;
 }) {
   return (
@@ -24,7 +24,7 @@ export function BFoot({ back, onBack, next, onNext, disabled, secondary, onSecon
       <span className="blink" onClick={onBack}>{back}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {secondary && <button className="bbtn ghost" onClick={onSecondary}>{secondary}</button>}
-        <button className="bbtn" onClick={onNext} disabled={disabled} style={disabled ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>{next}</button>
+        {next && <button className="bbtn" onClick={onNext} disabled={disabled} style={disabled ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>{next}</button>}
       </div>
     </div>
   );

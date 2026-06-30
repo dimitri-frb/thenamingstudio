@@ -180,7 +180,7 @@ export default function App() {
   if (screen === "landing") {
     return (
       <>
-        <LandingAtelier onNext={() => beginFlow("classic")} onBeta={() => beginFlow("beta")} />
+        <LandingAtelier onNext={() => beginFlow("beta")} onBeta={() => beginFlow("beta")} />
         {startGate && (
           <StartGate
             variant="beta"

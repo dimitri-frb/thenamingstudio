@@ -50,7 +50,7 @@ export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, b
           <ReframeCard line={briefLine} tags={briefTags} />
         </div>
       </div>
-      <BFoot back="← Welcome" onBack={onBack} next="Next: brand context →" disabled={!brief.does.trim()} onNext={onNext} />
+      <BFoot back="← Welcome" onBack={onBack} next={brief.does.trim() ? "Next: brand context →" : "Describe what you're building first"} disabled={!brief.does.trim()} onNext={onNext} />
     </>
   );
 }
@@ -68,7 +68,7 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstNa
             <BHead eyebrow="The brief · 2 of 4" title={firstName ? <>{firstName}, what do you solve, and who for?</> : <>What do you solve, and who for?</>}
               sub="A name only works in context. Two plain sentences is enough." />
             <BField label="The problem you solve">
-              <textarea className="binput barea active" rows={2} value={brief.problem} onChange={(e) => set({ problem: e.target.value })}
+              <textarea className="binput barea" rows={2} value={brief.problem} onChange={(e) => set({ problem: e.target.value })}
                 placeholder="Founders lose weeks and thousands to naming. Agencies are slow, generators are generic." />
             </BField>
             <BField label="Who it's for">
@@ -98,7 +98,7 @@ export function BetaEmotional({ options, selected, northStar, firstName, onToggl
         <div className="bintake">
           <div className="bintake-main">
             <BHead eyebrow="The brief · 3 of 4" title={firstName ? <>How should {firstName}'s name make people feel?</> : <>How should the name make people feel?</>}
-              sub="Pick a few. One becomes your north star, the feeling every name is judged against." />
+              sub="Pick a few feelings. The one you star becomes your north star — every name is judged against it first." />
             <div className="bemotions">
               {options.map((o) => {
                 const on = selected.includes(o);
@@ -106,12 +106,15 @@ export function BetaEmotional({ options, selected, northStar, firstName, onToggl
                 return (
                   <div key={o} className={"bemotion" + (on ? " on" : "") + (star ? " star" : "")} onClick={() => onToggle(o)}>
                     <span>{o}</span>
-                    <span className="bem-star" style={{ opacity: star ? 1 : on ? 0.4 : 0 }}
+                    <span className="bem-star" style={{ opacity: star ? 1 : on ? 0.75 : 0 }}
                       onClick={(e) => { e.stopPropagation(); if (!on) onToggle(o); onStar(o); }}>★</span>
                   </div>
                 );
               })}
             </div>
+            {selected.length > 0 && !northStar && (
+              <p style={{ fontSize: 12.5, color: "var(--accent)", margin: "4px 0 0", fontWeight: 500 }}>Tap ★ on a word to set it as your north star</p>
+            )}
           </div>
           <div className="breframe" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>

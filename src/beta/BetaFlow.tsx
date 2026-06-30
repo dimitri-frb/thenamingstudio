@@ -69,6 +69,16 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.does]);
 
+  // Pre-warm concepts once the user picks their first north-star emotion (step 2),
+  // so the 3–6s Sonnet call is already done by the time they click "Begin exploration".
+  const conceptsBusy = useRef(false);
+  useEffect(() => {
+    if (test || concepts.length || conceptsBusy.current || !brief.signal.length || step > 3) return;
+    conceptsBusy.current = true;
+    naming.concepts(brief).then(setConcepts).catch(() => {}).finally(() => { conceptsBusy.current = false; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brief.signal.length]);
+
   // Live "brief, so far" reframe (debounced) for the intake screens.
   const [synth, setSynth] = useState<{ line: string; tags: string[] } | null>(null);
   const synthLine = useRef("");
@@ -141,7 +151,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   // 05 — Exploration
   if (step === 4) return shell(
     <BetaExplore brief={brief} concept={concept} saved={saved} setSaved={setSaved} store={exploreStore.current}
-      initial={test?.exploreSeed} onDone={() => goto(5)} />,
+      initial={test?.exploreSeed} onBack={() => goto(3)} onDone={() => goto(5)} />,
     { wide: true, barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {saved.length} saved</span> }
   );
 
@@ -173,7 +183,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   // when the user jumped here early via "Take it to a vote" before scoring names.
   const shareNames = comp ? comp.rows.map((r) => r.name).slice(0, 4) : shortlist.slice(0, 4);
   if (step === 7) return shell(
-    <BetaShare brief={brief} names={shareNames} chosenFinal={chosenFinal}
+    <BetaShare brief={brief} names={shareNames}
       onBack={() => goto(6)} onDone={() => goto(8)} />
   );
 
