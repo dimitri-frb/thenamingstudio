@@ -20,7 +20,7 @@ import { BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
 
 export const BETA_STEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Exploration", "Names & Comparison", "Domains", "Share & vote", "Decision",
+  "Exploration", "Names comparison", "Domains", "Share & vote", "Decision",
 ];
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
@@ -109,7 +109,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 02 — Brand context
   if (step === 1) return shell(
-    <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags}
+    <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags} workingName={workingName}
       onBack={() => goto(0)} onNext={() => {
         if (feelings.length) goto(2);
         else gen(["Reading the brief…", "Drawing the feelings your name could carry"], async () => setFeelings(await naming.feelings(brief)), 2);
@@ -118,7 +118,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 03 — Emotional value (north star)
   if (step === 2) return shell(
-    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar}
+    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar} workingName={workingName}
       onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 6) })}
       onStar={(s) => set({ signal: [s, ...brief.signal.filter((x) => x !== s)] })}
       onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
@@ -126,7 +126,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 04 — Naming strategy
   if (step === 3) return shell(
-    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr} onBack={() => goto(2)}
+    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr} workingName={workingName} onBack={() => goto(2)}
       onNext={() => {
         if (concepts.length) goto(4);
         else gen(["Thinking like a strategist…", "Mapping the words your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);

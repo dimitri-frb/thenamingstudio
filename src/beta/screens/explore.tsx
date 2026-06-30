@@ -228,7 +228,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
     <>
       <div className="bbody">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <BHead eyebrow="Names &amp; Comparison" title={<>Every name, already scored.</>}
+          <BHead eyebrow="Names comparison" title={<>Every name, already scored.</>}
             sub="Built from your saved words and graded against the brief the moment they appear. Shortlist as you go." />
           {!busy && (
             <button className="bbtn ghost" onClick={() => generate(true)} style={{ flexShrink: 0, marginTop: 4 }}>
