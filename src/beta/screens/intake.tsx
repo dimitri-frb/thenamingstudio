@@ -45,7 +45,7 @@ export function BetaBrief({ brief, set, stage, setStage, workingName, setWorking
                 )}
               </div>
             </BField>
-            <div style={{ display: "flex", gap: 30, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 30, flexWrap: "wrap", alignItems: "flex-start" }}>
               <BField label="Stage"><Segmented options={BETA_STAGES} value={stage} onChange={setStage} /></BField>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <BField label="Working name" hint="· optional">
