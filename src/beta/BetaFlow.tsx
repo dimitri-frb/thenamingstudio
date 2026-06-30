@@ -163,6 +163,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
   // 09 — Share & vote
   if (step === 8) return shell(
     <BetaShare brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
+      chosenFinal={chosenFinal}
       onBack={() => goto(7)} onDone={() => goto(9)}
       onCapture={(email) => captureLead(brief, email, chosenFinal || comp?.recommended || "")} />
   );
