@@ -208,7 +208,7 @@
 .cx.skin-beta .bchip:disabled { opacity: .4; cursor: default; }
 
 /* segmented control — hugs its content, wraps tidily if the row is too narrow */
-.cx.skin-beta .bseg { display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 3px; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--sep); }
+.cx.skin-beta .bseg { display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 3px; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--sep); align-self: flex-start; }
 .cx.skin-beta .bseg-i {
   flex: 0 0 auto; white-space: nowrap; text-align: center;
   font-family: var(--sans); font-size: 13px; color: var(--ink-2);
