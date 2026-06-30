@@ -146,7 +146,7 @@ export function BetaStrategy({ brief, set, toggleArr, workingName, onBack, onNex
   return (
     <>
       <div className="bbody">
-        <BHead eyebrow="The brief · 4 of 4" title={workingName ? <>What kind of name are we hunting for {workingName}?</> : <>What kind of name are we hunting?</>}
+        <BHead eyebrow="The brief · 4 of 4" title={<>What kind of name are we hunting?</>}
           sub={<>Based on your brief, the studio recommends an <span style={{ color: "var(--accent)", fontWeight: 600 }}>{recName.toLowerCase()}</span> direction. You can steer it.</>} />
         <div className="bstrat-grid">
           {LANES.map((l) => {
