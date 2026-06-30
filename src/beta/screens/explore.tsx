@@ -24,6 +24,9 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
   const [busy, setBusy] = useState(!initial && !groups.length);
   const [focus, setFocus] = useState("");
   const did = useRef(false);
+  // Prefetch cache: word → resolved groups (background fetch as each word grid renders)
+  const cache = useRef<Map<string, RelGroupData[]>>(new Map());
+  const pending = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (did.current || initial || groups.length) return;
@@ -33,17 +36,47 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // As soon as a grid of words renders, silently fetch their sub-worlds in the background
+  // so that clicking "Explore →" can swap instantly from the cache.
+  const wordsFor = (id: string) => groups.find((g) => g.rel === id)?.words || [];
+  useEffect(() => {
+    if (!groups.length) return;
+    QUADS.forEach((q) => wordsFor(q.id).slice(0, 4).forEach(({ w }) => {
+      if (cache.current.has(w) || pending.current.has(w)) return;
+      pending.current.add(w);
+      naming.relate(brief, w, world, [])
+        .then((r) => { cache.current.set(w, r.groups || []); })
+        .catch(() => { /* ignore prefetch failure */ })
+        .finally(() => { pending.current.delete(w); });
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups]);
+
   const isSaved = (w: string) => saved.some((s) => s.w.toLowerCase() === w.toLowerCase());
   const toggle = (w: string) => setSaved((p) => isSaved(w) ? p.filter((s) => s.w.toLowerCase() !== w.toLowerCase()) : [...p, { w, concept: world }]);
   const explore = (w: string) => {
-    setFocus(w); setBusy(true);
-    naming.relate(brief, w, world, []).then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; }).finally(() => setBusy(false));
+    setFocus(w);
+    const hit = cache.current.get(w);
+    if (hit?.length) {
+      // Instant: data already prefetched
+      setGroups(hit); store.groups = hit;
+    } else {
+      // Fallback: fetch now (cache miss, user was very fast)
+      setBusy(true);
+      naming.relate(brief, w, world, [])
+        .then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; cache.current.set(w, r.groups || []); })
+        .finally(() => setBusy(false));
+    }
   };
   const resetToWorld = () => {
-    setFocus(""); setBusy(true);
-    naming.relate(brief, "", world, []).then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; }).finally(() => setBusy(false));
+    setFocus("");
+    if (store.groups?.length) {
+      setGroups(store.groups);
+    } else {
+      setBusy(true);
+      naming.relate(brief, "", world, []).then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; }).finally(() => setBusy(false));
+    }
   };
-  const wordsFor = (id: string) => groups.find((g) => g.rel === id)?.words || [];
 
   const fallback = "An AI naming studio that finds a brand name with a strategist's rigor, in minutes not months.";
 
