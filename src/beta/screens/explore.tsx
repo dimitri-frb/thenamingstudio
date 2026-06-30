@@ -210,16 +210,17 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   };
   useEffect(() => { if (did.current || ideas.length) return; did.current = true; generate(false); /* eslint-disable-next-line */ }, []);
 
+  // Order NEVER changes: rank-1 stays at top, rest follows score order.
   const sorted = [...ideas].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
-  const leader = sorted[0]?.name || "";
-  const pick = chosen || leader;
-  const hero = sorted.find((i) => i.name === pick) || sorted[0];
-  const rest = sorted.filter((i) => i.name !== pick);
+  const hero = sorted[0];
+  const rest = sorted.slice(1);
+  // pick defaults to hero; clicking any card selects it without reordering.
+  const pick = chosen || hero?.name || "";
   const pct = (idea: NameIdea) => Math.min(99, Math.max(40, Math.round(idea.score || 70)));
 
-  const Bar = ({ p, accent }: { p: number; accent: boolean }) => (
+  const Bar = ({ p, sel }: { p: number; sel: boolean }) => (
     <div style={{ height: 3, borderRadius: 999, background: "var(--sep)", marginTop: 8 }}>
-      <div style={{ height: "100%", width: p + "%", borderRadius: 999, background: accent ? "var(--accent)" : "var(--ink-3)", transition: "width 0.5s ease" }} />
+      <div style={{ height: "100%", width: p + "%", borderRadius: 999, background: sel ? "var(--accent)" : "var(--ink-3)", transition: "width 0.5s ease" }} />
     </div>
   );
 
@@ -245,25 +246,33 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
           <Thinking lines={["Coining names from your words…", "Grading against your brief…"]} />
         ) : hero ? (
           <>
-            {/* Hero card — the current top pick */}
-            <div className="bcmp lead chosen" style={{ cursor: "default", display: "flex", alignItems: "flex-start", gap: 14, padding: "18px 20px" }}>
-              <span className="bcmp-rank lead" style={{ flexShrink: 0, marginTop: 3 }}>♔</span>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                  <span className="bcmp-name lead">{hero.name}</span>
-                  {hero.seed && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{hero.seed}</span>}
-                  {hero.type && <span className="bidea-tag" style={{ fontSize: 10.5, padding: "2px 8px" }}>{hero.type}</span>}
+            {/* Rank-1 card — always at top, always shows crown, clickable to re-select */}
+            {(() => {
+              const heroSel = pick === hero.name;
+              const p = pct(hero);
+              return (
+                <div className={"bcmp" + (heroSel ? " lead chosen" : "")}
+                  style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 14, padding: "18px 20px" }}
+                  onClick={() => setChosen(hero.name)}>
+                  <span className={"bcmp-rank" + (heroSel ? " lead" : "")} style={{ flexShrink: 0, marginTop: 3 }}>♔</span>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                      <span className={"bcmp-name" + (heroSel ? " lead" : "")}>{hero.name}</span>
+                      {hero.seed && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{hero.seed}</span>}
+                      {hero.type && <span className="bidea-tag" style={{ fontSize: 10.5, padding: "2px 8px" }}>{hero.type}</span>}
+                    </div>
+                    {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
+                    <Bar p={p} sel={heroSel} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0, width: 72, marginTop: 3 }}>
+                    <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: heroSel ? "var(--accent)" : "var(--ink)", lineHeight: 1 }}>{p}%</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-3)" }}>Brief fit</span>
+                  </div>
                 </div>
-                {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
-                <Bar p={pct(hero)} accent />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0, width: 72, marginTop: 3 }}>
-                <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--accent)", lineHeight: 1 }}>{pct(hero)}%</span>
-                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ink-3)" }}>Brief fit</span>
-              </div>
-            </div>
+              );
+            })()}
 
-            {/* Other contenders grid */}
+            {/* Other contenders — fixed order, click to select, no reorder */}
             {rest.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
@@ -274,20 +283,22 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {rest.map((idea) => {
+                    const sel = pick === idea.name;
                     const p = pct(idea);
                     return (
-                      <div key={idea.name} className="bcmp" style={{ cursor: "pointer", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4 }}
+                      <div key={idea.name} className={"bcmp" + (sel ? " lead chosen" : "")}
+                        style={{ cursor: "pointer", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}
                         onClick={() => setChosen(idea.name)}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
-                            <span style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em" }}>{idea.name}</span>
+                            <span style={{ fontSize: 17, fontWeight: 600, color: sel ? "var(--accent)" : "var(--ink)", letterSpacing: "-0.01em" }}>{idea.name}</span>
                             {idea.seed && <span style={{ fontSize: 11.5, color: "var(--ink-3)", marginLeft: 7 }}>{idea.seed}</span>}
                           </div>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", flexShrink: 0 }}>{p}%</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: sel ? "var(--accent)" : "var(--ink)", flexShrink: 0 }}>{p}%</span>
                         </div>
                         {idea.type && <span className="bidea-tag" style={{ fontSize: 10, padding: "2px 7px", alignSelf: "flex-start" }}>{idea.type}</span>}
                         {idea.rationale && <span style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.4 }}>{idea.rationale}</span>}
-                        <Bar p={p} accent={false} />
+                        <Bar p={p} sel={sel} />
                       </div>
                     );
                   })}
