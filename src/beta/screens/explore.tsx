@@ -143,6 +143,11 @@ export function BetaNameIdeas({ brief, saved, shortlist, setShortlist, initialRo
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(name);
     utt.rate = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const feminine = voices.find((v) => /samantha|victoria|karen|allison|ava|nicky|zira|hazel|google uk english female|female/i.test(v.name))
+      || voices.find((v) => v.lang.startsWith("en-") && /\bf\b|female|woman/i.test(v.name))
+      || voices.find((v) => /samantha/i.test(v.name));
+    if (feminine) utt.voice = feminine;
     window.speechSynthesis.speak(utt);
   };
   const sorted = [...ideas].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
