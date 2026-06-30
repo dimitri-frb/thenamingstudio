@@ -189,6 +189,7 @@ export default function App() {
 
         {startGate && (
           <StartGate
+            variant={startGate === "beta" ? "beta" : undefined}
             onComplete={({ name, email }) => {
               try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
               const to = startGate; setStartGate(null); setScreen(to);

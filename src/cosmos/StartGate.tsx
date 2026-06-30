@@ -18,6 +18,13 @@ const C = {
   sans: "'Geist', ui-sans-serif, system-ui, sans-serif",
 };
 
+// Beta skin colours (matches beta.css token set)
+const B = {
+  ink: "#1d1d1f", ink3: "#636366", ink4: "#aeaeb2",
+  inputBg: "#f5f5f7", accent: "#0071e3",
+  sans: "-apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif",
+};
+
 function decodeJwt(token: string): any {
   try {
     const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -25,8 +32,10 @@ function decodeJwt(token: string): any {
   } catch { return null; }
 }
 
-export function StartGate({ onComplete, onClose }: {
-  onComplete: (info: { name: string; email: string }) => void; onClose: () => void;
+export function StartGate({ onComplete, onClose, variant }: {
+  onComplete: (info: { name: string; email: string }) => void;
+  onClose: () => void;
+  variant?: "beta";
 }) {
   const [email, setEmail] = useState(() => { try { return localStorage.getItem("ns.email") || ""; } catch { return ""; } });
   const [name, setName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
@@ -35,7 +44,7 @@ export function StartGate({ onComplete, onClose }: {
 
   // Load + render the official Google button when a client id is configured.
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || variant === "beta") return;
     const w = window as any;
     const init = () => {
       if (!w.google?.accounts?.id || !gbtn.current) return;
@@ -58,6 +67,61 @@ export function StartGate({ onComplete, onClose }: {
   }, []);
 
   function go() { if (valid) onComplete({ name: name.trim(), email: email.trim() }); }
+
+  if (variant === "beta") {
+    return createPortal(
+      <div style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", fontFamily: B.sans }}
+        onClick={onClose}>
+        <div onClick={(e) => e.stopPropagation()}
+          style={{ width: "100%", maxWidth: 428, background: "#fff", borderRadius: 20, padding: "36px 30px 28px", position: "relative", boxShadow: "0 32px 80px -20px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.06)" }}>
+
+          {/* Close */}
+          <button onClick={onClose} aria-label="Close"
+            style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.06)", color: B.ink3, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+
+          {/* Brand icon */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: B.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5" />
+              </svg>
+            </div>
+          </div>
+
+          <h2 style={{ fontFamily: B.sans, fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", margin: "0 0 8px", color: B.ink, textAlign: "center" }}>Start your brief</h2>
+          <p style={{ fontSize: 15, color: B.ink3, lineHeight: 1.5, margin: "0 0 28px", textAlign: "center" }}>
+            We'll save your progress and send your<br />final name &amp; domains here.
+          </p>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: B.ink3, marginBottom: 6 }}>Your name</label>
+            <input value={name} placeholder="Jordan Avery" onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%", fontFamily: B.sans, fontSize: 15, padding: "13px 14px", borderRadius: 12, border: "none", background: B.inputBg, color: B.ink, outline: "none", boxSizing: "border-box" }} />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: B.ink3, marginBottom: 6 }}>Email</label>
+            <input type="email" autoFocus value={email} placeholder="you@company.com"
+              onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") go(); }}
+              style={{ width: "100%", fontFamily: B.sans, fontSize: 15, padding: "13px 14px", borderRadius: 12, border: valid || !email ? "none" : "1.5px solid #ff453a", background: B.inputBg, color: B.ink, outline: "none", boxSizing: "border-box" }} />
+          </div>
+
+          <button onClick={go} disabled={!valid}
+            style={{ width: "100%", fontFamily: B.sans, fontSize: 15, fontWeight: 600, padding: "14px 18px", borderRadius: 14, border: "none", cursor: valid ? "pointer" : "not-allowed", background: valid ? B.accent : B.inputBg, color: valid ? "#fff" : B.ink4, transition: "background 0.2s, color 0.2s" }}>
+            Continue to the brief &rarr;
+          </button>
+
+          <p style={{ fontSize: 12, color: B.ink4, textAlign: "center", margin: "14px 0 0", lineHeight: 1.5 }}>
+            No password needed. By continuing you agree to our{" "}
+            <span style={{ textDecoration: "underline", cursor: "pointer" }}>terms</span>
+            {" "}&amp;{" "}
+            <span style={{ textDecoration: "underline", cursor: "pointer" }}>privacy</span>.
+          </p>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 80, display: "grid", placeItems: "center", padding: 20, background: "rgba(13,13,13,0.4)", backdropFilter: "blur(3px)", fontFamily: C.sans }}
