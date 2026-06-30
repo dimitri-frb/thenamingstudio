@@ -127,7 +127,7 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
         <div style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>
+            {board && claimable.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>}
             {board && <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length} option{claimable.length !== 1 ? "s" : ""} available</span>}
           </div>
           {!board ? <Thinking lines={["Checking every extension…"]} /> : (
@@ -163,13 +163,12 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
 }
 
 // 09 — Share & vote (design 1l): a shareable link, live results, voters.
-export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
-  brief: Brief; comp: Comparison | null;
+// names is passed directly so this screen works whether the user arrived from
+// the comparison step (full comp) or jumped here early from the name ideas step.
+export function BetaShare({ brief, names, chosenFinal, onBack, onDone }: {
+  brief: Brief; names: string[];
   chosenFinal?: string; onBack: () => void; onDone: () => void;
 }) {
-  const names = (comp?.rows || []).map((r) => r.name).slice(0, 4);
-  if (!comp) return <div className="bbody"><Thinking lines={["Loading comparison…"]} /></div>;
-
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [results, setResults] = useState<{ votes: Record<string, number>; total: number; voters: number }>({ votes: {}, total: 0, voters: 0 });
@@ -191,9 +190,11 @@ export function BetaShare({ brief, comp, chosenFinal, onBack, onDone }: {
   const voteFor = (n: string) => results.votes[n] ?? 0;
   const pct = (n: string) => results.total > 0 ? Math.round(100 * voteFor(n) / results.total) : 0;
 
+  const fromName = (() => { try { return (localStorage.getItem("ns.fromName") || "").split(" ")[0].trim(); } catch { return ""; } })();
   const shareUrl = window.location.origin + window.location.pathname
     + "?vote=" + names.map(encodeURIComponent).join("|")
     + (sessionId ? "&session=" + sessionId : "")
+    + (fromName ? "&by=" + encodeURIComponent(fromName) : "")
     + (brief.does ? "&about=" + encodeURIComponent(brief.does.slice(0, 180)) : "");
 
   const copyLink = () => {

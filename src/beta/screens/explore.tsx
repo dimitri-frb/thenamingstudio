@@ -27,12 +27,17 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
   // Prefetch cache: word → resolved groups (background fetch as each word grid renders)
   const cache = useRef<Map<string, RelGroupData[]>>(new Map());
   const pending = useRef<Set<string>>(new Set());
+  // World groups are the original concept-level groups; sub-explore overwrites store.groups
+  // so we keep a separate ref so resetToWorld always goes back to the right root.
+  const worldGroups = useRef<RelGroupData[]>(initial?.groups ?? store.groups ?? []);
 
   useEffect(() => {
     if (did.current || initial || groups.length) return;
     did.current = true; setBusy(true);
-    naming.relate(brief, "", world, []).then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; })
-      .catch(() => { /* leave empty */ }).finally(() => setBusy(false));
+    naming.relate(brief, "", world, []).then((r) => {
+      const gs = r.groups || [];
+      setGroups(gs); store.groups = gs; worldGroups.current = gs;
+    }).catch(() => { /* leave empty */ }).finally(() => setBusy(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,11 +75,14 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
   };
   const resetToWorld = () => {
     setFocus("");
-    if (store.groups?.length) {
-      setGroups(store.groups);
+    if (worldGroups.current.length) {
+      setGroups(worldGroups.current);
     } else {
       setBusy(true);
-      naming.relate(brief, "", world, []).then((r) => { setGroups(r.groups || []); store.groups = r.groups || []; }).finally(() => setBusy(false));
+      naming.relate(brief, "", world, []).then((r) => {
+        const gs = r.groups || [];
+        setGroups(gs); store.groups = gs; worldGroups.current = gs;
+      }).finally(() => setBusy(false));
     }
   };
 

@@ -169,8 +169,11 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   );
 
   // 08 — Share & vote
+  // Use comp rows when available (came from comparison step); fall back to shortlist
+  // when the user jumped here early via "Take it to a vote" before scoring names.
+  const shareNames = comp ? comp.rows.map((r) => r.name).slice(0, 4) : shortlist.slice(0, 4);
   if (step === 7) return shell(
-    <BetaShare brief={brief} comp={comp} chosenFinal={chosenFinal}
+    <BetaShare brief={brief} names={shareNames} chosenFinal={chosenFinal}
       onBack={() => goto(6)} onDone={() => goto(8)} />
   );
 
