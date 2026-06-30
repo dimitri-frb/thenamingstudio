@@ -258,7 +258,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                       <span className={"bcmp-name" + (heroSel ? " lead" : "")}>{hero.name}</span>
-                      {hero.seed && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{hero.seed}</span>}
+                      {hero.seed && <span style={{ fontSize: 12, color: "var(--accent)" }}>{hero.seed}</span>}
                     </div>
                     {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
                     <Bar p={p} sel={heroSel} />
@@ -291,11 +291,10 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
                             <span style={{ fontSize: 17, fontWeight: 600, color: sel ? "var(--accent)" : "var(--ink)", letterSpacing: "-0.01em" }}>{idea.name}</span>
-                            {idea.seed && <span style={{ fontSize: 11.5, color: "var(--ink-3)", marginLeft: 7 }}>{idea.seed}</span>}
+                            {idea.seed && <span style={{ fontSize: 11.5, color: "var(--accent)", marginLeft: 7 }}>{idea.seed}</span>}
                           </div>
                           <span style={{ fontSize: 15, fontWeight: 700, color: sel ? "var(--accent)" : "var(--ink)", flexShrink: 0 }}>{p}%</span>
                         </div>
-                        {idea.type && <span className="bidea-tag" style={{ fontSize: 10, padding: "2px 7px", width: "fit-content" }}>{idea.type}</span>}
                         {idea.rationale && <span style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.4 }}>{idea.rationale}</span>}
                         <Bar p={p} sel={sel} />
                       </div>

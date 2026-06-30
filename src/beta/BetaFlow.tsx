@@ -20,7 +20,7 @@ import { BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
 
 export const BETA_STEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Exploration", "Name ideas", "Comparison", "Domains", "Share & vote", "Decision",
+  "Exploration", "Names & Comparison", "Domains", "Share & vote", "Decision",
 ];
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
@@ -142,12 +142,12 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
     { wide: true, barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {saved.length} saved</span> }
   );
 
-  // 06+07 — Names & Comparison (merged)
-  if (step === 5 || step === 6) return shell(
+  // 06 — Names & Comparison
+  if (step === 5) return shell(
     <BetaNamesCompare brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
       initialRows={test?.shortlistRows}
       onBack={() => goto(4)}
-      onVote={() => goto(8)}
+      onVote={() => goto(7)}
       onNext={(name, allNames) => {
         const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
         setChosenFinal(name);
@@ -155,31 +155,30 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
         gen(["Scoring names against your brief…", "Checking domains and trademark room…"], async () => {
           const c = await naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })));
           setComp(c);
-        }, 7);
-      }} />,
-    { stepLabel: "06-07" }
+        }, 6);
+      }} />
   );
 
-  // 08 — Domains
+  // 07 — Domains
+  if (step === 6) return shell(
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(5)} onVote={() => goto(7)}
+      onLockIn={(name) => { setChosenFinal(name); goto(8); }} />
+  );
+
+  // 08 — Share & vote
   if (step === 7) return shell(
-    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(5)} onVote={() => goto(8)}
-      onLockIn={(name) => { setChosenFinal(name); goto(9); }} />
-  );
-
-  // 09 — Share & vote
-  if (step === 8) return shell(
     <BetaShare brief={brief} comp={comp} taglines={taglines} setTaglines={setTaglines}
       chosenFinal={chosenFinal}
-      onBack={() => goto(7)} onDone={() => goto(9)}
+      onBack={() => goto(6)} onDone={() => goto(8)}
       onCapture={(email) => captureLead(brief, email, chosenFinal || comp?.recommended || "")} />
   );
 
-  // 10 — Decision
-  if (step === 9) return (
+  // 09 — Decision
+  if (step === 8) return (
     <>
       {shell(
         <BetaDecide comp={comp} chosenFinal={chosenFinal || comp?.recommended || ""}
-          onBack={() => goto(8)} onBrandBook={() => setBrandBookOpen(true)} />
+          onBack={() => goto(7)} onBrandBook={() => setBrandBookOpen(true)} />
       )}
       {brandBookOpen && (chosenFinal || comp?.recommended) && (
         <BrandBook brief={brief} name={chosenFinal || comp?.recommended || ""} onClose={() => setBrandBookOpen(false)} />
