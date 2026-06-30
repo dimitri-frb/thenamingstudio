@@ -10,9 +10,9 @@ import { recommendLanes } from "../../lib/localStudio";
 import { BField, Chips, Segmented, ReframeCard, BHead, BFoot } from "../atoms";
 
 // 01 — Company context (design 1d)
-export function BetaBrief({ brief, set, stage, setStage, workingName, setWorkingName, briefLine, briefTags, onBack, onNext }: {
+export function BetaBrief({ brief, set, stage, setStage, workingName, setWorkingName, firstName, briefLine, briefTags, onBack, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; stage: string; setStage: (s: string) => void;
-  workingName: string; setWorkingName: (s: string) => void; briefLine: string; briefTags: string[];
+  workingName: string; setWorkingName: (s: string) => void; firstName?: string; briefLine: string; briefTags: string[];
   onBack: () => void; onNext: () => void;
 }) {
   const [custom, setCustom] = useState(false);
@@ -22,7 +22,7 @@ export function BetaBrief({ brief, set, stage, setStage, workingName, setWorking
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 1 of 4" title={workingName ? <>{workingName}, what does it do?</> : <>First, what does the company do?</>}
+            <BHead eyebrow="The brief · 1 of 4" title={firstName ? <>{firstName}, what does the company do?</> : <>First, what does the company do?</>}
               sub="The sharper this is, the sharper your name." />
             <BField label="What it does" hint="· one plain sentence">
               <textarea className="binput barea" rows={3} value={brief.does} onChange={(e) => set({ does: e.target.value })}
@@ -63,16 +63,16 @@ export function BetaBrief({ brief, set, stage, setStage, workingName, setWorking
 }
 
 // 02 — Brand context (design 1g)
-export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, workingName, onBack, onNext }: {
+export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstName, onBack, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; toggleArr: (a: string[], v: string, max?: number) => string[];
-  briefLine: string; briefTags: string[]; workingName?: string; onBack: () => void; onNext: () => void;
+  briefLine: string; briefTags: string[]; firstName?: string; onBack: () => void; onNext: () => void;
 }) {
   return (
     <>
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 2 of 4" title={workingName ? <>{workingName}, what do you solve, and who for?</> : <>What do you solve, and who for?</>}
+            <BHead eyebrow="The brief · 2 of 4" title={firstName ? <>{firstName}, what do you solve, and who for?</> : <>What do you solve, and who for?</>}
               sub="A name only works in context. Two plain sentences is enough." />
             <BField label="The problem you solve">
               <textarea className="binput barea active" rows={2} value={brief.problem} onChange={(e) => set({ problem: e.target.value })}
@@ -95,8 +95,8 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, working
 }
 
 // 03 — Emotional value · north star (design 1h)
-export function BetaEmotional({ options, selected, northStar, workingName, onToggle, onStar, onBack, onNext }: {
-  options: string[]; selected: string[]; northStar: string; workingName?: string;
+export function BetaEmotional({ options, selected, northStar, firstName, onToggle, onStar, onBack, onNext }: {
+  options: string[]; selected: string[]; northStar: string; firstName?: string;
   onToggle: (s: string) => void; onStar: (s: string) => void; onBack: () => void; onNext: () => void;
 }) {
   return (
@@ -104,7 +104,7 @@ export function BetaEmotional({ options, selected, northStar, workingName, onTog
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 3 of 4" title={workingName ? <>How should {workingName}'s name make people feel?</> : <>How should the name make people feel?</>}
+            <BHead eyebrow="The brief · 3 of 4" title={firstName ? <>How should {firstName}'s name make people feel?</> : <>How should the name make people feel?</>}
               sub="Pick a few. One becomes your north star, the feeling every name is judged against." />
             <div className="bemotions">
               {options.map((o) => {
@@ -137,9 +137,9 @@ export function BetaEmotional({ options, selected, northStar, workingName, onTog
 }
 
 // 04 — Naming strategy (design 1i)
-export function BetaStrategy({ brief, set, toggleArr, workingName, onBack, onNext }: {
+export function BetaStrategy({ brief, set, toggleArr, onBack, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; toggleArr: (a: string[], v: string, max?: number) => string[];
-  workingName?: string; onBack: () => void; onNext: () => void;
+  onBack: () => void; onNext: () => void;
 }) {
   const rec = recommendLanes({ ...brief })[0];
   const recName = LANES.find((l) => l.key === rec)?.name || "evocative";

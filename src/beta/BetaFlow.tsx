@@ -25,7 +25,8 @@ export const BETA_STEPS = [
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
 
-export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string; onRestart: () => void; test?: TestSeed }) {
+export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDoes: string; onRestart: () => void; test?: TestSeed; userName?: string }) {
+  const firstName = (userName || "").split(" ")[0].trim();
   setTestMode(!!test);
 
   const [step, setStep] = useState(test?.step ?? 0);
@@ -103,13 +104,13 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 01 — Company context
   if (step === 0) return shell(
-    <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} workingName={workingName} setWorkingName={setWorkingName}
+    <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} workingName={workingName} setWorkingName={setWorkingName} firstName={firstName}
       briefLine={briefLine} briefTags={briefTags} onBack={onRestart} onNext={() => goto(1)} />
   );
 
   // 02 — Brand context
   if (step === 1) return shell(
-    <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags} workingName={workingName}
+    <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags} firstName={firstName}
       onBack={() => goto(0)} onNext={() => {
         if (feelings.length) goto(2);
         else gen(["Reading the brief…", "Drawing the feelings your name could carry"], async () => setFeelings(await naming.feelings(brief)), 2);
@@ -118,7 +119,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 03 — Emotional value (north star)
   if (step === 2) return shell(
-    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar} workingName={workingName}
+    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar} firstName={firstName}
       onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 6) })}
       onStar={(s) => set({ signal: [s, ...brief.signal.filter((x) => x !== s)] })}
       onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
@@ -126,7 +127,7 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
 
   // 04 — Naming strategy
   if (step === 3) return shell(
-    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr} workingName={workingName} onBack={() => goto(2)}
+    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr} onBack={() => goto(2)}
       onNext={() => {
         if (concepts.length) goto(4);
         else gen(["Thinking like a strategist…", "Mapping the words your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);

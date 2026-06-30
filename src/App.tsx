@@ -59,6 +59,7 @@ export default function App() {
   // so we can send the results. Skipped once we already have one. `pendingStart`
   // holds where to go after connecting.
   const [startGate, setStartGate] = useState<null | "classic" | "talk" | "beta">(null);
+  const [userName, setUserName] = useState(() => { try { return localStorage.getItem("ns.fromName") || ""; } catch { return ""; } });
   const hasEmail = () => { try { return !!localStorage.getItem("ns.email"); } catch { return false; } };
   const beginFlow = (to: "classic" | "talk" | "beta") => {
     if (to === "classic" || to === "beta") newProcess();
@@ -192,6 +193,7 @@ export default function App() {
             variant={startGate === "beta" ? "beta" : undefined}
             onComplete={({ name, email }) => {
               try { localStorage.setItem("ns.email", email); if (name) localStorage.setItem("ns.fromName", name); } catch { /* ignore */ }
+              if (name) setUserName(name);
               const to = startGate; setStartGate(null); setScreen(to);
             }}
             onClose={() => setStartGate(null)}
@@ -209,7 +211,7 @@ export default function App() {
         {screen === "classic" && <CosmosFlow initialDoes={description} seedBrief={seedBrief} onRestart={restart} />}
 
         {/* The studio rebuilt to the Apple-desktop redesign (opt-in beta). */}
-        {screen === "beta" && <BetaFlow initialDoes={description} onRestart={restart} />}
+        {screen === "beta" && <BetaFlow initialDoes={description} onRestart={restart} userName={userName} />}
 
         {(screen === "vibe" || screen === "types" || screen === "refine") && (
           <Wizard>
