@@ -114,12 +114,13 @@
 .cx.skin-beta .cx-rail li.active { background: var(--accent-soft); color: var(--accent); }
 .cx.skin-beta .cx-rail li.active .n { color: var(--accent); opacity: 1; }
 .cx.skin-beta .cx-rail li.done { color: var(--ink-2); }
-/* a quiet check on completed steps, mirroring the design */
+/* a quiet check on completed steps, mirroring the design. It sits in the third
+   (auto) column on the SAME row — pinning it to column 2 wrapped it to a new line. */
+.cx.skin-beta .cx-rail li { grid-template-columns: 16px 1fr auto; }
 .cx.skin-beta .cx-rail li.done::after {
-  content: "✓"; grid-column: 2; justify-self: end;
+  content: "✓"; grid-column: 3; justify-self: end; align-self: center;
   font-size: 11px; color: var(--accent); opacity: .7;
 }
-.cx.skin-beta .cx-rail li { grid-template-columns: 16px 1fr auto; }
 .cx.skin-beta .cx-rail .leave { padding: 12px 22px 0; font-size: 12.5px; }
 
 /* ─────────────────────────── the step bar ────────────────────────── */

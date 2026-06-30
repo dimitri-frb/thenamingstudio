@@ -96,8 +96,12 @@ export function BetaDomains({ brief: _brief, comp, onBack, onVote, onLockIn }: {
   }, [pick]);
 
   const board = boards[pick];
-  const avail = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable") : [];
-  const taken = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable") : [];
+  const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  // Always fill the main section with at least 4 extensions: lead with the ones
+  // you can claim, then pad with taken ones (rather than an empty "all taken" note).
+  const mainRows = board ? [...claimable, ...takenAll].slice(0, Math.max(4, claimable.length)) : [];
+  const restTaken = takenAll.filter((t) => !mainRows.includes(t));
 
   return (
     <>
@@ -115,26 +119,29 @@ export function BetaDomains({ brief: _brief, comp, onBack, onVote, onLockIn }: {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>
-              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{avail.length} available</span>
+              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length ? `${claimable.length} available` : "exact name is taken — try a variant"}</span>
             </div>
             {!board ? <Thinking lines={["Checking every extension…"]} /> : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {avail.map((d) => (
-                    <div key={d.domain} className="bdomrow avail">
-                      <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
-                      <span className="bdomname">{d.domain}</span>
-                      <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>{d.status === "available" ? "Available" : "For sale"}</span>
-                      {d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
-                    </div>
-                  ))}
-                  {!avail.length && <p style={{ fontSize: 14, color: "var(--ink-3)" }}>The exact name is taken across these extensions, a close variant may be your move.</p>}
+                  {mainRows.map((d) => {
+                    const taken = d.status === "taken";
+                    const dot = d.status === "available" ? "#28c840" : d.status === "negotiable" ? "var(--watch)" : "#ff5f57";
+                    return (
+                      <div key={d.domain} className={"bdomrow " + (taken ? "taken" : "avail")}>
+                        <span className="bdomdot" style={{ background: dot }} />
+                        <span className="bdomname" style={taken ? { textDecoration: "line-through", color: "var(--ink-3)" } : undefined}>{d.domain}</span>
+                        <span className={"bdomstatus " + (d.status === "available" ? "avail" : d.status === "negotiable" ? "nego" : "taken")}>{d.status === "available" ? "Available" : d.status === "negotiable" ? "For sale" : "Taken"}</span>
+                        {!taken && d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
+                      </div>
+                    );
+                  })}
                 </div>
-                {taken.length > 0 && (
+                {restTaken.length > 0 && (
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 10px" }}>Already taken</p>
                     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                      {taken.map((d) => (
+                      {restTaken.map((d) => (
                         <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", textDecoration: "line-through" }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57" }} />{d.domain}
                         </span>

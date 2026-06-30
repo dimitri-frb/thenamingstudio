@@ -2,7 +2,10 @@
 // context, 1h emotional value (north star), 1i naming strategy.
 import { useState } from "react";
 import type { Brief } from "../../lib/namingApi";
-import { INDUSTRIES, STAGES, GEO_OPTIONS, LANES } from "../../cosmos/data";
+import { INDUSTRIES, GEO_OPTIONS, LANES } from "../../cosmos/data";
+
+// The design's three stages (the studio's full list is collapsed to these here).
+const BETA_STAGES = ["Idea", "Building it", "Launched"];
 import { recommendLanes } from "../../lib/localStudio";
 import { BField, Chips, Segmented, ReframeCard, BHead, BFoot } from "../atoms";
 
@@ -43,7 +46,7 @@ export function BetaBrief({ brief, set, stage, setStage, workingName, setWorking
               </div>
             </BField>
             <div style={{ display: "flex", gap: 30, flexWrap: "wrap" }}>
-              <BField label="Stage"><Segmented options={STAGES} value={stage} onChange={setStage} /></BField>
+              <BField label="Stage"><Segmented options={BETA_STAGES} value={stage} onChange={setStage} /></BField>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <BField label="Working name" hint="· optional">
                   <input className="binput" value={workingName} onChange={(e) => setWorkingName(e.target.value)} placeholder="We won't be bound by it…" />
