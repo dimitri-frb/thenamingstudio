@@ -151,12 +151,12 @@ export function BetaFlow({ initialDoes, onRestart, test }: { initialDoes: string
   // 07 — Comparison (scored)
   if (step === 6) return shell(
     <BetaCompare brief={brief} shortlist={shortlist} comp={comp} setComp={setComp}
-      onBack={() => goto(5)} onVote={() => goto(8)} onNext={() => goto(7)} />
+      onBack={() => goto(5)} onVote={() => goto(8)} onNext={(name) => { setChosenFinal(name); goto(7); }} />
   );
 
   // 08 — Domains
   if (step === 7) return shell(
-    <BetaDomains brief={brief} comp={comp} onBack={() => goto(6)} onVote={() => goto(8)}
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(6)} onVote={() => goto(8)}
       onLockIn={(name) => { setChosenFinal(name); goto(9); }} />
   );
 

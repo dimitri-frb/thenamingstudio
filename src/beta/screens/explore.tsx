@@ -138,7 +138,7 @@ export function BetaNameIdeas({ brief, saved, shortlist, setShortlist, initialRo
             {sorted.map((idea) => {
               const on = shortlist.includes(idea.name);
               return (
-                <div key={idea.name} className="bidea">
+                <div key={idea.name} className={"bidea" + (on ? " on" : "")} style={{ cursor: "pointer" }} onClick={() => pick(idea.name)}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
                     <span className="bidea-name">{idea.name}</span>
                     <span className="bidea-tag">{idea.type}</span>
@@ -147,7 +147,7 @@ export function BetaNameIdeas({ brief, saved, shortlist, setShortlist, initialRo
                   <span className="bidea-why">{idea.rationale}</span>
                   <div className="bidea-foot">
                     <span style={{ fontSize: 12, color: "var(--ink-3)", cursor: "pointer" }}>Hear it ▸</span>
-                    <span className={"bword-save" + (on ? " on" : "")} onClick={() => pick(idea.name)}>{on ? "★ Shortlisted" : "+ Shortlist"}</span>
+                    <span className={"bword-save" + (on ? " on" : "")} onClick={(e) => { e.stopPropagation(); pick(idea.name); }}>{on ? "★ Shortlisted" : "+ Shortlist"}</span>
                   </div>
                 </div>
               );

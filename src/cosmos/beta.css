@@ -316,8 +316,9 @@
 
 /* name ideas grid */
 .cx.skin-beta .bideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
-.cx.skin-beta .bidea { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--sep); transition: transform .15s, border-color .15s; }
+.cx.skin-beta .bidea { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--sep); transition: transform .15s, border-color .15s, background .15s; }
 .cx.skin-beta .bidea:hover { transform: translateY(-2px); border-color: var(--accent); }
+.cx.skin-beta .bidea.on { border-color: var(--accent); background: var(--accent-soft); }
 .cx.skin-beta .bidea-name { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
 .cx.skin-beta .bidea-tag { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 4px 9px; border-radius: 7px; background: var(--surface); border: 1px solid var(--sep); white-space: nowrap; }
 .cx.skin-beta .bidea-roots { font-size: 12.5px; font-family: var(--mono); color: var(--accent); }
@@ -327,6 +328,7 @@
 /* comparison: scored ranking */
 .cx.skin-beta .bcmp { display: flex; align-items: center; gap: 22px; padding: 18px 22px; border-radius: 16px; border: 1px solid var(--sep); background: var(--surface-2); }
 .cx.skin-beta .bcmp.lead { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cx.skin-beta .bcmp.chosen:not(.lead) { box-shadow: 0 0 0 2px var(--accent); }
 .cx.skin-beta .bcmp-rank { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto; font-size: 16px; font-weight: 700; background: var(--surface); color: var(--ink-3); border: 1px solid var(--sep); }
 .cx.skin-beta .bcmp-rank.lead { background: var(--accent); color: var(--on-accent); border: none; font-size: 19px; }
 .cx.skin-beta .bcmp-name { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }

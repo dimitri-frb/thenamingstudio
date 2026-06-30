@@ -20,9 +20,10 @@ const STANDOUT = ["Most complete", "Easiest to love", "Most elegant", "Most fami
 // 07 — Comparison (design 1k): names ranked by a brief-fit score.
 export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, onNext }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null; setComp: (c: Comparison) => void;
-  onBack: () => void; onVote: () => void; onNext: () => void;
+  onBack: () => void; onVote: () => void; onNext: (chosen: string) => void;
 }) {
   const did = useRef(false);
+  const [chosen, setChosen] = useState("");
   useEffect(() => {
     if (comp || did.current || !shortlist.length) return;
     did.current = true;
@@ -34,6 +35,7 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
 
   const rows = [...comp.rows].map((r) => ({ r, sc: axes(r) })).sort((a, b) => pctOf(b.sc) - pctOf(a.sc));
   const leader = rows[0]?.r.name || comp.recommended;
+  const pick = chosen || leader;
 
   return (
     <>
@@ -46,8 +48,10 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {rows.map(({ r, sc }, idx) => {
             const lead = idx === 0;
+            const sel = r.name === pick;
             return (
-              <div key={r.name} className={"bcmp" + (lead ? " lead" : "")}>
+              <div key={r.name} className={"bcmp" + (lead ? " lead" : "") + (sel ? " chosen" : "")}
+                style={{ cursor: "pointer" }} onClick={() => setChosen(r.name)}>
                 <span className={"bcmp-rank" + (lead ? " lead" : "")}>{idx === 0 ? "♔" : idx + 1}</span>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
@@ -75,17 +79,17 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
         </div>
       </div>
       <BFoot back="← Name ideas" onBack={onBack} secondary="Take it to a vote →" onSecondary={onVote}
-        next={`Lock in ${leader} →`} onNext={onNext} />
+        next={`Check domains for ${pick} →`} onNext={() => onNext(pick)} />
     </>
   );
 }
 
 // 08 — Domains (design 1f): where the pick can live.
-export function BetaDomains({ brief: _brief, comp, onBack, onVote, onLockIn }: {
-  brief: Brief; comp: Comparison | null; onBack: () => void; onVote: () => void; onLockIn: (name: string) => void;
+export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, onLockIn }: {
+  brief: Brief; comp: Comparison | null; initialPick?: string; onBack: () => void; onVote: () => void; onLockIn: (name: string) => void;
 }) {
   const names = (comp?.rows || []).map((r) => r.name);
-  const [pick, setPick] = useState(comp?.recommended || names[0] || "");
+  const [pick, setPick] = useState(initialPick || comp?.recommended || names[0] || "");
   const [boards, setBoards] = useState<Record<string, DomainBoardData>>({});
   useEffect(() => {
     if (!pick || boards[pick]) return;
@@ -98,10 +102,6 @@ export function BetaDomains({ brief: _brief, comp, onBack, onVote, onLockIn }: {
   const board = boards[pick];
   const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable") : [];
   const takenAll = board ? board.tlds.filter((t) => t.status === "taken") : [];
-  // Always fill the main section with at least 4 extensions: lead with the ones
-  // you can claim, then pad with taken ones (rather than an empty "all taken" note).
-  const mainRows = board ? [...claimable, ...takenAll].slice(0, Math.max(4, claimable.length)) : [];
-  const restTaken = takenAll.filter((t) => !mainRows.includes(t));
 
   return (
     <>
@@ -123,25 +123,28 @@ export function BetaDomains({ brief: _brief, comp, onBack, onVote, onLockIn }: {
             </div>
             {!board ? <Thinking lines={["Checking every extension…"]} /> : (
               <>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {mainRows.map((d) => {
-                    const taken = d.status === "taken";
-                    const dot = d.status === "available" ? "#28c840" : d.status === "negotiable" ? "var(--watch)" : "#ff5f57";
-                    return (
-                      <div key={d.domain} className={"bdomrow " + (taken ? "taken" : "avail")}>
-                        <span className="bdomdot" style={{ background: dot }} />
-                        <span className="bdomname" style={taken ? { textDecoration: "line-through", color: "var(--ink-3)" } : undefined}>{d.domain}</span>
-                        <span className={"bdomstatus " + (d.status === "available" ? "avail" : d.status === "negotiable" ? "nego" : "taken")}>{d.status === "available" ? "Available" : d.status === "negotiable" ? "For sale" : "Taken"}</span>
-                        {!taken && d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-                {restTaken.length > 0 && (
+                {claimable.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {claimable.map((d) => {
+                      const dot = d.status === "available" ? "#28c840" : "var(--watch)";
+                      return (
+                        <div key={d.domain} className="bdomrow avail">
+                          <span className="bdomdot" style={{ background: dot }} />
+                          <span className="bdomname">{d.domain}</span>
+                          <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>{d.status === "available" ? "Available" : "For sale"}</span>
+                          {d.price && <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-2)", width: 52, textAlign: "right" }}>{d.price}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 14, color: "var(--ink-3)", margin: 0 }}>No extensions free right now — check the variants on the right.</p>
+                )}
+                {takenAll.length > 0 && (
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 10px" }}>Already taken</p>
                     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                      {restTaken.map((d) => (
+                      {takenAll.map((d) => (
                         <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", textDecoration: "line-through" }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57" }} />{d.domain}
                         </span>
