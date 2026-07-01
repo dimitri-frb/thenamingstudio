@@ -1,20 +1,45 @@
+// Brand Book — rebuilt to the "document viewer" design: dark backdrop, macOS
+// window chrome, left sidebar nav, warm parchment paper document.
+// Self-contained with inline styles; no Tailwind classes except no-print/bb-printonly.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { naming, type Brief, type BrandBook as BrandBookData } from "../lib/namingApi";
-import "../cosmos/cosmos.css"; // the .brandbook reskin lives here; ensure it loads wherever the book mounts
+import "../cosmos/cosmos.css"; // no-print / bb-printonly print classes live here
 
-// The starter brand book, generated from the brief + the chosen name. v1:
-// story & voice, colour & type, a messaging kit (copyable), a typographic
-// wordmark, and "Save as PDF". AI logos come later.
+const SERIF = "ui-serif,'New York',Georgia,serif";
+const SANS  = "-apple-system,'SF Pro Text',system-ui,sans-serif";
+const MONO  = "ui-monospace,'SF Mono',monospace";
+
+// Warm paper palette — isolated from the app's design tokens.
+const INK   = "#211c18";
+const PAPER = "#f6f2ec";
+const MUTED = "#6f665b";
+const GOLD  = "#b8944e";
+const ASH   = "#e8ded0";
+const HAIR  = "rgba(33,28,24,.13)";
+
+const FONT_HREF =
+  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600" +
+  "&family=Space+Grotesk:wght@500;700&family=Playfair+Display:wght@500;700" +
+  "&family=Source+Sans+3:wght@400;600&family=Poppins:wght@500;600" +
+  "&family=Inter:wght@400;500;600&display=swap";
 
 const PAIRINGS: Record<string, { label: string; heading: string; body: string; hName: string; bName: string }> = {
-  editorial: { label: "Editorial", heading: "'Fraunces', Georgia, serif", body: "'Inter', system-ui, sans-serif", hName: "Fraunces", bName: "Inter" },
-  modern: { label: "Modern", heading: "'Space Grotesk', system-ui, sans-serif", body: "'Inter', system-ui, sans-serif", hName: "Space Grotesk", bName: "Inter" },
-  classic: { label: "Classic", heading: "'Playfair Display', Georgia, serif", body: "'Source Sans 3', system-ui, sans-serif", hName: "Playfair Display", bName: "Source Sans 3" },
-  friendly: { label: "Friendly", heading: "'Poppins', system-ui, sans-serif", body: "'Inter', system-ui, sans-serif", hName: "Poppins", bName: "Inter" },
-  warm: { label: "Warm", heading: "'Instrument Serif', Georgia, serif", body: "'Geist', system-ui, sans-serif", hName: "Instrument Serif", bName: "Geist" },
+  editorial: { label: "Editorial", heading: "'Fraunces',Georgia,serif",           body: "'Inter',system-ui,sans-serif",       hName: "Fraunces",        bName: "Inter" },
+  modern:    { label: "Modern",    heading: "'Space Grotesk',system-ui,sans-serif", body: "'Inter',system-ui,sans-serif",      hName: "Space Grotesk",   bName: "Inter" },
+  classic:   { label: "Classic",   heading: "'Playfair Display',Georgia,serif",    body: "'Source Sans 3',system-ui,sans-serif", hName: "Playfair Display", bName: "Source Sans 3" },
+  friendly:  { label: "Friendly",  heading: "'Poppins',system-ui,sans-serif",      body: "'Inter',system-ui,sans-serif",       hName: "Poppins",         bName: "Inter" },
+  warm:      { label: "Warm",      heading: "'Instrument Serif',Georgia,serif",    body: "'Geist',system-ui,sans-serif",       hName: "Instrument Serif", bName: "Geist" },
 };
-const FONT_HREF = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Space+Grotesk:wght@500;700&family=Playfair+Display:wght@500;700&family=Source+Sans+3:wght@400;600&family=Poppins:wght@500;600&family=Inter:wght@400;500;600&display=swap";
+
+const NAV_LINKS = [
+  { href: "#bb-top",    label: "Overview" },
+  { href: "#bb-story",  label: "The story" },
+  { href: "#bb-voice",  label: "Personality & voice" },
+  { href: "#bb-colour", label: "Colour" },
+  { href: "#bb-type",   label: "Typography" },
+  { href: "#bb-msg",    label: "Messaging" },
+];
 
 export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string; onClose: () => void }) {
   const [bb, setBb] = useState<BrandBookData | null>(null);
@@ -26,6 +51,12 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
       l.id = "bb-fonts"; l.rel = "stylesheet"; l.href = FONT_HREF;
       document.head.appendChild(l);
     }
+    if (!document.getElementById("bb-spin-kf")) {
+      const s = document.createElement("style");
+      s.id = "bb-spin-kf";
+      s.textContent = "@keyframes bb-spin{to{transform:rotate(360deg)}}";
+      document.head.appendChild(s);
+    }
     let alive = true;
     naming.brandbook(brief, name).then((d) => alive && setBb(d)).catch(() => alive && setError(true));
     document.body.style.overflow = "hidden";
@@ -34,185 +65,295 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
   }, []);
 
   return createPortal(
-    <div className="brandbook fixed inset-0 z-[60] overflow-y-auto bg-[var(--page)]">
-      {/* top bar */}
-      <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-[var(--page)]/90 px-5 py-4 backdrop-blur">
-        <button onClick={onClose} className="text-sm text-ink/55 transition hover:text-ink">← Back to your name</button>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink/45">Brand book · {name}</span>
-        <button onClick={() => window.print()} disabled={!bb} title="Opens your print dialog, then choose 'Save as PDF'"
-          className="rounded-lg bg-ink px-4 py-2 font-serif text-sm italic text-[var(--page)] transition hover:opacity-90 disabled:opacity-30">↓ Save as PDF</button>
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, overflowY: "auto", background: "#111", fontFamily: SANS, WebkitFontSmoothing: "antialiased" } as React.CSSProperties}>
+
+      {/* ── Top bar ── */}
+      <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 24px", background: "rgba(17,17,17,.92)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+        <button onClick={onClose} style={{ fontSize: 13.5, color: "rgba(255,255,255,.55)", background: "none", border: "none", cursor: "pointer", fontFamily: SANS }}>← Back to your name</button>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", textTransform: "uppercase", color: "rgba(255,255,255,.3)", fontFamily: MONO }}>Brand book · {name}</span>
+        <button onClick={() => window.print()} disabled={!bb}
+          style={{ fontSize: 13, fontFamily: SERIF, fontStyle: "italic", color: !bb ? "rgba(255,255,255,.25)" : "#fff", background: !bb ? "rgba(255,255,255,.06)" : GOLD, border: "none", borderRadius: 8, padding: "7px 16px", cursor: !bb ? "default" : "pointer", transition: "background .2s" }}>
+          ↓ Save as PDF
+        </button>
       </div>
 
-      {!bb ? (
-        error ? (
-          <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 text-center">
-            <p className="font-serif text-2xl italic">We couldn't compose the brand book.</p>
-            <button onClick={onClose} className="rounded-xl bg-accent px-5 py-2.5 font-serif italic text-white">← Back</button>
+      {/* ── Viewer ── */}
+      <main style={{ display: "flex", justifyContent: "center", padding: "32px 20px 60px" }}>
+        <div style={{ width: "100%", maxWidth: 1100 }}>
+
+          {/* Window frame */}
+          <div style={{ background: "#fff", border: "1px solid rgba(0,0,0,.16)", borderRadius: 16, overflow: "hidden", boxShadow: "0 44px 110px -34px rgba(0,0,0,.7)" }}>
+
+            {/* Title bar */}
+            <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 14, height: 46, padding: "0 16px", borderBottom: `1px solid ${HAIR}`, background: "rgba(246,242,236,.9)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                {(["#ff5f57", "#febc2e", "#28c840"] as const).map((c) => (
+                  <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, display: "block" }} />
+                ))}
+              </div>
+              <span style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 500, color: MUTED }}>{name} — brand book.pdf</span>
+              <button onClick={() => window.print()} disabled={!bb}
+                style={{ fontSize: 12.5, fontWeight: 600, color: !bb ? MUTED : "#fff", background: !bb ? ASH : GOLD, border: "none", borderRadius: 8, padding: "6px 13px", cursor: !bb ? "default" : "pointer" }}>
+                Save as PDF
+              </button>
+            </div>
+
+            {/* Sidebar + paper */}
+            <div style={{ display: "flex", minHeight: 600 }}>
+
+              {/* Sidebar nav */}
+              <aside className="no-print" style={{ width: 210, flexShrink: 0, background: "#f8f7f5", borderRight: `1px solid ${HAIR}`, padding: "20px 14px", display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8a8a8f", padding: "0 10px 8px", display: "block" }}>On this page</span>
+                {NAV_LINKS.map(({ href, label }, i) => (
+                  <a key={href} href={href}
+                    style={{ display: "flex", alignItems: "center", padding: "8px 10px", borderRadius: 8, fontSize: 13.5, fontWeight: i === 0 ? 600 : 500, color: i === 0 ? GOLD : MUTED, background: i === 0 ? "rgba(184,148,78,.1)" : "transparent", textDecoration: "none" }}>
+                    {label}
+                  </a>
+                ))}
+                {bb && (
+                  <div style={{ marginTop: "auto", padding: "14px 10px 2px", display: "flex", flexDirection: "column", gap: 6, borderTop: `1px solid ${HAIR}` }}>
+                    <span style={{ fontSize: 11.5, color: MUTED }}>Delivered from your brief</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontFamily: MONO, color: INK }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#28c840", display: "block" }} />
+                      {name.toLowerCase()}.com
+                    </span>
+                  </div>
+                )}
+              </aside>
+
+              {/* Paper area */}
+              <div style={{ flex: 1, padding: 26, display: "flex", justifyContent: "center", background: "repeating-linear-gradient(45deg,transparent,transparent 11px,rgba(0,0,0,.025) 11px,rgba(0,0,0,.025) 12px),#efefef" }}>
+                {!bb ? (
+                  <div style={{ width: "100%", maxWidth: 660, background: PAPER, border: `1px solid ${HAIR}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 480, gap: 16, padding: 40 }}>
+                    {error ? (
+                      <>
+                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", color: INK, textAlign: "center" }}>We couldn't compose the brand book.</p>
+                        <button onClick={onClose} style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 14, background: GOLD, color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer" }}>← Back</button>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${ASH}`, borderTopColor: GOLD, animation: "bb-spin 1s linear infinite" }} />
+                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", color: INK }}>Composing your brand book…</p>
+                        <p style={{ fontSize: 13.5, color: MUTED }}>Drawing on everything you told us.</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <Paper bb={bb} name={name} />
+                )}
+              </div>
+
+            </div>
           </div>
-        ) : (
-          <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-ink/15 border-t-accent" />
-            <p className="font-serif text-2xl italic">Composing your brand book…</p>
-            <p className="text-sm text-ink/40">Drawing on everything you told us.</p>
-          </div>
-        )
-      ) : (
-        <Book bb={bb} name={name} />
-      )}
+        </div>
+      </main>
     </div>,
     document.body,
   );
 }
 
-function Book({ bb, name }: { bb: BrandBookData; name: string }) {
+// ── The paper document ───────────────────────────────────────────────────────
+
+function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
   const pair = PAIRINGS[bb.fontKey] || PAIRINGS.editorial;
-  const roleHex = (re: RegExp, fallback: string) => bb.palette.find((p) => re.test(p.role))?.hex || fallback;
-  const primary = roleHex(/primary/i, bb.palette[1]?.hex || "#C9774E");
-  const ink = roleHex(/ink/i, "#1F1B18");
+  // essence is "word · word · word" — split into chips
+  const essence = bb.essence
+    ? bb.essence.split(/[·,;]/).map((s) => s.trim()).filter(Boolean)
+    : [];
 
   return (
-    <div className="bb-page mx-auto max-w-3xl px-6 pb-24 pt-12 sm:px-10">
-      {/* cover */}
-      <section className="bb-cover">
-        <p className="bb-printonly mb-8 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">The naming studio · Brand book</p>
-        <span className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ background: primary }}>
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 4.5v15M5.5 8.25l13 7.5M18.5 8.25l-13 7.5" /></svg>
-        </span>
-        <h1 className="mt-6 text-6xl leading-[0.95] sm:text-7xl" style={{ fontFamily: pair.heading, color: ink }}>{name}</h1>
-        <p className="mt-5 max-w-xl text-xl text-ink/65" style={{ fontFamily: pair.body }}>{bb.tagline}</p>
-        <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-accent">{bb.essence}</p>
-        {/* a row of the palette as a colour spine on the cover */}
-        <div className="bb-printonly mt-10 flex h-2 w-48 overflow-hidden rounded-full">
-          {bb.palette.map((s) => <span key={s.hex} className="flex-1" style={{ background: s.hex }} />)}
+    <div id="bb-top" style={{ width: "100%", maxWidth: 660, background: PAPER, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, boxShadow: "0 30px 70px -34px rgba(0,0,0,.45)", overflow: "hidden", fontFamily: SANS }}>
+
+      {/* Cover */}
+      <div style={{ padding: "52px 54px 40px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase", color: GOLD }}>Brand book</span>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED }}>v1.0 · 2026</span>
         </div>
-      </section>
+        <h1 style={{ fontFamily: SERIF, fontSize: 76, lineHeight: .98, fontWeight: 600, letterSpacing: "-.02em", margin: "22px 0 0", color: INK }}>{name}</h1>
+        <p style={{ fontFamily: SERIF, fontSize: 21, fontStyle: "italic", color: MUTED, margin: "12px 0 0" }}>{bb.tagline}</p>
+        {essence.length > 0 && (
+          <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
+            {essence.map((e) => (
+              <span key={e} style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: INK, padding: "5px 12px", border: `1px solid ${HAIR}`, borderRadius: 980 }}>{e}</span>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <Rule />
+      <PHair />
 
-      {/* story */}
-      <Section label="The story">
-        <p className="text-lg leading-relaxed text-ink/75" style={{ fontFamily: pair.body }}>{bb.story}</p>
-        <p className="mt-4 border-l-2 border-accent/40 pl-4 font-serif text-base italic text-ink/55">{bb.whyName}</p>
-      </Section>
+      {/* The story */}
+      <PSection id="bb-story" label="The story">
+        <p style={{ fontSize: 16.5, lineHeight: 1.62, margin: "16px 0 0", maxWidth: "52ch" }}>{bb.story}</p>
+        <div style={{ marginTop: 22, padding: "18px 22px", borderLeft: `2px solid ${GOLD}`, background: "rgba(184,148,78,.08)", borderRadius: "0 8px 8px 0" }}>
+          <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.6, color: INK, margin: 0 }}>{bb.whyName}</p>
+        </div>
+      </PSection>
 
-      {/* voice */}
-      <Section label="Personality & voice">
-        <div className="flex flex-wrap gap-2">
+      {/* Personality & voice */}
+      <PSection id="bb-voice" label="Personality & voice">
+        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
           {bb.voice.adjectives.map((w) => (
-            <span key={w} className="rounded-full border border-ink/15 bg-[var(--surface-solid)] px-3 py-1 font-serif text-base italic">{w}</span>
+            <span key={w} style={{ fontFamily: SERIF, fontSize: 15, padding: "7px 16px", border: `1px solid ${HAIR}`, borderRadius: 980 }}>{w}</span>
           ))}
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <DoList title="Do" tone="do" items={bb.voice.dos} />
-          <DoList title="Don't" tone="dont" items={bb.voice.donts} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 20 }}>
+          <VoiceCard tone="do"   title="Do"    items={bb.voice.dos} />
+          <VoiceCard tone="dont" title="Don't" items={bb.voice.donts} />
         </div>
-        <p className="mt-6 rounded-2xl bg-[var(--surface-solid)] p-5 font-serif text-xl italic leading-snug text-ink/75">“{bb.voice.sample}”</p>
-      </Section>
+        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", lineHeight: 1.4, textAlign: "center", margin: "26px 0 0", color: INK }}>"{bb.voice.sample}"</p>
+      </PSection>
 
-      {/* colour */}
-      <Section label="Colour">
-        <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-5">
-          {bb.palette.map((s) => (
-            <button key={s.hex} onClick={() => copy(s.hex)} className="bb-swatch group text-left">
-              <span className="block h-20 w-full rounded-xl ring-1 ring-black/5" style={{ background: s.hex }} />
-              <p className="mt-2 text-sm font-medium text-ink/80">{s.name}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink/40">{s.role}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink/55 transition group-hover:text-accent">{s.hex}<span className="no-print"> · copy</span></p>
-            </button>
-          ))}
+      {/* Colour */}
+      <PSection id="bb-colour" label="Colour">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginTop: 16 }}>
+          {bb.palette.map((s) => <SwatchCard key={s.hex} swatch={s} />)}
         </div>
-      </Section>
+      </PSection>
 
-      {/* type */}
-      <Section label="Typography">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-ink/45">{pair.label} · {pair.hName} + {pair.bName}</p>
-        <p className="mt-3 text-4xl leading-tight" style={{ fontFamily: pair.heading, color: ink }}>{bb.tagline || name}</p>
-        <p className="mt-3 max-w-xl leading-relaxed text-ink/70" style={{ fontFamily: pair.body }}>
-          Body copy sets the everyday tone, readable, even, and quietly confident. {bb.fontNote}
-        </p>
-      </Section>
-
-      {/* messaging */}
-      <Section label="Messaging kit">
-        <Field label="Elevator pitch" value={bb.messaging.pitch} body={pair.body} />
-        <Field label="Boilerplate" value={bb.messaging.boilerplate} body={pair.body} />
-        <div className="mt-5">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink/40">Taglines</p>
-          <div className="space-y-2">
-            {bb.messaging.taglines.map((t) => <CopyRow key={t} text={t} body={pair.body} />)}
+      {/* Typography */}
+      <PSection id="bb-type" label="Typography">
+        <div style={{ marginTop: 16, border: `1px solid ${HAIR}`, borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ padding: "22px 24px", borderBottom: `1px solid ${HAIR}` }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: MUTED }}>Display · {pair.hName}</span>
+              <span style={{ fontSize: 11, fontFamily: MONO, color: GOLD }}>Aa</span>
+            </div>
+            <p style={{ fontFamily: pair.heading, fontSize: 38, fontWeight: 600, letterSpacing: "-.02em", lineHeight: 1.1, margin: "10px 0 0", color: INK }}>{bb.tagline || name}</p>
+          </div>
+          <div style={{ padding: "22px 24px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: MUTED }}>Body · {pair.bName}</span>
+              <span style={{ fontSize: 11, fontFamily: MONO, color: GOLD }}>Aa</span>
+            </div>
+            <p style={{ fontFamily: pair.body, fontSize: 15, lineHeight: 1.6, margin: "10px 0 0", maxWidth: "56ch", color: INK }}>
+              Body copy sets the everyday tone — readable, even, and quietly confident. {bb.fontNote}
+            </p>
           </div>
         </div>
-        <div className="mt-5">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink/40">Value props</p>
-          <ul className="space-y-1.5">
-            {bb.messaging.valueProps.map((v) => (
-              <li key={v} className="flex gap-2 text-ink/75" style={{ fontFamily: pair.body }}><span className="text-accent">✓</span>{v}</li>
-            ))}
-          </ul>
+      </PSection>
+
+      {/* Messaging kit */}
+      <PSection id="bb-msg" label="Messaging kit">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
+          <MsgCard label="Elevator pitch" text={bb.messaging.pitch} />
+          <MsgCard label="Boilerplate"    text={bb.messaging.boilerplate} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>Taglines</span>
+            {bb.messaging.taglines.map((t) => <TaglineRow key={t} text={t} />)}
+          </div>
+          {bb.messaging.valueProps?.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>Value props</span>
+              {bb.messaging.valueProps.map((v) => (
+                <span key={v} style={{ display: "flex", gap: 9, fontSize: 14, lineHeight: 1.5, color: INK }}>
+                  <span style={{ color: GOLD, flexShrink: 0 }}>✓</span>{v}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-      </Section>
+      </PSection>
 
-      <Rule />
-      <p className="no-print mt-8 text-center text-sm text-ink/45">
-        That's your starter brand book. <button onClick={() => window.print()} className="text-accent underline-offset-2 hover:underline">Save it as a PDF</button> and start shipping.
-      </p>
-      <p className="bb-printonly mt-8 border-t border-ink/10 pt-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink/40">{name} · brand book · made with the naming studio</p>
-    </div>
-  );
-}
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <section className="bb-section mt-12">
-      <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-accent">{label}</p>
-      {children}
-    </section>
-  );
-}
-function Rule() { return <div className="bb-rule mt-12 border-t border-ink/10" />; }
-
-function DoList({ title, items, tone }: { title: string; items: string[]; tone: "do" | "dont" }) {
-  return (
-    <div className="rounded-2xl border border-ink/12 bg-[var(--surface-solid)] p-4">
-      <p className={`font-mono text-[10px] uppercase tracking-widest ${tone === "do" ? "text-emerald-600" : "text-ink/45"}`}>{title}</p>
-      <ul className="mt-2 space-y-1.5 text-sm text-ink/70">
-        {items.map((it) => <li key={it} className="flex gap-2"><span className={tone === "do" ? "text-emerald-600" : "text-ink/35"}>{tone === "do" ? "✓" : "✕"}</span>{it}</li>)}
-      </ul>
-    </div>
-  );
-}
-
-function Field({ label, value, body }: { label: string; value: string; body: string }) {
-  return (
-    <div className="mt-4 first:mt-0">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink/40">{label}</span>
-        <CopyBtn text={value} />
+      {/* Footer */}
+      <div style={{ margin: "34px 54px 0", padding: "24px 0 44px", borderTop: `1px solid ${HAIR}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, color: MUTED }}>That's your starter brand book.</span>
+        <span style={{ fontFamily: SERIF, fontSize: 14, fontStyle: "italic", color: INK }}>The Naming Studio</span>
       </div>
-      <p className="rounded-xl border border-ink/12 bg-[var(--surface-solid)] p-4 leading-relaxed text-ink/75" style={{ fontFamily: body }}>{value}</p>
+
     </div>
   );
 }
 
-function CopyRow({ text, body }: { text: string; body: string }) {
+// ── Atoms ────────────────────────────────────────────────────────────────────
+
+function PHair() {
+  return <div style={{ height: 1, background: HAIR, margin: "0 54px" }} />;
+}
+
+function PSection({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-ink/12 bg-[var(--surface-solid)] px-4 py-2.5">
-      <span className="text-ink/75" style={{ fontFamily: body }}>{text}</span>
-      <CopyBtn text={text} />
+    <div id={id} style={{ padding: "36px 54px 8px" }}>
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".16em", textTransform: "uppercase", color: MUTED }}>{label}</span>
+      {children}
     </div>
   );
 }
 
-function CopyBtn({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
+function VoiceCard({ tone, title, items }: { tone: "do" | "dont"; title: string; items: string[] }) {
+  const accent = tone === "do" ? "#3f7d4e" : "#b0553f";
   return (
-    <button onClick={() => { copy(text); setDone(true); window.setTimeout(() => setDone(false), 1500); }}
-      className="no-print shrink-0 font-mono text-[10px] uppercase tracking-widest text-accent transition hover:opacity-70">
-      {done ? "Copied ✓" : "Copy"}
-    </button>
+    <div style={{ border: `1px solid ${HAIR}`, borderRadius: 12, padding: "18px 20px", background: "rgba(255,255,255,.5)" }}>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: accent }}>{title}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 12 }}>
+        {items.map((it) => (
+          <span key={it} style={{ display: "flex", gap: 9, fontSize: 13.5, lineHeight: 1.45, color: tone === "dont" ? MUTED : INK }}>
+            <span style={{ color: accent, flexShrink: 0 }}>{tone === "do" ? "✓" : "✕"}</span>{it}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
-function copy(text: string) {
-  try { navigator.clipboard.writeText(text); } catch { window.prompt("Copy:", text); }
+function SwatchCard({ swatch }: { swatch: { hex: string; name: string; role: string } }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try { navigator.clipboard.writeText(swatch.hex); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      <span style={{ height: 74, borderRadius: 10, background: swatch.hex, border: `1px solid ${HAIR}`, display: "block" }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>{swatch.name}</span>
+        <span style={{ fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: MUTED }}>{swatch.role}</span>
+        <button onClick={copy}
+          style={{ marginTop: 3, alignSelf: "flex-start", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", fontFamily: MONO, color: copied ? "#3f7d4e" : GOLD, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          {copied ? "✓ Copied" : swatch.hex.toUpperCase()}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MsgCard({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try { navigator.clipboard.writeText(text); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
+  return (
+    <div style={{ border: `1px solid ${HAIR}`, borderRadius: 12, padding: "16px 18px", background: "rgba(255,255,255,.5)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>{label}</span>
+        <button onClick={copy}
+          style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: copied ? "#3f7d4e" : GOLD, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+      <p style={{ fontSize: 15, lineHeight: 1.5, margin: 0, color: INK }}>{text}</p>
+    </div>
+  );
+}
+
+function TaglineRow({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try { navigator.clipboard.writeText(text); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", border: `1px solid ${HAIR}`, borderRadius: 10 }}>
+      <span style={{ fontFamily: SERIF, fontSize: 16, color: INK }}>{text}</span>
+      <button onClick={copy}
+        style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: copied ? "#3f7d4e" : GOLD, background: "none", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}>
+        {copied ? "✓" : "Copy"}
+      </button>
+    </div>
+  );
 }
