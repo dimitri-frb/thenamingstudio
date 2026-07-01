@@ -561,10 +561,11 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
 // aftermarket (with the asking price), and what's gone. Fastly's Domain Research
 // API (formerly Domainr) is the only source that knows "negotiable" and the offer
 // price; RDAP can only tell available vs taken.
-const BOARD_TLDS = ["com", "co", "io", "ai", "app", "dev", "xyz", "net"];
+const BOARD_TLDS = ["com", "app", "io", "ai", "co", "net", "dev", "xyz", "org"];
 const BOARD_PRICE: Record<string, [string, string]> = {
-  com: ["$12", "$14/yr"], co: ["$24", "$30/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
-  app: ["$14", "$18/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"], net: ["$12", "$15/yr"],
+  com: ["$12", "$14/yr"], app: ["$14", "$18/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
+  co: ["$24", "$30/yr"], net: ["$12", "$15/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"],
+  org: ["$10", "$13/yr"],
 };
 type DomStatus = "available" | "negotiable" | "taken" | "unknown";
 type DrInfo = { status: DomStatus; premium: boolean; offerPrice?: string; offerUrl?: string };
@@ -648,7 +649,11 @@ async function domainBoard(env: Env, name: string): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
   const exact = BOARD_TLDS.map((t) => `${slug}.${t}`);
-  const variantSlugs = [`get${slug}`, `try${slug}`, `join${slug}`, `${slug}app`, `${slug}hq`];
+  const variantSlugs = [
+    `try${slug}`, `get${slug}`, `use${slug}`, `join${slug}`,
+    `${slug}app`, `${slug}hq`, `${slug}go`, `the${slug}`,
+    `${slug}labs`, `my${slug}`,
+  ];
   const variants = variantSlugs.map((v) => `${v}.com`);
 
   const dr = await fastlyStatus(env, [...exact, ...variants]);
