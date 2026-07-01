@@ -164,7 +164,7 @@ export function Anno({ pos = "down", style, k, children }: { pos?: string; style
 
 export function Thinking({ lines }: { lines: string[] }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "40px 0" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: "60vh", justifyContent: "center", paddingBottom: "12vh" }}>
       <span className="eyebrow">Working</span>
       {lines.map((l, i) => (
         <p key={i} className={i === 0 ? "stream" : ""} style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: i === 0 ? 22 : 15, color: i === 0 ? "var(--ink)" : "var(--ink-3)", margin: 0 }}>{l}</p>
