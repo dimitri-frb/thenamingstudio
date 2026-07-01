@@ -63,7 +63,7 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   useEffect(() => {
     if (!star || star in boards) return;
     let live = true;
-    fetchDomainBoard(star).then((b) => { if (live) setBoards((p) => ({ ...p, [star]: b })); });
+    fetchDomainBoard(star, brief.geos).then((b) => { if (live) setBoards((p) => ({ ...p, [star]: b })); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [star]);

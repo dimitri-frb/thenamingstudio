@@ -203,8 +203,9 @@ export function fetchDomains(name: string): Promise<DomResult> {
 export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }
 export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string }
 const boardCache = new Map<string, Promise<DomainBoardData>>();
-export function fetchDomainBoard(name: string): Promise<DomainBoardData> {
-  const key = (name || "").trim().toLowerCase();
+export function fetchDomainBoard(name: string, geos?: string[]): Promise<DomainBoardData> {
+  const geoKey = geos?.length ? "|" + [...geos].sort().join(",") : "";
+  const key = (name || "").trim().toLowerCase() + geoKey;
   const empty: DomainBoardData = { name, tlds: [], variants: [], source: "none" };
   if (!key) return Promise.resolve(empty);
   const hit = boardCache.get(key);
@@ -212,7 +213,7 @@ export function fetchDomainBoard(name: string): Promise<DomainBoardData> {
   const p = (async (): Promise<DomainBoardData> => {
     if (ENDPOINT) {
       try {
-        const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domainboard", payload: { name } }) });
+        const res = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "domainboard", payload: { name, geos } }) });
         if (res.ok) { const d = await res.json(); if (d && !d.error) return d as DomainBoardData; }
       } catch { /* ignore */ }
     }

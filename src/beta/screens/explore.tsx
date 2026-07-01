@@ -98,7 +98,7 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
             Save the words that resonate — names are built from them. Click <span style={{ fontWeight: 600 }}>Explore &rarr;</span> on any word to dive into its world.
           </span>
         </div>
-        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+        <div className="bexplore-body" style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
             <div className="bconcept-banner">
               <div className="bconcept-row">
@@ -138,7 +138,7 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
               </div>
             )}
           </div>
-          <div style={{ width: 208, flex: "0 0 auto" }}>
+          <div className="bexplore-saved" style={{ width: 208, flex: "0 0 auto" }}>
             <div className="bsaved">
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Saved</span>
@@ -158,7 +158,11 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
           </div>
         </div>
       </div>
-      {onBack && <BFoot back="← Strategy" onBack={onBack} />}
+      {onBack && (
+        <BFoot back="← Strategy" onBack={onBack}
+          next={saved.length ? `Shape ${saved.length} word${saved.length === 1 ? "" : "s"} into names →` : "Save some words first"}
+          disabled={!saved.length} onNext={onDone} />
+      )}
     </>
   );
 }

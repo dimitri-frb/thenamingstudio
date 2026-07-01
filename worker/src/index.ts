@@ -84,7 +84,7 @@ export default {
     // tagged available / negotiable / taken. Uses Domainr when a key is set (real
     // aftermarket signal), else RDAP (available vs taken only).
     if (phase === "domainboard") {
-      return json(await domainBoard(env, body?.payload?.name || ""), env);
+      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || []), env);
     }
 
     // What's actually on a (taken) domain, plus whether it looks like a real
@@ -403,6 +403,9 @@ const RDAP_BASE: Record<string, string> = {
   app: "https://pubapi.registry.google/rdap/",
   dev: "https://pubapi.registry.google/rdap/",
   xyz: "https://rdap.centralnic.com/xyz/",
+  fr: "https://rdap.nic.fr/",
+  es: "https://rdap.nic.es/",
+  "co.uk": "https://rdap.nominet.uk/",
 };
 
 // The alternative TLDs we check alongside .com, in the order founders care about.
@@ -561,12 +564,15 @@ async function domainsFor(name: string): Promise<{ domains: any[]; suggested: an
 // aftermarket (with the asking price), and what's gone. Fastly's Domain Research
 // API (formerly Domainr) is the only source that knows "negotiable" and the offer
 // price; RDAP can only tell available vs taken.
-const BOARD_TLDS = ["com", "app", "io", "ai", "co", "net", "dev", "xyz", "org"];
+const BASE_TLDS_AFTER_COM = ["app", "io", "ai", "co", "net", "dev", "xyz", "org"];
 const BOARD_PRICE: Record<string, [string, string]> = {
   com: ["$12", "$14/yr"], app: ["$14", "$18/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
   co: ["$24", "$30/yr"], net: ["$12", "$15/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"],
   org: ["$10", "$13/yr"],
+  fr: ["€8", "€10/yr"], es: ["€8", "€10/yr"], "co.uk": ["£8", "£10/yr"],
 };
+// Maps geo selection (from brief.geos) to the ccTLD to prioritise right after .com.
+const GEO_TLD: Record<string, string> = { France: "fr", Spain: "es", UK: "co.uk" };
 type DomStatus = "available" | "negotiable" | "taken" | "unknown";
 type DrInfo = { status: DomStatus; premium: boolean; offerPrice?: string; offerUrl?: string };
 
@@ -645,9 +651,12 @@ async function godaddyPrice(env: Env, domain: string): Promise<{ price: string }
   finally { clearTimeout(timer); }
 }
 
-async function domainBoard(env: Env, name: string): Promise<any> {
+async function domainBoard(env: Env, name: string, geos: string[] = []): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
+  // Build TLD list: .com first, then any ccTLDs the founder cares about, then standard ones.
+  const ccTlds = (geos || []).map((g) => GEO_TLD[g]).filter(Boolean) as string[];
+  const BOARD_TLDS = ["com", ...ccTlds, ...BASE_TLDS_AFTER_COM.filter((t) => !ccTlds.includes(t))];
   const exact = BOARD_TLDS.map((t) => `${slug}.${t}`);
   const variantSlugs = [
     `try${slug}`, `get${slug}`, `use${slug}`, `join${slug}`,
@@ -662,8 +671,10 @@ async function domainBoard(env: Env, name: string): Promise<any> {
   // For anything Fastly didn't resolve (or no key), fall back to RDAP where we can.
   async function statusFor(domain: string): Promise<DrInfo> {
     if (dr[domain]) return dr[domain];
-    const dot = domain.lastIndexOf(".");
-    const s = domain.slice(0, dot), tld = domain.slice(dot + 1);
+    // Handle multi-level TLDs like .co.uk correctly.
+    let s: string, tld: string;
+    if (domain.endsWith(".co.uk")) { s = domain.slice(0, -6); tld = "co.uk"; }
+    else { const dot = domain.lastIndexOf("."); s = domain.slice(0, dot); tld = domain.slice(dot + 1); }
     const r = await rdap(s, tld);
     return { status: r === "available" ? "available" : r === "taken" ? "taken" : "unknown", premium: false };
   }

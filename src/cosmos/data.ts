@@ -34,7 +34,7 @@ export const SIGNAL_FALLBACK = ["Velocity", "Elegance", "Joy", "Taste", "Craft",
 export const TONE_OPTIONS = ["Witty", "Confident", "Polished", "Plain-spoken", "Bold", "Editorial", "Provocative", "Warm", "Wry"];
 // Markets the name should work in (pronounceable, no awkward meaning). Optional.
 // Kept broad on purpose (regions, not single countries) per user testing.
-export const GEO_OPTIONS = ["EU", "US", "UK", "Global"];
+export const GEO_OPTIONS = ["EU", "US", "UK", "France", "Spain", "Global"];
 export const AVOID_FALLBACK = ["Generic name generators", "Tech-bro acronyms", "Cutesy compounds"];
 
 // Domain extensions shown in the comparison. Only .com/.io/.ai are checked for

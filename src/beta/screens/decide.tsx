@@ -83,7 +83,7 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
 }
 
 // 08 — Domains (design 1f): where the pick can live.
-export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, onLockIn }: {
+export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn }: {
   brief: Brief; comp: Comparison | null; initialPick?: string; onBack: () => void; onVote: () => void; onLockIn: (name: string) => void;
 }) {
   const allNames = (comp?.rows || []).map((r) => r.name);
@@ -94,7 +94,7 @@ export function BetaDomains({ brief: _brief, comp, initialPick, onBack, onVote, 
     if (!pick || boards[pick]) return;
     setLockedDomain(""); // reset domain selection when name changes
     let live = true;
-    fetchDomainBoard(pick).then((b) => { if (live) setBoards((p) => ({ ...p, [pick]: b })); });
+    fetchDomainBoard(pick, brief.geos).then((b) => { if (live) setBoards((p) => ({ ...p, [pick]: b })); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pick]);

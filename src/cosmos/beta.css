@@ -366,3 +366,15 @@
 @media (max-width: 900px) {
   .cx.skin-beta .bintake { grid-template-columns: 1fr; }
 }
+@media (max-width: 640px) {
+  /* Exploration: hide the saved-rail panel; CTA moves to BFoot */
+  .cx.skin-beta .bexplore-body { flex-direction: column; }
+  .cx.skin-beta .bexplore-saved { display: none; }
+  /* Word quads: groups stack vertically, words go 2-per-row inside each group */
+  .cx.skin-beta .bquads { grid-template-columns: 1fr; gap: 24px; }
+  .cx.skin-beta .bquad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+  .cx.skin-beta .bquad-h { grid-column: 1 / -1; margin-bottom: 2px; }
+  /* Hide "Explore →" label; tap-the-card still works */
+  .cx.skin-beta .bword-explore { display: none; }
+  .cx.skin-beta .bword-foot { justify-content: flex-end; }
+}
