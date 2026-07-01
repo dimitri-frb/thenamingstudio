@@ -100,15 +100,13 @@ export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn
   }, [pick]);
 
   const board = boards[pick];
-  // Show all available/negotiable (at least 6 if they exist), then max 2 taken below.
+  // Claimable = available + negotiable TLDs, plus ALL returned variants (worker already
+  // strips confirmed-taken variants; "unknown" for a prefixed .com is almost certainly free).
   const claimable = board ? [
     ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
-    ...board.variants.filter((d) => d.status === "available" || d.status === "negotiable"),
+    ...board.variants,
   ] : [];
-  const takenRows = board ? [
-    ...board.tlds.filter((t) => t.status === "taken"),
-    ...board.variants.filter((t) => t.status === "taken"),
-  ].slice(0, 2) : [];
+  const takenRows = board ? board.tlds.filter((t) => t.status === "taken").slice(0, 2) : [];
 
   const lockLabel = lockedDomain ? `Confirm ${lockedDomain} →` : `Confirm ${pick} →`;
 
@@ -137,10 +135,10 @@ export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn
                 return (
                   <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
                     style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
-                    <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
+                    <span className="bdomdot" style={{ background: d.status === "negotiable" ? "var(--watch)" : "#28c840" }} />
                     <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
-                    <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
-                      {sel ? "✓ Selected" : d.status === "available" ? "Available" : "Negotiable"}
+                    <span className={"bdomstatus " + (d.status === "negotiable" ? "nego" : "avail")}>
+                      {sel ? "✓ Selected" : d.status === "negotiable" ? "For sale" : "Available"}
                     </span>
                   </div>
                 );

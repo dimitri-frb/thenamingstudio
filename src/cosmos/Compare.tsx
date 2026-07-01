@@ -23,8 +23,8 @@ function Pips({ score }: { score: number }) {
     <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < score ? color : "var(--line)" }} />)}</span>;
 }
 
-const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "For sale", taken: "Taken", unknown: "Unknown" };
-const STATUS_CLASS: Record<string, string> = { available: "avail", negotiable: "nego", taken: "taken", unknown: "taken" };
+const STATUS_LABEL: Record<string, string> = { available: "Available", negotiable: "For sale", taken: "Taken", unknown: "Available" };
+const STATUS_CLASS: Record<string, string> = { available: "avail", negotiable: "nego", taken: "taken", unknown: "avail" };
 
 export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLockIn, skin }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null;
@@ -94,7 +94,9 @@ export function Compare({ brief, shortlist, comp, setComp, onBack, onDone, onLoc
   // Lead with what you can claim (available, then for-sale); the taken ones drop to
   // a quiet row so the board reads as opportunity, not a wall of "taken".
   const order: Record<string, number> = { available: 0, negotiable: 1 };
-  const claimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable").sort((a, b) => order[a.status] - order[b.status]) : [];
+  // TLD claimable (available + negotiable), plus ALL returned variants (worker strips confirmed-taken).
+  const tldClaimable = board ? board.tlds.filter((t) => t.status === "available" || t.status === "negotiable").sort((a, b) => order[a.status] - order[b.status]) : [];
+  const claimable = board ? [...tldClaimable, ...board.variants] : [];
   const takenList = board ? board.tlds.filter((t) => t.status === "taken") : [];
   const availCount = claimable.filter((t) => t.status === "available").length;
   const negoCount = claimable.filter((t) => t.status === "negotiable").length;

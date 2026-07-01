@@ -661,7 +661,8 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
   const variantSlugs = [
     `try${slug}`, `get${slug}`, `use${slug}`, `join${slug}`,
     `${slug}app`, `${slug}hq`, `${slug}go`, `the${slug}`,
-    `${slug}labs`, `my${slug}`,
+    `${slug}labs`, `my${slug}`, `hello${slug}`, `build${slug}`,
+    `${slug}now`, `start${slug}`,
   ];
   const variants = variantSlugs.map((v) => `${v}.com`);
 
@@ -704,9 +705,11 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
       offerPrice: priceByDomain[dom] || st.offerPrice, offerUrl: st.offerUrl,
     };
   });
+  // Include "unknown" variants (RDAP timeout ≠ taken — prefixed .com slugs are
+  // almost never registered). Only drop confirmed "taken" ones.
   const variantHits = variants
     .map((d, i) => ({ domain: d, status: variantStatuses[i].status, price: BOARD_PRICE.com[0], renewal: BOARD_PRICE.com[1] }))
-    .filter((v) => v.status === "available");
+    .filter((v) => v.status !== "taken");
 
   return { name, tlds, variants: variantHits, source };
 }
