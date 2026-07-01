@@ -163,12 +163,20 @@ export function Anno({ pos = "down", style, k, children }: { pos?: string; style
 }
 
 export function Thinking({ lines }: { lines: string[] }) {
+  const [title, ...rest] = lines;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: "60vh", justifyContent: "center", paddingBottom: "12vh" }}>
-      <span className="eyebrow">Working</span>
-      {lines.map((l, i) => (
-        <p key={i} className={i === 0 ? "stream" : ""} style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: i === 0 ? 22 : 15, color: i === 0 ? "var(--ink)" : "var(--ink-3)", margin: 0 }}>{l}</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: "60vh", justifyContent: "center", paddingBottom: "12vh" }}>
+      <span style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-3)" }}>
+        <span className="think-dot" />
+        Working
+      </span>
+      {title && <p style={{ fontFamily: "var(--sans)", fontSize: 34, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--ink)", margin: "6px 0 0", lineHeight: 1.15 }}>{title}</p>}
+      {rest.map((l, i) => (
+        <p key={i} style={{ fontFamily: "var(--sans)", fontSize: 15, color: "var(--ink-3)", margin: 0, lineHeight: 1.5 }}>{l}</p>
       ))}
+      <div className="think-track">
+        <div className="think-bar" />
+      </div>
     </div>
   );
 }

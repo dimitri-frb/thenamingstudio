@@ -291,6 +291,11 @@ table.cmp td.c { white-space: nowrap; }
 
 .stream::after { content: '▍'; margin-left: 2px; color: var(--ink-3); animation: bl 1s steps(1) infinite; }
 @keyframes bl { 50% { opacity: 0; } }
+.think-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); animation: think-pulse 2s ease-in-out infinite; }
+@keyframes think-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.think-track { margin-top: 20px; height: 2px; background: var(--line); border-radius: 999px; overflow: hidden; max-width: 320px; }
+.think-bar { height: 100%; width: 40%; border-radius: 999px; background: var(--ink-3); animation: think-sweep 1.7s cubic-bezier(0.4,0,0.6,1) infinite; }
+@keyframes think-sweep { 0% { transform: translateX(-160%); } 100% { transform: translateX(400%); } }
 
 /* ─────────── intake form fields (steps 1–4) ─────────── */
 .fgrid { display: grid; gap: 18px; }
