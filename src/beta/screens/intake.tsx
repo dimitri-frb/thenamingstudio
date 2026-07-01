@@ -15,8 +15,22 @@ export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, b
   firstName?: string; briefLine: string; briefTags: string[];
   onBack: () => void; onNext: () => void;
 }) {
-  const [custom, setCustom] = useState(false);
-  const known = INDUSTRIES.includes(brief.industry);
+  const [showCustom, setShowCustom] = useState(false);
+
+  // brief.industry is comma-separated for multi-select, e.g. "SaaS, Fintech"
+  const allSel = brief.industry ? brief.industry.split(", ").filter(Boolean) : [];
+  const presetSel = allSel.filter((i) => INDUSTRIES.includes(i));
+  const customVal = allSel.find((i) => !INDUSTRIES.includes(i)) || "";
+
+  const applyIndustry = (presets: string[], custom: string) => {
+    const all = custom ? [...presets, custom] : presets;
+    set({ industry: all.join(", ") });
+  };
+  const togglePreset = (o: string) => {
+    const next = presetSel.includes(o) ? presetSel.filter((x) => x !== o) : [...presetSel, o];
+    applyIndustry(next, customVal);
+  };
+
   return (
     <>
       <div className="bbody">
@@ -31,15 +45,16 @@ export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, b
             <BField label="Industry">
               <div className="bchips">
                 {INDUSTRIES.map((o) => (
-                  <button key={o} type="button" className={"bchip" + (brief.industry === o ? " on" : "")}
-                    onClick={() => { setCustom(false); set({ industry: brief.industry === o ? "" : o }); }}>{o}</button>
+                  <button key={o} type="button" className={"bchip" + (presetSel.includes(o) ? " on" : "")}
+                    onClick={() => togglePreset(o)}>{o}</button>
                 ))}
-                {custom || (brief.industry && !known) ? (
-                  <input className="bchip-input" autoFocus value={known ? "" : brief.industry}
-                    placeholder="Type your own…" onChange={(e) => set({ industry: e.target.value })}
-                    onBlur={() => setCustom(false)} />
+                {showCustom || customVal ? (
+                  <input className="bchip-input" autoFocus value={customVal}
+                    placeholder="Type your own…"
+                    onChange={(e) => applyIndustry(presetSel, e.target.value)}
+                    onBlur={() => setShowCustom(false)} />
                 ) : (
-                  <button type="button" className="bchip dashed" onClick={() => { setCustom(true); set({ industry: "" }); }}>
+                  <button type="button" className="bchip dashed" onClick={() => setShowCustom(true)}>
                     <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>Type your own…
                   </button>
                 )}
