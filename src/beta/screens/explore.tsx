@@ -93,9 +93,9 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
     <>
       <div className="bbody" style={{ paddingBottom: 26 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Your brief, turned into words.</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>Save the words that feel like your brand.</span>
           <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            Save the words that resonate — names are built from them. Click <span style={{ fontWeight: 600 }}>Explore &rarr;</span> on any word to dive into its world.
+            Tap <span style={{ fontWeight: 600 }}>+ Save</span> on any word that inspires you — we'll shape your picks into brand names on the next step. Tap <span style={{ fontWeight: 600 }}>Explore &rarr;</span> to dig into a word's world.
           </span>
         </div>
         <div className="bexplore-body" style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
@@ -329,7 +329,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                   </span>
                   <div style={{ flex: 1, height: 1, background: "var(--sep)" }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="bcmp-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {rest.map((idea) => {
                     const sel = pick === idea.name;
                     const p = pct(idea);
@@ -357,7 +357,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
       </div>
       <BFoot back="&larr; Exploration" onBack={onBack}
         secondary="Take it to a vote &rarr;" onSecondary={onVote}
-        next={pick ? "Check domain names for " + pick + " →" : "Select a name first"} disabled={!pick}
+        next={pick ? "Check " + pick + " domains →" : "Select a name first"} disabled={!pick}
         onNext={() => onNext(pick, sorted.map((i) => i.name))} />
     </>
   );

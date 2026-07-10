@@ -377,4 +377,10 @@
   /* Hide "Explore →" label; tap-the-card still works */
   .cx.skin-beta .bword-explore { display: none; }
   .cx.skin-beta .bword-foot { justify-content: flex-end; }
+  /* Names comparison: single column on mobile */
+  .cx.skin-beta .bcmp-grid { grid-template-columns: 1fr !important; }
+  /* Footer: stack buttons vertically so pills don't become huge ovals/circles */
+  .cx.skin-beta .bfoot { flex-wrap: wrap; padding: 12px 16px 20px; gap: 8px; }
+  .cx.skin-beta .bfoot > div { width: 100%; flex-direction: column; }
+  .cx.skin-beta .bfoot .bbtn { width: 100%; justify-content: center; white-space: nowrap; }
 }
