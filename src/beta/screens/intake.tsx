@@ -36,9 +36,9 @@ export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, b
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 1 of 4" title={firstName ? <>{firstName}, what does the company do?</> : <>First, what does the company do?</>}
+            <BHead eyebrow="The brief · 1 of 4" title={firstName ? <>{firstName}, what does the company do?</> : <>What does the company do?</>}
               sub="The sharper this is, the sharper your name." />
-            <BField label="What it does" hint="· one plain sentence">
+            <BField label="What it does">
               <textarea className="binput barea" rows={3} value={brief.does} onChange={(e) => set({ does: e.target.value })}
                 placeholder="An AI naming studio that helps founders find a brand name with the rigor of a strategist, in minutes instead of months." />
             </BField>
@@ -80,8 +80,8 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstNa
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 2 of 4" title={firstName ? <>{firstName}, what do you solve, and who for?</> : <>What do you solve, and who for?</>}
-              sub="A name only works in context. Two plain sentences is enough." />
+            <BHead eyebrow="The brief · 2 of 4" title={firstName ? <>{firstName}, what do you solve, and who's it for?</> : <>What do you solve, and who's it for?</>}
+              sub="A name only works in context." />
             <BField label="The problem you solve">
               <textarea className="binput barea" rows={2} value={brief.problem} onChange={(e) => set({ problem: e.target.value })}
                 placeholder="Founders lose weeks and thousands to naming. Agencies are slow, generators are generic." />
@@ -113,7 +113,7 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
         <div className="bintake">
           <div className="bintake-main">
             <BHead eyebrow="The brief · 3 of 4" title={<>How should the name make people feel?</>}
-              sub="Pick a few feelings. The one you star becomes your north star — every name is judged against it first." />
+              sub="Star the feeling you want your name to own." />
             <div className="bemotions">
               {options.map((o) => {
                 const on = selected.includes(o);
@@ -158,7 +158,7 @@ export function BetaStrategy({ brief, set, toggleArr, onBack, onNext }: {
     <>
       <div className="bbody">
         <BHead eyebrow="The brief · 4 of 4" title={<>What kind of name are we hunting?</>}
-          sub={<>Based on your brief, the studio recommends an <span style={{ color: "var(--accent)", fontWeight: 600 }}>{recName.toLowerCase()}</span> direction. You can steer it.</>} />
+          sub={<>We recommend <span style={{ color: "var(--accent)", fontWeight: 600 }}>{recName.toLowerCase()}</span>. Steer it how you like.</>} />
         <div className="bstrat-grid">
           {LANES.map((l) => {
             const on = brief.lanes.includes(l.key);

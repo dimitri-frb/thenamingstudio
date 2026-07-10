@@ -367,6 +367,14 @@
   .cx.skin-beta .bintake { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  /* Brief intake: hide the sticky side card so form content fits without scrolling */
+  .cx.skin-beta .bintake .breframe { display: none !important; }
+  /* Less body padding on mobile to preserve vertical room */
+  .cx.skin-beta .bbody { padding: 20px 20px 16px; gap: 14px; }
+  /* Emotional step: compact grid — auto-fill so words never clip on narrow screens */
+  .cx.skin-beta .bemotions { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 6px; }
+  .cx.skin-beta .bemotion { padding: 8px 9px; font-size: 12.5px; gap: 5px; }
+  .cx.skin-beta .bemotion:not(.on) .bem-star { display: none; }
   /* Exploration: hide the saved-rail panel; CTA moves to BFoot */
   .cx.skin-beta .bexplore-body { flex-direction: column; }
   .cx.skin-beta .bexplore-saved { display: none; }
@@ -374,9 +382,6 @@
   .cx.skin-beta .bquads { grid-template-columns: 1fr; gap: 24px; }
   .cx.skin-beta .bquad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
   .cx.skin-beta .bquad-h { grid-column: 1 / -1; margin-bottom: 2px; }
-  /* Hide "Explore →" label; tap-the-card still works */
-  .cx.skin-beta .bword-explore { display: none; }
-  .cx.skin-beta .bword-foot { justify-content: flex-end; }
   /* Names comparison: single column on mobile */
   .cx.skin-beta .bcmp-grid { grid-template-columns: 1fr !important; }
   /* Footer: stack buttons vertically so pills don't become huge ovals/circles */
