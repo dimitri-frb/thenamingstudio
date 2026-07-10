@@ -27,8 +27,9 @@ function procInfo(entries: ReqLog[]) {
   const fromName = leads.map((p: any) => p.fromName).find(Boolean) || "";
   const chosen = leads.map((p: any) => p.name).find(Boolean) || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
   const feedback = [...entries].reverse().find((e) => e.phase === "feedback")?.input?.payload || null;
+  const sat = [...entries].reverse().find((e) => e.phase === "satisfaction")?.input?.payload || null;
   const started = Math.min(...entries.map((e) => e.at));
-  return { brief, does, selected, recommended, email, fromName, chosen, feedback, started };
+  return { brief, does, selected, recommended, email, fromName, chosen, feedback, sat, started };
 }
 
 export function AdminPage({ onExit }: { onExit: () => void }) {
@@ -139,6 +140,7 @@ function ProcessRow({ entries }: { entries: ReqLog[] }) {
             {i.chosen ? `${i.does} · ` : ""}{i.selected.length ? `${i.selected.length} shortlisted` : "in progress"}
           </span>
         </span>
+        {i.sat && <SatBadge score={(i.sat as any).score} />}
         {i.email && <span style={{ fontSize: 12, color: "var(--good)", flex: "0 0 auto" }}>✉</span>}
         <span style={{ color: "var(--ink-3)", flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
       </button>
@@ -177,6 +179,16 @@ function ProcessRow({ entries }: { entries: ReqLog[] }) {
               <p style={{ margin: "2px 0 0", fontSize: 13.5, color: i.email ? "var(--good)" : "var(--ink-3)" }}>{i.email || "—"}</p>
             </div>
 
+            {i.sat && (
+              <div style={{ marginTop: 16 }}>
+                <Lbl>Satisfaction</Lbl>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <SatBadge score={(i.sat as any).score} large />
+                  <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>/10</span>
+                </div>
+                {(i.sat as any).note && <Kv k="Comment" v={(i.sat as any).note} />}
+              </div>
+            )}
             {i.feedback && (
               <div style={{ marginTop: 16 }}>
                 <Lbl>Feedback</Lbl>
@@ -210,6 +222,20 @@ function Kv({ k, v }: { k: string; v?: string }) {
     </div>
   );
 }
+const SAT_COLOR = (s: number) =>
+  s <= 3 ? "var(--bad)" : s <= 5 ? "var(--watch, #FF9500)" : "var(--good)";
+
+function SatBadge({ score, large }: { score: number; large?: boolean }) {
+  return (
+    <span style={{
+      fontVariantNumeric: "tabular-nums", fontWeight: 700,
+      fontSize: large ? 20 : 12, color: SAT_COLOR(score),
+      background: "color-mix(in srgb, currentColor 12%, transparent)",
+      padding: large ? "3px 10px" : "2px 7px", borderRadius: 999,
+    }}>{score}</span>
+  );
+}
+
 function AdminChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button onClick={onClick} style={{ fontSize: 12, fontWeight: 500, padding: "6px 12px", borderRadius: 999, cursor: "pointer",

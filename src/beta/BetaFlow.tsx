@@ -14,6 +14,7 @@ import type { TestSeed } from "../cosmos/mock";
 import { type ExploreStore } from "../cosmos/Explore";
 import { type SavedIdea } from "../cosmos/Shortlist";
 import { BrandBook } from "../components/BrandBook";
+import { SatisfactionPopup } from "../components/SatisfactionPopup";
 import { BetaBrief, BetaBrand, BetaEmotional, BetaStrategy } from "./screens/intake";
 import { BetaExplore, BetaNamesCompare } from "./screens/explore";
 import { BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
@@ -41,6 +42,8 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const [comp, setComp] = useState<Comparison | null>(test?.comp ?? null);
   const [chosenFinal, setChosenFinal] = useState<string>(test?.chosenFinal ?? "");
   const [brandBookOpen, setBrandBookOpen] = useState(false);
+  const [satOpen, setSatOpen] = useState(false);
+  const [satDone, setSatDone] = useState(false);
   const [loading, setLoading] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const exploreStore = useRef<ExploreStore>({ cache: new Map(), seen: new Set(), focus: null, groups: [], active: 0, hist: [], future: [] });
@@ -59,6 +62,13 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // Scroll to top whenever the step changes.
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
+
+  // Show satisfaction popup 2s after landing on the Decision screen (step 8).
+  useEffect(() => {
+    if (step !== 8 || satDone || test) return;
+    const t = setTimeout(() => setSatOpen(true), 2000);
+    return () => clearTimeout(t);
+  }, [step, satDone, test]);
 
   // Warm feelings (emotions) in the background once the brief has a sentence.
   const feelingsBusy = useRef(false);
@@ -196,6 +206,10 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
       )}
       {brandBookOpen && (chosenFinal || comp?.recommended) && (
         <BrandBook brief={brief} name={chosenFinal || comp?.recommended || ""} onClose={() => setBrandBookOpen(false)} />
+      )}
+      {satOpen && (
+        <SatisfactionPopup name={chosenFinal || comp?.recommended || "your name"}
+          onClose={() => { setSatOpen(false); setSatDone(true); }} />
       )}
     </>
   );

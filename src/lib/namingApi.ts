@@ -325,3 +325,15 @@ export async function submitFeedback(fb: Feedback): Promise<void> {
     try { await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "feedback", payload: fb, process }) }); } catch { /* best effort */ }
   }
 }
+
+// End-of-flow satisfaction score (0–10) + optional comment. Separate from the
+// 3-slider feedback so it can be shown independently on the beta flow.
+export async function submitSatisfaction(score: number, note?: string, name?: string): Promise<void> {
+  if (isTestMode()) return;
+  const process = processId();
+  const payload = { score, note: note || undefined, name: name || undefined };
+  logRequest({ phase: "satisfaction", process, source: "live", input: { payload }, output: payload });
+  if (ENDPOINT) {
+    try { await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "satisfaction", payload, process }) }); } catch { /* best effort */ }
+  }
+}
