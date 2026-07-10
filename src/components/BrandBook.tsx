@@ -44,6 +44,13 @@ const NAV_LINKS = [
 export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string; onClose: () => void }) {
   const [bb, setBb] = useState<BrandBookData | null>(null);
   const [error, setError] = useState(false);
+  const [mobile, setMobile] = useState(() => window.innerWidth <= 640);
+
+  useEffect(() => {
+    const onResize = () => setMobile(window.innerWidth <= 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (!document.getElementById("bb-fonts")) {
@@ -70,7 +77,7 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
       {/* ── Top bar ── */}
       <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 24px", background: "rgba(17,17,17,.92)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
         <button onClick={onClose} style={{ fontSize: 13.5, color: "rgba(255,255,255,.55)", background: "none", border: "none", cursor: "pointer", fontFamily: SANS }}>← Back to your name</button>
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", textTransform: "uppercase", color: "rgba(255,255,255,.3)", fontFamily: MONO }}>Brand book · {name}</span>
+        {!mobile && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", textTransform: "uppercase", color: "rgba(255,255,255,.3)", fontFamily: MONO }}>Brand book · {name}</span>}
         <button onClick={() => window.print()} disabled={!bb}
           style={{ fontSize: 13, fontFamily: SERIF, fontStyle: "italic", color: !bb ? "rgba(255,255,255,.25)" : "#fff", background: !bb ? "rgba(255,255,255,.06)" : GOLD, border: "none", borderRadius: 8, padding: "7px 16px", cursor: !bb ? "default" : "pointer", transition: "background .2s" }}>
           ↓ Save as PDF
@@ -78,13 +85,14 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
       </div>
 
       {/* ── Viewer ── */}
-      <main style={{ display: "flex", justifyContent: "center", padding: "32px 20px 60px" }}>
+      <main style={{ display: "flex", justifyContent: "center", padding: mobile ? "0" : "32px 20px 60px" }}>
         <div style={{ width: "100%", maxWidth: 1100 }}>
 
           {/* Window frame */}
-          <div style={{ background: "#fff", border: "1px solid rgba(0,0,0,.16)", borderRadius: 16, overflow: "hidden", boxShadow: "0 44px 110px -34px rgba(0,0,0,.7)" }}>
+          <div style={{ background: "#fff", border: mobile ? "none" : "1px solid rgba(0,0,0,.16)", borderRadius: mobile ? 0 : 16, overflow: "hidden", boxShadow: mobile ? "none" : "0 44px 110px -34px rgba(0,0,0,.7)" }}>
 
-            {/* Title bar */}
+            {/* Title bar — hidden on mobile */}
+            {!mobile && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 14, height: 46, padding: "0 16px", borderBottom: `1px solid ${HAIR}`, background: "rgba(246,242,236,.9)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 {(["#ff5f57", "#febc2e", "#28c840"] as const).map((c) => (
@@ -97,12 +105,13 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
                 Save as PDF
               </button>
             </div>
+            )}
 
             {/* Sidebar + paper */}
             <div style={{ display: "flex", minHeight: 600 }}>
 
-              {/* Sidebar nav */}
-              <aside className="no-print" style={{ width: 210, flexShrink: 0, background: "#f8f7f5", borderRight: `1px solid ${HAIR}`, padding: "20px 14px", display: "flex", flexDirection: "column", gap: 3 }}>
+              {/* Sidebar nav — hidden on mobile */}
+              <aside className="no-print" style={{ width: 210, flexShrink: 0, background: "#f8f7f5", borderRight: `1px solid ${HAIR}`, padding: "20px 14px", display: mobile ? "none" : "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8a8a8f", padding: "0 10px 8px", display: "block" }}>On this page</span>
                 {NAV_LINKS.map(({ href, label }, i) => (
                   <a key={href} href={href}
@@ -122,7 +131,7 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
               </aside>
 
               {/* Paper area */}
-              <div style={{ flex: 1, padding: 26, display: "flex", justifyContent: "center", background: "repeating-linear-gradient(45deg,transparent,transparent 11px,rgba(0,0,0,.025) 11px,rgba(0,0,0,.025) 12px),#efefef" }}>
+              <div style={{ flex: 1, padding: mobile ? 0 : 26, display: "flex", justifyContent: "center", background: mobile ? PAPER : "repeating-linear-gradient(45deg,transparent,transparent 11px,rgba(0,0,0,.025) 11px,rgba(0,0,0,.025) 12px),#efefef" }}>
                 {!bb ? (
                   <div style={{ width: "100%", maxWidth: 660, background: PAPER, border: `1px solid ${HAIR}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 480, gap: 16, padding: 40 }}>
                     {error ? (
@@ -139,7 +148,7 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
                     )}
                   </div>
                 ) : (
-                  <Paper bb={bb} name={name} />
+                  <Paper bb={bb} name={name} mobile={mobile} />
                 )}
               </div>
 
@@ -154,24 +163,25 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
 
 // ── The paper document ───────────────────────────────────────────────────────
 
-function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
+function Paper({ bb, name, mobile }: { bb: BrandBookData; name: string; mobile?: boolean }) {
   const pair = PAIRINGS[bb.fontKey] || PAIRINGS.editorial;
+  const hp = mobile ? "20px" : "54px"; // horizontal padding shorthand
   // essence is "word · word · word" — split into chips
   const essence = bb.essence
     ? bb.essence.split(/[·,;]/).map((s) => s.trim()).filter(Boolean)
     : [];
 
   return (
-    <div id="bb-top" style={{ width: "100%", maxWidth: 660, background: PAPER, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, boxShadow: "0 30px 70px -34px rgba(0,0,0,.45)", overflow: "hidden", fontFamily: SANS }}>
+    <div id="bb-top" style={{ width: "100%", maxWidth: 660, background: PAPER, color: INK, border: mobile ? "none" : `1px solid ${HAIR}`, borderRadius: mobile ? 0 : 6, boxShadow: mobile ? "none" : "0 30px 70px -34px rgba(0,0,0,.45)", overflow: "hidden", fontFamily: SANS }}>
 
       {/* Cover */}
-      <div style={{ padding: "52px 54px 40px" }}>
+      <div style={{ padding: mobile ? "32px 20px 28px" : "52px 54px 40px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase", color: GOLD }}>Brand book</span>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED }}>v1.0 · 2026</span>
         </div>
-        <h1 style={{ fontFamily: SERIF, fontSize: 76, lineHeight: .98, fontWeight: 600, letterSpacing: "-.02em", margin: "22px 0 0", color: INK }}>{name}</h1>
-        <p style={{ fontFamily: SERIF, fontSize: 21, fontStyle: "italic", color: MUTED, margin: "12px 0 0" }}>{bb.tagline}</p>
+        <h1 style={{ fontFamily: SERIF, fontSize: mobile ? 44 : 76, lineHeight: .98, fontWeight: 600, letterSpacing: "-.02em", margin: "16px 0 0", color: INK }}>{name}</h1>
+        <p style={{ fontFamily: SERIF, fontSize: mobile ? 17 : 21, fontStyle: "italic", color: MUTED, margin: "10px 0 0" }}>{bb.tagline}</p>
         {essence.length > 0 && (
           <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
             {essence.map((e) => (
@@ -181,10 +191,10 @@ function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
         )}
       </div>
 
-      <PHair />
+      <PHair hp={hp} />
 
       {/* The story */}
-      <PSection id="bb-story" label="The story">
+      <PSection id="bb-story" label="The story" hp={hp}>
         <p style={{ fontSize: 16.5, lineHeight: 1.62, margin: "16px 0 0", maxWidth: "52ch" }}>{bb.story}</p>
         <div style={{ marginTop: 22, padding: "18px 22px", borderLeft: `2px solid ${GOLD}`, background: "rgba(184,148,78,.08)", borderRadius: "0 8px 8px 0" }}>
           <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.6, color: INK, margin: 0 }}>{bb.whyName}</p>
@@ -192,35 +202,35 @@ function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
       </PSection>
 
       {/* Personality & voice */}
-      <PSection id="bb-voice" label="Personality & voice">
+      <PSection id="bb-voice" label="Personality & voice" hp={hp}>
         <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
           {bb.voice.adjectives.map((w) => (
             <span key={w} style={{ fontFamily: SERIF, fontSize: 15, padding: "7px 16px", border: `1px solid ${HAIR}`, borderRadius: 980 }}>{w}</span>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 14, marginTop: 20 }}>
           <VoiceCard tone="do"   title="Do"    items={bb.voice.dos} />
           <VoiceCard tone="dont" title="Don't" items={bb.voice.donts} />
         </div>
-        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", lineHeight: 1.4, textAlign: "center", margin: "26px 0 0", color: INK }}>"{bb.voice.sample}"</p>
+        <p style={{ fontFamily: SERIF, fontSize: mobile ? 18 : 22, fontStyle: "italic", lineHeight: 1.4, textAlign: "center", margin: "26px 0 0", color: INK }}>"{bb.voice.sample}"</p>
       </PSection>
 
       {/* Colour */}
-      <PSection id="bb-colour" label="Colour">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginTop: 16 }}>
+      <PSection id="bb-colour" label="Colour" hp={hp}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(3,1fr)" : "repeat(5,1fr)", gap: 12, marginTop: 16 }}>
           {bb.palette.map((s) => <SwatchCard key={s.hex} swatch={s} />)}
         </div>
       </PSection>
 
       {/* Typography */}
-      <PSection id="bb-type" label="Typography">
+      <PSection id="bb-type" label="Typography" hp={hp}>
         <div style={{ marginTop: 16, border: `1px solid ${HAIR}`, borderRadius: 12, overflow: "hidden" }}>
           <div style={{ padding: "22px 24px", borderBottom: `1px solid ${HAIR}` }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: MUTED }}>Display · {pair.hName}</span>
               <span style={{ fontSize: 11, fontFamily: MONO, color: GOLD }}>Aa</span>
             </div>
-            <p style={{ fontFamily: pair.heading, fontSize: 38, fontWeight: 600, letterSpacing: "-.02em", lineHeight: 1.1, margin: "10px 0 0", color: INK }}>{bb.tagline || name}</p>
+            <p style={{ fontFamily: pair.heading, fontSize: mobile ? 26 : 38, fontWeight: 600, letterSpacing: "-.02em", lineHeight: 1.1, margin: "10px 0 0", color: INK }}>{bb.tagline || name}</p>
           </div>
           <div style={{ padding: "22px 24px" }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
@@ -235,7 +245,7 @@ function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
       </PSection>
 
       {/* Messaging kit */}
-      <PSection id="bb-msg" label="Messaging kit">
+      <PSection id="bb-msg" label="Messaging kit" hp={hp}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
           <MsgCard label="Elevator pitch" text={bb.messaging.pitch} />
           <MsgCard label="Boilerplate"    text={bb.messaging.boilerplate} />
@@ -257,7 +267,7 @@ function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
       </PSection>
 
       {/* Footer */}
-      <div style={{ margin: "34px 54px 0", padding: "24px 0 44px", borderTop: `1px solid ${HAIR}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ margin: `28px ${hp} 0`, padding: "20px 0 36px", borderTop: `1px solid ${HAIR}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, color: MUTED }}>That's your starter brand book.</span>
         <span style={{ fontFamily: SERIF, fontSize: 14, fontStyle: "italic", color: INK }}>The Naming Studio</span>
       </div>
@@ -268,13 +278,13 @@ function Paper({ bb, name }: { bb: BrandBookData; name: string }) {
 
 // ── Atoms ────────────────────────────────────────────────────────────────────
 
-function PHair() {
-  return <div style={{ height: 1, background: HAIR, margin: "0 54px" }} />;
+function PHair({ hp = "54px" }: { hp?: string }) {
+  return <div style={{ height: 1, background: HAIR, margin: `0 ${hp}` }} />;
 }
 
-function PSection({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+function PSection({ id, label, children, hp = "54px" }: { id: string; label: string; children: React.ReactNode; hp?: string }) {
   return (
-    <div id={id} style={{ padding: "36px 54px 8px" }}>
+    <div id={id} style={{ padding: `36px ${hp} 8px` }}>
       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".16em", textTransform: "uppercase", color: MUTED }}>{label}</span>
       {children}
     </div>
