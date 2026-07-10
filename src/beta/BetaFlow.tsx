@@ -131,7 +131,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // 03 — Emotional value (north star)
   if (step === 2) return shell(
-    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar} firstName={firstName}
+    <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar}
       onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 6) })}
       onStar={(s) => set({ signal: [s, ...brief.signal.filter((x) => x !== s)] })}
       onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />

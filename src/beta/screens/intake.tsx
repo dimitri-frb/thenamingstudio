@@ -103,8 +103,8 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstNa
 }
 
 // 03 — Emotional value · north star (design 1h)
-export function BetaEmotional({ options, selected, northStar, firstName, onToggle, onStar, onBack, onNext }: {
-  options: string[]; selected: string[]; northStar: string; firstName?: string;
+export function BetaEmotional({ options, selected, northStar, onToggle, onStar, onBack, onNext }: {
+  options: string[]; selected: string[]; northStar: string;
   onToggle: (s: string) => void; onStar: (s: string) => void; onBack: () => void; onNext: () => void;
 }) {
   return (
@@ -112,7 +112,7 @@ export function BetaEmotional({ options, selected, northStar, firstName, onToggl
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 3 of 4" title={firstName ? <>How should {firstName}'s name make people feel?</> : <>How should the name make people feel?</>}
+            <BHead eyebrow="The brief · 3 of 4" title={<>How should the name make people feel?</>}
               sub="Pick a few feelings. The one you star becomes your north star — every name is judged against it first." />
             <div className="bemotions">
               {options.map((o) => {
