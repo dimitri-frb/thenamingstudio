@@ -248,6 +248,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   const [ideas, setIdeas] = useState<NameIdea[]>(seedIdeas());
   const [busy, setBusy] = useState(!ideas.length);
   const [chosen, setChosen] = useState("");
+  const [keptWords, setKeptWords] = useState<string[]>([]);
   const did = useRef(false);
 
   const generate = (more: boolean) => {
@@ -263,8 +264,21 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   const sorted = [...ideas].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
   const hero = sorted[0];
   const rest = sorted.slice(1);
-  // pick defaults to hero; clicking any card selects it without reordering.
-  const pick = chosen || hero?.name || "";
+  // pick defaults to hero; clicking any card OR a kept word selects it without reordering.
+  const pick = chosen || hero?.name || keptWords[0] || "";
+  const genNames = new Set(sorted.map((i) => i.name.toLowerCase()));
+  const toggleKept = (w: string) => {
+    const isKept = keptWords.includes(w);
+    if (!isKept) {
+      setKeptWords((p) => [...p, w]);
+      setChosen(w); // auto-select as pick when first kept
+    } else if (chosen === w) {
+      setKeptWords((p) => p.filter((x) => x !== w));
+      setChosen("");
+    } else {
+      setChosen(w);
+    }
+  };
   const pct = (idea: NameIdea) => Math.min(99, Math.max(40, Math.round(idea.score || 70)));
 
   const Bar = ({ p, sel }: { p: number; sel: boolean }) => (
@@ -354,11 +368,52 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
             )}
           </>
         ) : null}
+
+        {/* Saved exploration words — keep any verbatim as a name candidate */}
+        {saved.length > 0 && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                From your exploration &middot; keep a word as-is
+              </span>
+              <div style={{ flex: 1, height: 1, background: "var(--sep)" }} />
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {saved.map((s) => {
+                const kept = keptWords.includes(s.w);
+                const sel = pick === s.w;
+                if (genNames.has(s.w.toLowerCase())) return null;
+                return (
+                  <button key={s.w} onClick={() => toggleKept(s.w)}
+                    style={{
+                      padding: "8px 14px", borderRadius: 999, cursor: "pointer", fontSize: 13.5, fontWeight: kept ? 600 : 400,
+                      border: `1px solid ${sel ? "transparent" : kept ? "var(--accent)" : "var(--sep)"}`,
+                      background: sel ? "var(--accent)" : kept ? "var(--accent-soft, #EEF3FF)" : "var(--surface-2)",
+                      color: sel ? "var(--on-accent, #fff)" : kept ? "var(--accent)" : "var(--ink-2)",
+                      display: "flex", alignItems: "center", gap: 6, transition: "all 0.12s",
+                    }}>
+                    <span style={{ fontSize: 10, opacity: 0.7 }}>&#9733;</span>
+                    {s.w}
+                    {kept && <span style={{ fontSize: 11, opacity: 0.7 }}>&middot; {sel ? "pick" : "kept"}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {keptWords.length > 0 && (
+              <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "-4px 0 0", lineHeight: 1.5 }}>
+                Kept words go through the same domain &amp; trademark scoring as generated names.
+              </p>
+            )}
+          </>
+        )}
       </div>
       <BFoot back="&larr; Exploration" onBack={onBack}
         secondary="Take it to a vote &rarr;" onSecondary={onVote}
         next={pick ? "Check " + pick + " domains →" : "Select a name first"} disabled={!pick}
-        onNext={() => onNext(pick, sorted.map((i) => i.name))} />
+        onNext={() => {
+          const extra = keptWords.filter((w) => !genNames.has(w.toLowerCase()));
+          onNext(pick, [...sorted.map((i) => i.name), ...extra]);
+        }} />
     </>
   );
 }
