@@ -135,14 +135,14 @@ function ProcessRow({ entries }: { entries: ReqLog[] }) {
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontFamily: "var(--serif)", fontSize: 15.5, color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {i.chosen
-              ? <>{i.chosen} <span style={{ fontFamily: "var(--sans)", fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--good)", marginLeft: 4 }}>chosen</span></>
+              ? <>{i.chosen} <span style={{ fontFamily: "var(--sans)", fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--good)", marginLeft: 4 }}>chosen</span>
+                  {i.sat != null && <SatBadge score={(i.sat as any).score} />}</>
               : i.does}
           </span>
           <span style={{ fontSize: 11.5, color: "var(--ink-3)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {i.chosen ? `${i.does} · ` : ""}{i.selected.length ? `${i.selected.length} shortlisted` : "in progress"}
           </span>
         </span>
-        {i.sat && <SatBadge score={(i.sat as any).score} />}
         {i.email && <span style={{ fontSize: 12, color: "var(--good)", flex: "0 0 auto" }}>✉</span>}
         <span style={{ color: "var(--ink-3)", flex: "0 0 auto" }}>{open ? "▾" : "▸"}</span>
       </button>
@@ -172,7 +172,10 @@ function ProcessRow({ entries }: { entries: ReqLog[] }) {
 
             <div style={{ marginTop: 16 }}>
               <Lbl>Final selection</Lbl>
-              <p style={{ margin: 0, fontFamily: "var(--serif)", fontSize: 17, color: i.chosen ? "var(--ink)" : "var(--ink-3)" }}>{i.chosen || "Not chosen yet"}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <p style={{ margin: 0, fontFamily: "var(--serif)", fontSize: 17, color: i.chosen ? "var(--ink)" : "var(--ink-3)" }}>{i.chosen || "Not chosen yet"}</p>
+                {i.chosen && i.sat != null && <SatBadge score={(i.sat as any).score} large />}
+              </div>
             </div>
 
             <div style={{ marginTop: 16 }}>
