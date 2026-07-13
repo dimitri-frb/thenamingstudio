@@ -25,7 +25,9 @@ function procInfo(entries: ReqLog[]) {
   const leads = entries.filter((e) => e.phase === "lead").map((e) => e.input?.payload || {});
   const email = leads.map((p: any) => p.email).find(Boolean) || "";
   const fromName = leads.map((p: any) => p.fromName).find(Boolean) || "";
-  const chosen = leads.map((p: any) => p.name).find(Boolean) || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
+  const chosen = entries.find((e) => e.phase === "decision")?.input?.payload?.name
+    || leads.map((p: any) => p.name).find(Boolean)
+    || entries.find((e) => e.phase === "brandbook")?.input?.payload?.name || "";
   const feedback = [...entries].reverse().find((e) => e.phase === "feedback")?.input?.payload || null;
   const sat = [...entries].reverse().find((e) => e.phase === "satisfaction")?.input?.payload || null;
   const started = Math.min(...entries.map((e) => e.at));

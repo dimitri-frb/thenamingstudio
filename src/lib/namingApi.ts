@@ -286,6 +286,18 @@ export async function captureSignup(brief: Brief, fromName: string, email: strin
   }
 }
 
+// Record the final chosen name the moment the founder reaches the Decision screen.
+// Logged immediately (no user action required) so /admin always shows the selection.
+export function logDecision(name: string): void {
+  if (isTestMode() || !name) return;
+  const process = processId();
+  const payload = { name };
+  logRequest({ phase: "decision", process, source: "live", input: { payload }, output: payload });
+  if (ENDPOINT) {
+    try { fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phase: "decision", payload, process }) }); } catch { /* best effort */ }
+  }
+}
+
 // Vote session for step 8 (Share & vote). Stored in the Worker's KV for 14 days.
 export async function createVoteSession(names: string[], about: string): Promise<string> {
   if (!ENDPOINT) return "";

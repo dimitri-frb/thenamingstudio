@@ -4,7 +4,7 @@
 // `naming` API + data layer. Classic CosmosFlow is left entirely untouched.
 import { useEffect, useRef, useState } from "react";
 import {
-  naming, type Brief, type Comparison, type Concept, type Feeling,
+  naming, logDecision, type Brief, type Comparison, type Concept, type Feeling,
 } from "../lib/namingApi";
 import { setTestMode } from "../lib/requestLog";
 import { recommendLanes } from "../lib/localStudio";
@@ -62,6 +62,16 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // Scroll to top whenever the step changes.
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
+
+  // Log the final chosen name the moment the Decision screen is reached.
+  const decisionLogged = useRef(false);
+  useEffect(() => {
+    if (step !== 8 || decisionLogged.current) return;
+    const name = chosenFinal || comp?.recommended || "";
+    if (!name) return;
+    decisionLogged.current = true;
+    logDecision(name);
+  }, [step, chosenFinal, comp]);
 
   // Show satisfaction popup 2s after landing on the Decision screen (step 8).
   useEffect(() => {
