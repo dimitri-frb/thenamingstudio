@@ -159,7 +159,7 @@ export function BetaExplore({ brief, concept, saved, setSaved, store, initial, o
         </div>
       </div>
       {onBack && (
-        <BFoot back="← Strategy" onBack={onBack}
+        <BFoot
           next={saved.length ? `Shape ${saved.length} word${saved.length === 1 ? "" : "s"} into names →` : "Save some words first"}
           disabled={!saved.length} onNext={onDone} />
       )}
@@ -238,11 +238,11 @@ export function BetaNameIdeas({ brief, saved, shortlist, setShortlist, initialRo
 }
 
 // 06+07 — Names & Comparison (merged): one hero card for the top pick, 2-col grid for the rest.
-export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShortlist: _setShortlist, initialRows, onBack, onVote, onNext }: {
+export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShortlist: _setShortlist, initialRows, onVote, onNext }: {
   brief: Brief; saved: SavedIdea[];
   shortlist: string[]; setShortlist: React.Dispatch<React.SetStateAction<string[]>>;
   initialRows?: { seed: string; concept: string; ideas: NameIdea[] }[];
-  onBack: () => void; onVote: () => void; onNext: (name: string, allNames: string[]) => void;
+  onVote: () => void; onNext: (name: string, allNames: string[]) => void;
 }) {
   const seedIdeas = () => (initialRows || []).flatMap((r) => r.ideas);
   const [ideas, setIdeas] = useState<NameIdea[]>(seedIdeas());
@@ -290,15 +290,8 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   return (
     <>
       <div className="bbody">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <BHead eyebrow="Names comparison" title={<>Every name, already scored.</>}
-            sub="Built from your saved words and graded against the brief the moment they appear. Shortlist as you go." />
-          {!busy && (
-            <button className="bbtn ghost" onClick={() => generate(true)} style={{ flexShrink: 0, marginTop: 4 }}>
-              &#8635; Generate more
-            </button>
-          )}
-        </div>
+        <BHead eyebrow="Names comparison" title={<>Every name, already scored.</>}
+          sub="Built from your saved words and graded against the brief the moment they appear. Shortlist as you go." />
         {brief.does && (
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderRadius: 12, background: "var(--accent-soft, #EEF3FF)", border: "1px solid var(--accent)" }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)", flex: "0 0 auto", paddingTop: 2 }}>Brief</span>
@@ -406,8 +399,16 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
             )}
           </>
         )}
+        {/* Generate more — at the bottom so it's always reachable, especially on mobile */}
+        {!busy && ideas.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+            <button className="bbtn ghost bgen-more" onClick={() => generate(true)}>
+              &#8635; Generate more
+            </button>
+          </div>
+        )}
       </div>
-      <BFoot back="&larr; Exploration" onBack={onBack}
+      <BFoot
         secondary="Take it to a vote &rarr;" onSecondary={onVote}
         next={pick ? "Check " + pick + " domains →" : "Select a name first"} disabled={!pick}
         onNext={() => {

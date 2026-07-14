@@ -137,13 +137,13 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   // 01 — Company context
   if (step === 0) return shell(
     <BetaBrief brief={brief} set={set} stage={stage} setStage={setStage} firstName={firstName}
-      briefLine={briefLine} briefTags={briefTags} onBack={onRestart} onNext={() => goto(1)} />
+      briefLine={briefLine} briefTags={briefTags} onNext={() => goto(1)} />
   );
 
   // 02 — Brand context
   if (step === 1) return shell(
     <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags} firstName={firstName}
-      onBack={() => goto(0)} onNext={() => {
+      onNext={() => {
         if (feelings.length) goto(2);
         else gen(["Reading the brief…", "Drawing the feelings your name could carry"], async () => setFeelings(await naming.feelings(brief)), 2);
       }} />
@@ -154,12 +154,12 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar}
       onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 6) })}
       onStar={(s) => set({ signal: [s, ...brief.signal.filter((x) => x !== s)] })}
-      onBack={() => goto(1)} onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
+      onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
   );
 
   // 04 — Naming strategy
   if (step === 3) return shell(
-    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr} onBack={() => goto(2)}
+    <BetaStrategy brief={brief} set={set} toggleArr={toggleArr}
       onNext={() => {
         if (concepts.length) goto(4);
         else gen(["Thinking like a strategist…", "Mapping the words your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);
@@ -179,7 +179,6 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   if (step === 5) return shell(
     <BetaNamesCompare brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
       initialRows={test?.shortlistRows}
-      onBack={() => goto(4)}
       onVote={() => goto(7)}
       onNext={(name, allNames) => {
         const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
@@ -194,7 +193,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
 
   // 07 — Domains
   if (step === 6) return shell(
-    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onBack={() => goto(5)} onVote={() => goto(7)}
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onVote={() => goto(7)}
       onLockIn={(name) => { setChosenFinal(name); goto(8); }} />
   );
 
@@ -204,7 +203,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const shareNames = comp ? comp.rows.map((r) => r.name).slice(0, 4) : shortlist.slice(0, 4);
   if (step === 7) return shell(
     <BetaShare brief={brief} names={shareNames}
-      onBack={() => goto(6)} onDone={() => goto(8)} />
+      onDone={() => goto(8)} />
   );
 
   // 09 — Decision

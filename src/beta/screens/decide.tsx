@@ -19,9 +19,9 @@ const pctOf = (sc: number[]) => Math.round(sc.reduce((a, b) => a + b, 0) / 30 * 
 const STANDOUT = ["Most complete", "Easiest to love", "Most elegant", "Most familiar", "Strong contender"];
 
 // 07 — Comparison (design 1k): names ranked by a brief-fit score.
-export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, onNext }: {
+export function BetaCompare({ brief, shortlist, comp, setComp, onVote, onNext }: {
   brief: Brief; shortlist: string[]; comp: Comparison | null; setComp: (c: Comparison) => void;
-  onBack: () => void; onVote: () => void; onNext: (chosen: string) => void;
+  onVote: () => void; onNext: (chosen: string) => void;
 }) {
   const did = useRef(false);
   const [chosen, setChosen] = useState("");
@@ -76,15 +76,15 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onBack, onVote, o
           })}
         </div>
       </div>
-      <BFoot back="&larr; Name ideas" onBack={onBack} secondary="Take it to a vote &rarr;" onSecondary={onVote}
+      <BFoot secondary="Take it to a vote &rarr;" onSecondary={onVote}
         next={`Check domains for ${pick} →`} onNext={() => onNext(pick)} />
     </>
   );
 }
 
 // 08 — Domains (design 1f): where the pick can live.
-export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn }: {
-  brief: Brief; comp: Comparison | null; initialPick?: string; onBack: () => void; onVote: () => void; onLockIn: (name: string) => void;
+export function BetaDomains({ brief, comp, initialPick, onVote, onLockIn }: {
+  brief: Brief; comp: Comparison | null; initialPick?: string; onVote: () => void; onLockIn: (name: string) => void;
 }) {
   const allNames = (comp?.rows || []).map((r) => r.name);
   const [pick, setPick] = useState(initialPick || comp?.recommended || allNames[0] || "");
@@ -157,7 +157,7 @@ export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn
       <p style={{ fontSize: 12, color: "var(--ink-3)", textAlign: "center", margin: "0 0 4px" }}>
         Confirming doesn't register the domain — we'll help you claim it on the next screen.
       </p>
-      <BFoot back="&larr; Comparison" onBack={onBack} secondary="Get a gut check &rarr;" onSecondary={onVote}
+      <BFoot secondary="Get a gut check &rarr;" onSecondary={onVote}
         next={lockLabel} onNext={() => onLockIn(pick)} />
     </>
   );
@@ -166,9 +166,9 @@ export function BetaDomains({ brief, comp, initialPick, onBack, onVote, onLockIn
 // 09 — Share & vote (design 1l): a shareable link, live results, voters.
 // names is passed directly so this screen works whether the user arrived from
 // the comparison step (full comp) or jumped here early from the name ideas step.
-export function BetaShare({ brief, names, onBack, onDone }: {
+export function BetaShare({ brief, names, onDone }: {
   brief: Brief; names: string[];
-  onBack: () => void; onDone: () => void;
+  onDone: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState("");
@@ -253,7 +253,7 @@ export function BetaShare({ brief, names, onBack, onDone }: {
           </div>
         </div>
       </div>
-      <BFoot back="&larr; Domains" onBack={onBack} next="Continue to decision →" onNext={onDone} />
+      <BFoot next="Continue to decision →" onNext={onDone} />
     </>
   );
 }

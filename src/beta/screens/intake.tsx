@@ -10,10 +10,10 @@ import { recommendLanes } from "../../lib/localStudio";
 import { BField, Chips, Segmented, ReframeCard, BHead, BFoot } from "../atoms";
 
 // 01 — Company context (design 1d)
-export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, briefTags, onBack, onNext }: {
+export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, briefTags, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; stage: string; setStage: (s: string) => void;
   firstName?: string; briefLine: string; briefTags: string[];
-  onBack: () => void; onNext: () => void;
+  onNext: () => void;
 }) {
   const [showCustom, setShowCustom] = useState(false);
 
@@ -65,15 +65,15 @@ export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, b
           <ReframeCard line={briefLine} tags={briefTags} />
         </div>
       </div>
-      <BFoot back="← Welcome" onBack={onBack} next={brief.does.trim() ? "Next: brand context →" : "Describe what you're building first"} disabled={!brief.does.trim()} onNext={onNext} />
+      <BFoot next={brief.does.trim() ? "Next: brand context →" : "Describe what you're building first"} disabled={!brief.does.trim()} onNext={onNext} />
     </>
   );
 }
 
 // 02 — Brand context (design 1g)
-export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstName, onBack, onNext }: {
+export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstName, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; toggleArr: (a: string[], v: string, max?: number) => string[];
-  briefLine: string; briefTags: string[]; firstName?: string; onBack: () => void; onNext: () => void;
+  briefLine: string; briefTags: string[]; firstName?: string; onNext: () => void;
 }) {
   return (
     <>
@@ -97,15 +97,15 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstNa
           <ReframeCard line={briefLine} tags={briefTags} />
         </div>
       </div>
-      <BFoot back="← Company context" onBack={onBack} next="Next: emotional value →" disabled={!brief.problem.trim()} onNext={onNext} />
+      <BFoot next="Next: emotional value →" disabled={!brief.problem.trim()} onNext={onNext} />
     </>
   );
 }
 
 // 03 — Emotional value · north star (design 1h)
-export function BetaEmotional({ options, selected, northStar, onToggle, onStar, onBack, onNext }: {
+export function BetaEmotional({ options, selected, northStar, onToggle, onStar, onNext }: {
   options: string[]; selected: string[]; northStar: string;
-  onToggle: (s: string) => void; onStar: (s: string) => void; onBack: () => void; onNext: () => void;
+  onToggle: (s: string) => void; onStar: (s: string) => void; onNext: () => void;
 }) {
   return (
     <>
@@ -113,7 +113,14 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
         <div className="bintake">
           <div className="bintake-main">
             <BHead eyebrow="The brief · 3 of 4" title={<>How should the name make people feel?</>}
-              sub="Star the feeling you want your name to own." />
+              sub="Pick a few. One becomes your north star." />
+            {/* Mobile-only north star card — shows above the chip grid on small screens */}
+            <div className="bnorthstar-card">
+              <span className="bnorthstar-card-label">North Star</span>
+              <div className="bnorthstar" style={{ margin: 0 }}>
+                ★ {northStar || <span style={{ opacity: 0.5, fontWeight: 400 }}>Pick one</span>}
+              </div>
+            </div>
             <div className="bemotions">
               {options.map((o) => {
                 const on = selected.includes(o);
@@ -128,7 +135,7 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
               })}
             </div>
             {selected.length > 0 && !northStar && (
-              <p style={{ fontSize: 12.5, color: "var(--accent)", margin: "4px 0 0", fontWeight: 500 }}>Tap ★ on a word to set it as your north star</p>
+              <p className="bemotion-hint">Tap ★ on a word to set it as your north star</p>
             )}
           </div>
           <div className="breframe" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -142,15 +149,15 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
           </div>
         </div>
       </div>
-      <BFoot back="← Brand context" onBack={onBack} next="Next: naming strategy →" disabled={selected.length < 1} onNext={onNext} />
+      <BFoot next="Next: naming strategy →" disabled={selected.length < 1} onNext={onNext} />
     </>
   );
 }
 
 // 04 — Naming strategy (design 1i)
-export function BetaStrategy({ brief, set, toggleArr, onBack, onNext }: {
+export function BetaStrategy({ brief, set, toggleArr, onNext }: {
   brief: Brief; set: (p: Partial<Brief>) => void; toggleArr: (a: string[], v: string, max?: number) => string[];
-  onBack: () => void; onNext: () => void;
+  onNext: () => void;
 }) {
   const rec = recommendLanes({ ...brief })[0];
   const recName = LANES.find((l) => l.key === rec)?.name || "evocative";
@@ -173,7 +180,7 @@ export function BetaStrategy({ brief, set, toggleArr, onBack, onNext }: {
           })}
         </div>
       </div>
-      <BFoot back="← Emotional value" onBack={onBack} next="Begin exploration →" disabled={brief.lanes.length < 1} onNext={onNext} />
+      <BFoot next="Begin exploration →" disabled={brief.lanes.length < 1} onNext={onNext} />
     </>
   );
 }
