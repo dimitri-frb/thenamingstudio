@@ -242,7 +242,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   brief: Brief; saved: SavedIdea[];
   shortlist: string[]; setShortlist: React.Dispatch<React.SetStateAction<string[]>>;
   initialRows?: { seed: string; concept: string; ideas: NameIdea[] }[];
-  onVote: () => void; onNext: (name: string, allNames: string[]) => void;
+  onVote: (name: string, allNames: string[]) => void; onNext: (name: string, allNames: string[]) => void;
 }) {
   const seedIdeas = () => (initialRows || []).flatMap((r) => r.ideas);
   const [ideas, setIdeas] = useState<NameIdea[]>(seedIdeas());
@@ -290,8 +290,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
   return (
     <>
       <div className="bbody">
-        <BHead eyebrow="Names comparison" title={<>Every name, already scored.</>}
-          sub="Built from your saved words and graded against the brief the moment they appear. Shortlist as you go." />
+        <BHead eyebrow="Names & comparison" title={<>Every name, already scored.</>} />
         {brief.does && (
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", borderRadius: 12, background: "var(--accent-soft, #EEF3FF)", border: "1px solid var(--accent)" }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)", flex: "0 0 auto", paddingTop: 2 }}>Brief</span>
@@ -312,9 +311,10 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                   onClick={() => setChosen(hero.name)}>
                   <span className={"bcmp-rank" + (heroSel ? " lead" : "")} style={{ flexShrink: 0, marginTop: 3 }}>♔</span>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                      <span className={"bcmp-name" + (heroSel ? " lead" : "")}>{hero.name}</span>
-                      {hero.seed && <span style={{ fontSize: 12, color: "var(--accent)" }}>{hero.seed}</span>}
+                    <span className={"bcmp-name" + (heroSel ? " lead" : "")}>{hero.name}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      {hero.seed && <span style={{ fontSize: 12.5, fontFamily: "var(--mono)", color: "var(--accent)" }}>{hero.seed}</span>}
+                      {hero.type && <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--sep)", padding: "3px 8px", borderRadius: 6 }}>{hero.type}</span>}
                     </div>
                     {hero.rationale && <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{hero.rationale}</span>}
                     <Bar p={p} sel={heroSel} />
@@ -332,7 +332,7 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
                   <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
-                    Other contenders &middot; pick one to compare
+                    Other contenders &middot; tap to compare
                   </span>
                   <div style={{ flex: 1, height: 1, background: "var(--sep)" }} />
                 </div>
@@ -359,6 +359,13 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
                 </div>
               </>
             )}
+
+            {/* Generate more — directly under the list of names */}
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+              <button className="bbtn ghost bgen-more" onClick={() => generate(true)}>
+                &#8635; Generate more
+              </button>
+            </div>
           </>
         ) : null}
 
@@ -399,18 +406,13 @@ export function BetaNamesCompare({ brief, saved, shortlist: _shortlist, setShort
             )}
           </>
         )}
-        {/* Generate more — at the bottom so it's always reachable, especially on mobile */}
-        {!busy && ideas.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
-            <button className="bbtn ghost bgen-more" onClick={() => generate(true)}>
-              &#8635; Generate more
-            </button>
-          </div>
-        )}
       </div>
       <BFoot
-        secondary="Take it to a vote &rarr;" onSecondary={onVote}
-        next={pick ? "Check " + pick + " domains →" : "Select a name first"} disabled={!pick}
+        secondary="Vote" onSecondary={() => {
+          const extra = keptWords.filter((w) => !genNames.has(w.toLowerCase()));
+          onVote(pick, [...sorted.map((i) => i.name), ...extra]);
+        }}
+        next={pick ? "Check domains for " + pick + " →" : "Select a name first"} disabled={!pick}
         onNext={() => {
           const extra = keptWords.filter((w) => !genNames.has(w.toLowerCase()));
           onNext(pick, [...sorted.map((i) => i.name), ...extra]);

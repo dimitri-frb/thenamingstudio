@@ -401,8 +401,9 @@
   .cx.skin-beta .bcmp { gap: 14px; }
   .cx.skin-beta .bgen-more { width: 100%; justify-content: center; }
 
-  /* ── Footer: stack buttons vertically on mobile ── */
+  /* ── Footer: ghost stays compact, primary fills the rest (per mockup) ── */
   .cx.skin-beta .bfoot { flex-wrap: wrap; padding: 12px 16px 20px; gap: 8px; }
-  .cx.skin-beta .bfoot > div { width: 100%; flex-direction: column; }
-  .cx.skin-beta .bfoot .bbtn { width: 100%; justify-content: center; white-space: nowrap; }
+  .cx.skin-beta .bfoot > div { width: 100%; flex-direction: row; gap: 8px; }
+  .cx.skin-beta .bfoot .bbtn { flex: 1; justify-content: center; white-space: nowrap; min-width: 0; }
+  .cx.skin-beta .bfoot .bbtn.ghost { flex: 0 0 auto; }
 }

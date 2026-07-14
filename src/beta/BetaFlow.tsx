@@ -19,9 +19,10 @@ import { BetaBrief, BetaBrand, BetaEmotional, BetaStrategy } from "./screens/int
 import { BetaExplore, BetaNamesCompare } from "./screens/explore";
 import { BetaDomains, BetaShare, BetaDecide } from "./screens/decide";
 
+// 8 visible steps; the Decision reveal renders after Domains and displays as 08/08.
 export const BETA_STEPS = [
   "Company context", "Brand context", "Emotional value", "Naming strategy",
-  "Exploration", "Names comparison", "Domains", "Share & vote", "Decision",
+  "Exploration", "Names & comparison", "Vote", "Domains",
 ];
 
 const empty: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
@@ -175,43 +176,52 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     { wide: true, barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {saved.length} saved</span> }
   );
 
-  // 06 — Names & Comparison
+  // Score the shortlist against the brief, then land on `next`.
+  const runCompare = (top: string[], next: number) =>
+    gen(["Scoring names against your brief…", "Checking domains and trademark room…"], async () => {
+      const c = await naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })));
+      setComp(c);
+    }, next);
+
+  const keepTop = (name: string, allNames: string[]) => {
+    const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
+    setChosenFinal(name);
+    setShortlist(top);
+    return top;
+  };
+
+  // 06 — Names & comparison
   if (step === 5) return shell(
     <BetaNamesCompare brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
       initialRows={test?.shortlistRows}
-      onVote={() => goto(7)}
-      onNext={(name, allNames) => {
-        const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
-        setChosenFinal(name);
-        setShortlist(top);
-        gen(["Scoring names against your brief…", "Checking domains and trademark room…"], async () => {
-          const c = await naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })));
-          setComp(c);
-        }, 6);
+      onVote={(name, allNames) => { keepTop(name, allNames); goto(6); }}
+      onNext={(name, allNames) => runCompare(keepTop(name, allNames), 7)} />
+  );
+
+  // 07 — Vote (optional)
+  // Use comp rows when available; fall back to the shortlist captured on the way in.
+  const shareNames = comp ? comp.rows.map((r) => r.name).slice(0, 4) : shortlist.slice(0, 4);
+  if (step === 6) return shell(
+    <BetaShare brief={brief} names={shareNames}
+      onDone={() => {
+        if (comp || !shortlist.length) goto(7);
+        else runCompare(shortlist, 7); // arrived via vote shortcut — score before domains
       }} />
   );
 
-  // 07 — Domains
-  if (step === 6) return shell(
-    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} onVote={() => goto(7)}
+  // 08 — Domains
+  if (step === 7) return shell(
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal}
       onLockIn={(name) => { setChosenFinal(name); goto(8); }} />
   );
 
-  // 08 — Share & vote
-  // Use comp rows when available (came from comparison step); fall back to shortlist
-  // when the user jumped here early via "Take it to a vote" before scoring names.
-  const shareNames = comp ? comp.rows.map((r) => r.name).slice(0, 4) : shortlist.slice(0, 4);
-  if (step === 7) return shell(
-    <BetaShare brief={brief} names={shareNames}
-      onDone={() => goto(8)} />
-  );
-
-  // 09 — Decision
+  // Decision reveal (after the 8 steps; shown as 08/08)
   if (step === 8) return (
     <>
       {shell(
         <BetaDecide comp={comp} chosenFinal={chosenFinal || comp?.recommended || ""}
-          onBack={() => goto(7)} onBrandBook={() => setBrandBookOpen(true)} />
+          onBack={() => goto(7)} onBrandBook={() => setBrandBookOpen(true)} />,
+        { stepLabel: "08" }
       )}
       {brandBookOpen && (chosenFinal || comp?.recommended) && (
         <BrandBook brief={brief} name={chosenFinal || comp?.recommended || ""} onClose={() => setBrandBookOpen(false)} />
@@ -231,7 +241,7 @@ function BetaTestBar({ step, onJump }: { step: number; onJump: (n: number) => vo
   return (
     <div style={{ position: "fixed", bottom: 12, left: "50%", transform: "translateX(-50%)", zIndex: 60, display: "flex", gap: 4, alignItems: "center", background: "#1d1d1f", color: "#fff", borderRadius: 999, padding: "6px 10px", boxShadow: "0 10px 30px -12px rgba(0,0,0,.5)" }}>
       <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.08em", opacity: 0.6, marginRight: 4 }}>TEST</span>
-      {BETA_STEPS.map((_, i) => (
+      {Array.from({ length: BETA_STEPS.length + 1 }).map((_, i) => (
         <button key={i} onClick={() => onJump(i)} style={{
           width: 22, height: 22, borderRadius: "50%", border: "none", cursor: "pointer", fontSize: 11,
           background: i === step ? "#fff" : "rgba(255,255,255,.14)", color: i === step ? "#1d1d1f" : "#fff",

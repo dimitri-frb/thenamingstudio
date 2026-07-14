@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   naming, fetchDomainBoard, createVoteSession, getVoteResults,
-  type Brief, type Comparison, type CompareRow, type DomainBoardData,
+  type Brief, type Comparison, type CompareRow, type DomainBoardData, type DomainCard,
 } from "../../lib/namingApi";
 import { Thinking } from "../../cosmos/chrome";
 import { BHead, BFoot } from "../atoms";
@@ -82,9 +82,9 @@ export function BetaCompare({ brief, shortlist, comp, setComp, onVote, onNext }:
   );
 }
 
-// 08 — Domains (design 1f): where the pick can live.
-export function BetaDomains({ brief, comp, initialPick, onVote, onLockIn }: {
-  brief: Brief; comp: Comparison | null; initialPick?: string; onVote: () => void; onLockIn: (name: string) => void;
+// 08 — Domains (redesign): "Claim the domain." — prices on rows, compact taken list.
+export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
+  brief: Brief; comp: Comparison | null; initialPick?: string; onLockIn: (name: string) => void;
 }) {
   const allNames = (comp?.rows || []).map((r) => r.name);
   const [pick, setPick] = useState(initialPick || comp?.recommended || allNames[0] || "");
@@ -106,59 +106,65 @@ export function BetaDomains({ brief, comp, initialPick, onVote, onLockIn }: {
     ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
     ...board.variants,
   ] : [];
-  const takenRows = board ? board.tlds.filter((t) => t.status === "taken").slice(0, 2) : [];
+  const taken = board ? board.tlds.filter((t) => t.status === "taken").slice(0, 4) : [];
 
-  const lockLabel = lockedDomain ? `Confirm ${lockedDomain} →` : `Confirm ${pick} →`;
+  const rightLabel = (d: DomainCard, sel: boolean) =>
+    sel ? "✓ Selected" : d.price || (d.status === "negotiable" ? "For sale" : "Available");
 
   return (
     <>
       <div className="bbody">
-        <BHead eyebrow="The domains" title={<>Now, claim the domain.</>}
-          sub="A great name is only great if you can own it. Here's where your pick can live, and what's up for negotiation." />
-        {/* Name pills — fixed order, no reorder on selection */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--ink-3)", marginRight: 4 }}>Your pick</span>
+        <BHead eyebrow="You're almost there" title={<>Claim the domain.</>} />
+        {/* Name pills — fixed order, ★ on the selected one */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {allNames.map((n) => (
-            <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>{n}</button>
+            <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>
+              {n === pick && <span style={{ fontSize: 11, marginRight: 6 }}>★</span>}{n}
+            </button>
           ))}
         </div>
-        <div style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{pick}</span>
-            {board && claimable.length > 0 && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 9px", borderRadius: 7 }}>Great</span>}
-            {board && <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{claimable.length} option{claimable.length !== 1 ? "s" : ""} available</span>}
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>{pick}</span>
+            {board && claimable.length > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 10px", borderRadius: 999 }}>
+                Great &middot; {claimable.length} free
+              </span>
+            )}
           </div>
           {!board ? <Thinking lines={["Checking every extension…"]} /> : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {claimable.map((d) => {
-                const sel = d.domain === lockedDomain;
-                return (
-                  <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
-                    style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
-                    <span className="bdomdot" style={{ background: d.status === "negotiable" ? "var(--watch)" : "#28c840" }} />
-                    <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
-                    <span className={"bdomstatus " + (d.status === "negotiable" ? "nego" : "avail")}>
-                      {sel ? "✓ Selected" : d.status === "negotiable" ? "For sale" : "Available"}
-                    </span>
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {claimable.map((d) => {
+                  const sel = d.domain === lockedDomain;
+                  return (
+                    <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
+                      style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
+                      <span className="bdomdot" style={{ background: d.status === "negotiable" ? "var(--watch)" : "#28c840" }} />
+                      <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
+                      <span className={"bdomstatus " + (d.status === "negotiable" ? "nego" : "avail")}>{rightLabel(d, sel)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {taken.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 8px" }}>Taken</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                    {taken.map((d) => (
+                      <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-3)", textDecoration: "line-through" }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57", flexShrink: 0 }} />
+                        {d.domain}
+                      </span>
+                    ))}
                   </div>
-                );
-              })}
-              {takenRows.map((d) => (
-                <div key={d.domain} className="bdomrow">
-                  <span className="bdomdot" style={{ background: "#ff5f57" }} />
-                  <span className="bdomname" style={{ opacity: 0.4, textDecoration: "line-through" }}>{d.domain}</span>
-                  <span className="bdomstatus" style={{ color: "var(--ink-4)" }}>Taken</span>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--ink-3)", textAlign: "center", margin: "0 0 4px" }}>
-        Confirming doesn't register the domain — we'll help you claim it on the next screen.
-      </p>
-      <BFoot secondary="Get a gut check &rarr;" onSecondary={onVote}
-        next={lockLabel} onNext={() => onLockIn(pick)} />
+      <BFoot next={`Block ${lockedDomain || pick}`} onNext={() => onLockIn(pick)} />
     </>
   );
 }
@@ -253,7 +259,7 @@ export function BetaShare({ brief, names, onDone }: {
           </div>
         </div>
       </div>
-      <BFoot next="Continue to decision →" onNext={onDone} />
+      <BFoot next="Check domains →" onNext={onDone} />
     </>
   );
 }
@@ -349,7 +355,7 @@ export function BetaDecide({ comp, chosenFinal, onBack, onBrandBook }: {
             ))}
 
           </div>
-          <div style={{ marginTop: 16 }}><span className="blink" onClick={onBack}>&larr; Back to the vote</span></div>
+          <div style={{ marginTop: 16 }}><span className="blink" onClick={onBack}>&larr; Back to domains</span></div>
         </div>
       </div>
     </div>
