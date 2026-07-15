@@ -576,14 +576,35 @@ const GEO_TLD: Record<string, string> = { France: "fr", Spain: "es", UK: "co.uk"
 type DomStatus = "available" | "negotiable" | "taken" | "unknown";
 type DrInfo = { status: DomStatus; premium: boolean; offerPrice?: string; offerUrl?: string };
 
-// Map a Domainr/Fastly status token string to our three buckets.
+// Map a Domainr/Fastly status token string to our three buckets. Marketplace
+// tokens are checked BEFORE the availability ones: a domain can be both
+// "undelegated" and "priced" (registry/marketplace premium), and calling that
+// plain-available would show the founder a $12 price on a $10k name.
 function classifyStatus(tokens: string): { status: DomStatus; premium: boolean } {
   const t = (tokens || "").toLowerCase();
   const premium = /premium/.test(t);
-  if (/inactive|undelegated/.test(t)) return { status: "available", premium };
   if (/marketed|priced|parked|transferable|aftermarket/.test(t)) return { status: "negotiable", premium };
+  if (/inactive|undelegated/.test(t)) return { status: "available", premium };
   if (/active|claimed|reserved|disallowed|dpml|tld|zone/.test(t)) return { status: "taken", premium };
   return { status: "unknown", premium };
+}
+
+// A registered domain that serves a sales lander is buyable after all — Fastly
+// reports those as plain "taken" when its zone data has no offer attached. One
+// quick fetch of the live page catches Sedo/Dan/Afternic-style landers so a
+// name the founder could still buy never shows as gone.
+const FORSALE_RE = /domain (is |may be )?for sale|buy this domain|make an offer|this domain is parked|sedo\.com|sedoparking|afternic|dan\.com|hugedomains|domainmarket\.com|atom\.com|squadhelp|abovedomains|forsale(\.min)?\.js|parkingcrew|bodis\.com/i;
+async function forSaleSniff(domain: string): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(`https://${domain}`, { redirect: "follow", signal: ctrl.signal,
+      headers: { "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0)", accept: "text/html" } });
+    if (!res.ok) return false;
+    const html = (await res.text()).slice(0, 60000);
+    return FORSALE_RE.test(html);
+  } catch { return false; }
+  finally { clearTimeout(timer); }
 }
 
 // Pull a usable asking price (and link) out of Fastly's `offers` array. Shapes vary
@@ -685,13 +706,23 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
     Promise.all(variants.map(statusFor)),
   ]);
 
-  // For the for-sale extensions, fetch GoDaddy's buy-now price in parallel, only
-  // those domains, so the founder sees an actual number where one exists.
+  // "Taken" on the high-value extensions (.com + the founder's ccTLDs) gets a
+  // second look at the live page — sales landers mean it's negotiable, not gone.
+  const sniffTlds = new Set(["com", ...ccTlds]);
+  await Promise.all(BOARD_TLDS.map(async (t, i) => {
+    if (!sniffTlds.has(t) || exactStatuses[i].status !== "taken") return;
+    if (await forSaleSniff(`${slug}.${t}`)) exactStatuses[i] = { ...exactStatuses[i], status: "negotiable" };
+  }));
+
+  // For the for-sale AND premium extensions, fetch GoDaddy's buy-now price in
+  // parallel, only those domains, so the founder sees an actual number.
   const priceByDomain: Record<string, string> = {};
   if (env.GODADDY_KEY && env.GODADDY_SECRET) {
-    const forSale = BOARD_TLDS.filter((_, i) => exactStatuses[i].status === "negotiable").map((t) => `${slug}.${t}`);
-    const prices = await Promise.all(forSale.map((d) => godaddyPrice(env, d)));
-    forSale.forEach((d, i) => { if (prices[i]?.price) priceByDomain[d] = prices[i]!.price; });
+    const priced = BOARD_TLDS
+      .filter((_, i) => exactStatuses[i].status === "negotiable" || (exactStatuses[i].status === "available" && exactStatuses[i].premium))
+      .map((t) => `${slug}.${t}`);
+    const prices = await Promise.all(priced.map((d) => godaddyPrice(env, d)));
+    priced.forEach((d, i) => { if (prices[i]?.price) priceByDomain[d] = prices[i]!.price; });
   }
 
   const tlds = BOARD_TLDS.map((t, i) => {
@@ -700,7 +731,9 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
     const dom = `${slug}.${t}`;
     return {
       domain: dom, tld: "." + t, status: st.status, premium: st.premium,
-      price: st.status === "available" && !st.premium ? price : undefined,
+      // Premium availables carry the real (GoDaddy) price when we have one —
+      // never the standard registry price, which would be off by 100x.
+      price: st.status === "available" ? (st.premium ? priceByDomain[dom] : price) : undefined,
       renewal: st.status === "available" && !st.premium ? renewal : undefined,
       offerPrice: priceByDomain[dom] || st.offerPrice, offerUrl: st.offerUrl,
     };

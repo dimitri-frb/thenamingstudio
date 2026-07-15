@@ -140,6 +140,19 @@ const BOARD_PRICE_NODE: Record<string, [string, string]> = {
   com: ["$12", "$14/yr"], co: ["$24", "$30/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
   app: ["$14", "$18/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"], net: ["$12", "$15/yr"],
 };
+// Registered domains serving a sales lander are buyable, not gone (mirrors the
+// Worker's forSaleSniff so dev shows the same truth).
+const FORSALE_RE_NODE = /domain (is |may be )?for sale|buy this domain|make an offer|this domain is parked|sedo\.com|sedoparking|afternic|dan\.com|hugedomains|domainmarket\.com|atom\.com|squadhelp|abovedomains|forsale(\.min)?\.js|parkingcrew|bodis\.com/i;
+async function forSaleSniffNode(domain: string): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(`https://${domain}`, { redirect: "follow", signal: ctrl.signal,
+      headers: { "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0)", accept: "text/html" } });
+    if (!res.ok) return false;
+    return FORSALE_RE_NODE.test((await res.text()).slice(0, 60000));
+  } catch { return false; } finally { clearTimeout(timer); }
+}
 async function domainBoardNode(name: string): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
@@ -148,10 +161,14 @@ async function domainBoardNode(name: string): Promise<any> {
     Promise.all(BOARD_TLDS_NODE.map((t) => rdapNode(slug, t))),
     Promise.all(variantSlugs.map((v) => rdapNode(v, "com"))),
   ]);
+  // Taken .com gets a second look at the live page: sales lander => negotiable.
+  const comIdx = BOARD_TLDS_NODE.indexOf("com");
+  const states: string[] = [...exactStates];
+  if (states[comIdx] === "taken" && (await forSaleSniffNode(`${slug}.com`))) states[comIdx] = "negotiable";
   const tlds = BOARD_TLDS_NODE.map((t, i) => {
-    const r = exactStates[i];
+    const r = states[i];
     const [price, renewal] = BOARD_PRICE_NODE[t] || ["$15", "$18/yr"];
-    return { domain: `${slug}.${t}`, tld: "." + t, status: r === "available" ? "available" : r === "taken" ? "taken" : "unknown", premium: false, price: r === "available" ? price : undefined, renewal: r === "available" ? renewal : undefined };
+    return { domain: `${slug}.${t}`, tld: "." + t, status: r === "available" ? "available" : r === "taken" ? "taken" : r === "negotiable" ? "negotiable" : "unknown", premium: false, price: r === "available" ? price : undefined, renewal: r === "available" ? renewal : undefined };
   });
   const variants = variantSlugs
     .map((v, i) => ({ domain: `${v}.com`, status: variantStates[i], price: BOARD_PRICE_NODE.com[0], renewal: BOARD_PRICE_NODE.com[1] }))

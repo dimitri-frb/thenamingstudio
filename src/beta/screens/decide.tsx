@@ -107,9 +107,14 @@ export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
     ...board.variants,
   ] : [];
   const taken = board ? board.tlds.filter((t) => t.status === "taken").slice(0, 4) : [];
+  // "Free" = genuinely registrable at the standard price; for-sale and premium
+  // extensions are shown too, but with their real asking price, never as free.
+  const freeCount = board
+    ? board.tlds.filter((d) => d.status === "available" && !d.premium).length + board.variants.length
+    : 0;
 
   const rightLabel = (d: DomainCard, sel: boolean) =>
-    sel ? "✓ Selected" : d.price || (d.status === "negotiable" ? "For sale" : "Available");
+    sel ? "✓ Selected" : d.price || d.offerPrice || (d.status === "negotiable" ? "For sale" : d.premium ? "Premium" : "Available");
 
   return (
     <>
@@ -126,9 +131,9 @@ export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>{pick}</span>
-            {board && claimable.length > 0 && (
+            {board && freeCount > 0 && (
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 10px", borderRadius: 999 }}>
-                Great &middot; {claimable.length} free
+                Great &middot; {freeCount} free
               </span>
             )}
           </div>
@@ -137,12 +142,13 @@ export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {claimable.map((d) => {
                   const sel = d.domain === lockedDomain;
+                  const paid = d.status === "negotiable" || d.premium;
                   return (
                     <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
                       style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
-                      <span className="bdomdot" style={{ background: d.status === "negotiable" ? "var(--watch)" : "#28c840" }} />
+                      <span className="bdomdot" style={{ background: paid ? "var(--watch)" : "#28c840" }} />
                       <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
-                      <span className={"bdomstatus " + (d.status === "negotiable" ? "nego" : "avail")}>{rightLabel(d, sel)}</span>
+                      <span className={"bdomstatus " + (paid ? "nego" : "avail")}>{rightLabel(d, sel)}</span>
                     </div>
                   );
                 })}
@@ -320,16 +326,19 @@ export function BetaDecide({ comp, chosenFinal, onBack, onBrandBook }: {
                     <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Checking availability&hellip;</span>
                   ) : claimable.length === 0 ? (
                     <span style={{ fontSize: 13, color: "var(--ink-3)" }}>No free extensions found.</span>
-                  ) : claimable.map((d) => (
-                    <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
-                      className="bdomrow avail" style={{ textDecoration: "none" }}>
-                      <span className="bdomdot" style={{ background: d.status === "available" ? "#28c840" : "var(--watch)" }} />
-                      <span className="bdomname">{d.domain}</span>
-                      <span className={"bdomstatus " + (d.status === "available" ? "avail" : "nego")}>
-                        {d.status === "available" ? "Available" : "Negotiable"}
-                      </span>
-                    </a>
-                  ))}
+                  ) : claimable.map((d) => {
+                    const paid = d.status === "negotiable" || d.premium;
+                    return (
+                      <a key={d.domain} href={gd(d.domain)} target="_blank" rel="noopener noreferrer"
+                        className="bdomrow avail" style={{ textDecoration: "none" }}>
+                        <span className="bdomdot" style={{ background: paid ? "var(--watch)" : "#28c840" }} />
+                        <span className="bdomname">{d.domain}</span>
+                        <span className={"bdomstatus " + (paid ? "nego" : "avail")}>
+                          {d.price || d.offerPrice || (d.status === "negotiable" ? "For sale" : d.premium ? "Premium" : "Available")}
+                        </span>
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </div>
