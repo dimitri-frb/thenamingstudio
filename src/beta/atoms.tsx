@@ -73,6 +73,33 @@ export function Segmented({ options, value, onChange }: {
   );
 }
 
+// ── Skeleton loading atoms (per-page "charging" states from the design) ──
+
+// One shimmering placeholder bar. Width can be a % or px value.
+export function Skel({ w, h = 11, blue, style }: { w: number | string; h?: number; blue?: boolean; style?: React.CSSProperties }) {
+  return <span className={"bskel" + (blue ? " blue" : "")} style={{ display: "block", width: w, height: h, ...style }} />;
+}
+
+// A skeleton card of n shimmer lines (the placeholder word/name cards).
+export function SkelCard({ lines = 3, blue, pad }: { lines?: number; blue?: boolean; pad?: string }) {
+  const widths = ["55%", "88%", "62%", "74%"];
+  return (
+    <div className="bskel-card" style={pad ? { padding: pad } : undefined}>
+      {Array.from({ length: lines }).map((_, i) => <Skel key={i} w={widths[i % widths.length]} blue={blue && i === 0} />)}
+    </div>
+  );
+}
+
+// The blue progress banner with a spinner ("Generating candidates…").
+export function LoadBar({ text }: { text: ReactNode }) {
+  return (
+    <div className="bloadbar">
+      <span className="bspin" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
 // The sticky "brief, so far" reframe card (right rail of the intake screens).
 export function ReframeCard({ line, tags }: { line: string; tags: string[] }) {
   return (

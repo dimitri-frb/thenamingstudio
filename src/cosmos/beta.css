@@ -354,6 +354,28 @@
 
 .cx.skin-beta .bvar { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--sep); }
 
+/* ── skeleton loading (per-page "charging" states from the design) ── */
+@keyframes bshimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes bspin { to { transform: rotate(360deg); } }
+.cx.skin-beta .bskel { position: relative; overflow: hidden; border-radius: 6px; background: var(--surface-3); }
+.cx.skin-beta .bskel::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); animation: bshimmer 1.5s infinite; }
+.cx.skin-beta .bskel.blue { background: rgba(0,113,227,.14); }
+.cx.skin-beta .bskel.onblue::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); }
+.cx.skin-beta .bspin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--sep); border-top-color: var(--accent); animation: bspin .9s linear infinite; flex: 0 0 auto; }
+.cx.skin-beta .bskel-card { display: flex; flex-direction: column; gap: 9px; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--sep2); }
+.cx.skin-beta .bloadbar { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 12px; background: var(--accent-soft); border: 1px solid rgba(0,113,227,.28); color: var(--accent); font-size: 14px; font-weight: 500; }
+
+/* ── domains (design): TLD rows left, close-variant card right, taken row ── */
+.cx.skin-beta .bdom-grid { display: grid; grid-template-columns: 1fr 300px; gap: 22px; align-items: start; }
+.cx.skin-beta .bdom-vars { border-radius: 16px; background: var(--surface-2); border: 1px solid var(--sep); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.cx.skin-beta .bdom-vars-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 4px; }
+.cx.skin-beta .bvarrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 13px; border-radius: 10px; background: var(--surface); border: 1px solid var(--sep); cursor: pointer; transition: border-color .15s; }
+.cx.skin-beta .bvarrow:hover { border-color: var(--accent); }
+.cx.skin-beta .bvarrow.chosen { border-color: var(--accent); background: var(--accent-soft); }
+.cx.skin-beta .bvarrow .nm { font-family: var(--mono); font-size: 13px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cx.skin-beta .bvarrow .pr { font-size: 12.5px; color: var(--ink-3); flex: 0 0 auto; }
+.cx.skin-beta .bdomprice { font-size: 14px; font-weight: 600; color: var(--ink); margin-left: 14px; flex: 0 0 auto; }
+
 /* share: vote rows */
 .cx.skin-beta .bvote { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--sep); background: var(--surface-2); }
 .cx.skin-beta .bvote.lead { border-color: var(--accent); background: var(--accent-soft); }
@@ -394,6 +416,9 @@
   .cx.skin-beta .bquad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
   .cx.skin-beta .bquad-h { grid-column: 1 / -1; margin-bottom: 2px; }
   .cx.skin-beta .bword { height: 100%; box-sizing: border-box; }
+
+  /* ── Step 8: Domains — variants stack under the TLD rows ── */
+  .cx.skin-beta .bdom-grid { grid-template-columns: 1fr; }
 
   /* ── Step 6: Names comparison — single col, hide bars, more text room ── */
   .cx.skin-beta .bcmp-grid { grid-template-columns: 1fr !important; }

@@ -9,7 +9,7 @@ import {
 import { setTestMode } from "../lib/requestLog";
 import { recommendLanes } from "../lib/localStudio";
 import { SIGNAL_FALLBACK } from "../cosmos/data";
-import { Cx, Thinking } from "../cosmos/chrome";
+import { Cx } from "../cosmos/chrome";
 import type { TestSeed } from "../cosmos/mock";
 import { type ExploreStore } from "../cosmos/Explore";
 import { type SavedIdea } from "../cosmos/Shortlist";
@@ -45,7 +45,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const [brandBookOpen, setBrandBookOpen] = useState(false);
   const [satOpen, setSatOpen] = useState(false);
   const [satDone, setSatDone] = useState(false);
-  const [loading, setLoading] = useState<string[] | null>(null);
+  const [feelingsLoading, setFeelingsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const exploreStore = useRef<ExploreStore>({ cache: new Map(), seen: new Set(), focus: null, groups: [], active: 0, hist: [], future: [] });
 
@@ -53,13 +53,6 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const goto = (n: number) => { setStep(n); setMaxReached((m) => Math.max(m, n)); };
   const toggleArr = (arr: string[], v: string, max = 999) =>
     arr.includes(v) ? arr.filter((x) => x !== v) : arr.length >= max ? arr : [...arr, v];
-
-  async function gen(lines: string[], fn: () => Promise<void>, next: number) {
-    setError(null); setLoading(lines);
-    try { await fn(); goto(next); }
-    catch (e: any) { setError(e?.message || String(e)); }
-    finally { setLoading(null); }
-  }
 
   // Scroll to top whenever the step changes.
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
@@ -85,8 +78,9 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   const feelingsBusy = useRef(false);
   useEffect(() => {
     if (test || feelings.length || feelingsBusy.current || !brief.does.trim() || step > 2) return;
-    feelingsBusy.current = true;
-    naming.feelings(brief).then(setFeelings).catch(() => { /* fallback */ }).finally(() => { feelingsBusy.current = false; });
+    feelingsBusy.current = true; setFeelingsLoading(true);
+    naming.feelings(brief).then(setFeelings).catch(() => { /* fallback */ })
+      .finally(() => { feelingsBusy.current = false; setFeelingsLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, brief.does]);
 
@@ -130,7 +124,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
       topRight={test ? <span className="lbl" style={{ color: "var(--bad)" }}>● Test mode</span> : undefined}
       onBack={() => (step > 0 ? goto(step - 1) : onRestart())} onJump={goto} onLeave={onRestart}>
       {error && <div className="note" style={{ borderColor: "var(--bad)", color: "var(--bad)" }}>{error}</div>}
-      {loading ? <Thinking lines={loading} /> : node}
+      {node}
       {test && <BetaTestBar step={step} onJump={goto} />}
     </Cx>
   );
@@ -141,29 +135,31 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
       briefLine={briefLine} briefTags={briefTags} onNext={() => goto(1)} />
   );
 
-  // 02 — Brand context
+  // 02 — Brand context (feelings warm in the background; step 3 shows its own skeleton)
   if (step === 1) return shell(
     <BetaBrand brief={brief} set={set} toggleArr={toggleArr} briefLine={briefLine} briefTags={briefTags} firstName={firstName}
-      onNext={() => {
-        if (feelings.length) goto(2);
-        else gen(["Reading the brief…", "Drawing the feelings your name could carry"], async () => setFeelings(await naming.feelings(brief)), 2);
-      }} />
+      onNext={() => goto(2)} />
   );
 
   // 03 — Emotional value (north star)
   if (step === 2) return shell(
     <BetaEmotional options={emotionOpts} selected={brief.signal} northStar={northStar}
+      busy={feelingsLoading && !feelings.length}
       onToggle={(s) => set({ signal: toggleArr(brief.signal, s, 6) })}
       onStar={(s) => set({ signal: [s, ...brief.signal.filter((x) => x !== s)] })}
       onNext={() => { if (!brief.lanes.length) set({ lanes: recommendLanes({ ...brief }) }); goto(3); }} />
   );
 
-  // 04 — Naming strategy
+  // 04 — Naming strategy (concepts load while the exploration page shows its skeleton)
   if (step === 3) return shell(
     <BetaStrategy brief={brief} set={set} toggleArr={toggleArr}
       onNext={() => {
-        if (concepts.length) goto(4);
-        else gen(["Thinking like a strategist…", "Mapping the words your brand could live in"], async () => setConcepts(await naming.concepts(brief)), 4);
+        if (!concepts.length && !conceptsBusy.current) {
+          conceptsBusy.current = true;
+          naming.concepts(brief).then(setConcepts).catch((e: any) => setError(e?.message || String(e)))
+            .finally(() => { conceptsBusy.current = false; });
+        }
+        goto(4);
       }} />
   );
 
@@ -176,12 +172,13 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     { wide: true, barRight: <span className="lbl" style={{ color: "var(--accent)" }}>★ {saved.length} saved</span> }
   );
 
-  // Score the shortlist against the brief, then land on `next`.
-  const runCompare = (top: string[], next: number) =>
-    gen(["Scoring names against your brief…", "Checking domains and trademark room…"], async () => {
-      const c = await naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })));
-      setComp(c);
-    }, next);
+  // Score the shortlist in the background — the domains page shows its own
+  // "querying registrars" skeleton while this resolves.
+  const startCompare = (top: string[]) => {
+    setError(null); setComp(null);
+    naming.compare(brief, top.map((n) => ({ name: n, type: "", rationale: "", score: 0 })))
+      .then(setComp).catch((e: any) => setError(e?.message || String(e)));
+  };
 
   const keepTop = (name: string, allNames: string[]) => {
     const top = [name, ...allNames.filter((n) => n !== name)].slice(0, 5);
@@ -195,7 +192,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
     <BetaNamesCompare brief={brief} saved={saved} shortlist={shortlist} setShortlist={setShortlist}
       initialRows={test?.shortlistRows}
       onVote={(name, allNames) => { keepTop(name, allNames); goto(6); }}
-      onNext={(name, allNames) => runCompare(keepTop(name, allNames), 7)} />
+      onNext={(name, allNames) => { startCompare(keepTop(name, allNames)); goto(7); }} />
   );
 
   // 07 — Vote (optional)
@@ -204,14 +201,14 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
   if (step === 6) return shell(
     <BetaShare brief={brief} names={shareNames}
       onDone={() => {
-        if (comp || !shortlist.length) goto(7);
-        else runCompare(shortlist, 7); // arrived via vote shortcut — score before domains
+        if (!comp && shortlist.length) startCompare(shortlist); // vote shortcut — score in background
+        goto(7);
       }} />
   );
 
-  // 08 — Domains
+  // 08 — Domains (comp may still be scoring; the page shows its skeleton meanwhile)
   if (step === 7) return shell(
-    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal}
+    <BetaDomains brief={brief} comp={comp} initialPick={chosenFinal} fallbackNames={shortlist}
       onLockIn={(name) => { setChosenFinal(name); goto(8); }} />
   );
 
@@ -224,7 +221,7 @@ export function BetaFlow({ initialDoes, onRestart, test, userName }: { initialDo
         { stepLabel: "08" }
       )}
       {brandBookOpen && (chosenFinal || comp?.recommended) && (
-        <BrandBook brief={brief} name={chosenFinal || comp?.recommended || ""} onClose={() => setBrandBookOpen(false)} />
+        <BrandBook brief={brief} name={chosenFinal || comp?.recommended || ""} skin="beta" onClose={() => setBrandBookOpen(false)} />
       )}
       {satOpen && (
         <SatisfactionPopup name={chosenFinal || comp?.recommended || "your name"}

@@ -7,7 +7,7 @@ import { INDUSTRIES, GEO_OPTIONS, LANES } from "../../cosmos/data";
 // The design's three stages (the studio's full list is collapsed to these here).
 const BETA_STAGES = ["Idea", "Building it", "Launched"];
 import { recommendLanes } from "../../lib/localStudio";
-import { BField, Chips, Segmented, ReframeCard, BHead, BFoot } from "../atoms";
+import { BField, Chips, Segmented, ReframeCard, BHead, BFoot, Skel } from "../atoms";
 
 // 01 — Company context (design 1d)
 export function BetaBrief({ brief, set, stage, setStage, firstName, briefLine, briefTags, onNext }: {
@@ -103,8 +103,8 @@ export function BetaBrand({ brief, set, toggleArr, briefLine, briefTags, firstNa
 }
 
 // 03 — Emotional value · north star (design 1h)
-export function BetaEmotional({ options, selected, northStar, onToggle, onStar, onNext }: {
-  options: string[]; selected: string[]; northStar: string;
+export function BetaEmotional({ options, selected, northStar, busy, onToggle, onStar, onNext }: {
+  options: string[]; selected: string[]; northStar: string; busy?: boolean;
   onToggle: (s: string) => void; onStar: (s: string) => void; onNext: () => void;
 }) {
   return (
@@ -112,8 +112,9 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
       <div className="bbody">
         <div className="bintake">
           <div className="bintake-main">
-            <BHead eyebrow="The brief · 3 of 4" title={<>How should the name make people feel?</>}
-              sub="Pick a few. One becomes your north star." />
+            <BHead eyebrow="The brief · 3 of 4"
+              title={busy ? <>Reading how your brand should feel&hellip;</> : <>How should the name make people feel?</>}
+              sub={busy ? "Drawing the feelings your name could carry, from your brief." : "Pick a few. One becomes your north star."} />
             {/* Mobile-only north star card — shows above the chip grid on small screens */}
             <div className="bnorthstar-card">
               <span className="bnorthstar-card-label">North Star</span>
@@ -121,6 +122,15 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
                 ★ {northStar || <span style={{ opacity: 0.5, fontWeight: 400 }}>Pick one</span>}
               </div>
             </div>
+            {busy ? (
+              <div className="bemotions">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="bskel-card" style={{ padding: "13px 15px", opacity: 1 - i * 0.06 }}>
+                    <Skel w={`${45 + ((i * 17) % 35)}%`} h={13} />
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="bemotions">
               {options.map((o) => {
                 const on = selected.includes(o);
@@ -134,6 +144,7 @@ export function BetaEmotional({ options, selected, northStar, onToggle, onStar, 
                 );
               })}
             </div>
+            )}
             {selected.length > 0 && !northStar && (
               <p className="bemotion-hint">Tap ★ on a word to set it as your north star</p>
             )}

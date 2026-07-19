@@ -1,95 +1,23 @@
 // Beta comparison (07, design 1k), domains (08, design 1f), share & vote
 // (09, design 1l) and decision (10, design 1m).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  naming, fetchDomainBoard, createVoteSession, getVoteResults,
-  type Brief, type Comparison, type CompareRow, type DomainBoardData, type DomainCard,
+  fetchDomainBoard, createVoteSession, getVoteResults,
+  type Brief, type Comparison, type DomainBoardData, type DomainCard,
 } from "../../lib/namingApi";
-import { Thinking } from "../../cosmos/chrome";
-import { BHead, BFoot } from "../atoms";
+import { BHead, BFoot, Skel, LoadBar } from "../atoms";
 
-const ABBR = ["Mng", "Mem", "Say", "Dst", ".com", "™"];
-// Six 1–5 axes derived from a scored row + its domain/trademark room.
-function axes(r: CompareRow): number[] {
-  const comAvail = (r.domains || []).some((d) => d.tld === "com" && d.available) ? 5 : (r.suggested?.length ? 4 : 2);
-  const tm = r.inpi ? 5 : 3;
-  return [r.intuitive, r.visual, r.sound, r.emotional, comAvail, tm].map((n) => Math.max(1, Math.min(5, Math.round(n))));
-}
-const pctOf = (sc: number[]) => Math.round(sc.reduce((a, b) => a + b, 0) / 30 * 100);
-const STANDOUT = ["Most complete", "Easiest to love", "Most elegant", "Most familiar", "Strong contender"];
-
-// 07 — Comparison (design 1k): names ranked by a brief-fit score.
-export function BetaCompare({ brief, shortlist, comp, setComp, onVote, onNext }: {
-  brief: Brief; shortlist: string[]; comp: Comparison | null; setComp: (c: Comparison) => void;
-  onVote: () => void; onNext: (chosen: string) => void;
+// 08 — Domains (design): "Now, claim the domain." — exact TLD rows on the left
+// (status + real price), close variants in a card on the right, taken at the bottom.
+export function BetaDomains({ brief, comp, initialPick, fallbackNames, onLockIn }: {
+  brief: Brief; comp: Comparison | null; initialPick?: string; fallbackNames?: string[]; onLockIn: (name: string) => void;
 }) {
-  const did = useRef(false);
-  const [chosen, setChosen] = useState("");
-  useEffect(() => {
-    if (comp || did.current || !shortlist.length) return;
-    did.current = true;
-    naming.compare(brief, shortlist.map((name) => ({ name, type: "", rationale: "", score: 0 }))).then(setComp).catch(() => { /* */ });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (!comp) return <div className="bbody"><Thinking lines={["Scoring each name against your brief…", "meaning \xb7 memorability \xb7 sayability \xb7 distinctiveness \xb7 .com room \xb7 trademark"]} /></div>;
-
-  const rows = [...comp.rows].map((r) => ({ r, sc: axes(r) })).sort((a, b) => pctOf(b.sc) - pctOf(a.sc));
-  const leader = rows[0]?.r.name || comp.recommended;
-  const pick = chosen || leader;
-
-  return (
-    <>
-      <div className="bbody">
-        <BHead eyebrow="The shortlist" title={<>{rows.length} names, side by side.</>}
-          sub={<>Scored against what your brief said matters. <span style={{ color: "var(--accent)", fontWeight: 600 }}>{leader}</span> leads, but the call is yours.</>} />
-        <p style={{ fontSize: 13, color: "var(--ink-3)", margin: "-6px 0 0", lineHeight: 1.5 }}>
-          Brief-fit score, built from <span style={{ color: "var(--ink-2)" }}>meaning &middot; memorability &middot; sayability &middot; distinctiveness &middot; .com room &middot; trademark room</span>.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {rows.map(({ r, sc }, idx) => {
-            const sel = r.name === pick;
-            return (
-              <div key={r.name} className={"bcmp" + (sel ? " lead chosen" : "")}
-                style={{ cursor: "pointer" }} onClick={() => setChosen(r.name)}>
-                <span className={"bcmp-rank" + (sel ? " lead" : "")}>{sel ? "♔" : idx + 1}</span>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span className={"bcmp-name" + (sel ? " lead" : "")}>{r.name}</span>
-                  <span style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{r.verdict || r.tagline || "A strong, ownable option."}</span>
-                </div>
-                <div className="bcmp-bars">
-                  {sc.map((s, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                      <div style={{ height: 48, display: "flex", alignItems: "flex-end" }}>
-                        <span style={{ width: 9, height: 8 + s * 8, borderRadius: 999, background: sel ? "var(--accent)" : "var(--ink-3)", opacity: sel ? 1 : 0.4 + s / 5 * 0.6 }} />
-                      </div>
-                      <span style={{ fontSize: 9.5, color: "var(--ink-3)" }}>{ABBR[i]}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flex: "0 0 auto", width: 118 }}>
-                  <span className="bcmp-pct" style={{ color: sel ? "var(--accent)" : "var(--ink)" }}>{pctOf(sc)}%</span>
-                  <span className={"bcmp-standout" + (sel ? " lead" : "")}>{STANDOUT[idx] || "Contender"}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <BFoot secondary="Take it to a vote &rarr;" onSecondary={onVote}
-        next={`Check domains for ${pick} →`} onNext={() => onNext(pick)} />
-    </>
-  );
-}
-
-// 08 — Domains (redesign): "Claim the domain." — prices on rows, compact taken list.
-export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
-  brief: Brief; comp: Comparison | null; initialPick?: string; onLockIn: (name: string) => void;
-}) {
-  const allNames = (comp?.rows || []).map((r) => r.name);
+  const allNames = comp ? comp.rows.map((r) => r.name) : (fallbackNames || []);
   const [pick, setPick] = useState(initialPick || comp?.recommended || allNames[0] || "");
   const [lockedDomain, setLockedDomain] = useState<string>("");
   const [boards, setBoards] = useState<Record<string, DomainBoardData>>({});
+  // comp can arrive after mount (scoring runs while we land here) — adopt a pick then.
+  useEffect(() => { if (!pick && allNames.length) setPick(allNames[0]); /* eslint-disable-next-line */ }, [allNames.length]);
   useEffect(() => {
     if (!pick || boards[pick]) return;
     setLockedDomain(""); // reset domain selection when name changes
@@ -100,77 +28,128 @@ export function BetaDomains({ brief, comp, initialPick, onLockIn }: {
   }, [pick]);
 
   const board = boards[pick];
-  // Claimable = available + negotiable TLDs, plus ALL returned variants (worker already
-  // strips confirmed-taken variants; "unknown" for a prefixed .com is almost certainly free).
-  const claimable = board ? [
-    ...board.tlds.filter((d) => d.status === "available" || d.status === "negotiable"),
-    ...board.variants,
-  ] : [];
-  const taken = board ? board.tlds.filter((t) => t.status === "taken").slice(0, 4) : [];
-  // "Free" = genuinely registrable at the standard price; for-sale and premium
-  // extensions are shown too, but with their real asking price, never as free.
-  const freeCount = board
-    ? board.tlds.filter((d) => d.status === "available" && !d.premium).length + board.variants.length
-    : 0;
+  const rows = board ? board.tlds.filter((d) => d.status === "available" || d.status === "negotiable") : [];
+  const taken = board ? board.tlds.filter((t) => t.status === "taken") : [];
+  const variants = board ? board.variants : [];
+  // "Available" = genuinely registrable at the standard price; for-sale and
+  // premium rows show their real asking price instead, never as free.
+  const availCount = rows.filter((d) => d.status === "available" && !d.premium).length;
+  const note = comp?.rows.find((r) => r.name === pick)?.verdict || "";
 
-  const rightLabel = (d: DomainCard, sel: boolean) =>
-    sel ? "✓ Selected" : d.price || d.offerPrice || (d.status === "negotiable" ? "For sale" : d.premium ? "Premium" : "Available");
+  const selectRow = (domain: string) => setLockedDomain((p) => (p === domain ? "" : domain));
+  const statusOf = (d: DomainCard) =>
+    d.status === "negotiable" ? "For sale" : d.premium ? "Premium" : "Available";
+  const priceOf = (d: DomainCard) => d.price || d.offerPrice || "";
 
   return (
     <>
       <div className="bbody">
-        <BHead eyebrow="You're almost there" title={<>Claim the domain.</>} />
-        {/* Name pills — fixed order, ★ on the selected one */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {allNames.map((n) => (
-            <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>
-              {n === pick && <span style={{ fontSize: 11, marginRight: 6 }}>★</span>}{n}
-            </button>
-          ))}
-        </div>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>{pick}</span>
-            {board && freeCount > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 10px", borderRadius: 999 }}>
-                Great &middot; {freeCount} free
-              </span>
-            )}
-          </div>
-          {!board ? <Thinking lines={["Checking every extension…"]} /> : (
-            <>
+        {!board ? (
+          <>
+            <BHead eyebrow="The domains" title={<>Checking what&rsquo;s available&hellip;</>}
+              sub="Looking up every extension for your pick — and hunting close variants you can own." />
+            <LoadBar text={<>Querying registrars for {pick || "your picks"}&hellip;</>} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em" }}>{pick}</span>
+              <span className="bspin" />
+            </div>
+            <div className="bdom-grid">
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {claimable.map((d) => {
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bdomrow" style={{ opacity: 1 - i * 0.09 }}>
+                    <span className="bdomdot" style={{ background: "var(--surface-3)" }} />
+                    <span style={{ flex: 1 }}><Skel w={i % 2 ? "38%" : "52%"} h={12} /></span>
+                    <Skel w={54} h={12} />
+                  </div>
+                ))}
+              </div>
+              <div className="bdom-vars">
+                <p className="bdom-vars-label">Also free &middot; a close variant</p>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="bvarrow" style={{ cursor: "default" }}>
+                    <Skel w={i % 2 ? "58%" : "70%"} h={11} />
+                    <Skel w={28} h={11} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <BHead eyebrow="The domains" title={<>Now, claim the domain.</>}
+              sub="A great name is only great if you can own it. Here's where your pick can live — and what's up for negotiation." />
+            {/* Your pick — fixed order, ★ on the selected one */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", marginRight: 2 }}>Your pick</span>
+              {allNames.map((n) => (
+                <button key={n} className={"bpick" + (n === pick ? " on" : "")} onClick={() => setPick(n)}>
+                  {n === pick && <span style={{ fontSize: 11, marginRight: 6 }}>★</span>}{n}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em" }}>{pick}</span>
+              {availCount > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--on-accent)", background: "var(--accent)", padding: "4px 10px", borderRadius: 999 }}>Great</span>
+              )}
+              <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
+                {availCount} available{note ? <> &middot; {note.charAt(0).toLowerCase() + note.slice(1).replace(/\.$/, "")}</> : ""}
+              </span>
+            </div>
+            <div className="bdom-grid">
+              {/* Exact extensions — status + real price on every row */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {rows.map((d) => {
                   const sel = d.domain === lockedDomain;
                   const paid = d.status === "negotiable" || d.premium;
                   return (
-                    <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")}
-                      style={{ cursor: "pointer" }} onClick={() => setLockedDomain(sel ? "" : d.domain)}>
+                    <div key={d.domain} className={"bdomrow avail" + (sel ? " chosen" : "")} onClick={() => selectRow(d.domain)}>
                       <span className="bdomdot" style={{ background: paid ? "var(--watch)" : "#28c840" }} />
                       <span className="bdomname" style={{ fontWeight: sel ? 600 : undefined }}>{d.domain}</span>
-                      <span className={"bdomstatus " + (paid ? "nego" : "avail")}>{rightLabel(d, sel)}</span>
+                      <span className={"bdomstatus " + (sel ? "" : paid ? "nego" : "avail")} style={sel ? { color: "var(--accent)" } : undefined}>
+                        {sel ? "✓ Selected" : statusOf(d)}
+                      </span>
+                      {priceOf(d) && <span className="bdomprice">{priceOf(d)}</span>}
                     </div>
                   );
                 })}
+                {!rows.length && (
+                  <p style={{ fontSize: 13.5, color: "var(--ink-3)", margin: 0 }}>No exact extension is free — a close variant on the right can still be yours.</p>
+                )}
               </div>
-              {taken.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 8px" }}>Taken</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    {taken.map((d) => (
-                      <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-3)", textDecoration: "line-through" }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57", flexShrink: 0 }} />
-                        {d.domain}
-                      </span>
-                    ))}
-                  </div>
+              {/* Close variants — also free, a prefix or suffix away */}
+              {variants.length > 0 && (
+                <div className="bdom-vars">
+                  <p className="bdom-vars-label">Also free &middot; a close variant</p>
+                  {variants.slice(0, 8).map((v) => {
+                    const sel = v.domain === lockedDomain;
+                    return (
+                      <div key={v.domain} className={"bvarrow" + (sel ? " chosen" : "")} onClick={() => selectRow(v.domain)}>
+                        <span className="nm" style={sel ? { color: "var(--accent)", fontWeight: 600 } : undefined}>{v.domain}</span>
+                        <span className="pr" style={sel ? { color: "var(--accent)" } : undefined}>{sel ? "✓" : v.price || ""}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
+            {taken.length > 0 && (
+              <div>
+                <p style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-3)", margin: "0 0 8px" }}>Already taken</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  {taken.map((d) => (
+                    <span key={d.domain} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-3)", textDecoration: "line-through" }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff5f57", flexShrink: 0 }} />
+                      {d.domain}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <BFoot next={`Block ${lockedDomain || pick}`} onNext={() => onLockIn(pick)} />
+      <BFoot next={`Block ${lockedDomain || pick}`} disabled={!pick} onNext={() => onLockIn(pick)} />
     </>
   );
 }

@@ -6,17 +6,37 @@ import { createPortal } from "react-dom";
 import { naming, type Brief, type BrandBook as BrandBookData } from "../lib/namingApi";
 import "../cosmos/cosmos.css"; // no-print / bb-printonly print classes live here
 
-const SERIF = "ui-serif,'New York',Georgia,serif";
 const SANS  = "-apple-system,'SF Pro Text',system-ui,sans-serif";
 const MONO  = "ui-monospace,'SF Mono',monospace";
 
-// Warm paper palette — isolated from the app's design tokens.
-const INK   = "#211c18";
-const PAPER = "#f6f2ec";
-const MUTED = "#6f665b";
-const GOLD  = "#b8944e";
-const ASH   = "#e8ded0";
-const HAIR  = "rgba(33,28,24,.13)";
+// Themed via CSS variables so the document can render in two skins: the classic
+// warm-paper editorial look, and the beta app look (white, SF, blue accent).
+const SERIF = "var(--bb-serif)";
+const INK   = "var(--bb-ink)";
+const PAPER = "var(--bb-paper)";
+const MUTED = "var(--bb-muted)";
+const GOLD  = "var(--bb-accent)";
+const ASH   = "var(--bb-ash)";
+const HAIR  = "var(--bb-hair)";
+const ITALIC = "var(--bb-italic)";
+const ACCENT_SOFT = "var(--bb-accent-soft)";
+
+const THEME_VARS: Record<"classic" | "beta", Record<string, string>> = {
+  classic: {
+    "--bb-serif": "ui-serif,'New York',Georgia,serif",
+    "--bb-ink": "#211c18", "--bb-paper": "#f6f2ec", "--bb-muted": "#6f665b",
+    "--bb-accent": "#b8944e", "--bb-accent-soft": "rgba(184,148,78,.09)",
+    "--bb-ash": "#e8ded0", "--bb-hair": "rgba(33,28,24,.13)",
+    "--bb-italic": "italic", "--bb-titlebar": "rgba(246,242,236,.9)",
+  },
+  beta: {
+    "--bb-serif": SANS,
+    "--bb-ink": "#1d1d1f", "--bb-paper": "#ffffff", "--bb-muted": "#56565b",
+    "--bb-accent": "#0071e3", "--bb-accent-soft": "rgba(0,113,227,.08)",
+    "--bb-ash": "#ececef", "--bb-hair": "rgba(0,0,0,.10)",
+    "--bb-italic": "normal", "--bb-titlebar": "rgba(255,255,255,.9)",
+  },
+};
 
 const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600" +
@@ -41,7 +61,7 @@ const NAV_LINKS = [
   { href: "#bb-msg",    label: "Messaging" },
 ];
 
-export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string; onClose: () => void }) {
+export function BrandBook({ brief, name, onClose, skin = "classic" }: { brief: Brief; name: string; onClose: () => void; skin?: "classic" | "beta" }) {
   const [bb, setBb] = useState<BrandBookData | null>(null);
   const [error, setError] = useState(false);
   const [mobile, setMobile] = useState(() => window.innerWidth <= 640);
@@ -72,14 +92,14 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
   }, []);
 
   return createPortal(
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, overflowY: "auto", background: "#111", fontFamily: SANS, WebkitFontSmoothing: "antialiased" } as React.CSSProperties}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, overflowY: "auto", background: "#111", fontFamily: SANS, WebkitFontSmoothing: "antialiased", ...THEME_VARS[skin] } as React.CSSProperties}>
 
       {/* ── Top bar ── */}
       <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 24px", background: "rgba(17,17,17,.92)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
         <button onClick={onClose} style={{ fontSize: 13.5, color: "rgba(255,255,255,.55)", background: "none", border: "none", cursor: "pointer", fontFamily: SANS }}>← Back to your name</button>
         {!mobile && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", textTransform: "uppercase", color: "rgba(255,255,255,.3)", fontFamily: MONO }}>Brand book · {name}</span>}
         <button onClick={() => window.print()} disabled={!bb}
-          style={{ fontSize: 13, fontFamily: SERIF, fontStyle: "italic", color: !bb ? "rgba(255,255,255,.25)" : "#fff", background: !bb ? "rgba(255,255,255,.06)" : GOLD, border: "none", borderRadius: 8, padding: "7px 16px", cursor: !bb ? "default" : "pointer", transition: "background .2s" }}>
+          style={{ fontSize: 13, fontFamily: SERIF, fontStyle: ITALIC, color: !bb ? "rgba(255,255,255,.25)" : "#fff", background: !bb ? "rgba(255,255,255,.06)" : GOLD, border: "none", borderRadius: 8, padding: "7px 16px", cursor: !bb ? "default" : "pointer", transition: "background .2s" }}>
           ↓ Save as PDF
         </button>
       </div>
@@ -93,7 +113,7 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
 
             {/* Title bar — hidden on mobile */}
             {!mobile && (
-            <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 14, height: 46, padding: "0 16px", borderBottom: `1px solid ${HAIR}`, background: "rgba(246,242,236,.9)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}>
+            <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 14, height: 46, padding: "0 16px", borderBottom: `1px solid ${HAIR}`, background: "var(--bb-titlebar)", backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)" }}>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 {(["#ff5f57", "#febc2e", "#28c840"] as const).map((c) => (
                   <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, display: "block" }} />
@@ -115,7 +135,7 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8a8a8f", padding: "0 10px 8px", display: "block" }}>On this page</span>
                 {NAV_LINKS.map(({ href, label }, i) => (
                   <a key={href} href={href}
-                    style={{ display: "flex", alignItems: "center", padding: "8px 10px", borderRadius: 8, fontSize: 13.5, fontWeight: i === 0 ? 600 : 500, color: i === 0 ? GOLD : MUTED, background: i === 0 ? "rgba(184,148,78,.1)" : "transparent", textDecoration: "none" }}>
+                    style={{ display: "flex", alignItems: "center", padding: "8px 10px", borderRadius: 8, fontSize: 13.5, fontWeight: i === 0 ? 600 : 500, color: i === 0 ? GOLD : MUTED, background: i === 0 ? ACCENT_SOFT : "transparent", textDecoration: "none" }}>
                     {label}
                   </a>
                 ))}
@@ -136,13 +156,13 @@ export function BrandBook({ brief, name, onClose }: { brief: Brief; name: string
                   <div style={{ width: "100%", maxWidth: 660, background: PAPER, border: `1px solid ${HAIR}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 480, gap: 16, padding: 40 }}>
                     {error ? (
                       <>
-                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", color: INK, textAlign: "center" }}>We couldn't compose the brand book.</p>
-                        <button onClick={onClose} style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 14, background: GOLD, color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer" }}>← Back</button>
+                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: ITALIC, color: INK, textAlign: "center" }}>We couldn't compose the brand book.</p>
+                        <button onClick={onClose} style={{ fontFamily: SERIF, fontStyle: ITALIC, fontSize: 14, background: GOLD, color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer" }}>← Back</button>
                       </>
                     ) : (
                       <>
                         <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${ASH}`, borderTopColor: GOLD, animation: "bb-spin 1s linear infinite" }} />
-                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: "italic", color: INK }}>Composing your brand book…</p>
+                        <p style={{ fontFamily: SERIF, fontSize: 22, fontStyle: ITALIC, color: INK }}>Composing your brand book…</p>
                         <p style={{ fontSize: 13.5, color: MUTED }}>Drawing on everything you told us.</p>
                       </>
                     )}
@@ -181,7 +201,7 @@ function Paper({ bb, name, mobile }: { bb: BrandBookData; name: string; mobile?:
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED }}>v1.0 · 2026</span>
         </div>
         <h1 style={{ fontFamily: SERIF, fontSize: mobile ? 44 : 76, lineHeight: .98, fontWeight: 600, letterSpacing: "-.02em", margin: "16px 0 0", color: INK }}>{name}</h1>
-        <p style={{ fontFamily: SERIF, fontSize: mobile ? 17 : 21, fontStyle: "italic", color: MUTED, margin: "10px 0 0" }}>{bb.tagline}</p>
+        <p style={{ fontFamily: SERIF, fontSize: mobile ? 17 : 21, fontStyle: ITALIC, color: MUTED, margin: "10px 0 0" }}>{bb.tagline}</p>
         {essence.length > 0 && (
           <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
             {essence.map((e) => (
@@ -196,8 +216,8 @@ function Paper({ bb, name, mobile }: { bb: BrandBookData; name: string; mobile?:
       {/* The story */}
       <PSection id="bb-story" label="The story" hp={hp}>
         <p style={{ fontSize: 16.5, lineHeight: 1.62, margin: "16px 0 0", maxWidth: "52ch" }}>{bb.story}</p>
-        <div style={{ marginTop: 22, padding: "18px 22px", borderLeft: `2px solid ${GOLD}`, background: "rgba(184,148,78,.08)", borderRadius: "0 8px 8px 0" }}>
-          <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: "italic", lineHeight: 1.6, color: INK, margin: 0 }}>{bb.whyName}</p>
+        <div style={{ marginTop: 22, padding: "18px 22px", borderLeft: `2px solid ${GOLD}`, background: ACCENT_SOFT, borderRadius: "0 8px 8px 0" }}>
+          <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: ITALIC, lineHeight: 1.6, color: INK, margin: 0 }}>{bb.whyName}</p>
         </div>
       </PSection>
 
@@ -212,7 +232,7 @@ function Paper({ bb, name, mobile }: { bb: BrandBookData; name: string; mobile?:
           <VoiceCard tone="do"   title="Do"    items={bb.voice.dos} />
           <VoiceCard tone="dont" title="Don't" items={bb.voice.donts} />
         </div>
-        <p style={{ fontFamily: SERIF, fontSize: mobile ? 18 : 22, fontStyle: "italic", lineHeight: 1.4, textAlign: "center", margin: "26px 0 0", color: INK }}>"{bb.voice.sample}"</p>
+        <p style={{ fontFamily: SERIF, fontSize: mobile ? 18 : 22, fontStyle: ITALIC, lineHeight: 1.4, textAlign: "center", margin: "26px 0 0", color: INK }}>"{bb.voice.sample}"</p>
       </PSection>
 
       {/* Colour */}
@@ -269,7 +289,7 @@ function Paper({ bb, name, mobile }: { bb: BrandBookData; name: string; mobile?:
       {/* Footer */}
       <div style={{ margin: `28px ${hp} 0`, padding: "20px 0 36px", borderTop: `1px solid ${HAIR}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, color: MUTED }}>That's your starter brand book.</span>
-        <span style={{ fontFamily: SERIF, fontSize: 14, fontStyle: "italic", color: INK }}>The Naming Studio</span>
+        <span style={{ fontFamily: SERIF, fontSize: 14, fontStyle: ITALIC, color: INK }}>The Naming Studio</span>
       </div>
 
     </div>

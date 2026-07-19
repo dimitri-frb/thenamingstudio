@@ -584,7 +584,11 @@ function classifyStatus(tokens: string): { status: DomStatus; premium: boolean }
   const t = (tokens || "").toLowerCase();
   const premium = /premium/.test(t);
   if (/marketed|priced|parked|transferable|aftermarket/.test(t)) return { status: "negotiable", premium };
-  if (/inactive|undelegated/.test(t)) return { status: "available", premium };
+  // Only "inactive" means available for registration. "undelegated" alone just
+  // means "not in the DNS zone" — a registered domain with broken or absent
+  // delegation (e.g. vela.ai) carries it too, so it must NOT read as available;
+  // it falls through to unknown and the registry (RDAP) decides.
+  if (/inactive/.test(t)) return { status: "available", premium };
   if (/active|claimed|reserved|disallowed|dpml|tld|zone/.test(t)) return { status: "taken", premium };
   return { status: "unknown", premium };
 }
@@ -690,15 +694,23 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
   const dr = await fastlyStatus(env, [...exact, ...variants]);
   const source = env.FASTLY_KEY && Object.keys(dr).length ? "fastly" : "rdap";
 
-  // For anything Fastly didn't resolve (or no key), fall back to RDAP where we can.
+  // Fastly's negotiable/taken verdicts stand on their own, but every "available"
+  // (and every miss) is confirmed against the authoritative registry via RDAP
+  // before we show it — a false "available" is the one failure founders cannot
+  // forgive. RDAP 200 (registered) always wins over a Fastly "available".
   async function statusFor(domain: string): Promise<DrInfo> {
-    if (dr[domain]) return dr[domain];
+    const f = dr[domain];
+    if (f && (f.status === "negotiable" || f.status === "taken")) return f;
     // Handle multi-level TLDs like .co.uk correctly.
     let s: string, tld: string;
     if (domain.endsWith(".co.uk")) { s = domain.slice(0, -6); tld = "co.uk"; }
     else { const dot = domain.lastIndexOf("."); s = domain.slice(0, dot); tld = domain.slice(dot + 1); }
     const r = await rdap(s, tld);
-    return { status: r === "available" ? "available" : r === "taken" ? "taken" : "unknown", premium: false };
+    if (r === "taken") return { status: "taken", premium: f?.premium ?? false, offerPrice: f?.offerPrice, offerUrl: f?.offerUrl };
+    if (r === "available") return { ...(f || { premium: false }), status: "available" };
+    // Registry couldn't confirm (no RDAP for this TLD, or a hiccup): keep
+    // Fastly's read; with neither source we honestly say unknown.
+    return f || { status: "unknown", premium: false };
   }
 
   const [exactStatuses, variantStatuses] = await Promise.all([
