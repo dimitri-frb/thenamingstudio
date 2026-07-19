@@ -1,0 +1,233 @@
+/* epsilon.css — "Kinetic Reveal" (/epsilon): one black stage, one question at a
+   time, one name. Faithful to the Claude Design import (Naming Studio - Kinetic
+   Flow.dc.html): full-screen takeover, no app chrome, huge type, white-on-black,
+   the reveal as the climax. Everything lives under .eps so nothing leaks. */
+
+.eps {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+}
+.eps *, .eps *::before, .eps *::after { box-sizing: border-box; }
+
+/* ── motion (from the design doc) ── */
+@keyframes eps-rise { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes eps-streak { 0% { transform: translateX(60vw); opacity: 0; } 20% { opacity: .6; } 100% { transform: translateX(-120vw); opacity: 0; } }
+@keyframes eps-letterIn { 0% { opacity: 0; transform: translateY(26px) rotateX(-60deg); filter: blur(6px); } 100% { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); } }
+@keyframes eps-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes eps-popIn { 0% { opacity: 0; transform: scale(.85); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+
+.eps .rise { animation: eps-rise .5s ease both; }
+
+/* ── shell: top row, stage, footer ── */
+.eps-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 0;
+  flex: 0 0 auto;
+  min-height: 44px;
+  z-index: 5;
+}
+.eps-back {
+  font-size: 22px;
+  line-height: 1;
+  color: #5c5c5c;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 10px;
+  margin-left: -10px;
+  border-radius: 8px;
+}
+.eps-back:hover { color: #fff; }
+.eps-meta { font-size: 11px; font-family: ui-monospace, 'SF Mono', monospace; color: #5c5c5c; letter-spacing: .06em; }
+
+.eps-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 28px;
+  position: relative;
+  animation: eps-rise .45s ease both;
+  overflow-y: auto;
+}
+.eps-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 24px 28px;
+  flex: 0 0 auto;
+}
+.eps-foot.end { justify-content: flex-end; }
+.eps-foot.center { justify-content: center; }
+
+/* ── type ── */
+.eps-h { font-size: 33px; font-weight: 700; letter-spacing: -.03em; line-height: 1.08; margin: 0; }
+.eps-kicker { font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #6a6a6a; margin: 0; }
+.eps-hint { font-size: 13px; color: #5c5c5c; margin: 12px 0 0; line-height: 1.5; }
+.eps-dim { font-size: 13px; color: #8a8a8a; }
+
+/* ── bare underline inputs ── */
+.eps-input {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #e6e6e6;
+  caret-color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #2a2a2a;
+  border-radius: 0;
+  padding: 0 0 12px;
+  outline: none;
+  resize: none;
+  transition: border-color .2s;
+}
+.eps-input:focus { border-bottom-color: #fff; }
+.eps-input::placeholder { color: #4a4a4a; }
+.eps-input.big { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.22; color: #fff; }
+.eps-label { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #6a6a6a; margin: 0 0 8px; }
+
+/* ── buttons ── */
+.eps-btn {
+  padding: 14px 26px;
+  border-radius: 980px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  color: #000;
+  background: #fff;
+  cursor: pointer;
+  transition: transform .15s, opacity .15s;
+}
+.eps-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.eps-btn:disabled { opacity: .35; cursor: default; }
+.eps-btn.wide { width: 100%; padding: 16px; border-radius: 14px; font-size: 16px; }
+
+/* desktop keyboard hints */
+.eps-khint { display: none; align-items: center; gap: 8px; font-size: 13px; color: #8a8a8a; }
+.eps-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid #333;
+  color: #e6e6e6;
+  font-size: 12px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+}
+
+/* ── big-word choosers (space / reach / feeling / kind) ── */
+.eps-choice { background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; text-align: left; color: #3a3a3a; transition: color .2s; }
+.eps-choice:hover { color: #8a8a8a; }
+.eps-choice.on { color: #fff; }
+.eps-choice.on:hover { color: #fff; }
+.eps-uline { height: 3px; background: #fff; border-radius: 2px; margin-top: 6px; animation: eps-rise .3s ease both; }
+
+/* ── the word field ── */
+.eps-word {
+  background: none;
+  border: none;
+  padding: 0 0 3px;
+  font-family: inherit;
+  cursor: pointer;
+  color: #4a4a4a;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  border-bottom: 3px solid transparent;
+  transition: color .2s;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.eps-word:hover { color: #bcbcbc; }
+.eps-word.on { color: #fff; font-weight: 700; border-bottom-color: #fff; }
+
+/* ── word overlay (long-press / hover) ── */
+.eps-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .92);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 28px;
+  animation: eps-popIn .35s ease both;
+  z-index: 8;
+}
+
+/* ── narrowing streaks ── */
+.eps-streaks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.eps-streaks span { position: absolute; left: 0; font-size: 15px; color: #333; white-space: nowrap; animation: eps-streak 2.4s linear infinite; }
+
+/* ── the six ── */
+.eps-sixrow { display: flex; align-items: baseline; justify-content: space-between; background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; width: 100%; text-align: left; }
+
+/* ── reveal (lights on) ── */
+.eps.lights { background: radial-gradient(90% 60% at 50% 46%, #ffffff 0%, #ededf0 70%); color: #000; }
+.eps.lights .eps-back { color: #8a8a8f; }
+.eps-letter { font-size: 46px; font-weight: 700; letter-spacing: -.02em; display: inline-block; animation: eps-letterIn .5s cubic-bezier(.2, .7, .3, 1) both; }
+
+/* ── domain rows (own it) ── */
+.eps-dom { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-family: ui-monospace, 'SF Mono', monospace; }
+.eps-dom .d { display: inline-flex; align-items: center; gap: 8px; color: #8a8a8a; }
+.eps-dom.lead .d { color: #e6e6e6; }
+.eps-dom .dot { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; flex: 0 0 auto; }
+.eps-dom .p { color: #5c5c5c; }
+.eps-dom.lead .p { color: #8a8a8a; }
+
+/* ── test jump bar ── */
+.eps-testbar {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: #1d1d1f;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .5);
+}
+
+/* ── layout helpers with mobile/desktop shapes ── */
+.eps-kinds { grid-template-columns: 1fr; }
+
+/* ── desktop: same stage, keyboard-first ── */
+@media (min-width: 701px) {
+  .eps-kinds { grid-template-columns: 1fr 1fr 1fr; }
+  .eps-cols { flex-direction: row !important; gap: 44px !important; max-width: 720px !important; }
+  .eps-cols > div { flex: 1; }
+  .eps-top { padding: 26px 38px 0; }
+  .eps-stage { padding: 0 96px; }
+  .eps-foot { padding: 16px 38px 28px; }
+  .eps-khint { display: inline-flex; }
+  .eps-h { font-size: 40px; letter-spacing: -.035em; }
+  .eps-input { font-size: 24px; max-width: 34ch; }
+  .eps-input.big { font-size: 38px; max-width: 26ch; }
+  .eps-overlay { padding: 0 96px; }
+  .eps-letter { font-size: 76px; letter-spacing: -.03em; }
+  /* footer buttons melt into key hints on desktop; keep buttons clickable too */
+}

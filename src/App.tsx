@@ -16,6 +16,7 @@ import { BetaFlow } from "./beta/BetaFlow";
 import { StartGate } from "./cosmos/StartGate";
 import { MOCK } from "./cosmos/mock";
 import { AdminPage } from "./admin/AdminPage";
+import { EpsilonFlow } from "./epsilon/EpsilonFlow";
 import { newProcess } from "./lib/requestLog";
 import { hasSavedFlow, clearFlow } from "./lib/flowState";
 import { Conversation } from "./components/Conversation";
@@ -133,6 +134,18 @@ export default function App() {
   const isAdmin = /(?:^|\/)admin\/?$/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("admin") || window.location.hash.replace(/^#\/?/, "") === "admin";
   if (isAdmin) {
     return <AdminPage onExit={() => window.location.assign(import.meta.env.BASE_URL || "/")} />;
+  }
+
+  // /epsilon (or ?epsilon / #epsilon): the "Kinetic Reveal" flow — one black
+  // stage, one question at a time, one name. `?test` adds the step jumper.
+  const isEpsilon = /(?:^|\/)epsilon\/?$/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("epsilon") || window.location.hash.replace(/^#\/?/, "") === "epsilon";
+  if (isEpsilon) {
+    return (
+      <EpsilonFlow
+        test={new URLSearchParams(window.location.search).has("test")}
+        onExit={() => window.location.assign(import.meta.env.BASE_URL || "/")}
+      />
+    );
   }
 
   // Test mode (/test, ?test, or #test): step through every page with sample data,
