@@ -58,6 +58,7 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
   const [pickIdx, setPickIdx] = useState(0);
   const [err, setErr] = useState("");
   const relCache = useRef<Map<string, { def: string; world: FieldWord[] }>>(new Map());
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const set = (p: Partial<Brief>) => setBrief((b) => ({ ...b, ...p }));
   const goto = useCallback((n: number) => { setStep(n); setErr(""); }, []);
@@ -263,6 +264,16 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
     return () => window.removeEventListener("keydown", onKey);
   }, [step, overlay, next, brief.industry, brief.geos, brief.lanes, feelings.length, rows.length, pick]);
 
+  // Enter handled directly on the inputs too: mobile virtual keyboards don't
+  // reliably deliver the return key to window listeners, so "go" advances here.
+  // stopPropagation keeps the window handler from firing next() twice on desktop.
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault(); e.stopPropagation();
+    (e.target as HTMLElement).blur();
+    next();
+  };
+
   // long-press (mobile)
   const pressTimer = useRef<number>(0);
   const pressFired = useRef(false);
@@ -304,13 +315,15 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
             <div className="eps-cols" style={{ display: "flex", flexDirection: "column", gap: 26, marginTop: 36, maxWidth: 560 }}>
               <div>
                 <p className="eps-label">Name</p>
-                <input className="eps-input" autoFocus value={who.name} placeholder="Jordan Avery"
-                  onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))} />
+                <input className="eps-input" autoFocus value={who.name} placeholder="Jordan Avery" enterKeyHint="next"
+                  onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); emailRef.current?.focus(); } }} />
               </div>
               <div>
                 <p className="eps-label">Email</p>
-                <input className="eps-input" type="email" value={who.email} placeholder="jordan@company.com"
-                  onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} />
+                <input className="eps-input" type="email" ref={emailRef} value={who.email} placeholder="jordan@company.com" enterKeyHint="go"
+                  onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))}
+                  onKeyDown={onEnter} />
               </div>
             </div>
             <p className="eps-hint" style={{ marginTop: 22 }}>No password. We save your journey and send the name here.</p>
@@ -329,9 +342,9 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         <>
           <div className="eps-stage">
             <p className="eps-kicker">The problem you kill</p>
-            <input className="eps-input big" autoFocus value={brief.problem}
+            <input className="eps-input big" autoFocus value={brief.problem} enterKeyHint="next"
               placeholder="Naming takes founders weeks — and the good domains are gone"
-              onChange={(e) => set({ problem: e.target.value })} style={{ marginTop: 24 }} />
+              onChange={(e) => set({ problem: e.target.value })} onKeyDown={onEnter} style={{ marginTop: 24 }} />
             <p className="eps-hint">Say it like you'd say it to a friend.</p>
           </div>
           {footNext()}
@@ -357,9 +370,10 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
                 );
               })}
             </div>
-            <input className="eps-input" value={customSpace} placeholder="Or type your own…"
+            <input className="eps-input" value={customSpace} placeholder="Or type your own…" enterKeyHint="next"
               style={{ marginTop: 26, fontSize: 16, maxWidth: 300 }}
-              onChange={(e) => { setCustomSpace(e.target.value); set({ industry: e.target.value }); }} />
+              onChange={(e) => { setCustomSpace(e.target.value); set({ industry: e.target.value }); }}
+              onKeyDown={onEnter} />
           </div>
           <div className="eps-foot">
             <span className="eps-khint"><span className="eps-key">↑</span><span className="eps-key">↓</span> to choose</span>
@@ -599,8 +613,8 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       <>
         <div className="eps-stage">
           <h2 className="eps-h">{q}</h2>
-          <input className="eps-input" autoFocus value={val} placeholder={ph}
-            onChange={(e) => on(e.target.value)} style={{ marginTop: 30 }} />
+          <input className="eps-input" autoFocus value={val} placeholder={ph} enterKeyHint="next"
+            onChange={(e) => on(e.target.value)} onKeyDown={onEnter} style={{ marginTop: 30 }} />
           <p className="eps-hint">{hint}</p>
         </div>
         {footNext()}
