@@ -40,11 +40,17 @@ export function LandingAtelier({ onNext, onBeta }: { onNext: () => void; onBeta?
         <p style={{ marginTop: 20, fontSize: 17, lineHeight: 1.6, color: INK3, maxWidth: 400 }}>
           Describe what you're building. Walk out with a name you love and the domain to match.
         </p>
-        <div style={{ marginTop: 36 }}>
+        <div style={{ marginTop: 36, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
           <button onClick={start}
             style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 50, padding: "15px 34px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: SANS, boxShadow: "0 2px 12px rgba(0,113,227,0.35)", display: "inline-flex", alignItems: "center", gap: 12 }}>
             Start a brief
             <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(255,255,255,0.22)", padding: "3px 8px", borderRadius: 5 }}>BETA</span>
+          </button>
+          {/* The cinematic one-question-at-a-time flow (/epsilon), for testing */}
+          <button onClick={() => window.location.assign((import.meta.env.BASE_URL || "/") + "epsilon")}
+            style={{ background: INK, color: "#fff", border: "none", borderRadius: 50, padding: "15px 34px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: SANS, boxShadow: "0 2px 12px rgba(0,0,0,0.3)", display: "inline-flex", alignItems: "center", gap: 12 }}>
+            Name it, fast
+            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(255,255,255,0.22)", padding: "3px 8px", borderRadius: 5 }}>Epsilon</span>
           </button>
         </div>
       </section>
