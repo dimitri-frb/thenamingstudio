@@ -10,7 +10,7 @@ import {
 import { Results } from "./components/Results";
 import { Checkout } from "./components/Checkout";
 import { JourneyRail } from "./components/Journey";
-import { LandingAtelier } from "./components/LandingAtelier";
+import { HomeChooser } from "./components/HomeChooser";
 import { CosmosFlow } from "./cosmos/CosmosFlow";
 import { BetaFlow } from "./beta/BetaFlow";
 import { StartGate } from "./cosmos/StartGate";
@@ -189,11 +189,14 @@ export default function App() {
     );
   }
 
-  // Landing: full-bleed, no App chrome (header/max-width)
+  // Landing: the black "choose your flow" home (Beta vs Epsilon, per the design)
   if (screen === "landing") {
     return (
       <>
-        <LandingAtelier onNext={() => beginFlow("beta")} onBeta={() => beginFlow("beta")} />
+        <HomeChooser
+          onBeta={() => beginFlow("beta")}
+          onEpsilon={() => window.location.assign((import.meta.env.BASE_URL || "/") + "epsilon")}
+        />
         {startGate && (
           <StartGate
             variant="beta"

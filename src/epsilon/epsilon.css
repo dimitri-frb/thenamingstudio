@@ -26,7 +26,34 @@
 @keyframes eps-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 @keyframes eps-popIn { 0% { opacity: 0; transform: scale(.85); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
 
+@keyframes eps-shimmer { 100% { transform: translateX(100%); } }
+@keyframes eps-spin { 100% { transform: rotate(360deg); } }
+@keyframes eps-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
 .eps .rise { animation: eps-rise .5s ease both; }
+
+/* "Own it" screens sit on a soft top-lit stage (from the design) */
+.eps.hub { background: radial-gradient(80% 60% at 50% 0%, #161616 0%, #000 72%); }
+
+/* loading spinner + shimmer chips (words screen "finding them" state) */
+.eps-spin { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%; border: 2.5px solid #fff; border-top-color: transparent; animation: eps-spin .8s linear infinite; }
+.eps-spin.small { width: 14px; height: 14px; border-width: 2px; border-color: #3a3a3a; border-top-color: #fff; }
+.eps-pulse { animation: eps-pulse 1.4s ease-in-out infinite; }
+.eps-shim { display: block; border-radius: 9px; position: relative; overflow: hidden; background: #161616; }
+.eps-shim::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent); animation: eps-shimmer 1.3s infinite; }
+
+/* kept-word pills (words footer + overlay) */
+.eps-keptpill { font-size: 13px; font-weight: 600; color: #fff; padding: 5px 11px; border-radius: 980px; border: 1px solid #333; background: none; font-family: inherit; cursor: pointer; }
+.eps-keptpill.new { border-color: #0071e3; background: rgba(0,113,227,.12); }
+
+/* desktop-only right rail on the words screen ("Your brief / Why this field") */
+.eps-rail { display: none; }
+
+/* the six: domain rows under the leader (desktop only, per the design) */
+.eps-sixdoms { display: none; }
+
+/* own-it: two columns on desktop, stacked on mobile */
+.eps-owncols { display: flex; flex-direction: column; gap: 18px; width: 100%; }
 
 /* ── shell: top row, stage, footer ── */
 .eps-top {
@@ -221,6 +248,10 @@
   .eps-kinds { grid-template-columns: 1fr 1fr 1fr; }
   .eps-cols { flex-direction: row !important; gap: 44px !important; max-width: 720px !important; }
   .eps-cols > div { flex: 1; }
+  .eps-rail { display: block; width: 250px; flex: 0 0 auto; align-self: center; border-left: 1px solid #222; padding-left: 36px; }
+  .eps-sixdoms { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-width: 420px; }
+  .eps-owncols { flex-direction: row; align-items: center; gap: 72px; }
+  .eps-owncols > div { flex: 1; min-width: 0; }
   .eps-top { padding: 26px 38px 0; }
   .eps-stage { padding: 0 96px; }
   .eps-foot { padding: 16px 38px 28px; }

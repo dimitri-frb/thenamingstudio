@@ -11,6 +11,7 @@ import {
 import { setTestMode } from "../lib/requestLog";
 import { recommendLanes } from "../lib/localStudio";
 import { MOCK } from "../cosmos/mock";
+import { BrandBook } from "../components/BrandBook";
 import "./epsilon.css";
 
 const EMPTY: Brief = { does: "", industry: "", problem: "", audience: "", values: "", uvp: "", signal: [], avoid: [], tone: [], lanes: [], geos: [] };
@@ -44,6 +45,20 @@ const TEST_FIELD: FieldWord[] = [
 // Which screens show the "NN / 12" counter (per the design).
 const META: Record<number, string> = { 2: "01", 3: "02", 4: "03", 5: "04", 6: "05", 7: "06", 8: "07", 9: "08", 10: "08", 12: "10" };
 
+// The essentials of a brand book, for the "Your brand book" preview cards.
+interface BookPreview { palette: string[]; voice: string; tagline: string }
+const TEST_BOOK: BookPreview = {
+  palette: ["#ff9e7a", "#c9b6ff", "#7c9cff", "#0f0f0f"],
+  voice: "Warm, clear, quietly confident. Speaks to founders at first light.",
+  tagline: "Every brand has a first light.",
+};
+const TEST_DOMS: DomainCard[] = [
+  { domain: "aurova.com", tld: ".com", status: "available", price: "$32" },
+  { domain: "aurova.io", tld: ".io", status: "available", price: "$38" },
+  { domain: "aurova.ai", tld: ".ai", status: "negotiable", offerPrice: "$70" },
+  { domain: "aurova.co", tld: ".co", status: "taken" },
+];
+
 export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => void }) {
   setTestMode(!!test);
   const [step, setStep] = useState(0);
@@ -59,6 +74,14 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
   const [comp, setComp] = useState<Comparison | null>(test ? MOCK.comp : null);
   const [pickIdx, setPickIdx] = useState(0);
   const [err, setErr] = useState("");
+  // Live domain boards per name (the six + own-it screens), the own-it sub-view,
+  // the brand-book preview, and the full brand-book modal.
+  const [boards, setBoards] = useState<Record<string, DomainCard[] | null>>({});
+  const [own, setOwn] = useState<"hub" | "domain" | "book">("hub");
+  const [domSel, setDomSel] = useState("");
+  const [moreDoms, setMoreDoms] = useState(false);
+  const [book, setBook] = useState<BookPreview | null>(null);
+  const [bookOpen, setBookOpen] = useState(false);
   const relCache = useRef<Map<string, { def: string; world: FieldWord[] }>>(new Map());
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -182,6 +205,45 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, pickIdx]);
 
+  // Live domain board for the current pick (the six shows it on desktop; own-it
+  // builds the "Grab the domain" view from it).
+  useEffect(() => {
+    const name = pick?.name;
+    if (step < 12 || !name || boards[name] !== undefined) return;
+    if (test) { setBoards((p) => ({ ...p, [name]: TEST_DOMS.map((d) => ({ ...d, domain: name.toLowerCase() + (d.tld || "") })) })); return; }
+    setBoards((p) => ({ ...p, [name]: null }));
+    fetchDomainBoard(name, brief.geos).then((b) => {
+      const order = (d: DomainCard) => [".com", ".io", ".ai"].indexOf(d.tld || "") + 1 || 9;
+      const good = b.tlds.filter((d) => d.status === "available" || d.status === "negotiable").sort((a, c) => order(a) - order(c));
+      const taken = b.tlds.filter((d) => d.status === "taken").sort((a, c) => order(a) - order(c));
+      setBoards((p) => ({ ...p, [name]: [...good, ...b.variants.slice(0, 4), ...taken.slice(0, 1)] }));
+    }).catch(() => setBoards((p) => ({ ...p, [name]: [] })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, pick?.name]);
+
+  const board = pick ? boards[pick.name] : undefined;
+  const goodDoms = (board || []).filter((d) => d.status !== "taken");
+  const takenDom = (board || []).find((d) => d.status === "taken");
+  const bestDom = goodDoms[0];
+  const domPrice = (d?: DomainCard) => d ? (d.price || d.offerPrice || "") : "";
+  const chosenDom = goodDoms.find((d) => d.domain === domSel) || bestDom;
+  const gdUrl = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
+
+  // Brand-book preview (palette · voice · tagline) once the book view opens.
+  const bookBusy = useRef(false);
+  useEffect(() => {
+    if (step !== 14 || own !== "book" || book || bookBusy.current || !pick) return;
+    if (test) { setBook(TEST_BOOK); return; }
+    bookBusy.current = true;
+    naming.brandbook(brief, pick.name).then((b) => setBook({
+      palette: (b.palette || []).map((s) => s.hex).slice(0, 4),
+      voice: b.voice?.sample || (b.voice?.adjectives || []).join(", "),
+      tagline: b.tagline || "",
+    })).catch(() => setBook({ palette: [], voice: "", tagline: "" }))
+      .finally(() => { bookBusy.current = false; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, own]);
+
   const hear = (name: string) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -228,14 +290,20 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       case 9: goto(10); break;
       case 10: startNames(); break;
       case 12: goto(13); break;
-      case 13: goto(14); break;
+      case 13: setOwn("hub"); goto(14); break;
+      case 14:
+        if (own === "hub") setOwn("domain");
+        else if (own === "domain") { if (chosenDom) window.open(gdUrl(chosenDom.domain), "_blank", "noopener"); }
+        else setBookOpen(true);
+        break;
       default: goto(step + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, brief, who, feelings, feelIdx, kept, rows.length, test]);
+  }, [step, brief, who, feelings, feelIdx, kept, rows.length, test, own, chosenDom]);
 
   const back = () => {
     if (overlay) { setOverlay(null); return; }
+    if (step === 14 && own !== "hub") { setOwn("hub"); return; }
     if (step === 0) { onExit(); return; }
     if (step === 12) { goto(10); return; }  // skip the interlude going back
     if (step === 11) { goto(10); return; }
@@ -245,12 +313,13 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
   // ── keyboard (desktop-first) ─────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || bookOpen) return;
       if (overlay) {
         if (e.key === "Escape") { setOverlay(null); e.preventDefault(); }
         if (e.key.toLowerCase() === "k") { toggleKeep(overlay.w); e.preventDefault(); }
         return;
       }
+      if (e.key === "Escape" && step === 14 && own !== "hub") { setOwn("hub"); e.preventDefault(); return; }
       if (e.key === "Enter") { next(); e.preventDefault(); return; }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -292,7 +361,7 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, overlay, next, brief.industry, brief.geos, brief.lanes, feelings.length, rows.length, pick]);
+  }, [step, overlay, next, brief.industry, brief.geos, brief.lanes, feelings.length, rows.length, pick, own, bookOpen]);
 
   // Enter handled directly on the inputs too: mobile virtual keyboards don't
   // reliably deliver the return key to window listeners, so "go" advances here.
@@ -315,6 +384,19 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
 
   const feelWords = feelings.length ? feelings : FEELING_FALLBACK;
   const meta = META[step];
+  const firstName = who.name.trim().split(" ")[0] || "";
+  // The founder's kept words, blue-tagged when they came from a word's world
+  // (not the base field), per the design.
+  const isWorldWord = (w: string) => !field.some((f) => f.w.toLowerCase() === w.toLowerCase());
+  const keptPills = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+      <b style={{ color: "#fff", fontSize: 13 }}>{kept.length} kept</b>
+      {kept.map((w) => (
+        <button key={w} className={"eps-keptpill" + (isWorldWord(w) ? " new" : "")} title="Tap to remove"
+          onClick={() => toggleKeep(w)}>{w}</button>
+      ))}
+    </span>
+  );
 
   // ─────────────────────────── screens ───────────────────────────
   const stage = () => {
@@ -366,7 +448,7 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       );
 
       // 03 · Brief / 04 · Problem / 05 · Audience — one bare question each
-      case 2: return oneLiner("What are you building?", brief.does, (v) => set({ does: v }),
+      case 2: return oneLiner(firstName ? `${firstName}, what are you building?` : "What are you building?", brief.does, (v) => set({ does: v }),
         "An AI studio that names companies with a strategist's rigor", "One sentence is enough.");
       case 3: return (
         <>
@@ -502,43 +584,79 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         </>
       );
 
-      // 10 · Words — the floating field
-      case 9: return (
-        <>
-          <div className="eps-stage">
-            <p className="eps-kicker" style={{ marginBottom: 10 }}>Tap what resonates</p>
-            <p className="eps-hint" style={{ margin: "0 0 24px" }}>
-              Tap to keep a word · {isTouch() ? "hold" : "hover"} it to open its meaning and the words around it.
-            </p>
-            {!field.length ? (
-              <p style={{ fontSize: 21, color: "#5c5c5c", margin: 0 }}>
-                {err || <>Reading your brief, finding the words<Caret /></>}
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 18px", alignItems: "baseline", maxWidth: 680 }}>
-                {field.map((f, i) => (
-                  <button key={f.w} className={"eps-word" + (isKept(f.w) ? " on" : "")}
-                    style={{ fontSize: SIZES[i % SIZES.length], animation: `eps-floaty ${FLOATS[i % FLOATS.length]}s ease-in-out infinite ${(i * 0.13).toFixed(2)}s` }}
-                    onClick={() => { if (pressFired.current) { pressFired.current = false; return; } isKept(f.w) ? openWord(f.w) : toggleKeep(f.w); }}
-                    onMouseEnter={() => { if (!isTouch()) pressStart(f.w); }}
-                    onMouseLeave={pressEnd}
-                    onTouchStart={() => pressStart(f.w)}
-                    onTouchEnd={pressEnd}
-                    onContextMenu={(e) => e.preventDefault()}>
-                    {f.w}
-                  </button>
-                ))}
+      // 10 · Words — the floating field (+ desktop rail: your brief / why this field)
+      case 9: {
+        const loading = !field.length;
+        return (
+          <>
+            <div className="eps-stage" style={{ flexDirection: "row", alignItems: "center", gap: 48 }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                {loading ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 22 }}>
+                      <span className="eps-spin" />
+                      <span className="eps-pulse" style={{ fontSize: 14, fontWeight: 600, color: "#e6e6e6" }}>{err || "Reading your brief, finding the words…"}</span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 20px", alignItems: "center", maxWidth: 480 }}>
+                      {[[34, 120], [24, 78], [29, 104], [22, 66], [27, 92], [23, 110], [30, 84], [22, 70]].map(([h, w], i) => (
+                        <span key={i} className="eps-shim" style={{ height: h, width: w }} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="eps-kicker" style={{ marginBottom: 10 }}>Tap what resonates</p>
+                    <p className="eps-hint" style={{ margin: "0 0 24px" }}>
+                      Tap to keep a word · {isTouch() ? "hold" : "hover"} it to open its meaning and the words around it.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 18px", alignItems: "baseline", maxWidth: 680 }}>
+                      {field.map((f, i) => (
+                        <button key={f.w} className={"eps-word" + (isKept(f.w) ? " on" : "")}
+                          style={{ fontSize: SIZES[i % SIZES.length], animation: `eps-floaty ${FLOATS[i % FLOATS.length]}s ease-in-out infinite ${(i * 0.13).toFixed(2)}s` }}
+                          onClick={() => { if (pressFired.current) { pressFired.current = false; return; } isKept(f.w) ? openWord(f.w) : toggleKeep(f.w); }}
+                          onMouseEnter={() => { if (!isTouch()) pressStart(f.w); }}
+                          onMouseLeave={pressEnd}
+                          onTouchStart={() => pressStart(f.w)}
+                          onTouchEnd={pressEnd}
+                          onContextMenu={(e) => e.preventDefault()}>
+                          {f.w}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-          </div>
-          <div className="eps-foot">
-            <span className="eps-dim"><b style={{ color: "#fff" }}>{kept.length}</b> kept</span>
-            <span style={{ flex: 1 }} />
-            <span className="eps-khint">Make names <span className="eps-key">⏎</span></span>
-            <button className="eps-btn" disabled={!canNext()} onClick={next}>Make names →</button>
-          </div>
-        </>
-      );
+              <div className="eps-rail">
+                <p className="eps-label" style={{ marginBottom: 12 }}>Your brief</p>
+                <p style={{ fontSize: 14.5, color: "#e6e6e6", lineHeight: 1.55, margin: 0 }}>&ldquo;{brief.does}&rdquo;</p>
+                <p style={{ fontSize: 12.5, color: "#8a8a8a", lineHeight: 1.55, margin: "12px 0 0" }}>
+                  {brief.industry}{brief.geos?.length ? <> &middot; {brief.geos.join(", ").toLowerCase()}</> : null} &middot; must feel <b style={{ color: "#e6e6e6" }}>{(brief.signal[0] || "clear").toLowerCase()}</b> &middot; {brief.lanes[0] || "evocative"}
+                </p>
+                <div style={{ height: 1, background: "#222", margin: "18px 0" }} />
+                {loading || !concept ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <span className="eps-spin small" />
+                    <span style={{ fontSize: 12.5, color: "#8a8a8a" }}>Shaping the field around <b style={{ color: "#e6e6e6" }}>{concept?.title.toLowerCase() || "your brief"}</b>&hellip;</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="eps-label" style={{ marginBottom: 12 }}>Why this field</p>
+                    <p style={{ fontSize: 12.5, color: "#8a8a8a", lineHeight: 1.55, margin: 0 }}>
+                      Your brief circles <b style={{ color: "#e6e6e6" }}>{concept.title.toLowerCase()}</b>{concept.blurb ? <> — {concept.blurb.charAt(0).toLowerCase() + concept.blurb.slice(1)}</> : "."}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="eps-foot" style={{ flexWrap: "wrap" }}>
+              {keptPills}
+              <span style={{ flex: 1 }} />
+              <span className="eps-khint">Make names <span className="eps-key">⏎</span></span>
+              <button className="eps-btn" disabled={!canNext()} onClick={next}>Make names →</button>
+            </div>
+          </>
+        );
+      }
 
       // 10c · Ingredients
       case 10: return (
@@ -574,19 +692,30 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         </div>
       );
 
-      // 12 · The six
+      // 12 · The six — leader with its story + live domains (desktop), rest dim
       case 12: return (
         <>
           <div className="eps-stage">
             {pick && (
               <>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "clamp(44px, 6vw, 56px)", fontWeight: 700, letterSpacing: "-.035em" }}>{pick.name}</span>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", maxWidth: 560 }}>
+                  <span style={{ fontSize: "clamp(44px, 6vw, 56px)", fontWeight: 700, letterSpacing: "-.035em", cursor: "pointer" }} onClick={() => hear(pick.name)}>{pick.name}</span>
                   <span style={{ fontSize: 22, fontWeight: 700 }}>{scoreOf(pick.name, pick.total)}</span>
                 </div>
-                <p style={{ fontSize: 13, fontFamily: "ui-monospace,'SF Mono',monospace", color: "#8a8a8a", margin: "6px 0 0" }}>
-                  {pickIdea?.seed ? pickIdea.seed + " · " : ""}{pick.domains?.find((d) => d.tld.includes("com"))?.available ? ".com free" : "domains inside"}
+                <p style={{ fontSize: 13.5, color: "#c7c7cc", margin: "8px 0 0", lineHeight: 1.5, maxWidth: "46ch" }}>
+                  {pickIdea?.rationale || pick.verdict || pick.tagline || ""}
                 </p>
+                <div className="eps-sixdoms">
+                  {board === null && <span className="eps-dim" style={{ fontFamily: "ui-monospace,'SF Mono',monospace", fontSize: 13 }}>checking domains&hellip;</span>}
+                  {goodDoms.slice(0, 3).map((d) => (
+                    <div key={d.domain} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14, fontFamily: "ui-monospace,'SF Mono',monospace" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 9, color: "#e6e6e6" }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: d.status === "negotiable" ? "#ffb02e" : "#3ddc84" }} />{d.domain}
+                      </span>
+                      <span style={{ color: "#8a8a8a" }}>{d.status === "negotiable" ? "for sale" : "available"}{domPrice(d) ? ` · ${domPrice(d)}` : ""}</span>
+                    </div>
+                  ))}
+                </div>
                 <div style={{ width: "100%", maxWidth: 560, height: 1, background: "#2a2a2a", margin: "20px 0" }} />
               </>
             )}
@@ -634,8 +763,154 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         </>
       );
 
-      // 14 · Own it
-      case 14: return <OwnIt name={pick?.name || "Aurova"} geos={brief.geos} test={test} />;
+      // 14 · Own it — what's next hub + "grab the domain" and "brand book" views
+      case 14: {
+        const name = pick?.name || "Aurova";
+        const blurb = pickIdea?.rationale || pick?.verdict || pick?.tagline || "";
+        if (own === "domain") return (
+          <>
+            <div className="eps-stage">
+              <div className="eps-owncols">
+                <div>
+                  <p className="eps-kicker" style={{ letterSpacing: ".2em", fontSize: 12, marginBottom: 10 }}>Grab the domain</p>
+                  <h2 style={{ fontSize: "clamp(27px, 4.5vw, 60px)", fontWeight: 700, letterSpacing: "-.045em", lineHeight: 1.06, margin: 0 }}>Where {name} lives</h2>
+                  <p style={{ fontSize: "clamp(13px, 1.4vw, 16px)", color: "#9a9a9a", margin: "12px 0 0", lineHeight: 1.5, maxWidth: "30ch" }}>Pick one — we register it for you in a minute, then point it wherever you build.</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {board === null && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="eps-spin small" /><span className="eps-dim">Querying the registries&hellip;</span></div>
+                  )}
+                  {(moreDoms ? goodDoms : goodDoms.slice(0, 3)).map((d) => {
+                    const selDom = chosenDom?.domain === d.domain;
+                    return (
+                      <button key={d.domain} onClick={() => setDomSel(d.domain)}
+                        style={{ display: "flex", alignItems: "center", gap: 13, padding: "15px 16px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                          background: selDom ? "#fff" : "#161616", color: selDom ? "#000" : "#fff", border: selDom ? "1.5px solid #fff" : "1px solid #2a2a2a" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: d.status === "negotiable" ? "#ffb02e" : selDom ? "#12b981" : "#3ddc84", flex: "0 0 auto" }} />
+                        <span style={{ flex: 1, fontSize: 16, fontFamily: "ui-monospace,'SF Mono',monospace", fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{d.domain}</span>
+                        {selDom
+                          ? <span style={{ fontSize: 12, color: "#12b981", fontWeight: 700 }}>BEST</span>
+                          : <span style={{ fontSize: 11, color: "#8a8a8a" }}>{d.status === "negotiable" ? "for sale" : "available"}</span>}
+                        {domPrice(d) && <span style={{ fontSize: 14, fontFamily: "ui-monospace,'SF Mono',monospace", color: selDom ? "#3a3a3a" : "#8a8a8a" }}>{domPrice(d)}</span>}
+                      </button>
+                    );
+                  })}
+                  {board && !goodDoms.length && <span className="eps-dim">Every close extension is taken — try a prefix like get{name.toLowerCase()}.com.</span>}
+                  {takenDom && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "15px 16px", borderRadius: 16, background: "#0f0f0f", border: "1px solid #202020" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff5f57", flex: "0 0 auto" }} />
+                      <span style={{ flex: 1, fontSize: 16, fontFamily: "ui-monospace,'SF Mono',monospace", fontWeight: 600, color: "#6a6a6a", textDecoration: "line-through" }}>{takenDom.domain}</span>
+                      <span style={{ fontSize: 11, color: "#6a6a6a" }}>taken</span>
+                    </div>
+                  )}
+                  {board && goodDoms.length > 3 && !moreDoms && (
+                    <button className="eps-choice" style={{ fontSize: 12.5, color: "#6a6a6a", textAlign: "center" }} onClick={() => setMoreDoms(true)}>＋ Try more extensions</button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="eps-foot" style={{ flexDirection: "column", gap: 10, alignItems: "stretch" }}>
+              <span className="eps-khint" style={{ alignSelf: "flex-end" }}>Register {chosenDom?.domain || "it"} <span className="eps-key">⏎</span></span>
+              <button className="eps-btn wide" disabled={!chosenDom}
+                onClick={() => chosenDom && window.open(gdUrl(chosenDom.domain), "_blank", "noopener")}>
+                Register {chosenDom?.domain || "your domain"}{domPrice(chosenDom) ? ` · ${domPrice(chosenDom)}` : ""}
+              </button>
+            </div>
+          </>
+        );
+        if (own === "book") return (
+          <>
+            <div className="eps-stage">
+              <div className="eps-owncols" style={{ alignItems: "center" }}>
+                <div style={{ flex: "0 0 auto", maxWidth: 320 }}>
+                  <p className="eps-kicker" style={{ letterSpacing: ".2em", fontSize: 12, marginBottom: 10 }}>Brand book &middot; {name}</p>
+                  <h2 style={{ fontSize: "clamp(27px, 4vw, 52px)", fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1.04, margin: 0 }}>The story behind the name</h2>
+                  <p style={{ fontSize: "clamp(13px, 1.3vw, 15px)", color: "#9a9a9a", margin: "12px 0 0", lineHeight: 1.5 }}>Everything a founder needs to start showing up like a real brand — generated from your name and brief.</p>
+                </div>
+                <div className="eps-bookgrid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, flex: 1, minWidth: 0 }}>
+                  <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid #262626" }}>
+                    <div style={{ height: 74, display: "flex", alignItems: "flex-end", padding: "10px 14px", background: book?.palette?.length ? `linear-gradient(120deg, ${book.palette.slice(0, 3).join(",")})` : "linear-gradient(120deg,#ff9e7a,#c9b6ff,#7c9cff)" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,.3)" }}>Palette</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, padding: "12px 14px", background: "#111" }}>
+                      {(book?.palette?.length ? book.palette : ["", "", "", ""]).slice(0, 4).map((hex, i) => (
+                        <span key={i} className={hex ? undefined : "eps-pulse"} style={{ width: 26, height: 26, borderRadius: 7, background: hex || "#1c1c1c", border: "1px solid #333" }} />
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ borderRadius: 18, border: "1px solid #262626", background: "#111", padding: 14, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    <span className="eps-label" style={{ margin: 0 }}>Wordmark</span>
+                    <span style={{ fontSize: "clamp(26px, 2.5vw, 34px)", fontWeight: 700, letterSpacing: "-.03em", marginTop: 6 }}>{name}</span>
+                  </div>
+                  <div style={{ borderRadius: 18, border: "1px solid #262626", background: "#111", padding: 14 }}>
+                    <span className="eps-label" style={{ margin: 0 }}>Voice</span>
+                    <p className={book ? undefined : "eps-pulse"} style={{ fontSize: 14, color: "#e6e6e6", margin: "8px 0 0", lineHeight: 1.5 }}>{book ? (book.voice || "Warm, clear, quietly confident.") : "Reading your brief…"}</p>
+                  </div>
+                  <div style={{ borderRadius: 18, border: "1px solid #262626", background: "#111", padding: 14 }}>
+                    <span className="eps-label" style={{ margin: 0 }}>Tagline</span>
+                    <p className={book ? undefined : "eps-pulse"} style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-.01em", color: "#fff", margin: "8px 0 0", lineHeight: 1.35 }}>{book ? `“${book.tagline || name}.”`.replace("..", ".") : "…"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="eps-foot" style={{ flexDirection: "column", gap: 10, alignItems: "stretch" }}>
+              <span className="eps-khint" style={{ alignSelf: "flex-end" }}>Open full brand book <span className="eps-key">⏎</span></span>
+              <button className="eps-btn wide" onClick={() => setBookOpen(true)}>Open full brand book →</button>
+            </div>
+          </>
+        );
+        // the hub
+        return (
+          <>
+            <div className="eps-stage">
+              <div className="eps-owncols">
+                <div style={{ textAlign: "center" }} className="eps-ownhead">
+                  <p className="eps-kicker" style={{ letterSpacing: ".2em", fontSize: 11, margin: "0 0 6px" }}>Your name</p>
+                  <h2 style={{ fontSize: "clamp(44px, 6vw, 76px)", fontWeight: 700, letterSpacing: "-.045em", lineHeight: 0.98, margin: 0 }}>{name}</h2>
+                  {blurb && <p style={{ fontSize: "clamp(13px, 1.4vw, 16px)", color: "#9a9a9a", margin: "10px 0 0", lineHeight: 1.5, maxWidth: "32ch", marginLeft: "auto", marginRight: "auto" }}>{blurb}</p>}
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "18px 0 12px" }}>
+                    <span style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: "50%", background: "#fff", color: "#000", fontSize: 12, flex: "0 0 auto" }}>✓</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em" }}>What's next</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    <button onClick={() => setOwn("domain")}
+                      style={{ display: "flex", alignItems: "center", gap: 13, padding: 15, borderRadius: 16, background: "#fff", color: "#000", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 15, fontWeight: 700 }}>Grab the domain</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#6a6a6a", marginTop: 2 }}>
+                          {board === undefined || board === null ? "checking availability…" : bestDom ? `${bestDom.domain} is ${bestDom.status === "negotiable" ? "for sale" : "free"}${domPrice(bestDom) ? ` · from ${domPrice(bestDom)}` : ""}` : "close variants are open"}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 17, flex: "0 0 auto" }}>→</span>
+                    </button>
+                    <button onClick={() => setOwn("book")}
+                      style={{ display: "flex", alignItems: "center", gap: 13, padding: 15, borderRadius: 16, background: "#161616", color: "#fff", border: "1px solid #2a2a2a", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 15, fontWeight: 700 }}>Your brand book</span>
+                        <span style={{ display: "block", fontSize: 12, color: "#8a8a8a", marginTop: 2 }}>Voice, colours &amp; the story behind {name}</span>
+                      </span>
+                      <span style={{ fontSize: 17, flex: "0 0 auto" }}>→</span>
+                    </button>
+                  </div>
+                  <p className="eps-kicker" style={{ fontSize: 11, letterSpacing: ".1em", color: "#5c5c5c", margin: "18px 0 9px" }}>Coming soon</p>
+                  <div style={{ display: "flex", gap: 7 }}>
+                    {["Logo", "Website", "Trademark"].map((c) => (
+                      <span key={c} style={{ flex: 1, textAlign: "center", fontSize: 11.5, fontWeight: 600, color: "#8a8a8a", padding: "10px 4px", borderRadius: 11, background: "#111", border: "1px solid #242424" }}>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="eps-foot">
+              <button className="eps-choice" style={{ fontSize: 12.5, color: "#6a6a6a" }} onClick={() => goto(13)}>← Back to the reveal</button>
+              <span style={{ flex: 1 }} />
+              <span className="eps-khint">Grab the domain <span className="eps-key">⏎</span></span>
+            </div>
+          </>
+        );
+      }
 
       default: return null;
     }
@@ -670,21 +945,21 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
   }
 
   const lights = step === 13;
-  const showTop = step >= 1 && step !== 11 && step !== 13 && step !== 14;
+  const hub = step === 14;
+  const showTop = step >= 1 && step !== 11;
+  // The › forward arrow lives on the pure question beats only (per the design).
+  const canForward = step >= 2 && step <= 8 && canNext();
 
   return (
-    <div className={"eps" + (lights ? " lights" : "")}>
-      {showTop ? (
+    <div className={"eps" + (lights ? " lights" : "") + (hub ? " hub" : "")}>
+      {showTop && (
         <div className="eps-top">
           <button className="eps-back" onClick={back}>‹</button>
           <span className="eps-meta">{meta ? `${meta} / 12` : ""}</span>
+          <button className="eps-back" style={{ marginLeft: 0, marginRight: -10, visibility: canForward ? "visible" : "hidden", color: "#8a8a8a" }}
+            onClick={next}>›</button>
         </div>
-      ) : (step === 13 || step === 14) ? (
-        <div className="eps-top">
-          <button className="eps-back" onClick={back}>‹</button>
-          <span className="eps-meta"></span>
-        </div>
-      ) : null}
+      )}
 
       <div key={step} style={{ display: "contents" }}>{stage()}</div>
 
@@ -713,11 +988,16 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
             </div>
             <p className="eps-hint" style={{ fontSize: 12, marginTop: 18 }}>Related · translations · roots — one field</p>
           </div>
-          <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px" }}>
-            <span className="eps-dim"><b style={{ color: "#fff" }}>{kept.length}</b> kept</span>
-            <span className="eps-dim">{isTouch() ? "Tap outside to close" : <>Press <span className="eps-key" style={{ fontSize: 11 }}>esc</span> to close</>}</span>
+          <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "0 28px" }}>
+            {keptPills}
+            <span className="eps-dim" style={{ flex: "0 0 auto" }}>{isTouch() ? "Tap outside to close" : <>Press <span className="eps-key" style={{ fontSize: 11 }}>esc</span> to close</>}</span>
           </div>
         </div>
+      )}
+
+      {/* the full brand book (beta look) over the stage */}
+      {bookOpen && pick && (
+        <BrandBook brief={brief} name={pick.name} skin="beta" onClose={() => setBookOpen(false)} />
       )}
 
       {test && (
@@ -766,70 +1046,4 @@ function Caret() {
 
 function isTouch() {
   return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
-}
-
-// 14 · Own it — real availability + real prices for the chosen name.
-function OwnIt({ name, geos, test }: { name: string; geos?: string[]; test?: boolean }) {
-  const [doms, setDoms] = useState<DomainCard[] | null>(test ? [
-    { domain: name.toLowerCase() + ".com", status: "available", price: "$12" },
-    { domain: name.toLowerCase() + ".io", status: "available", price: "$38" },
-    { domain: name.toLowerCase() + ".ai", status: "available", price: "$70" },
-  ] : null);
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (test) return;
-    let live = true;
-    fetchDomainBoard(name, geos).then((b) => {
-      if (!live) return;
-      const order = (d: DomainCard) => [".com", ".io", ".ai"].indexOf(d.tld || "") + 1 || 9;
-      const good = b.tlds.filter((d) => d.status === "available" || d.status === "negotiable").sort((a, c) => order(a) - order(c));
-      const list = good.length ? good.slice(0, 3) : b.variants.slice(0, 3);
-      setDoms(list);
-    }).catch(() => setDoms([]));
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
-
-  const priceOf = (d: DomainCard) => d.price || d.offerPrice || "";
-  const lead = doms?.[0];
-  const gd = (domain: string) => `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
-  const share = async () => {
-    const text = `Help me pick a name — I'm going with ${name}. Thoughts?`;
-    try {
-      if (navigator.share) { await navigator.share({ text }); return; }
-      await navigator.clipboard.writeText(text);
-      setCopied(true); setTimeout(() => setCopied(false), 1500);
-    } catch { /* dismissed */ }
-  };
-
-  return (
-    <>
-      <div className="eps-stage" style={{ alignItems: "center", textAlign: "center" }}>
-        <h2 style={{ fontSize: "clamp(50px, 7vw, 64px)", fontWeight: 700, letterSpacing: "-.04em", margin: 0 }}>{name}</h2>
-        <div style={{ width: 40, height: 1, background: "#333", margin: "24px 0" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 13, width: "100%", maxWidth: 360 }}>
-          {doms === null ? (
-            <span className="eps-dim">Checking the registries<Caret /></span>
-          ) : !doms.length ? (
-            <span className="eps-dim">Every close domain is taken — a prefix (get{name.toLowerCase()}.com) can still be yours.</span>
-          ) : doms.map((d, i) => (
-            <div key={d.domain} className={"eps-dom" + (i === 0 ? " lead" : "")}>
-              <span className="d"><span className="dot" style={{ background: d.status === "negotiable" ? "#ffb84d" : "#3ddc84" }} />{d.domain}</span>
-              <span className="p">{priceOf(d) || (d.status === "negotiable" ? "for sale" : "free")}</span>
-            </div>
-          ))}
-        </div>
-        <p className="eps-hint" style={{ marginTop: 24 }}>Brand book included.</p>
-      </div>
-      <div className="eps-foot" style={{ flexDirection: "column", gap: 12, alignItems: "stretch" }}>
-        <button className="eps-btn wide" disabled={!lead}
-          onClick={() => lead && window.open(gd(lead.domain), "_blank", "noopener")}>
-          Make it mine{lead && priceOf(lead) ? ` · ${priceOf(lead)}` : ""}
-        </button>
-        <button className="eps-choice" style={{ textAlign: "center", fontSize: 13, color: "#8a8a8a" }} onClick={share}>
-          {copied ? "Copied — send it to a friend" : "Share for a vote first"}
-        </button>
-      </div>
-    </>
-  );
 }
