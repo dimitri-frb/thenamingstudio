@@ -3,12 +3,13 @@
 // the climax. Faithful to the Claude Design import (Naming Studio - Kinetic
 // Flow.dc.html), mobile + desktop (keyboard-first: type, arrows pick, ⏎ advances).
 // Reuses the live data layer (naming.*, fetchDomainBoard, captureLead).
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   naming, fetchDomainBoard, captureLead, logDecision,
   type Brief, type Comparison, type Concept, type NameIdea, type DomainCard,
 } from "../lib/namingApi";
 import { setTestMode } from "../lib/requestLog";
+import { recommendLanes } from "../lib/localStudio";
 import { MOCK } from "../cosmos/mock";
 import "./epsilon.css";
 
@@ -36,6 +37,8 @@ interface FieldWord { w: string; note?: string; lang?: string }
 const TEST_FIELD: FieldWord[] = [
   { w: "dawn" }, { w: "bloom" }, { w: "aurora" }, { w: "inhale" }, { w: "spark" },
   { w: "morgenrot", lang: "DE" }, { w: "eos" }, { w: "alba", lang: "IT" }, { w: "lucere", lang: "LA" },
+  { w: "ember" }, { w: "aube", lang: "FR" }, { w: "nova" }, { w: "kindle" }, { w: "oriri", lang: "LA" },
+  { w: "first light" }, { w: "matin", lang: "FR" }, { w: "gleam" }, { w: "albor", lang: "ES" },
 ];
 
 // Which screens show the "NN / 12" counter (per the design).
@@ -46,7 +49,6 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
   const [step, setStep] = useState(0);
   const [brief, setBrief] = useState<Brief>(test ? { ...MOCK.brief, lanes: ["evocative"] } : EMPTY);
   const [who, setWho] = useState({ name: "", email: "" });
-  const [customSpace, setCustomSpace] = useState("");
   const [feelings, setFeelings] = useState<string[]>(test ? FEELING_FALLBACK : []);
   const [feelIdx, setFeelIdx] = useState(0);
   const [concept, setConcept] = useState<Concept | null>(test ? { title: "First light", blurb: "Dawn, firsts and new beginnings.", lane: "evocative" } : null);
@@ -62,6 +64,27 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
 
   const set = (p: Partial<Brief>) => setBrief((b) => ({ ...b, ...p }));
   const goto = useCallback((n: number) => { setStep(n); setErr(""); }, []);
+
+  // ── multi-select: several spaces / kinds can be picked; one recommended
+  // option is always pre-selected so ⏎ can simply advance. ──────────────────
+  const spaceSel = (brief.industry || "").split(", ").filter(Boolean);
+  const presetSpaces = spaceSel.filter((s) => SPACES.includes(s));
+  const customSpace = spaceSel.find((s) => !SPACES.includes(s)) || "";
+  const applySpaces = (presets: string[], custom: string) =>
+    set({ industry: [...presets, ...(custom.trim() ? [custom] : [])].join(", ") });
+  const toggleSpace = (s: string) =>
+    applySpaces(presetSpaces.includes(s) ? presetSpaces.filter((x) => x !== s) : [...presetSpaces, s], customSpace);
+  const toggleLane = (l: string) =>
+    set({ lanes: brief.lanes.includes(l) ? brief.lanes.filter((x) => x !== l) : [...brief.lanes, l] });
+  const recLane = (() => {
+    const r = recommendLanes({ ...brief })[0];
+    return KINDS.some((k) => k.lane === r) ? r : "evocative";
+  })();
+  useEffect(() => {
+    if (step === 5 && !brief.industry.trim()) set({ industry: SPACES[0] });
+    if (step === 8 && !brief.lanes.length) set({ lanes: [recLane] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── background fetches (skipped in test mode) ─────────────────────────────
   const feelBusy = useRef(false);
@@ -91,7 +114,7 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
     naming.relate(brief, "", concept.title, []).then((r) => {
       const flat: FieldWord[] = [];
       const groups = r.groups || [];
-      for (let i = 0; i < 4; i++) groups.forEach((g) => { const w = g.words[i]; if (w && flat.length < 12 && !flat.some((f) => f.w === w.w)) flat.push({ w: w.w, note: w.note, lang: w.lang }); });
+      for (let i = 0; i < 5; i++) groups.forEach((g) => { const w = g.words[i]; if (w && flat.length < 18 && !flat.some((f) => f.w === w.w)) flat.push({ w: w.w, note: w.note, lang: w.lang }); });
       setField(flat);
     }).catch(() => setErr("The words didn't come. Go back and try again."))
       .finally(() => { fieldBusy.current = false; });
@@ -229,13 +252,17 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         return;
       }
       if (e.key === "Enter") { next(); e.preventDefault(); return; }
-      const inField = (e.target as HTMLElement)?.tagName === "INPUT";
-      if (inField) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (step === 5 && (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown")) {
-        const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
-        const cur = Math.max(0, SPACES.indexOf(brief.industry));
-        set({ industry: SPACES[(cur + dir + SPACES.length) % SPACES.length] });
-        setCustomSpace(""); e.preventDefault();
+        // arrows swap the selection while it's single; with several picked, tap/click rules
+        const sel = (brief.industry || "").split(", ").filter((s) => SPACES.includes(s));
+        if (sel.length <= 1) {
+          const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
+          const cur = Math.max(0, SPACES.indexOf(sel[0] || ""));
+          set({ industry: SPACES[(cur + dir + SPACES.length) % SPACES.length] });
+        }
+        e.preventDefault();
       }
       if (step === 6 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         const dir = e.key === "ArrowLeft" ? -1 : 1;
@@ -248,9 +275,12 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         setFeelIdx((i) => (i + dir + n) % n); e.preventDefault();
       }
       if (step === 8 && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-        const dir = e.key === "ArrowUp" ? -1 : 1;
-        const cur = Math.max(0, KINDS.findIndex((k) => brief.lanes[0] === k.lane));
-        set({ lanes: [KINDS[(cur + dir + KINDS.length) % KINDS.length].lane] }); e.preventDefault();
+        if (brief.lanes.length <= 1) {
+          const dir = e.key === "ArrowUp" ? -1 : 1;
+          const cur = Math.max(0, KINDS.findIndex((k) => brief.lanes[0] === k.lane));
+          set({ lanes: [KINDS[(cur + dir + KINDS.length) % KINDS.length].lane] });
+        }
+        e.preventDefault();
       }
       if (step === 12) {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -342,9 +372,9 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         <>
           <div className="eps-stage">
             <p className="eps-kicker">The problem you kill</p>
-            <input className="eps-input big" autoFocus value={brief.problem} enterKeyHint="next"
+            <GrowArea className="eps-input big" autoFocus value={brief.problem}
               placeholder="Naming takes founders weeks — and the good domains are gone"
-              onChange={(e) => set({ problem: e.target.value })} onKeyDown={onEnter} style={{ marginTop: 24 }} />
+              onChange={(v) => set({ problem: v })} onKeyDown={onEnter} style={{ marginTop: 24 }} />
             <p className="eps-hint">Say it like you'd say it to a friend.</p>
           </div>
           {footNext()}
@@ -357,22 +387,23 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       case 5: return (
         <>
           <div className="eps-stage">
-            <p className="eps-kicker" style={{ marginBottom: 22 }}>Your space is…</p>
+            <p className="eps-kicker" style={{ marginBottom: 22 }}>Your space is… <span style={{ color: "#4a4a4a", textTransform: "none", letterSpacing: 0 }}>tap all that fit</span></p>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "flex-start" }}>
-              {SPACES.map((s) => {
-                const on = brief.industry === s;
+              {SPACES.map((s, i) => {
+                const on = presetSpaces.includes(s);
                 return (
                   <button key={s} className={"eps-choice" + (on ? " on" : "")}
                     style={{ fontSize: on ? "clamp(40px, 6vw, 52px)" : "clamp(28px, 5vw, 40px)", fontWeight: 700, letterSpacing: "-.03em" }}
-                    onClick={() => { set({ industry: s }); setCustomSpace(""); }}>
-                    {s}.{on && <div className="eps-uline" style={{ width: 74 }} />}
+                    onClick={() => toggleSpace(s)}>
+                    {s}.{i === 0 && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: on ? "#8a8a8a" : "#3a3a3a", marginLeft: 12, verticalAlign: "middle" }}>Recommended</span>}
+                    {on && <div className="eps-uline" style={{ width: 74 }} />}
                   </button>
                 );
               })}
             </div>
             <input className="eps-input" value={customSpace} placeholder="Or type your own…" enterKeyHint="next"
               style={{ marginTop: 26, fontSize: 16, maxWidth: 300 }}
-              onChange={(e) => { setCustomSpace(e.target.value); set({ industry: e.target.value }); }}
+              onChange={(e) => applySpaces(presetSpaces, e.target.value)}
               onKeyDown={onEnter} />
           </div>
           <div className="eps-foot">
@@ -445,12 +476,14 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       case 8: return (
         <>
           <div className="eps-stage">
+            <p className="eps-kicker" style={{ marginBottom: 24 }}>The kind of name… <span style={{ color: "#4a4a4a", textTransform: "none", letterSpacing: 0 }}>tap all that fit</span></p>
             <div className="eps-kinds" style={{ display: "grid", gap: "18px 56px" }}>
               {KINDS.map((k) => {
-                const on = brief.lanes[0] === k.lane;
+                const on = brief.lanes.includes(k.lane);
                 return (
-                  <button key={k.lane} className={"eps-choice" + (on ? " on" : "")} onClick={() => set({ lanes: [k.lane] })}>
+                  <button key={k.lane} className={"eps-choice" + (on ? " on" : "")} onClick={() => toggleLane(k.lane)}>
                     <span style={{ fontSize: on ? 28 : 24, fontWeight: 700, letterSpacing: "-.02em" }}>{k.label}</span>
+                    {k.lane === recLane && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: on ? "#8a8a8a" : "#3a3a3a", marginLeft: 10 }}>Recommended</span>}
                     {on && <div className="eps-uline" style={{ width: 56 }} />}
                     <p style={{ fontSize: 13, color: on ? "#8a8a8a" : "#4a4a4a", margin: "5px 0 0", lineHeight: 1.5 }}>
                       {k.desc} <span style={{ fontFamily: "ui-monospace,'SF Mono',monospace", fontSize: 11 }}>{k.ex}</span>
@@ -482,7 +515,7 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
                 {err || <>Reading your brief, finding the words<Caret /></>}
               </p>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "baseline", maxWidth: 520 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 18px", alignItems: "baseline", maxWidth: 680 }}>
                 {field.map((f, i) => (
                   <button key={f.w} className={"eps-word" + (isKept(f.w) ? " on" : "")}
                     style={{ fontSize: SIZES[i % SIZES.length], animation: `eps-floaty ${FLOATS[i % FLOATS.length]}s ease-in-out infinite ${(i * 0.13).toFixed(2)}s` }}
@@ -613,8 +646,8 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
       <>
         <div className="eps-stage">
           <h2 className="eps-h">{q}</h2>
-          <input className="eps-input" autoFocus value={val} placeholder={ph} enterKeyHint="next"
-            onChange={(e) => on(e.target.value)} onKeyDown={onEnter} style={{ marginTop: 30 }} />
+          <GrowArea className="eps-input" autoFocus value={val} placeholder={ph}
+            onChange={on} onKeyDown={onEnter} style={{ marginTop: 30 }} />
           <p className="eps-hint">{hint}</p>
         </div>
         {footNext()}
@@ -699,6 +732,31 @@ export function EpsilonFlow({ test, onExit }: { test?: boolean; onExit: () => vo
         </div>
       )}
     </div>
+  );
+}
+
+// An underline textarea that grows with its content (the brief answers wrap
+// over several lines like the design; ⏎ still advances via onKeyDown).
+function GrowArea({ value, onChange, onKeyDown, className, style, placeholder, autoFocus }: {
+  value: string; onChange: (v: string) => void; onKeyDown: (e: React.KeyboardEvent) => void;
+  className?: string; style?: React.CSSProperties; placeholder?: string; autoFocus?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = "0px";
+      el.style.height = el.scrollHeight + "px";
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [value]);
+  return (
+    <textarea ref={ref} rows={1} className={className} style={style} placeholder={placeholder}
+      autoFocus={autoFocus} enterKeyHint="next" value={value}
+      onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown} />
   );
 }
 

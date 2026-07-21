@@ -97,6 +97,7 @@
   padding: 0 0 12px;
   outline: none;
   resize: none;
+  overflow: hidden;   /* textareas auto-grow instead of scrolling */
   transition: border-color .2s;
 }
 .eps-input:focus { border-bottom-color: #fff; }
