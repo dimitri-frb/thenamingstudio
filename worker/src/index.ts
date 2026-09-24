@@ -395,15 +395,18 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
     `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}]}.` }),
 
-  // 03 The words: ~96 real words across 6 styles, each with a short meaning (+ language tag).
-  wrapwords: (b) => ({ model: MODEL.smart, max: 4600, prompt:
+  // 03 The words: ~96 real words across 6 styles, generated as TWO parallel
+  // halves (extra=false → the 3 territory styles; extra=true → 3 complementary
+  // styles) so the words page fills in half the time.
+  wrapwords: (b) => ({ model: MODEL.smart, max: 2600, prompt:
     `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n` +
-    `Produce 6 word styles, 16 words each (96 total): the first 3 styles ARE the three territories above (same names, same order); ` +
-    `then 3 complementary styles you choose to widen the hunt (pick 3 that fit the brief from: Motion, Clarity, Texture, Sound, Place, Languages, Craft, Nature).\n` +
+    (b.payload?.extra
+      ? `The territory styles are being produced separately. Produce 3 COMPLEMENTARY word styles that widen the hunt from different angles: pick the 3 best fits for this brief from Motion, Clarity, Texture, Sound, Place, Languages, Craft, Nature (never reuse a territory name). 16 words each (48 total).\n`
+      : `Produce the 3 territory styles: your styles ARE the three territories above, same names, same order, 16 words each (48 total).\n`) +
     `Each word: "w" = one real word (lowercase unless a proper noun), "m" = its meaning in 2 to 5 plain words, and "lang" = a 2-letter uppercase code (IT, LA, GR, ES, FR, JP…) ONLY when the word is not English. ` +
     `Spread rich material: English words, Latin/Greek roots, foreign gems, myth, concrete images. Short, evocative, sayable words a brand name could grow from. No duplicates, nothing generic (avoid: solution, system, tech).\n` +
-    `Return ONLY JSON {"styles":[{"name":"...","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 6 styles of exactly 16 words.` }),
+    `Return ONLY JSON {"styles":[{"name":"...","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 3 styles of exactly 16 words.` }),
 
   // 04 The names: six scored names coined from the starred words. Enriched server-side
   // with a real free domain per name (RDAP), so "domains checked" is true.

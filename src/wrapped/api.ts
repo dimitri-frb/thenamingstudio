@@ -103,14 +103,19 @@ export const wrapApi = {
   concept: (sentence: string, chips: string[]) =>
     gen<WConcept>("wrapconcept", { sentence, chips }, () => SAMPLE.concept),
 
-  words: (sentence: string, concept: string, territories: WTerritory[]) =>
-    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories }, () => ({ styles: SAMPLE.styles })),
+  // Two parallel halves: extra=false → the 3 territory styles, extra=true → 3
+  // complementary styles. Fired together, merged by the caller, half the wait.
+  words: (sentence: string, concept: string, territories: WTerritory[], extra: boolean) =>
+    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, extra }, () =>
+      ({ styles: extra ? SAMPLE.styles.slice(3) : SAMPLE.styles.slice(0, 3) })),
 
   names: async (sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []) => {
     const r = await gen<{ names: WName[] }>("wrapnames", { sentence, chips, concept, words, exclude }, () =>
       ({ names: exclude.length ? SAMPLE.moreNames : SAMPLE.names }));
     // The model sometimes wraps taglines in markdown emphasis; never show raw *…*.
     r?.names?.forEach((n) => { n.tagline = (n.tagline || "").replace(/^[*_\s]+|[*_\s]+$/g, ""); });
+    // Strongest first, whatever order the model chose (the top card is the top pick).
+    r?.names?.sort((a, b) => (b.score || 0) - (a.score || 0));
     return r;
   },
 

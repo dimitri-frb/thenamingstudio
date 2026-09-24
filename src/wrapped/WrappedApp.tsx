@@ -57,11 +57,17 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const [retryTick, setRetryTick] = useState(0);
   const startedAt = useRef(Date.now());
   const conceptReq = useRef("");
+  const conceptFor = useRef("");   // the sentence the current concept was built from
   const wordsReq = useRef("");
+  const wordsParts = useRef<{ a?: WStyle[]; b?: WStyle[] }>({});
   const bookReq = useRef("");
+  const namesPre = useRef<{ key: string; p: Promise<{ names: WName[] } | null> } | null>(null);
+  const stepRef = useRef(step);
+  stepRef.current = step;
 
   const fail = (k: string, v: boolean) => setFails((f) => ({ ...f, [k]: v }));
   const retry = (k: string) => { fail(k, false); if (k === "book") bookReq.current = ""; setRetryTick((t) => t + 1); };
+  const starKey = (ws: WWord[]) => ws.map((w) => w.w).sort().join("|");
 
   useEffect(() => { setTestMode(test); }, [test]);
 
@@ -79,6 +85,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       if (snap?.sentence && snap.step && snap.step !== "land") {
         setProcessId(snap.process);
         setSentence(snap.sentence);
+        if (snap.concept) conceptFor.current = snap.sentence;
         setChips(snap.chips || []);
         setConcept(snap.concept || null);
         setStyles(snap.styles || null);
@@ -100,6 +107,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     startedAt.current = s.at;
     setSentence(s.sentence);
     setChips(s.chips || []);
+    if (s.concept) conceptFor.current = s.sentence;
     setConcept(s.concept || null);
     setStarred(s.starred || []);
     setNames(s.names || null);
@@ -142,27 +150,67 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     return () => clearTimeout(t);
   }, [test, step, sentence]);
 
-  useEffect(() => { // concept: needed from 02 on
-    if (test || !sentence.trim()) return;
-    if (concept || !["brief", "words", "names"].includes(step)) return;
-    const key = sentence.trim() + "|" + retryTick;
-    if (conceptReq.current === key) return;
-    conceptReq.current = key;
-    wrapApi.concept(sentence.trim(), chips).then((c) => {
-      if (c?.concept) { setConcept(c); fail("concept", false); } else fail("concept", true);
-    });
+  useEffect(() => { // concept: starts while the founder is STILL TYPING the ask (debounced)
+    if (test) return;
+    const s = sentence.trim();
+    if (s.length < 12) return;
+    if (concept && conceptFor.current === s) return;
+    const go = () => {
+      const key = s + "|" + retryTick;
+      if (conceptReq.current === key) return;
+      conceptReq.current = key;
+      wrapApi.concept(s, chips).then((c) => {
+        if (conceptReq.current !== key) return; // superseded by an edit
+        if (c?.concept) {
+          // A concept for a rewritten brief invalidates everything built downstream.
+          if (conceptFor.current && conceptFor.current !== s) {
+            setStyles(null); wordsParts.current = {}; wordsReq.current = "";
+            setStarred([]); setNames(null); namesPre.current = null;
+          }
+          conceptFor.current = s;
+          setConcept(c);
+          fail("concept", false);
+        } else {
+          conceptReq.current = "";
+          if (stepRef.current !== "ask") fail("concept", true); // silent while still typing
+        }
+      });
+    };
+    if (step === "ask" || step === "land") { const t = setTimeout(go, 1400); return () => clearTimeout(t); }
+    if (["brief", "words", "names"].includes(step)) go();
   }, [test, step, sentence, chips, concept, retryTick]);
 
-  useEffect(() => { // words: precharged as soon as the concept lands (while 02 is read)
+  useEffect(() => { // words: both halves fired the instant the concept lands, shown as they arrive
     if (test || !concept || styles) return;
-    if (!["brief", "words"].includes(step)) return;
     const key = concept.concept + "|" + retryTick;
     if (wordsReq.current === key) return;
     wordsReq.current = key;
-    wrapApi.words(sentence.trim(), concept.concept, concept.territories).then((r) => {
-      if (r?.styles?.length) { setStyles(r.styles); fail("words", false); } else fail("words", true);
-    });
-  }, [test, step, concept, styles, sentence, retryTick]);
+    wordsParts.current = {};
+    const s = sentence.trim();
+    const put = (which: "a" | "b", r: { styles: WStyle[] } | null) => {
+      if (wordsReq.current !== key) return; // superseded
+      if (r?.styles?.length) {
+        wordsParts.current[which] = r.styles;
+        const { a, b } = wordsParts.current;
+        if (a) { setStyles(b ? [...a, ...b] : a); fail("words", false); } // territories first, extras appended
+      } else if (which === "a" && !wordsParts.current.a) {
+        fail("words", true); // the territory half is the page's backbone
+      }
+    };
+    wrapApi.words(s, concept.concept, concept.territories, false).then((r) => put("a", r));
+    wrapApi.words(s, concept.concept, concept.territories, true).then((r) => put("b", r));
+  }, [test, concept, styles, sentence, retryTick]);
+
+  useEffect(() => { // names: pre-coined in the background while the founder is still starring
+    if (test || step !== "words" || names?.length || starred.length < 2) return;
+    const key = starKey(starred);
+    if (namesPre.current?.key === key) return;
+    const t = setTimeout(() => {
+      namesPre.current = { key, p: wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred) };
+    }, 1600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, step, starred, names, sentence, chips, concept]);
 
   useEffect(() => { // book + domain board: precharged the moment a name is picked
     if (!picked) return;
@@ -207,7 +255,11 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     if (names?.length || namesBusy) return;
     setNamesBusy(true);
     fail("names", false);
-    const r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred);
+    // Use the background pre-coined batch when it matches the final starred set.
+    const key = starKey(starred);
+    const pre = namesPre.current?.key === key ? namesPre.current.p : null;
+    let r = pre ? await pre : null;
+    if (!r?.names?.length) r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred);
     setNamesBusy(false);
     if (!r?.names?.length) { fail("names", true); return; }
     setNames(r.names);
