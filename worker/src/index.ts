@@ -30,6 +30,7 @@ export interface Env {
                            // (Domainr, now part of Fastly): available / for-sale / taken
   GODADDY_KEY?: string;    // optional: GoDaddy API key (buy-now prices for for-sale domains)
   GODADDY_SECRET?: string; // optional: GoDaddy API secret (paired with GODADDY_KEY)
+  GOOGLE_CLIENT_ID?: string; // optional: Google OAuth Web client id (verifies sign-in tokens)
 }
 
 const MODEL = {
@@ -105,6 +106,19 @@ export default {
       return json(await inpiCheck(env, name, classes), env);
     }
 
+    // Generic funnel event ("search", "pick", "domain", "logo", "book", "done"…).
+    // No Claude call, just logged centrally so the admin funnel is real.
+    if (phase === "track") {
+      const ev = String(body?.event || "track").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "track";
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload }, body.payload || {}));
+      return json({ ok: true }, env);
+    }
+
+    // ── Accounts (Google sign-in + saved searches, stored in the LOG KV) ──
+    if (phase === "auth-google") return json(await authGoogle(env, body), env);
+    if (phase === "me") return json(await whoAmI(env, body), env);
+    if (phase === "search-put") return json(await searchPut(env, body), env);
+
     // Lead capture (sign-up at step 1, or the email gate). No Claude call, just logged.
     if (phase === "lead") {
       if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, body.payload || {}));
@@ -161,6 +175,7 @@ export default {
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
+      if (phase === "wrapnames") data = await enrichWrapNames(data);
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
@@ -362,6 +377,76 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `If there are at least 5 user answers, set done true and produce the brief; otherwise ask ONE warm, specific next question and set done false. ` +
     `Return JSON {"say":"your line","done":false,"brief":{"does":"","industry":"","problem":"","audience":"","values":"","uvp":"","signal":[],"avoid":[],"tone":[],"lanes":[]}} (omit brief unless done).` }),
 
+  /* ---------------- Wrapped flow (the live app) ---------------- */
+  // 01 The ask: parse the sentence into 3 editable chips (industry, reach, audience).
+  wrapchips: (b) => ({ model: MODEL.fast, max: 160, prompt:
+    `A founder describes what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}".\n` +
+    `Extract exactly 3 short tags: (1) the industry or model (e.g. "B2B SaaS", "D2C brand", "Marketplace", "Coffee brand"), ` +
+    `(2) the reach ("Global" unless the sentence names a market, then that market), (3) the audience (e.g. "Founders", "Students", "Restaurants"). ` +
+    `1-2 words each, Title Case, in that order.\nReturn ONLY JSON {"chips":["...","...","..."]}.` }),
+
+  // 02 Your brief, wrapped: the concept + one paragraph + three inspiration territories.
+  wrapconcept: (b) => ({ model: MODEL.smart, max: 650, prompt:
+    `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
+    `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
+    `Distill what their NAME should feel like.\n` +
+    `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
+    `2) "para": 2 sentences (max 40 words total) speaking directly to the founder as "you", proving you understood what they're building and why the name matters for it. Plain, warm, confident. Never repeat their words back.\n` +
+    `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
+    `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}]}.` }),
+
+  // 03 The words: ~96 real words across 6 styles, each with a short meaning (+ language tag).
+  wrapwords: (b) => ({ model: MODEL.smart, max: 4600, prompt:
+    `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
+    `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n` +
+    `Produce 6 word styles, 16 words each (96 total): the first 3 styles ARE the three territories above (same names, same order); ` +
+    `then 3 complementary styles you choose to widen the hunt (pick 3 that fit the brief from: Motion, Clarity, Texture, Sound, Place, Languages, Craft, Nature).\n` +
+    `Each word: "w" = one real word (lowercase unless a proper noun), "m" = its meaning in 2 to 5 plain words, and "lang" = a 2-letter uppercase code (IT, LA, GR, ES, FR, JP…) ONLY when the word is not English. ` +
+    `Spread rich material: English words, Latin/Greek roots, foreign gems, myth, concrete images. Short, evocative, sayable words a brand name could grow from. No duplicates, nothing generic (avoid: solution, system, tech).\n` +
+    `Return ONLY JSON {"styles":[{"name":"...","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 6 styles of exactly 16 words.` }),
+
+  // 04 The names: six scored names coined from the starred words. Enriched server-side
+  // with a real free domain per name (RDAP), so "domains checked" is true.
+  wrapnames: (b) => ({ model: MODEL.opus, max: 2200, prompt:
+    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n\n` +
+    `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
+    `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` +
+    `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
+    `Coin exactly 6 brand names built from and around that material. Every one must be a name you would stake the studio's reputation on: no filler, no near-duplicates, nothing generic.\n\n` +
+    `WHAT GREAT LOOKS LIKE:\n` +
+    `- Short: 1 to 3 syllables, ideally 4 to 8 letters. Sayable once, spellable from hearing.\n` +
+    `- Original and evocative: it suggests a feeling tied to this brief, never literally describes the product.\n` +
+    `- Ownable: distinctive enough to be a real trademark.\n` +
+    `- Sound: real mouthfeel and rhythm.\n\n` +
+    `TECHNIQUES, use a spread: a real word repurposed; a blend of two starred words; a coined word from a Latin/Greek root; a foreign gem; a sound-led invention; a myth or place bent to fit.\n\n` +
+    `HARD RULES:\n` +
+    `- No tired startup tells: no -ly / -ify / -io / -ai / -hub / -fy endings, no dropped-vowel tricks.\n` +
+    `- Never output a starred word verbatim or trivially capitalised: every name is a NEW coinage built FROM the material.\n` +
+    `- Nothing unpronounceable, nothing a famous company already owns.\n` +
+    (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
+      ? `- Already proposed, the founder wants DIFFERENT ones (do not repeat or lightly vary): ${b.payload.exclude.slice(-30).join(", ")}.\n` : ``) +
+    `\nFor each name give:\n` +
+    `- "roots": the recipe in 2-4 words, mono-style (e.g. "aurora + nova", "spark, respelled", "vela, Latin sail").\n` +
+    `- "parts": 1 or 2 origin cards, each {"part":"aurora","note":"the sky's first colour"} (note max 6 words; if a language matters, start the note with it, e.g. "Latin, a new star").\n` +
+    `- "tagline": an italic one-liner for the brand if it wore this name (4 to 7 words, e.g. "A fresh beginning, made bright.").\n` +
+    `- "score": brief fit 0-100, honest spread (most 72-90, reserve 93+ for the rare exceptional one). Order strongest first.\n` +
+    `Return ONLY minified JSON {"names":[{"name":"","roots":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
+
+  // 07 The brand book: everything the 10-page PDF template needs, in one call.
+  wrapbook: (b) => ({ model: MODEL.smart, max: 3400, prompt:
+    `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
+    `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
+    `Write the brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. Return ONLY JSON with EXACTLY this shape:\n` +
+    `{"tagline":"6-8 word brand tagline",` +
+    `"story":{"headline":"5-8 word poetic line","para":"3 sentences on why this company exists and what the name holds","oneSentence":"NAME helps … (one line)","believe":"one line","wedo":"one line","whofor":"one line"},` +
+    `"origin":{"headline":"4-7 words on the construction","parts":[{"part":"aurora","lang":"Latin","gloss":"Dawn","para":"2 sentences of real etymology and story"}],"carries":[{"word":"Light","note":"clarity where there was none"},{"word":"...","note":"..."},{"word":"...","note":"..."},{"word":"...","note":"..."}],"closing":"1-2 sentences on why the coinage is ownable"},` +
+    `"saying":{"ipa":"/…/","plain":"aw-ROH-vuh","syllables":[{"s":"aw"},{"s":"ROH","stress":true},{"s":"vuh"}],"world":[{"language":"English","sounds":"aw-ROH-vuh","note":"reference pronunciation"},{"language":"French","sounds":"…","note":"…"},{"language":"Spanish · Italian","sounds":"…","note":"…"},{"language":"German","sounds":"…","note":"…"}],"writeYes":["Name , one word, capital N","Name's (possessive)"],"writeNever":["ALLCAPS","MidCaps","Name.","Nameh"]},` +
+    `"who":{"mission":"one line","vision":"one line","values":[{"name":"two words","note":"one line"},{"name":"...","note":"..."},{"name":"...","note":"..."}],"personality":[{"left":"Playful","right":"Serious","pos":30},{"left":"Warm","right":"Cool","pos":20},{"left":"Classic","right":"Modern","pos":75},{"left":"Quiet","right":"Loud","pos":35}]},` +
+    `"palette":[{"name":"Dawn","hex":"#FF9E7A"},{"name":"Haze","hex":"#C9B6FF"},{"name":"Nova","hex":"#7C9CFF"},{"name":"Night","hex":"#0F0D24"}],"colourNote":"2 sentences on the palette's logic",` +
+    `"voice":{"words":["Clear","Warm","Confident"],"lines":[{"word":"Clear","note":"one line"},{"word":"Warm","note":"one line"},{"word":"Confident","note":"one line"}],"yes":"a sample on-brand sentence","not":"a sample off-brand jargon sentence"},` +
+    `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}\n` +
+    `Personality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; "Night" style near-black always last. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name.` }),
+
   /* ---------------- v2 (studioApi) ---------------- */
   territories: (b) => ({ model: MODEL.smart, max: 1300, prompt:
     `Brief: ${briefV2(b.brief)}.\nPropose 6 naming territories (directions) that fit this brief. Each must carry an explicit tradeoff. ` +
@@ -456,6 +541,90 @@ async function enrichCandidates(data: any): Promise<any> {
   }));
   data.candidates = list;
   return data;
+}
+
+// Wrapped names: stamp each coined name with ONE real, registrable domain
+// (first free of .com > .io > .app > .ai, verified via RDAP), so the card's
+// "aurova.com free" is a checked fact, not a guess.
+const WRAP_DOM_TLDS = ["com", "io", "app", "ai"];
+async function enrichWrapNames(data: any): Promise<any> {
+  const list = Array.isArray(data?.names) ? data.names : [];
+  await Promise.all(list.map(async (n: any) => {
+    const slug = (n?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    n.dom = null;
+    if (!slug) return;
+    const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
+    const i = states.findIndex((s) => s === "available");
+    if (i >= 0) {
+      const t = WRAP_DOM_TLDS[i];
+      n.dom = { domain: `${slug}.${t}`, tld: "." + t, price: (BOARD_PRICE[t] || ["$15"])[0] };
+    }
+  }));
+  data.names = list;
+  return data;
+}
+
+// ── Accounts: Google sign-in verified server-side, sessions + saved searches in KV ──
+// sess:<token> -> the user (90-day TTL). acct:<sub> -> { user, searches[] } (persistent).
+async function verifyGoogle(env: Env, credential: string): Promise<{ sub: string; email: string; name: string; picture: string } | null> {
+  if (!credential) return null;
+  try {
+    const res = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential));
+    if (!res.ok) return null;
+    const d: any = await res.json();
+    if (env.GOOGLE_CLIENT_ID && d.aud !== env.GOOGLE_CLIENT_ID) return null;
+    if (!d.sub || !d.email) return null;
+    return { sub: String(d.sub), email: String(d.email), name: String(d.name || d.given_name || ""), picture: String(d.picture || "") };
+  } catch { return null; }
+}
+
+async function getAcct(env: Env, sub: string): Promise<any> {
+  try { return JSON.parse((await env.LOG!.get(`acct:${sub}`)) || "{}") || {}; } catch { return {}; }
+}
+
+async function sessionUser(env: Env, token: unknown): Promise<any | null> {
+  if (!env.LOG || typeof token !== "string" || !token) return null;
+  try { return JSON.parse((await env.LOG.get(`sess:${token}`)) || "null"); } catch { return null; }
+}
+
+async function authGoogle(env: Env, body: any): Promise<any> {
+  if (!env.LOG) return { error: "no account store" };
+  const u = await verifyGoogle(env, String(body?.credential || ""));
+  if (!u) return { error: "invalid credential" };
+  const token = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  await env.LOG.put(`sess:${token}`, JSON.stringify(u), { expirationTtl: 60 * 60 * 24 * 90 });
+  const acct = await getAcct(env, u.sub);
+  const isNew = !acct.user;
+  acct.user = u;
+  await env.LOG.put(`acct:${u.sub}`, JSON.stringify(acct));
+  // A brand-new account is a signup lead in the funnel (same shape the admin reads).
+  if (isNew && !body?.test) {
+    const payload = { email: u.email, fromName: u.name, kind: "signup" };
+    await writeLog(env, "lead", body?.process, { payload }, payload);
+  }
+  return { token, user: u, searches: acct.searches || [] };
+}
+
+async function whoAmI(env: Env, body: any): Promise<any> {
+  const u = await sessionUser(env, body?.token);
+  if (!u) return { user: null };
+  const acct = await getAcct(env, u.sub);
+  return { user: acct.user || u, searches: acct.searches || [] };
+}
+
+async function searchPut(env: Env, body: any): Promise<any> {
+  const u = await sessionUser(env, body?.token);
+  if (!u) return { error: "no session" };
+  const s = body?.search;
+  if (!s || typeof s.id !== "string" || !s.id) return { error: "no search" };
+  const acct = await getAcct(env, u.sub);
+  const list: any[] = Array.isArray(acct.searches) ? acct.searches : [];
+  const i = list.findIndex((x) => x?.id === s.id);
+  if (i >= 0) list[i] = s; else list.unshift(s);
+  acct.searches = list.slice(0, 60);
+  acct.user = u;
+  await env.LOG.put(`acct:${u.sub}`, JSON.stringify(acct));
+  return { ok: true };
 }
 
 // v1 compare: real RDAP lookups. For every name we find up to THREE domains that

@@ -4,11 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { spawn } from "node:child_process";
 import { copyFileSync } from "node:fs";
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // On GitHub Pages the app is served from https://<user>.github.io/brandr/,
 // so production assets need the "/brandr/" base. Dev stays at "/".
 export default defineConfig(({ command }) => ({
   base: command === "build" ? "/thenamingstudio/" : "/",
-  plugins: [react(), tailwindcss(), claudeBridge(), spa404()],
+  plugins: [react(), tailwindcss(), claudeBridge(), spa404(), cloudflare()],
 }));
 
 // GitHub Pages has no SPA rewrite, so deep paths like /brandr/admin 404. Copying
