@@ -273,12 +273,12 @@ export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; more
     ] },
   ],
   names: [
-    { name: "Aurova", roots: "aurora + nova", parts: [{ part: "aurora", note: "the sky's first colour" }, { part: "nova", note: "Latin, a new star" }], tagline: "A fresh beginning, made bright.", score: 97, dom: { domain: "aurova.com", tld: ".com", price: "$12" } },
-    { name: "Embra", roots: "ember + bravo", parts: [{ part: "ember", note: "a live glowing coal" }, { part: "bravo", note: "warm approval" }], tagline: "The warmth that starts it.", score: 88, dom: { domain: "embra.com", tld: ".com", price: "$12" } },
-    { name: "Albara", roots: "alba + clara", parts: [{ part: "alba", note: "Italian, dawn" }, { part: "clara", note: "clear, bright" }], tagline: "Clarity, first thing.", score: 84, dom: { domain: "albara.io", tld: ".io", price: "$38" } },
-    { name: "Sparq", roots: "spark, respelled", parts: [{ part: "spark", note: "the flash that starts it" }], tagline: "Where ideas catch.", score: 79, dom: { domain: "sparq.com", tld: ".com", price: "$12" } },
-    { name: "Novalba", roots: "nova + alba", parts: [{ part: "nova", note: "a new star" }, { part: "alba", note: "Italian, dawn" }], tagline: "New light, every morning.", score: 74, dom: { domain: "novalba.com", tld: ".com", price: "$12" } },
-    { name: "Lumen", roots: "lumen, Latin light", parts: [{ part: "lumen", note: "Latin, a unit of light" }], tagline: "Measured brightness.", score: 71, dom: { domain: "lumen.app", tld: ".app", price: "$14" } },
+    { name: "Aurova", roots: "aurora + nova", parts: [{ part: "aurora", note: "the sky's first colour" }, { part: "nova", note: "Latin, a new star" }], tagline: "The sky's first colour, meeting a new star. A beginning that shines.", score: 97, dom: { domain: "aurova.com", tld: ".com", price: "$12" } },
+    { name: "Embra", roots: "ember + bravo", parts: [{ part: "ember", note: "a live glowing coal" }, { part: "bravo", note: "warm approval" }], tagline: "A glow that never goes out, with the courage to catch fire.", score: 88, dom: { domain: "embra.com", tld: ".com", price: "$12" } },
+    { name: "Albara", roots: "alba + clara", parts: [{ part: "alba", note: "Italian, dawn" }, { part: "clara", note: "clear, bright" }], tagline: "Italian dawn, made clear. Soft light on a fresh page.", score: 84, dom: { domain: "albara.io", tld: ".io", price: "$38" } },
+    { name: "Sparq", roots: "spark, respelled", parts: [{ part: "spark", note: "the flash that starts it" }], tagline: "The flash that starts everything. Quick, bright, unforgettable.", score: 79, dom: { domain: "sparq.com", tld: ".com", price: "$12" } },
+    { name: "Novalba", roots: "nova + alba", parts: [{ part: "nova", note: "a new star" }, { part: "alba", note: "Italian, dawn" }], tagline: "A new star at first light. Two beginnings in one word.", score: 74, dom: { domain: "novalba.com", tld: ".com", price: "$12" } },
+    { name: "Lumen", roots: "lumen, Latin light", parts: [{ part: "lumen", note: "Latin, a unit of light" }], tagline: "Light you can measure. Calm, exact, quietly bright.", score: 71, dom: { domain: "lumen.app", tld: ".app", price: "$14" } },
   ],
   moreNames: [
     { name: "Solva", roots: "solis + nova", parts: [{ part: "solis", note: "Latin, of the sun" }], tagline: "The sun, at work.", score: 82, dom: { domain: "solva.io", tld: ".io", price: "$38" } },

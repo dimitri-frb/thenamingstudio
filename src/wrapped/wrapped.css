@@ -253,40 +253,50 @@
 .wr-starred { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-height: 26px; }
 .wr-starpill { font-size: 12px; font-weight: 600; color: #fff; padding: 4px 11px; border-radius: 980px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.06); animation: wr-pop 0.3s ease both; }
 
-/* ── 04 the names ── */
-.wr-names { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 560px; }
+/* ── 04 the names (two-column grid on desktop, per the mock) ── */
+.wr-nameswrap { width: 100%; max-width: 1180px; margin: 0 auto; }
+.wr-names { display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
 .wr-ncard {
   display: flex; align-items: center; gap: 14px;
   width: 100%; text-align: left;
   background: var(--surface1);
   border: 1px solid var(--hairline);
   border-radius: 16px;
-  padding: 15px 16px;
+  padding: 16px 18px;
   cursor: pointer;
   animation: wr-rise 0.5s ease both;
   transition: border-color 0.2s, transform 0.15s;
   color: var(--text);
 }
 .wr-ncard:hover { border-color: rgba(255, 255, 255, 0.3); transform: translateY(-1px); }
-.wr-ncard.sel { border-color: #fff; }
-.wr-ncard .nm { font-family: var(--serif); font-weight: 500; font-size: 23px; letter-spacing: -0.02em; }
-.wr-ncard .rt { font-family: var(--mono); font-size: 11.5px; color: var(--text3); margin-top: 3px; }
-.wr-ncard .dm { font-family: var(--mono); font-size: 11.5px; margin-top: 5px; color: var(--text3); display: inline-flex; align-items: center; gap: 6px; }
+.wr-ncard.sel { border-color: rgba(255, 255, 255, 0.55); }
+.wr-ncard .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.wr-ncard .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wr-ncard .nm { font-family: var(--serif); font-weight: 500; font-size: 24px; letter-spacing: -0.02em; }
+.wr-ncard .rt { font-family: var(--mono); font-size: 11.5px; color: var(--text3); }
+.wr-ncard .tg { font-family: var(--serif); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--text2); }
+.wr-ncard .dm { font-family: var(--mono); font-size: 11.5px; color: var(--text3); display: inline-flex; align-items: center; gap: 6px; }
 .wr-ncard .dm .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
-.wr-ncard .sc { margin-left: auto; text-align: right; flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; }
-.wr-ncard .sc .n { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+.wr-ncard .sc { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; }
+.wr-ncard .sc .n { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .wr-ncard .sc .n small { font-size: 12px; font-weight: 500; color: var(--text3); }
-.wr-ncard .sc .l { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
+.wr-ncard .sc .bar { width: 92px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.16); overflow: hidden; margin: 6px 0 5px; }
+.wr-ncard .sc .bar i { display: block; height: 100%; background: #fff; border-radius: 2px; }
+.wr-ncard .sc .l { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); }
 .wr-ncard .go { flex: 0 0 auto; color: var(--text3); font-size: 17px; }
-.wr-ncard.top {
-  background: linear-gradient(120deg, rgba(255, 158, 122, 0.30), rgba(201, 182, 255, 0.26) 50%, rgba(124, 156, 255, 0.32));
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 14px 34px -14px rgba(160, 140, 255, 0.55);
+.wr-ncard.top { border-color: rgba(255, 255, 255, 0.6); }
+.wr-morecard {
+  border: 1.5px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  background: none; color: var(--text2);
+  font-size: 15px; font-weight: 600; font-family: inherit;
+  min-height: 108px; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color 0.15s, color 0.15s;
 }
-.wr-ncard.top .rt, .wr-ncard.top .dm, .wr-ncard.top .sc .l { color: rgba(255, 255, 255, 0.7); }
-.wr-ncard.locked { filter: blur(6px); pointer-events: none; user-select: none; }
-.wr-freebadge { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: #fff; color: #000; border-radius: 980px; padding: 3px 9px; }
+.wr-morecard:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.55); color: #fff; }
+.wr-morecard:disabled { cursor: default; }
+.wr-freebadge { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: #fff; color: #000; border-radius: 980px; padding: 3px 9px; align-self: center; }
 
 /* the sign-up gate (04b) */
 .wr-gate {
@@ -533,6 +543,8 @@
   .wr-tagline { font-size: 22px; }
   .wr-gatewrap { align-items: center; padding: 24px; }
   .wr-gatewrap .wr-gate { border-radius: 22px; }
+  .wr-names { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .wr-names.gatecol { grid-template-columns: 1fr; max-width: 560px; }
   .wr-lgrid { grid-template-columns: repeat(3, 1fr); }
   .wr-lvers { grid-template-columns: repeat(4, 1fr); }
   .wadm .kpis { grid-template-columns: repeat(4, 1fr); }

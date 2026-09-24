@@ -38,6 +38,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const [wtab, setWtab] = useState(0);
   const [starred, setStarred] = useState<WWord[]>(test ? [SAMPLE.styles[0].words[0], SAMPLE.styles[0].words[1], SAMPLE.styles[1].words[0], SAMPLE.styles[1].words[2]] : []);
   const [names, setNames] = useState<WName[] | null>(test ? SAMPLE.names : null);
+  const [nameIdx, setNameIdx] = useState(0);
   const [namesBusy, setNamesBusy] = useState(false);
   const [moreBusy, setMoreBusy] = useState(false);
   const [picked, setPicked] = useState<WName | null>(test ? SAMPLE.names[0] : null);
@@ -338,11 +339,17 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       if (bookOpen) return;
       const tag = (e.target as HTMLElement)?.tagName;
       const typing = tag === "INPUT" || tag === "TEXTAREA";
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && step === "names" && !typing && names?.length && !gated) {
+        e.preventDefault();
+        setNameIdx((i) => Math.min(names.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1))));
+        return;
+      }
       if (e.key === "Enter" && !e.shiftKey) {
         if (step === "ask") { e.preventDefault(); submitAsk(); }
         else if (!typing) {
           if (step === "brief" && concept) { e.preventDefault(); toStep("words"); }
           else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
+          else if (step === "names" && names?.length && !gated) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
           else if (step === "reveal") { e.preventDefault(); toStep("domain"); }
           else if (step === "domain" && domSel) { e.preventDefault(); registerDomain(); }
           else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
@@ -557,7 +564,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       {step === "names" && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
-            <div className="inner-nar">
+            <div className="wr-nameswrap">
               <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 4 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
               <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
               {fails.names && !names?.length ? (
@@ -565,19 +572,27 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
               ) : namesBusy && !names?.length ? (
                 <div className="wr-load" style={{ margin: "34px 0" }}><span className="wr-spin" /> Coining names from your words…</div>
               ) : (
-                <div className="wr-names">
+                <div className={"wr-names" + (gated ? " gatecol" : "")}>
                   {(gated ? (names || []).slice(0, 1) : names || []).map((n, i) => (
-                    <button key={n.name} className={"wr-ncard" + (i === 0 ? " top" : "")} style={{ animationDelay: `${Math.min(i, 6) * 0.07}s` }} onClick={() => pickName(n)}>
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button
+                      key={n.name}
+                      className={"wr-ncard" + (i === 0 ? " top" : "") + (!gated && i === nameIdx ? " sel" : "")}
+                      style={{ animationDelay: `${Math.min(i, 6) * 0.07}s` }}
+                      onClick={() => pickName(n)}
+                      onMouseEnter={() => !gated && setNameIdx(i)}
+                    >
+                      <span className="main">
+                        <span className="hd">
                           <span className="nm">{n.name}</span>
+                          <span className="rt">{n.roots}</span>
                           {gated && i === 0 && <span className="wr-freebadge">Free preview</span>}
                         </span>
-                        <span className="rt" style={{ display: "block" }}>{n.roots}</span>
+                        {n.tagline && <span className="tg">{n.tagline}</span>}
                         {n.dom && <span className="dm"><i className="dot" />{n.dom.domain} free</span>}
                       </span>
                       <span className="sc">
                         <span className="n">{n.score}<small>/100</small></span>
+                        <span className="bar"><i style={{ width: `${Math.min(100, Math.max(4, n.score))}%` }} /></span>
                         <span className="l">Brief fit</span>
                       </span>
                       <span className="go">→</span>
@@ -594,8 +609,10 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                     </>
                   )}
                   {!gated && !!names?.length && (
-                    <button className="wr-btn2" style={{ alignSelf: "flex-start", marginTop: 6 }} disabled={moreBusy} onClick={moreNames}>
-                      {moreBusy ? "Coining six more…" : fails.more ? "↻ Didn't reach the studio, try again" : "↻ Generate six more"}
+                    <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
+                      {moreBusy
+                        ? <span className="wr-load"><span className="wr-spin" /> Coining six more…</span>
+                        : <span>↻ {fails.more ? "Didn't reach the studio, try again" : "Generate six more"}</span>}
                     </button>
                   )}
                 </div>
@@ -605,7 +622,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           {!gated && (
             <div className="wr-foot">
               <span className="wr-hint">Pick one, it opens straight into the reveal</span>
-              <span className="wr-khint"><span className="wr-key">⏎</span> to pick</span>
+              <span className="wr-khint"><span className="wr-key">↑</span><span className="wr-key">↓</span> to browse · <span className="wr-key">⏎</span> to pick</span>
             </div>
           )}
           {gated && <SignupGate onUser={(u) => setUser(u)} count={names?.length || 6} />}

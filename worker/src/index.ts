@@ -431,7 +431,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `\nFor each name give:\n` +
     `- "roots": the recipe in 2-4 words, mono-style (e.g. "aurora + nova", "spark, respelled", "vela, Latin sail").\n` +
     `- "parts": 1 or 2 origin cards, each {"part":"aurora","note":"the sky's first colour"} (note max 6 words; if a language matters, start the note with it, e.g. "Latin, a new star").\n` +
-    `- "tagline": an italic one-liner for the brand if it wore this name (4 to 7 words, e.g. "A fresh beginning, made bright.").\n` +
+    `- "tagline": an inspiring italic line about this name for THIS brand: two short sentences, 8 to 16 words total (e.g. "The sky's first colour, meeting a new star. A beginning that shines.").\n` +
     `- "score": brief fit 0-100, honest spread (most 72-90, reserve 93+ for the rare exceptional one). Order strongest first.\n` +
     `Return ONLY minified JSON {"names":[{"name":"","roots":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
 
