@@ -20,7 +20,6 @@ const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, nam
 const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
 const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
 
-const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
 const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
   { name: "X", desc: "Updates and conversation", url: "https://x.com/i/flow/signup" },
@@ -422,17 +421,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <p className="wr-lead rise" style={{ maxWidth: 430, margin: "0 0 26px" }}>
             Describe what you're building. Get a name with its domain, logo and brand book, in minutes.
           </p>
-          <div className="wr-landin wr-frost rise">
-            <input
-              value={sentence} placeholder="What are you building?"
-              onChange={(e) => setSentence(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); startFlow(sentence); } }}
-            />
-            <button className="go" onClick={() => startFlow(sentence)}>Start naming →</button>
-          </div>
-          <div className="wr-eg rise" style={{ marginTop: 14 }}>
-            {EXAMPLES.map((x) => <button key={x} onClick={() => startFlow(x)}>{x}</button>)}
-          </div>
+          <button className="wr-btn rise" style={{ maxWidth: 260 }} onClick={() => startFlow(sentence)}>Start naming →</button>
           <div style={{ marginTop: 44 }} className="rise">
             <p className="wr-kicker" style={{ marginBottom: 12 }}>You get</p>
             <div className="wr-youget">
