@@ -391,7 +391,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     `Distill what their NAME should feel like.\n` +
     `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
-    `2) "para": 2 sentences (max 40 words total) speaking directly to the founder as "you", proving you understood what they're building and why the name matters for it. Plain, warm, confident. Never repeat their words back.\n` +
+    `2) "para": 2 or 3 sentences (max 55 words), speaking directly to the founder as "you". Start CONCRETE: recap the specifics of THEIR idea in fresh words, name the actual product, the actual audience and what it does for them (e.g. "You're building a budgeting app that gives students their first grip on money"). Then say what the name has to carry for exactly that business. Specific nouns over abstractions; reframe, never parrot their sentence; no generic filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
     `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}]}.` }),
 
