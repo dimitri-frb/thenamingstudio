@@ -2,7 +2,7 @@
 // 00 landing → 01 the ask → 02 brief wrapped → 03 the words → 04 the names
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
   GOOGLE_CLIENT_ID, SAMPLE, authGoogle, clearSnap, fetchDomainBoard, fetchMe,
@@ -217,7 +217,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     fetchDomainBoard(picked.name).then((b) => {
       setBoard(b);
       fail("board", !b.tlds.length);
-      setDomSel((cur) => cur || b.tlds.find((d) => d.status === "available") || b.tlds.find((d) => d.status === "negotiable") || null);
     });
     if (test) { setBook(sampleBook(picked.name)); return; }
     if (bookReq.current === picked.name) return;
@@ -228,6 +227,59 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picked, test, retryTick]);
+
+  // The domain rows the founder sees: the exact name's extensions, topped up so
+  // there are ALWAYS 1-2 cheap (<$100) registrable options, pulling in verified
+  // variants (tryX.com, Xapp.com…) when the exact name is expensive or gone.
+  const domRows = useMemo<DomainCard[]>(() => {
+    if (!board) return [];
+    const exact = board.tlds.filter((d) => d.status === "available" || d.status === "negotiable");
+    const num = (d: DomainCard) => {
+      const n = Number((d.price || d.offerPrice || "").replace(/[^0-9.]/g, ""));
+      return Number.isFinite(n) && n > 0 ? n : NaN;
+    };
+    const isCheap = (d: DomainCard) => { const n = num(d); return Number.isFinite(n) && n < 100; };
+    const missing = 2 - exact.filter(isCheap).length;
+    if (missing <= 0 || !board.variants.length) return exact;
+    const slug = (picked?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const isApp = /\bapp\b/i.test(sentence) || chips.some((c) => /app/i.test(c));
+    const PREF = isApp
+      ? ["|app", "try|", "get|", "use|", "my|", "|hq", "join|", "hey|", "meet|"]
+      : ["try|", "get|", "use|", "my|", "|app", "|hq", "join|", "hey|", "meet|"];
+    const rank = (v: DomainCard) => {
+      const i = PREF.indexOf(v.domain.replace(/\.[a-z.]+$/, "").replace(slug, "|"));
+      return i < 0 ? 50 : i;
+    };
+    const freeVars = board.variants.filter((v) => v.status === "available").sort((a, b) => rank(a) - rank(b));
+    let adds = freeVars.slice(0, missing);
+    if (!adds.length) {
+      // A truly crowded name: no registrable variant either. Surface the
+      // cheapest for-sale variants rather than leaving only five-figure asks.
+      adds = board.variants
+        .filter((v) => v.status === "negotiable" && Number.isFinite(num(v)))
+        .sort((a, b) => num(a) - num(b))
+        .slice(0, 2);
+    }
+    const cut = Math.min(exact.length, exact.some(isCheap) ? 2 : 1);
+    return [...exact.slice(0, cut), ...adds, ...exact.slice(cut)];
+  }, [board, picked, sentence, chips]);
+
+  // Best pick = first registrable row; with nothing registrable, the cheapest ask.
+  const bestDomIdx = useMemo(() => {
+    const av = domRows.findIndex((d) => d.status === "available");
+    if (av >= 0) return av;
+    let bi = 0, bn = Infinity;
+    domRows.forEach((d, i) => {
+      const n = Number((d.price || d.offerPrice || "").replace(/[^0-9.]/g, "")) || Infinity;
+      if (n < bn) { bn = n; bi = i; }
+    });
+    return bi;
+  }, [domRows]);
+
+  useEffect(() => { // default selection follows the best pick
+    if (!domRows.length) return;
+    setDomSel((cur) => cur || domRows[bestDomIdx] || null);
+  }, [domRows, bestDomIdx]);
 
   /* ── actions ── */
   function startFlow(from: string) {
@@ -645,7 +697,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
               <div className="wr-next rise" style={{ marginTop: 28 }}>
                 <p className="wr-kicker" style={{ marginBottom: 8 }}>What's next</p>
                 {[
-                  { n: "1", t: "Claim the domain", s: board?.tlds.filter((d) => d.status === "available").slice(0, 2).map((d) => `${d.domain} · ${d.price || ""}`).join("   ") || picked.dom?.domain || "checking…", to: "domain" as Step },
+                  { n: "1", t: "Claim the domain", s: domRows.filter((d) => d.status === "available").slice(0, 2).map((d) => `${d.domain} · ${d.price || ""}`).join("   ") || picked.dom?.domain || "checking…", to: "domain" as Step },
                   { n: "2", t: "Find your perfect logo", s: "Nine logo concepts from the name", to: "logo" as Step },
                   { n: "3", t: "Open your brand book", s: "voice, colours, story", to: "book" as Step },
                   { n: "4", t: "Create your social accounts", s: "Instagram · X · TikTok · LinkedIn", to: "socials" as Step },
@@ -681,16 +733,16 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                   : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
               ) : (
                 <div className="wr-doms">
-                  {board.tlds.filter((d) => d.status === "available" || d.status === "negotiable").slice(0, domShow).map((d, i) => (
+                  {domRows.slice(0, domShow).map((d, i) => (
                     <button key={d.domain} className={"wr-dom" + (domSel?.domain === d.domain ? " sel" : "")} onClick={() => setDomSel(d)}>
                       <span className={"dot" + (d.status === "negotiable" ? " sale" : "")} />
                       <span className="d">{d.domain}</span>
-                      {i === 0 && <span className="bp">Best pick</span>}
+                      {i === bestDomIdx && <span className="bp">Best pick</span>}
                       <span className="st">{d.status === "negotiable" ? "for sale" : "available"}</span>
                       <span className="pr">{d.price || d.offerPrice || ""}</span>
                     </button>
                   ))}
-                  {board.tlds.filter((d) => d.status === "available" || d.status === "negotiable").length > domShow && (
+                  {domRows.length > domShow && (
                     <button className="wr-btn2" style={{ alignSelf: "flex-start" }} onClick={() => setDomShow((n) => n + 4)}>＋ Try another extension</button>
                   )}
                 </div>

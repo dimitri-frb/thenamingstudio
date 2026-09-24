@@ -488,6 +488,10 @@ const RDAP_BASE: Record<string, string> = {
   org: "https://rdap.publicinterestregistry.org/rdap/",
   io: "https://rdap.identitydigital.services/rdap/",
   ai: "https://rdap.identitydigital.services/rdap/",
+  studio: "https://rdap.identitydigital.services/rdap/",
+  world: "https://rdap.identitydigital.services/rdap/",
+  life: "https://rdap.identitydigital.services/rdap/",
+  team: "https://rdap.identitydigital.services/rdap/",
   app: "https://pubapi.registry.google/rdap/",
   dev: "https://pubapi.registry.google/rdap/",
   xyz: "https://rdap.centralnic.com/xyz/",
@@ -741,6 +745,7 @@ const BOARD_PRICE: Record<string, [string, string]> = {
   com: ["$12", "$14/yr"], app: ["$14", "$18/yr"], io: ["$38", "$46/yr"], ai: ["$70", "$110/yr"],
   co: ["$24", "$30/yr"], net: ["$12", "$15/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"],
   org: ["$10", "$13/yr"],
+  studio: ["$25", "$32/yr"], world: ["$28", "$34/yr"], life: ["$26", "$32/yr"], team: ["$28", "$36/yr"],
   fr: ["€8", "€10/yr"], es: ["€8", "€10/yr"], "co.uk": ["£8", "£10/yr"],
 };
 // Maps geo selection (from brief.geos) to the ccTLD to prioritise right after .com.
@@ -860,6 +865,10 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
     `${slug}app`, `${slug}hq`, `${slug}go`, `the${slug}`,
     `${slug}labs`, `my${slug}`, `hello${slug}`, `build${slug}`,
     `${slug}now`, `start${slug}`,
+    // A wide net so crowded names still yield 1-2 genuinely registrable,
+    // standard-price options (the UI promises founders a cheap way in).
+    `meet${slug}`, `with${slug}`, `hey${slug}`, `run${slug}`,
+    `${slug}studio`, `${slug}works`, `${slug}team`, `${slug}world`,
   ];
   const variants = variantSlugs.map((v) => `${v}.com`);
 
@@ -923,10 +932,46 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
     };
   });
   // Include "unknown" variants (RDAP timeout ≠ taken — prefixed .com slugs are
-  // almost never registered). Only drop confirmed "taken" ones.
+  // almost never registered). Only drop confirmed "taken" ones, and only price
+  // a variant at the standard .com rate when it is genuinely available.
   const variantHits = variants
-    .map((d, i) => ({ domain: d, status: variantStatuses[i].status, price: BOARD_PRICE.com[0], renewal: BOARD_PRICE.com[1] }))
+    .map((d, i) => {
+      const st = variantStatuses[i];
+      return {
+        domain: d, status: st.status,
+        price: st.status === "available" ? BOARD_PRICE.com[0] : undefined,
+        renewal: st.status === "available" ? BOARD_PRICE.com[1] : undefined,
+        offerPrice: st.offerPrice, offerUrl: st.offerUrl,
+      };
+    })
     .filter((v) => v.status !== "taken");
+
+  // Guarantee: a founder always leaves with at least two cheap (<$100),
+  // genuinely registrable options. Crowded names get a second wave: the exact
+  // name on more standard-price TLDs, and the best variants on .app — all
+  // registry-verified like everything else.
+  const cheapNow =
+    tlds.filter((t) => t.status === "available" && t.price).length +
+    variantHits.filter((v) => v.status === "available").length;
+  if (cheapNow < 2) {
+    const extraTlds = ["studio", "world", "life", "team"].filter((t) => !BOARD_TLDS.includes(t));
+    const extraExact = extraTlds.map((t) => `${slug}.${t}`);
+    const appVars = variantSlugs.slice(0, 8).map((v) => `${v}.app`);
+    Object.assign(dr, await fastlyStatus(env, [...extraExact, ...appVars]));
+    const [exSt, appSt] = await Promise.all([
+      Promise.all(extraExact.map(statusFor)),
+      Promise.all(appVars.map(statusFor)),
+    ]);
+    extraTlds.forEach((t, i) => {
+      if (exSt[i].status !== "available" || exSt[i].premium) return;
+      const [price, renewal] = BOARD_PRICE[t];
+      tlds.push({ domain: `${slug}.${t}`, tld: "." + t, status: "available", premium: false, price, renewal, offerPrice: undefined, offerUrl: undefined });
+    });
+    appVars.forEach((d, i) => {
+      if (appSt[i].status !== "available") return;
+      variantHits.push({ domain: d, status: "available", price: BOARD_PRICE.app[0], renewal: BOARD_PRICE.app[1], offerPrice: undefined, offerUrl: undefined });
+    });
+  }
 
   return { name, tlds, variants: variantHits, source };
 }
