@@ -2,9 +2,11 @@
 // domains, accounts, tracking), with graceful local fallbacks so the flow never
 // hard-breaks, and a full sample dataset for ?test mode.
 
+// The account's workers.dev subdomain is "kairosfund" (renamed from
+// "dimitri-4dd" in Sept 2026; the old host is NXDOMAIN).
 export const ENDPOINT =
   (import.meta as any).env?.VITE_NAMING_API ||
-  "https://naming-studio-api.dimitri-4dd.workers.dev";
+  "https://naming-studio-api.kairosfund.workers.dev";
 
 export const GOOGLE_CLIENT_ID = ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined) || "";
 
@@ -78,22 +80,25 @@ async function post<T>(body: Record<string, unknown>): Promise<T | null> {
   } catch { return null; }
 }
 
-// Generation calls retry once before falling back, because a name-worthy answer
-// beats a fast wrong one.
-async function gen<T>(phase: string, payload: unknown, fallback: () => T): Promise<T> {
-  if (TEST) { await pause(350); return fallback(); }
+// Generation calls retry once, then return null. LIVE NEVER SHOWS SAMPLE DATA:
+// a founder must never mistake Aurova demo content for their own results, so a
+// dead engine surfaces as an honest "try again", not a fake answer. Only ?test
+// mode returns the sample set.
+async function gen<T>(phase: string, payload: unknown, sample: () => T): Promise<T | null> {
+  if (TEST) { await pause(350); return sample(); }
   const first = await post<T>({ phase, payload });
   if (first) return first;
   const second = await post<T>({ phase, payload });
   if (second) return second;
-  return fallback();
+  return null;
 }
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ── generation ── */
 export const wrapApi = {
-  chips: (sentence: string) =>
-    gen<{ chips: string[] }>("wrapchips", { sentence }, () => ({ chips: localChips(sentence) })),
+  // Chips are editable hints, so a local heuristic is an honest fallback here.
+  chips: async (sentence: string) =>
+    (await gen<{ chips: string[] }>("wrapchips", { sentence }, () => ({ chips: localChips(sentence) }))) ?? { chips: localChips(sentence) },
 
   concept: (sentence: string, chips: string[]) =>
     gen<WConcept>("wrapconcept", { sentence, chips }, () => SAMPLE.concept),
@@ -101,9 +106,13 @@ export const wrapApi = {
   words: (sentence: string, concept: string, territories: WTerritory[]) =>
     gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories }, () => ({ styles: SAMPLE.styles })),
 
-  names: (sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []) =>
-    gen<{ names: WName[] }>("wrapnames", { sentence, chips, concept, words, exclude }, () =>
-      ({ names: exclude.length ? SAMPLE.moreNames : SAMPLE.names })),
+  names: async (sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []) => {
+    const r = await gen<{ names: WName[] }>("wrapnames", { sentence, chips, concept, words, exclude }, () =>
+      ({ names: exclude.length ? SAMPLE.moreNames : SAMPLE.names }));
+    // The model sometimes wraps taglines in markdown emphasis; never show raw *…*.
+    r?.names?.forEach((n) => { n.tagline = (n.tagline || "").replace(/^[*_\s]+|[*_\s]+$/g, ""); });
+    return r;
+  },
 
   book: (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[]) =>
     gen<WBook>("wrapbook", { sentence, chips, concept, name, parts }, () => sampleBook(name)),

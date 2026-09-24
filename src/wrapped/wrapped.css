@@ -249,6 +249,10 @@
 .wr-load { display: inline-flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text3); }
 .wr-spin { width: 15px; height: 15px; flex: 0 0 auto; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: wr-spin 0.8s linear infinite; }
 
+/* ── generation failure (engine unreachable) ── */
+.wr-fail { border: 1px dashed rgba(255, 255, 255, 0.25); border-radius: 14px; padding: 18px; max-width: 440px; }
+.wr-fail p { font-size: 13.5px; color: var(--text2); line-height: 1.55; margin: 0 0 12px; }
+
 /* ── 03 the words ── */
 .wr-wtabs { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; flex: 0 0 auto; }
 .wr-wtabs::-webkit-scrollbar { display: none; }

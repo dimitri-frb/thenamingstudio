@@ -52,10 +52,16 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   const [bookOpen, setBookOpen] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
+  // Which generations failed (engine unreachable / bad answer) → honest retry UI.
+  const [fails, setFails] = useState<Record<string, boolean>>({});
+  const [retryTick, setRetryTick] = useState(0);
   const startedAt = useRef(Date.now());
   const conceptReq = useRef("");
   const wordsReq = useRef("");
   const bookReq = useRef("");
+
+  const fail = (k: string, v: boolean) => setFails((f) => ({ ...f, [k]: v }));
+  const retry = (k: string) => { fail(k, false); if (k === "book") bookReq.current = ""; setRetryTick((t) => t + 1); };
 
   useEffect(() => { setTestMode(test); }, [test]);
 
@@ -139,27 +145,30 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   useEffect(() => { // concept: needed from 02 on
     if (test || !sentence.trim()) return;
     if (concept || !["brief", "words", "names"].includes(step)) return;
-    const key = sentence.trim();
+    const key = sentence.trim() + "|" + retryTick;
     if (conceptReq.current === key) return;
     conceptReq.current = key;
-    wrapApi.concept(key, chips).then((c) => { if (c?.concept) setConcept(c); });
-  }, [test, step, sentence, chips, concept]);
+    wrapApi.concept(sentence.trim(), chips).then((c) => {
+      if (c?.concept) { setConcept(c); fail("concept", false); } else fail("concept", true);
+    });
+  }, [test, step, sentence, chips, concept, retryTick]);
 
   useEffect(() => { // words: precharged as soon as the concept lands (while 02 is read)
     if (test || !concept || styles) return;
     if (!["brief", "words"].includes(step)) return;
-    const key = concept.concept;
+    const key = concept.concept + "|" + retryTick;
     if (wordsReq.current === key) return;
     wordsReq.current = key;
     wrapApi.words(sentence.trim(), concept.concept, concept.territories).then((r) => {
-      if (r?.styles?.length) setStyles(r.styles);
+      if (r?.styles?.length) { setStyles(r.styles); fail("words", false); } else fail("words", true);
     });
-  }, [test, step, concept, styles, sentence]);
+  }, [test, step, concept, styles, sentence, retryTick]);
 
   useEffect(() => { // book + domain board: precharged the moment a name is picked
     if (!picked) return;
     fetchDomainBoard(picked.name).then((b) => {
       setBoard(b);
+      fail("board", !b.tlds.length);
       setDomSel((cur) => cur || b.tlds.find((d) => d.status === "available") || b.tlds.find((d) => d.status === "negotiable") || null);
     });
     if (test) { setBook(sampleBook(picked.name)); return; }
@@ -167,10 +176,10 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     bookReq.current = picked.name;
     setBook(null);
     wrapApi.book(sentence.trim(), chips, concept?.concept || "", picked.name, picked.parts || []).then((b) => {
-      if (b?.palette) setBook(b);
+      if (b?.palette) { setBook(b); fail("book", false); } else fail("book", true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked, test]);
+  }, [picked, test, retryTick]);
 
   /* ── actions ── */
   function startFlow(from: string) {
@@ -197,18 +206,22 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     toStep("names");
     if (names?.length || namesBusy) return;
     setNamesBusy(true);
+    fail("names", false);
     const r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred);
-    setNames(r.names || []);
     setNamesBusy(false);
-    persist({ names: r.names || [] });
+    if (!r?.names?.length) { fail("names", true); return; }
+    setNames(r.names);
+    persist({ names: r.names });
   }
 
   async function moreNames() {
     if (moreBusy || !names) return;
     setMoreBusy(true);
+    fail("more", false);
     const r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name));
-    setNames((prev) => [...(prev || []), ...(r.names || [])]);
     setMoreBusy(false);
+    if (!r?.names?.length) { fail("more", true); return; }
+    setNames((prev) => [...(prev || []), ...r.names]);
   }
 
   function pickName(n: WName) {
@@ -418,7 +431,9 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <div className="wr-stage center">
             <div className="inner-nar">
               {!concept ? (
-                <div className="wr-load"><span className="wr-spin" /> Reading your brief…</div>
+                fails.concept
+                  ? <GenFail note="We couldn't read your brief just now." onRetry={() => retry("concept")} />
+                  : <div className="wr-load"><span className="wr-spin" /> Reading your brief…</div>
               ) : (
                 <>
                   <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Here's what we heard</p>
@@ -455,9 +470,11 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
               {styles ? `${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll` : ""}
             </p>
             {!styles ? (
-              <div className="wr-load" style={{ margin: "40px 0" }}>
-                <span className="wr-spin" /> Finding words for “{concept?.concept || "your brief"}”…
-              </div>
+              fails.words || fails.concept
+                ? <div style={{ margin: "40px 0" }}><GenFail note="We couldn't gather your words just now." onRetry={() => { retry("concept"); retry("words"); }} /></div>
+                : <div className="wr-load" style={{ margin: "40px 0" }}>
+                    <span className="wr-spin" /> Finding words for “{concept?.concept || "your brief"}”…
+                  </div>
             ) : (
               <>
                 {/* mobile: style tabs + list */}
@@ -502,7 +519,9 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
             <div className="inner-nar">
               <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 4 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
               <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
-              {namesBusy && !names?.length ? (
+              {fails.names && !names?.length ? (
+                <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={makeNames} /></div>
+              ) : namesBusy && !names?.length ? (
                 <div className="wr-load" style={{ margin: "34px 0" }}><span className="wr-spin" /> Coining names from your words…</div>
               ) : (
                 <div className="wr-names">
@@ -535,7 +554,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                   )}
                   {!gated && !!names?.length && (
                     <button className="wr-btn2" style={{ alignSelf: "flex-start", marginTop: 6 }} disabled={moreBusy} onClick={moreNames}>
-                      {moreBusy ? "Coining six more…" : "↻ Generate six more"}
+                      {moreBusy ? "Coining six more…" : fails.more ? "↻ Didn't reach the studio, try again" : "↻ Generate six more"}
                     </button>
                   )}
                 </div>
@@ -598,8 +617,10 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
             <div className="inner-nar">
               <h1 className="wr-h" style={{ marginBottom: 6 }}>Where {picked.name} lives</h1>
               <p className="wr-lead" style={{ marginBottom: 22 }}>Pick your address. Register your name in under a minute.</p>
-              {!board ? (
-                <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
+              {!board || (!board.tlds.length && fails.board) ? (
+                fails.board
+                  ? <GenFail note="We couldn't check the registries just now." onRetry={() => retry("board")} />
+                  : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
               ) : (
                 <div className="wr-doms">
                   {board.tlds.filter((d) => d.status === "available" || d.status === "negotiable").slice(0, domShow).map((d, i) => (
@@ -712,7 +733,9 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                   Hand it to a designer and they can start the same day.
                 </p>
                 {!book ? (
-                  <div className="wr-load"><span className="wr-spin" /> Writing {picked.name}'s brand book…</div>
+                  fails.book
+                    ? <GenFail note={`We couldn't write ${picked.name}'s brand book just now.`} onRetry={() => retry("book")} />
+                    : <div className="wr-load"><span className="wr-spin" /> Writing {picked.name}'s brand book…</div>
                 ) : (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { printBook(); track("book", { name: picked.name }); }}>↓ Download PDF</button>
@@ -803,6 +826,16 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── honest failure state: never sample data, always a retry ── */
+function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
+  return (
+    <div className="wr-fail">
+      <p>{note} Nothing was lost, your brief and words are safe.</p>
+      <button className="wr-btn2" onClick={onRetry}>↻ Try again</button>
     </div>
   );
 }
