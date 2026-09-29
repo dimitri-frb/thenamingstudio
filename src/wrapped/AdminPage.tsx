@@ -1,9 +1,10 @@
-// 11 · Admin: every search at a glance. Reads the Worker's central KV log,
+// "All names": every search at a glance, embedded in the account page for
+// admin accounts only. Reads the Worker's central KV log (session-gated),
 // groups events by process, and shows the funnel (searches → accounts → names
 // picked → domains claimed), with search, status filters and CSV export.
 import { useEffect, useMemo, useState } from "react";
 import "./wrapped.css";
-import { ENDPOINT } from "./api";
+import { ENDPOINT, loadSession } from "./api";
 import { download } from "./zip";
 
 interface LogItem { id: string; at: number; process?: string; phase: string; input?: any; output?: any }
@@ -22,7 +23,7 @@ interface Row {
 type Period = 1 | 7 | 30;
 type Filter = "all" | "claimed" | "progress" | "abandoned";
 
-export function AdminPage() {
+export function AllNames() {
   const [items, setItems] = useState<LogItem[] | null>(null);
   const [err, setErr] = useState("");
   const [period, setPeriod] = useState<Period>(7);
@@ -30,8 +31,11 @@ export function AdminPage() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    const key = new URLSearchParams(window.location.search).get("key");
-    fetch(`${ENDPOINT}?log&limit=300${key ? `&key=${encodeURIComponent(key)}` : ""}`)
+    fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 300 }),
+    })
       .then((r) => r.json())
       .then((d) => { if (d.error) setErr(String(d.error)); else setItems(d.items || []); })
       .catch((e) => setErr(String(e)));
@@ -74,16 +78,9 @@ export function AdminPage() {
   }
 
   return (
-    <div className="wadm">
+    <div className="wadm embed">
       <div className="wrap">
         <div className="bar">
-          <a className="wr-brand" href={(import.meta as any).env.BASE_URL || "/"} style={{ textDecoration: "none", color: "#fff" }}>
-            <span className="bx" style={{ width: 22, height: 22, borderRadius: 6, background: "#fff", display: "grid", placeItems: "center" }}>
-              <svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg>
-            </span>
-            <span className="bt" style={{ fontSize: 13.5, fontWeight: 700 }}>the naming studio</span>
-          </a>
-          <span className="chip">Admin</span>
           <span style={{ flex: 1 }} />
           <div className="seg">
             {([1, 7, 30] as Period[]).map((p) => (

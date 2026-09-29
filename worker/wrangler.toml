@@ -18,3 +18,5 @@ id = "6deae9f7e8774986ab1e38423de11394"
 # verifies sign-in tokens were minted for THIS app.
 [vars]
 GOOGLE_CLIENT_ID = "406174169000-ma0br2rqmorv5iqcfmo4dck0at5ivohu.apps.googleusercontent.com"
+# Who may read the funnel ("All names" in the account):
+ADMIN_EMAILS = "dimitri@dfginvest.fr"

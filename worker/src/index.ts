@@ -24,6 +24,7 @@ export interface Env {
   ALLOWED_ORIGIN?: string; // optional: lock CORS to your site; defaults to *
   LOG?: KVNamespace;       // optional: central request log (bind a KV namespace named LOG)
   ADMIN_KEY?: string;      // optional: required ?key= to read the log
+  ADMIN_EMAILS?: string;   // comma-separated Google emails allowed to read the admin log
   INPI_LOGIN?: string;     // optional: INPI data-account login (for the trademark check)
   INPI_PASSWORD?: string;  // optional: INPI data-account password
   FASTLY_KEY?: string;     // optional: Fastly API token for the Domain Research API
@@ -126,6 +127,15 @@ export default {
       const ev = String(body?.event || "track").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "track";
       if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload }, body.payload || {}));
       return json({ ok: true }, env);
+    }
+
+    // The central log, for the account page's "All names" tab: session-gated,
+    // admin emails only. The old GET ?log stays but now demands ADMIN_KEY.
+    if (phase === "adminlog") {
+      const u = await sessionUser(env, body?.token);
+      const allowed = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+      if (!u || !allowed.includes(String(u.email || "").toLowerCase())) return json({ error: "not allowed" }, env, 403);
+      return json({ items: await logItems(env, Math.min(300, Math.max(1, Number(body?.limit) || 300))) }, env);
     }
 
     // ── Accounts (Google sign-in + saved searches, stored in the LOG KV) ──
@@ -302,17 +312,22 @@ async function writeLog(env: Env, phase: string, process: unknown, input: unknow
   } catch { /* logging is best-effort */ }
 }
 
-async function readLog(env: Env, url: URL): Promise<Response> {
-  if (!env.LOG) return json({ items: [], note: "no KV namespace bound (LOG)" }, env);
-  if (env.ADMIN_KEY && url.searchParams.get("key") !== env.ADMIN_KEY) return json({ error: "unauthorized" }, env, 401);
-  const limit = Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150));
+async function logItems(env: Env, limit: number): Promise<unknown[]> {
+  if (!env.LOG) return [];
   const list = await env.LOG.list({ prefix: "log:", limit });
-  const items = (await Promise.all(list.keys.map(async (k) => {
+  return (await Promise.all(list.keys.map(async (k) => {
     const v = await env.LOG!.get(k.name);
     if (!v) return null;
     try { return { id: k.name, ...JSON.parse(v) }; } catch { return null; }
   }))).filter(Boolean);
-  return json({ items }, env);
+}
+
+async function readLog(env: Env, url: URL): Promise<Response> {
+  if (!env.LOG) return json({ items: [], note: "no KV namespace bound (LOG)" }, env);
+  // The funnel is personal data (emails, briefs): the raw GET endpoint is only
+  // ever open with an explicit ADMIN_KEY; the app itself uses "adminlog".
+  if (!env.ADMIN_KEY || url.searchParams.get("key") !== env.ADMIN_KEY) return json({ error: "unauthorized" }, env, 401);
+  return json({ items: await logItems(env, Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150))) }, env);
 }
 
 function json(data: unknown, env: Env, status = 200): Response {

@@ -8,11 +8,16 @@ import {
   type SavedSearch, type WUser,
 } from "./api";
 import { buildLogoPack, DEFAULT_PALETTE, logoSvg, toPalette, type Accent } from "./logos";
+import { AllNames } from "./AdminPage";
 import { download } from "./zip";
 
 const BASE = () => (import.meta as any).env.BASE_URL || "/";
 
-type Tab = "names" | "settings";
+type Tab = "names" | "all" | "settings";
+
+// Which Google accounts see the "All names" funnel tab (mirrors the Worker's
+// ADMIN_EMAILS; the Worker enforces it either way).
+const ADMIN_EMAILS = ["dimitri@dfginvest.fr"];
 
 // "?demo": the signed-in layout with sample data, for design QA without a session.
 const DEMO = new URLSearchParams(window.location.search).has("demo");
@@ -26,11 +31,11 @@ const DEMO_DATA: { user: WUser; searches: SavedSearch[] } = {
   ],
 };
 
-export function AccountPage() {
+export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
   const [user, setUser] = useState<WUser | null>(() => (DEMO ? DEMO_DATA.user : loadSession()?.user || null));
   const [searches, setSearches] = useState<SavedSearch[]>(DEMO ? DEMO_DATA.searches : []);
   const [checked, setChecked] = useState(DEMO);
-  const [tab, setTab] = useState<Tab>("names");
+  const [tab, setTab] = useState<Tab>(initialTab || "names");
   const [modal, setModal] = useState<SavedSearch | null>(null);
 
   useEffect(() => {
@@ -47,10 +52,13 @@ export function AccountPage() {
   const first = (user.name || user.email).split(/[ @]/)[0];
   const initials = (user.name || user.email).split(/[ @.]/).slice(0, 2).map((x) => x[0] || "").join("").toUpperCase();
 
+  const isAdmin = ADMIN_EMAILS.includes((user.email || "").toLowerCase());
   const NAV: { k: Tab; label: string; n?: number }[] = [
     { k: "names", label: "My names", n: searches.length },
+    ...(isAdmin ? [{ k: "all" as Tab, label: "All names" }] : []),
     { k: "settings", label: "Settings" },
   ];
+  const shownTab: Tab = tab === "all" && !isAdmin ? "names" : tab;
 
   return (
     <div className="wr-acct">
@@ -82,7 +90,7 @@ export function AccountPage() {
           </a>
         </div>
 
-        {tab === "names" && (
+        {shownTab === "names" && (
           <>
             <div className="headrow">
               <div>
@@ -98,7 +106,14 @@ export function AccountPage() {
           </>
         )}
 
-        {tab === "settings" && (
+        {shownTab === "all" && (
+          <>
+            <div className="headrow"><h1 className="wr-h" style={{ margin: 0 }}>All names</h1></div>
+            <AllNames />
+          </>
+        )}
+
+        {shownTab === "settings" && (
           <>
             <div className="headrow"><h1 className="wr-h" style={{ margin: 0 }}>Settings</h1></div>
             <div className="wr-dlrow" style={{ marginTop: 16 }}>
@@ -116,7 +131,7 @@ export function AccountPage() {
       <div className="wr-acctbar wr-hidedesk">
         {NAV.map((n) => (
           <button key={n.k} className={tab === n.k ? "on" : ""} onClick={() => setTab(n.k)}>
-            <span style={{ fontSize: 16 }}>{n.k === "names" ? "✦" : "⚙"}</span>
+            <span style={{ fontSize: 16 }}>{n.k === "names" ? "✦" : n.k === "all" ? "▤" : "⚙"}</span>
             {n.label}
           </button>
         ))}

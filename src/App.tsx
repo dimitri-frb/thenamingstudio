@@ -5,7 +5,6 @@
 // GitHub Pages serves 404.html → index.html, so deep paths work.
 import { WrappedApp } from "./wrapped/WrappedApp";
 import { AccountPage } from "./wrapped/AccountPage";
-import { AdminPage } from "./wrapped/AdminPage";
 
 export default function App() {
   const path = window.location.pathname;
@@ -14,7 +13,7 @@ export default function App() {
   const is = (name: string) =>
     new RegExp(`(?:^|/)${name}/?$`).test(path) || params.has(name) || hash === name;
 
-  if (is("admin")) return <AdminPage />;
+  if (is("admin")) return <AccountPage initialTab="all" />;
   if (is("account")) return <AccountPage />;
 
   return (
