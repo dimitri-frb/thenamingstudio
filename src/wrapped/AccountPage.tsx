@@ -14,7 +14,7 @@ import { ReportPrint } from "./Report";
 
 const BASE = () => (import.meta as any).env.BASE_URL || "/";
 
-type Tab = "names" | "downloads" | "settings";
+type Tab = "names" | "settings";
 
 // "?demo": the signed-in layout with sample data, for design QA without a session.
 const DEMO = new URLSearchParams(window.location.search).has("demo");
@@ -48,11 +48,9 @@ export function AccountPage() {
 
   const first = (user.name || user.email).split(/[ @]/)[0];
   const initials = (user.name || user.email).split(/[ @.]/).slice(0, 2).map((x) => x[0] || "").join("").toUpperCase();
-  const ready = searches.filter((s) => s.picked);
 
   const NAV: { k: Tab; label: string; n?: number }[] = [
     { k: "names", label: "My names", n: searches.length },
-    { k: "downloads", label: "Downloads" },
     { k: "settings", label: "Settings" },
   ];
 
@@ -102,26 +100,6 @@ export function AccountPage() {
           </>
         )}
 
-        {tab === "downloads" && (
-          <>
-            <div className="headrow"><h1 className="wr-h" style={{ margin: 0 }}>Downloads</h1></div>
-            {!ready.length && <p className="wr-hint" style={{ marginTop: 16 }}>Pick a name first, its brand book and logo pack will land here.</p>}
-            {ready.map((s) => (
-              <div key={s.id}>
-                <p className="wr-kicker" style={{ margin: "22px 0 4px" }}>{s.picked!.name}</p>
-                <div className="wr-dlrow">
-                  <span><span className="tt" style={{ display: "block" }}>Brand book</span><span className="ss">10 pages · PDF</span></span>
-                  <span className="act"><button className="wr-btn2" onClick={() => open(s)}>↓ Open</button></span>
-                </div>
-                <div className="wr-dlrow">
-                  <span><span className="tt" style={{ display: "block" }}>Logo pack</span><span className="ss">SVG · PNG</span></span>
-                  <span className="act"><button className="wr-btn2" onClick={() => open(s)}>↓ Open</button></span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-
         {tab === "settings" && (
           <>
             <div className="headrow"><h1 className="wr-h" style={{ margin: 0 }}>Settings</h1></div>
@@ -140,7 +118,7 @@ export function AccountPage() {
       <div className="wr-acctbar wr-hidedesk">
         {NAV.map((n) => (
           <button key={n.k} className={tab === n.k ? "on" : ""} onClick={() => setTab(n.k)}>
-            <span style={{ fontSize: 16 }}>{n.k === "names" ? "✦" : n.k === "downloads" ? "↓" : "⚙"}</span>
+            <span style={{ fontSize: 16 }}>{n.k === "names" ? "✦" : "⚙"}</span>
             {n.label}
           </button>
         ))}
