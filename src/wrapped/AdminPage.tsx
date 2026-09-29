@@ -83,7 +83,7 @@ export function AdminPage() {
             </span>
             <span className="bt" style={{ fontSize: 13.5, fontWeight: 700 }}>the naming studio</span>
           </a>
-          <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>Admin</span>
+          <span className="chip">Admin</span>
           <span style={{ flex: 1 }} />
           <div className="seg">
             {([1, 7, 30] as Period[]).map((p) => (
@@ -94,10 +94,10 @@ export function AdminPage() {
         </div>
 
         <div className="kpis">
-          <div className="kpi"><div className="l">Searches started</div><div className="v">{kSearches.toLocaleString()}</div><div className="c">{period === 1 ? "today" : `${period} days`}</div></div>
-          <div className="kpi"><div className="l">Accounts created</div><div className="v">{accounts.toLocaleString()}</div><div className="c">{pct(accounts)}</div></div>
-          <div className="kpi"><div className="l">Names picked</div><div className="v">{kPicked.toLocaleString()}</div><div className="c">{pct(kPicked)}</div></div>
-          <div className="kpi"><div className="l">Domains claimed</div><div className="v">{kClaimed.toLocaleString()}</div><div className="c">{pct(kClaimed)}</div></div>
+          <div className="kpi"><div className="l">Searches started</div><div className="v">{kSearches.toLocaleString()}<small>{period === 1 ? "today" : `${period} days`}</small></div></div>
+          <div className="kpi"><div className="l">Accounts created</div><div className="v">{accounts.toLocaleString()}<small>{pct(accounts)}</small></div></div>
+          <div className="kpi"><div className="l">Names picked</div><div className="v">{kPicked.toLocaleString()}<small>{pct(kPicked)}</small></div></div>
+          <div className="kpi"><div className="l">Domains claimed</div><div className="v">{kClaimed.toLocaleString()}<small>{pct(kClaimed)}</small></div></div>
         </div>
 
         <div className="bar" style={{ paddingTop: 2 }}>
@@ -125,7 +125,7 @@ export function AdminPage() {
                   <td className="mono">{fmtWhen(r.at)}</td>
                   <td className="mono">{r.email || "—"}</td>
                   <td style={{ maxWidth: 320 }}>{r.brief || "—"}</td>
-                  <td>{r.name ? <b style={{ fontFamily: "var(--serif)", fontWeight: 500, fontSize: 15 }}>{r.name}</b> : "—"}</td>
+                  <td>{r.name ? <span className="nmcell">{r.name}</span> : "—"}</td>
                   <td className="mono">{r.domain || "—"}</td>
                   <td><span className={"pill " + (r.status === "claimed" ? "claimed" : r.status === "ready" ? "ready" : r.status === "abandoned" ? "abandoned" : "")}>{STATUS_LABEL[r.status]}</span></td>
                 </tr>
