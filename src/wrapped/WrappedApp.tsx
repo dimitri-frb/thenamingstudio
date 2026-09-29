@@ -15,7 +15,7 @@ import { buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoC
 import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
-type Step = "land" | "ask" | "brief" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
+type Step = "land" | "how" | "ask" | "brief" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
 const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, names: 4, reveal: 5 };
 const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
 const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
@@ -23,7 +23,7 @@ const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", ask: "1-brief", brief: "2-concept", words: "3-words", names: "4-names", reveal: "5-reveal",
+  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", words: "3-words", names: "4-names", reveal: "5-reveal",
   domain: "6-domain", logo: "7-logo", logodone: "7-logo-chosen", book: "8-brand-book", socials: "9-socials", done: "10-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
@@ -131,7 +131,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         pushUrl(target, true);
       } else {
         const slugStep = SLUG_STEP[pathSlug()];
-        if (slugStep === "ask") { setStep("ask"); pushUrl("ask", true); }
+        if (slugStep === "ask" || slugStep === "how") { setStep(slugStep); pushUrl(slugStep, true); }
         else if (slugStep) pushUrl("land", true); // a deep link with no run behind it
       }
     })();
@@ -355,7 +355,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   dataRef.current = { sentence, starred, names, picked };
   const canEnter = (t: Step) => {
     const d = dataRef.current;
-    if (t === "land" || t === "ask") return true;
+    if (t === "land" || t === "how" || t === "ask") return true;
     if (t === "brief" || t === "words") return !!d.sentence.trim();
     if (t === "names") return !!(d.names?.length || d.starred.length);
     return !!d.picked;
@@ -566,7 +566,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             : inOwn && picked
               ? <span className="wr-topname">{picked.name}</span>
               : step === "land"
-                ? <button className="wr-link" onClick={() => document.getElementById("youget")?.scrollIntoView({ behavior: "smooth" })}>How it works</button>
+                ? <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
+                : step === "how"
+                  ? <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>
                 : step === "done" ? <span className="wr-count">done</span> : null}
         </span>
       </div>
@@ -596,13 +598,70 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               {EXAMPLES.map((x) => <button key={x} onClick={() => startFlow(x)}>{x}</button>)}
             </div>
           </div>
-          <div className="wr-youget2" id="youget">
-            <span className="k">You get</span>
-            {["Your name", "The domain", "Social accounts", "A logo", "A brand book"].map((x, i) => (
-              <span key={x} style={{ display: "inline-flex", alignItems: "center", gap: 18 }}>
-                {i > 0 && <i className="dot" />}<span className="it">{x}</span>
-              </span>
-            ))}
+          <div className="wr-youget2">
+            <span className="line">A name, its domain, logo and brand book, in minutes.</span>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 00b how it works ═══ */}
+      {step === "how" && (
+        <div className="wr-stage" style={{ paddingTop: 26 }}>
+          <div className="wr-hiw">
+            <h1 className="wr-h" style={{ textAlign: "center", margin: "10px 0 8px" }}>From one sentence to a name you own.</h1>
+            <p className="wr-lead" style={{ textAlign: "center", color: "var(--text3)", marginBottom: 34 }}>Five steps. About five minutes.</p>
+            <div className="row">
+              <div className="hcard">
+                <div className="hart">
+                  <div className="minput">A calm coffee brand<i className="caret" /></div>
+                  <div className="mchips"><span>Consumer</span><span>EU</span></div>
+                </div>
+                <p className="hn">01</p><h3>Describe it</h3><p className="hd">One sentence about what you're building.</p>
+              </div>
+              <span className="arr">→</span>
+              <div className="hcard">
+                <div className="hart" style={{ alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                  <p className="mfeel">It should feel like</p>
+                  <span className="mpill">a slow morning</span>
+                </div>
+                <p className="hn">02</p><h3>We find the idea</h3><p className="hd">Your brief becomes one clear concept.</p>
+              </div>
+              <span className="arr">→</span>
+              <div className="hcard">
+                <div className="hart">
+                  <div className="mwords">
+                    <span className="on">★ dawn</span><span>brew</span>
+                    <span className="on">★ hush</span><span>ember</span>
+                    <span className="on">★ alba</span><span>drift</span>
+                  </div>
+                </div>
+                <p className="hn">03</p><h3>Star words</h3><p className="hd">Keep the words that inspire you.</p>
+              </div>
+              <span className="arr">→</span>
+              <div className="hcard">
+                <div className="hart" style={{ justifyContent: "center" }}>
+                  <div className="mname top"><b>Albora</b><span>96<small>/100</small></span></div>
+                  <div className="mname"><b style={{ fontFamily: "var(--serif)", fontWeight: 500 }}>Hushly</b><span>88/100</span></div>
+                </div>
+                <p className="hn">04</p><h3>Pick a name</h3><p className="hd">Names scored against your brief.</p>
+              </div>
+              <span className="arr">→</span>
+              <div className="hcard">
+                <div className="hart">
+                  <div className="mdom"><i /> albora.com</div>
+                  <div className="mtiles">
+                    <span className="t1"><svg width="13" height="13" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
+                    <span className="t2">Aa</span>
+                    <span className="t3">@</span>
+                  </div>
+                  <p className="mcap">Domain · logo · brand book · socials</p>
+                </div>
+                <p className="hn">05</p><h3>Own it</h3><p className="hd">Domain, logo, brand book, socials.</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", margin: "36px 0 30px" }}>
+              <button className="wr-btn" style={{ maxWidth: 240, height: 54, borderRadius: 980 }} onClick={() => startFlow("")}>Start naming →</button>
+            </div>
           </div>
         </div>
       )}
