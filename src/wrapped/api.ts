@@ -60,7 +60,7 @@ export interface SavedSearch {
   names?: WName[];
   picked?: WName | null;
   domain?: string;          // the registered/chosen domain
-  logo?: { key: string; title: string; seed: number } | null;
+  logo?: { key: string; title: string; seed: number; accent?: string } | null;
   steps: { domain?: "done" | "skipped"; logo?: "done" | "skipped"; book?: "done" | "skipped"; socials?: "done" | "skipped" };
   status: "exploring" | "ready" | "claimed";
 }
@@ -144,8 +144,10 @@ export function fetchDomainBoard(name: string): Promise<DomainBoardData> {
   return p;
 }
 
+// Register at the registrar whose live prices we display (Porkbun), so the
+// number a founder sees is the number at checkout.
 export const registrarUrl = (domain: string) =>
-  `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
+  `https://porkbun.com/checkout/search?q=${encodeURIComponent(domain)}`;
 
 /* ── accounts ── */
 const SESS_KEY = "ns.session";

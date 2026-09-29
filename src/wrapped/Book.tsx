@@ -11,6 +11,7 @@ export interface BookCtx {
   book: WBook;
   logoKey: string;         // chosen logo concept (falls back to sunrise)
   logoAccent: "dawn" | "haze" | "nova";
+  logoSeed?: number;       // which round the concept came from (shapes vary per seed)
 }
 
 const PAGE_W = 794;  // 210mm @96dpi
@@ -27,7 +28,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   const pal = toPalette(book.palette);
   const grad = `linear-gradient(120deg, ${pal.dawn}, ${pal.haze} 50%, ${pal.nova})`;
   const mark = (variant: "light" | "night" | "dawn" | "mono", h = 60) =>
-    ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, height: h }) });
+    ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, seed: ctx.logoSeed || 0, height: h }) });
 
   const foot = i > 0 ? (
     <div className="bk-foot">
@@ -284,7 +285,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{name}, out in the world</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", paddingBottom: "24pt" }}>
           <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "110pt" }}>
-            <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, height: 74 }) }} />
+            <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, height: 74 }) }} />
           </div>
           <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
             <div dangerouslySetInnerHTML={mark("light", 26)} />

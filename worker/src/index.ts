@@ -84,6 +84,20 @@ export default {
     // The full domain board for ONE name: a broad set of TLDs (+ variants) each
     // tagged available / negotiable / taken. Uses Domainr when a key is set (real
     // aftermarket signal), else RDAP (available vs taken only).
+    if (phase === "prices") { // read-only: the live TLD price table the boards use
+      if (body?.debug) { // what does the price source actually answer us?
+        try {
+          const res = await fetch("https://api.porkbun.com/api/json/v3/pricing/get", {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0)" },
+            body: "{}",
+          });
+          return json({ status: res.status, head: (await res.text()).slice(0, 260) }, env);
+        } catch (e: any) { return json({ threw: String(e?.message || e) }, env); }
+      }
+      return json(await tldPrices(env), env);
+    }
+
     if (phase === "domainboard") {
       return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || []), env);
     }
@@ -175,7 +189,7 @@ export default {
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
-      if (phase === "wrapnames") data = await enrichWrapNames(data);
+      if (phase === "wrapnames") data = await enrichWrapNames(env, data);
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
@@ -554,8 +568,9 @@ async function enrichCandidates(data: any): Promise<any> {
 // (first free of .com > .io > .app > .ai, verified via RDAP), so the card's
 // "aurova.com free" is a checked fact, not a guess.
 const WRAP_DOM_TLDS = ["com", "io", "app", "ai"];
-async function enrichWrapNames(data: any): Promise<any> {
+async function enrichWrapNames(env: Env, data: any): Promise<any> {
   const list = Array.isArray(data?.names) ? data.names : [];
+  const prices = await tldPrices(env);
   await Promise.all(list.map(async (n: any) => {
     const slug = (n?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     n.dom = null;
@@ -564,7 +579,7 @@ async function enrichWrapNames(data: any): Promise<any> {
     const i = states.findIndex((s) => s === "available");
     if (i >= 0) {
       const t = WRAP_DOM_TLDS[i];
-      n.dom = { domain: `${slug}.${t}`, tld: "." + t, price: (BOARD_PRICE[t] || ["$15"])[0] };
+      n.dom = { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0] };
     }
   }));
   data.names = list;
@@ -750,6 +765,50 @@ const BOARD_PRICE: Record<string, [string, string]> = {
 };
 // Maps geo selection (from brief.geos) to the ccTLD to prioritise right after .com.
 const GEO_TLD: Record<string, string> = { France: "fr", Spain: "es", UK: "co.uk" };
+
+// ── Live registration prices ──
+// Porkbun publishes real registrar pricing with no key; the register button
+// links to the same registrar, so the price a founder sees IS the checkout
+// price (rounded up to whole dollars, never under-quoted). Cached in the
+// isolate + KV for a day; BOARD_PRICE stays as the offline fallback.
+let PRICE_CACHE: { at: number; prices: Record<string, [string, string]> } | null = null;
+async function tldPrices(env: Env): Promise<Record<string, [string, string]>> {
+  if (PRICE_CACHE && Date.now() - PRICE_CACHE.at < 6 * 3600e3) return PRICE_CACHE.prices;
+  try {
+    const raw = await env.LOG?.get("prices:porkbun");
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (j?.prices && Date.now() - j.at < 24 * 3600e3) { PRICE_CACHE = j; return j.prices; }
+    }
+  } catch { /* fall through to a live fetch */ }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch("https://api.porkbun.com/api/json/v3/pricing/get", {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; NamingStudioBot/1.0)" },
+      body: "{}",
+    });
+    clearTimeout(timer);
+    const d: any = await res.json();
+    if (d?.status === "SUCCESS" && d.pricing) {
+      const prices: Record<string, [string, string]> = {};
+      for (const [tld, v] of Object.entries<any>(d.pricing)) {
+        const reg = Number(v?.registration), ren = Number(v?.renewal);
+        if (Number.isFinite(reg) && reg > 0) {
+          prices[tld] = [`$${Math.ceil(reg)}`, Number.isFinite(ren) && ren > 0 ? `$${Math.ceil(ren)}/yr` : ""];
+        }
+      }
+      if (prices.com) {
+        PRICE_CACHE = { at: Date.now(), prices };
+        try { await env.LOG?.put("prices:porkbun", JSON.stringify(PRICE_CACHE), { expirationTtl: 60 * 60 * 48 }); } catch { /* best effort */ }
+        return prices;
+      }
+    }
+  } catch { /* offline: fall back to the static table */ }
+  return BOARD_PRICE;
+}
 type DomStatus = "available" | "negotiable" | "taken" | "unknown";
 type DrInfo = { status: DomStatus; premium: boolean; offerPrice?: string; offerUrl?: string };
 
@@ -856,6 +915,8 @@ async function godaddyPrice(env: Env, domain: string): Promise<{ price: string }
 async function domainBoard(env: Env, name: string, geos: string[] = []): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
+  const PRICES = await tldPrices(env);
+  const priceOf = (t: string): [string, string] => PRICES[t] || BOARD_PRICE[t] || ["$15", "$18/yr"];
   // Build TLD list: .com first, then any ccTLDs the founder cares about, then standard ones.
   const ccTlds = (geos || []).map((g) => GEO_TLD[g]).filter(Boolean) as string[];
   const BOARD_TLDS = ["com", ...ccTlds, ...BASE_TLDS_AFTER_COM.filter((t) => !ccTlds.includes(t))];
@@ -920,7 +981,7 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
 
   const tlds = BOARD_TLDS.map((t, i) => {
     const st = exactStatuses[i];
-    const [price, renewal] = BOARD_PRICE[t] || ["$15", "$18/yr"];
+    const [price, renewal] = priceOf(t);
     const dom = `${slug}.${t}`;
     return {
       domain: dom, tld: "." + t, status: st.status, premium: st.premium,
@@ -939,8 +1000,8 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
       const st = variantStatuses[i];
       return {
         domain: d, status: st.status,
-        price: st.status === "available" ? BOARD_PRICE.com[0] : undefined,
-        renewal: st.status === "available" ? BOARD_PRICE.com[1] : undefined,
+        price: st.status === "available" ? priceOf("com")[0] : undefined,
+        renewal: st.status === "available" ? priceOf("com")[1] : undefined,
         offerPrice: st.offerPrice, offerUrl: st.offerUrl,
       };
     })
@@ -964,12 +1025,12 @@ async function domainBoard(env: Env, name: string, geos: string[] = []): Promise
     ]);
     extraTlds.forEach((t, i) => {
       if (exSt[i].status !== "available" || exSt[i].premium) return;
-      const [price, renewal] = BOARD_PRICE[t];
+      const [price, renewal] = priceOf(t);
       tlds.push({ domain: `${slug}.${t}`, tld: "." + t, status: "available", premium: false, price, renewal, offerPrice: undefined, offerUrl: undefined });
     });
     appVars.forEach((d, i) => {
       if (appSt[i].status !== "available") return;
-      variantHits.push({ domain: d, status: "available", price: BOARD_PRICE.app[0], renewal: BOARD_PRICE.app[1], offerPrice: undefined, offerUrl: undefined });
+      variantHits.push({ domain: d, status: "available", price: priceOf("app")[0], renewal: priceOf("app")[1], offerPrice: undefined, offerUrl: undefined });
     });
   }
 

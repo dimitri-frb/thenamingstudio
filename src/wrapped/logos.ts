@@ -18,7 +18,7 @@ export function toPalette(swatches?: { name: string; hex: string }[] | null): Pa
 
 export type LogoVariant = "light" | "night" | "dawn" | "mono" | "icon" | "tile";
 export type Accent = "dawn" | "haze" | "nova";
-export interface LogoConcept { key: string; title: string; accent: Accent }
+export interface LogoConcept { key: string; title: string; accent: Accent; seed: number }
 
 const BASE: { key: string; title: string }[] = [
   { key: "sunrise", title: "Sunrise" },
@@ -33,10 +33,11 @@ const BASE: { key: string; title: string }[] = [
 ];
 const ACCENTS: Accent[] = ["dawn", "haze", "nova"];
 
-// Nine concepts; "Nine more" bumps the seed, which rotates each concept's accent
-// colour so every round genuinely reads differently.
+// Nine concepts; "Nine more" bumps the seed, which changes each concept's
+// STRUCTURE and typography (motif placement, case, serif/sans, frame shape),
+// not just the accent colour — every round genuinely reads differently.
 export function logoConcepts(seed = 0): LogoConcept[] {
-  return BASE.map((b, i) => ({ ...b, accent: ACCENTS[(i + seed) % ACCENTS.length] }));
+  return BASE.map((b, i) => ({ ...b, seed, accent: ACCENTS[(i + seed) % ACCENTS.length] }));
 }
 
 export function whyItWorks(key: string, name: string, concept: string): string {
@@ -69,13 +70,13 @@ function midVowel(name: string): { ch: string; i: number } {
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s);
 
-// Rough width of a wordmark at font-size fs and weight ~800.
-const wordW = (text: string, fs: number, spacing = 0) => Math.max(fs, text.length * fs * 0.60 + text.length * spacing);
+const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
-export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number } = {}): string {
+export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number } = {}): string {
   const variant = opts.variant || "light";
   const accent = pal[opts.accent || "dawn"];
   const name = cap((rawName || "Name").trim());
+  const v = ((opts.seed || 0) % 3 + 3) % 3; // structural variant per round
   const isDark = variant === "night" || variant === "tile";
   const fg = variant === "mono" ? pal.night : isDark ? "#ffffff" : pal.night;
   const motif = variant === "mono" ? fg : accent;
@@ -89,96 +90,203 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
     (bg !== "none" ? `<rect width="${w}" height="${h}" fill="${bg}" rx="${variant === "dawn" ? 18 : 0}"/>` : "") +
     inner + `</svg>`;
 
-  const word = (x: number, y: number, fs: number, o: { weight?: number; spacing?: number; color?: string; text?: string; anchor?: string } = {}) =>
-    `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${fs}" font-weight="${o.weight ?? 800}" letter-spacing="${o.spacing ?? -fs * 0.03}" fill="${o.color || fg}" ${o.anchor ? `text-anchor="${o.anchor}"` : ""}>${esc(o.text ?? name)}</text>`;
+  const word = (x: number, y: number, fs: number, o: { weight?: number; spacing?: number; color?: string; text?: string; anchor?: string; serif?: boolean; italic?: boolean } = {}) =>
+    `<text x="${x}" y="${y}" font-family="${o.serif ? SERIF : FONT}" font-size="${fs}" font-weight="${o.weight ?? 800}" letter-spacing="${o.spacing ?? -fs * 0.03}" ${o.italic ? `font-style="italic"` : ""} fill="${o.color || fg}" ${o.anchor ? `text-anchor="${o.anchor}"` : ""}>${esc(o.text ?? name)}</text>`;
+
+  // The wordmark voice also rotates with the round: heavy sans → serif → light sans.
+  const face: { serif?: boolean; weight: number; wf: number } =
+    v === 1 ? { serif: true, weight: 500, wf: 0.56 } : v === 2 ? { weight: 400, wf: 0.58 } : { weight: 800, wf: 0.60 };
+  const wWord = (text: string, fs: number, spacing = 0) => Math.max(fs, text.length * fs * face.wf + text.length * spacing);
 
   const fs = 44;
   const pad = 34;
+  const sun = (cx: number, baseY: number, r: number, color = motif) =>
+    `<path d="M ${cx - r} ${baseY} A ${r} ${r} 0 0 1 ${cx + r} ${baseY} Z" fill="${color}"/>`;
 
   if (key === "appicon" || variant === "icon") {
-    // Square app icon: rounded tile, first letter + a small rising sun.
+    // Square app icon: three treatments per round.
     const S = 220;
     const letter = (name[0] || "A");
-    const tileBg = variant === "dawn" ? "url(#dg)" : pal.night;
-    const tileFg = "#ffffff";
+    const tileBg = variant === "dawn" || v === 1 ? "url(#dg)" : v === 2 ? "#ffffff" : pal.night;
+    const letterFg = v === 1 ? pal.night : v === 2 ? pal.night : "#ffffff";
+    const inner =
+      v === 2
+        ? `<circle cx="${S / 2}" cy="${S / 2}" r="${S * 0.36}" fill="none" stroke="${accent}" stroke-width="9"/>` +
+          `<text x="${S / 2}" y="${S * 0.635}" text-anchor="middle" font-family="${FONT}" font-size="${S * 0.38}" font-weight="800" fill="${letterFg}">${esc(letter)}</text>`
+        : sun(S / 2, S * 0.72, S * 0.20, v === 1 ? pal.night : accent) +
+          `<text x="${S / 2}" y="${S * 0.60}" text-anchor="middle" font-family="${v === 1 ? SERIF : FONT}" font-size="${S * 0.42}" font-weight="${v === 1 ? 500 : 800}" fill="${letterFg}">${esc(letter)}</text>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${H}" height="${H}">${defs}` +
-      `<rect width="${S}" height="${S}" rx="${S * 0.225}" fill="${tileBg}"/>` +
-      `<path d="M ${S * 0.30} ${S * 0.72} A ${S * 0.20} ${S * 0.20} 0 0 1 ${S * 0.70} ${S * 0.72} Z" fill="${variant === "dawn" ? pal.night : accent}"/>` +
-      `<text x="${S / 2}" y="${S * 0.60}" text-anchor="middle" font-family="${FONT}" font-size="${S * 0.42}" font-weight="800" fill="${variant === "dawn" ? pal.night : tileFg}">${esc(letter)}</text>` +
-      `</svg>`;
+      `<rect width="${S}" height="${S}" rx="${S * 0.225}" fill="${tileBg}" ${v === 2 ? `stroke="rgba(0,0,0,.12)" stroke-width="2"` : ""}/>` + inner + `</svg>`;
   }
 
   switch (key) {
     case "sunrise": {
-      const w = wordW(name, fs) + pad * 2;
+      if (v === 1) { // sun inline, left of a serif wordmark
+        const r = 20;
+        const w = r * 2 + 16 + wWord(name, fs) + pad * 2;
+        return wrap(w, 130, sun(pad + r, 78, r) + word(pad + r * 2 + 16, 84, fs, { ...face }));
+      }
+      if (v === 2) { // big sun rising behind a light wordmark
+        const w = wWord(name, fs) + pad * 2;
+        const cx = w / 2;
+        return wrap(w, 170, sun(cx, 118, 52) + word(cx, 118, fs, { ...face, anchor: "middle" }));
+      }
+      const w = wWord(name, fs) + pad * 2; // classic: sun over the horizon line
       const cx = w / 2;
       return wrap(w, 190, [
-        `<path d="M ${cx - 30} 78 A 30 30 0 0 1 ${cx + 30} 78 Z" fill="${motif}"/>`,
+        sun(cx, 78, 30),
         `<line x1="${cx - 44}" y1="78" x2="${cx + 44}" y2="78" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>`,
         word(cx, 138, fs, { anchor: "middle" }),
       ].join(""));
     }
     case "airy": {
+      if (v === 1) { // serif italic, quietly spaced
+        const t = name.toLowerCase();
+        const w = wWord(t, fs * 0.95, fs * 0.08) + pad * 2;
+        return wrap(w, 130, word(w / 2, 84, fs * 0.95, { serif: true, italic: true, weight: 400, spacing: fs * 0.08, text: t, anchor: "middle" }));
+      }
+      if (v === 2) { // small caps, very wide
+        const t = name.toUpperCase();
+        const sp = fs * 0.34;
+        const w = wWord(t, fs * 0.62, sp) + pad * 2;
+        return wrap(w, 120, word(w / 2, 76, fs * 0.62, { weight: 500, spacing: sp, text: t, anchor: "middle" }));
+      }
       const t = name.toLowerCase();
       const sp = fs * 0.24;
-      const w = wordW(t, fs * 0.86, sp) + pad * 2;
+      const w = wWord(t, fs * 0.86, sp) + pad * 2;
       return wrap(w, 130, word(w / 2, 82, fs * 0.86, { weight: 300, spacing: sp, text: t, anchor: "middle" }));
     }
     case "monogram": {
       const S = 170;
+      const letter = name[0] || "A";
+      if (v === 1) { // accent disc, letter reversed
+        return wrap(S, S, [
+          `<circle cx="${S / 2}" cy="${S / 2}" r="${S / 2 - 16}" fill="${motif}"/>`,
+          `<text x="${S / 2}" y="${S / 2 + 26}" text-anchor="middle" font-family="${SERIF}" font-size="76" font-weight="500" fill="${variant === "mono" ? "#fff" : pal.night}">${esc(letter)}</text>`,
+        ].join(""));
+      }
+      if (v === 2) { // bare letter with an accent full stop
+        return wrap(S, S, [
+          `<text x="${S / 2 - 12}" y="${S / 2 + 34}" text-anchor="middle" font-family="${FONT}" font-size="98" font-weight="800" fill="${fg}">${esc(letter.toLowerCase())}</text>`,
+          `<circle cx="${S / 2 + 42}" cy="${S / 2 + 26}" r="10" fill="${motif}"/>`,
+        ].join(""));
+      }
       return wrap(S, S, [
         `<rect x="14" y="14" width="${S - 28}" height="${S - 28}" rx="30" fill="none" stroke="${motif}" stroke-width="6"/>`,
-        `<text x="${S / 2}" y="${S / 2 + 24}" text-anchor="middle" font-family="${FONT}" font-size="72" font-weight="800" fill="${fg}">${esc(name[0] || "A")}</text>`,
+        `<text x="${S / 2}" y="${S / 2 + 24}" text-anchor="middle" font-family="${FONT}" font-size="72" font-weight="800" fill="${fg}">${esc(letter)}</text>`,
       ].join(""));
     }
     case "star": {
+      const star = (sx: number, sy: number, r: number) =>
+        `<path d="M ${sx} ${sy - r} C ${sx + r * 0.14} ${sy - r * 0.36} ${sx + r * 0.36} ${sy - r * 0.14} ${sx + r} ${sy} C ${sx + r * 0.36} ${sy + r * 0.14} ${sx + r * 0.14} ${sy + r * 0.36} ${sx} ${sy + r} C ${sx - r * 0.14} ${sy + r * 0.36} ${sx - r * 0.36} ${sy + r * 0.14} ${sx - r} ${sy} C ${sx - r * 0.36} ${sy - r * 0.14} ${sx - r * 0.14} ${sy - r * 0.36} ${sx} ${sy - r} Z" fill="${motif}"/>`;
+      if (v === 1) { // star floats above a serif wordmark
+        const w = wWord(name, fs) + pad * 2;
+        const cx = w / 2;
+        return wrap(w, 185, star(cx, 48, 18) + word(cx, 134, fs, { ...face, anchor: "middle" }));
+      }
+      if (v === 2) { // star dots the end of the word
+        const w = wWord(name, fs) + 16 + 30 + pad * 2;
+        return wrap(w, 124, word(pad, 78, fs, { ...face }) + star(pad + wWord(name, fs) + 26, 70, 14));
+      }
       const starW = 46;
-      const w = starW + 14 + wordW(name, fs) + pad * 2;
-      const sx = pad + starW / 2, sy = 62;
-      const star = `<path d="M ${sx} ${sy - 22} C ${sx + 3} ${sy - 8} ${sx + 8} ${sy - 3} ${sx + 22} ${sy} C ${sx + 8} ${sy + 3} ${sx + 3} ${sy + 8} ${sx} ${sy + 22} C ${sx - 3} ${sy + 8} ${sx - 8} ${sy + 3} ${sx - 22} ${sy} C ${sx - 8} ${sy - 3} ${sx - 3} ${sy - 8} ${sx} ${sy - 22} Z" fill="${motif}"/>`;
-      return wrap(w, 124, star + word(pad + starW + 14, sy + fs * 0.36, fs));
+      const w = starW + 14 + wWord(name, fs) + pad * 2;
+      return wrap(w, 124, star(pad + starW / 2, 62, 22) + word(pad + starW + 14, 62 + fs * 0.36, fs));
     }
     case "horizon": {
       const t = name.toUpperCase();
       const sp = fs * 0.16;
-      const w = wordW(t, fs * 0.78, sp) + pad * 2;
+      const tw = wWord(t, fs * 0.78, sp);
+      const w = tw + pad * 2;
+      if (v === 1) { // masthead: rules above and below
+        return wrap(w, 168, [
+          `<line x1="${pad}" y1="42" x2="${w - pad}" y2="42" stroke="${motif}" stroke-width="3"/>`,
+          word(w / 2, 100, fs * 0.78, { weight: 600, spacing: sp, text: t, anchor: "middle", serif: true }),
+          `<line x1="${pad}" y1="126" x2="${w - pad}" y2="126" stroke="${motif}" stroke-width="3"/>`,
+        ].join(""));
+      }
+      if (v === 2) { // the line rises into a sun at the end
+        return wrap(w, 150, [
+          word(w / 2, 78, fs * 0.78, { weight: 700, spacing: sp, text: t, anchor: "middle" }),
+          `<line x1="${pad}" y1="104" x2="${w - pad - 34}" y2="104" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>`,
+          sun(w - pad - 14, 104, 14),
+        ].join(""));
+      }
       return wrap(w, 150, [
         word(w / 2, 78, fs * 0.78, { weight: 700, spacing: sp, text: t, anchor: "middle" }),
         `<line x1="${pad}" y1="104" x2="${w - pad}" y2="104" stroke="${motif}" stroke-width="4" stroke-linecap="round"/>`,
       ].join(""));
     }
     case "dawn": {
-      const w = wordW(name, fs) + pad * 2.4;
+      const w = wWord(name, fs) + pad * 2.4;
+      if (v === 1) { // gradient wordmark on the plain stage
+        return wrap(w, 130, `<text x="${w / 2}" y="86" text-anchor="middle" font-family="${FONT}" font-size="${fs}" font-weight="800" letter-spacing="${-fs * 0.03}" fill="url(#dg)">${esc(name)}</text>`);
+      }
+      if (v === 2) { // wordmark over a gradient underline bar
+        return wrap(w, 150, [
+          word(w / 2, 80, fs, { anchor: "middle" }),
+          `<rect x="${pad}" y="102" width="${w - pad * 2}" height="10" rx="5" fill="url(#dg)"/>`,
+        ].join(""));
+      }
       const inner = `<text x="${w / 2}" y="86" text-anchor="middle" font-family="${FONT}" font-size="${fs}" font-weight="800" letter-spacing="${-fs * 0.03}" fill="${pal.night}">${esc(name)}</text>`;
       return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 140" width="${(w / 140) * H}" height="${H}">${defs}<rect width="${w}" height="140" rx="20" fill="url(#dg)"/>${inner}</svg>`;
     }
     case "halo": {
-      const w = wordW(name.toLowerCase(), fs) + pad * 2;
+      const t = name.toLowerCase();
+      const w = wWord(t, fs) + pad * 2;
       const cx = w / 2;
+      if (v === 1) { // the halo leans on the first letter
+        const x0 = (w - wWord(t, fs)) / 2;
+        return wrap(w, 150, [
+          `<circle cx="${x0 + fs * 0.30}" cy="${96 - fs * 0.78}" r="${fs * 0.30}" fill="none" stroke="${motif}" stroke-width="5"/>`,
+          word(cx, 96, fs, { weight: 700, text: t, anchor: "middle" }),
+        ].join(""));
+      }
+      if (v === 2) { // three dawn dots above
+        return wrap(w, 170, [
+          `<circle cx="${cx - 26}" cy="46" r="7" fill="${variant === "mono" ? fg : pal.dawn}"/>`,
+          `<circle cx="${cx}" cy="40" r="7" fill="${variant === "mono" ? fg : pal.haze}"/>`,
+          `<circle cx="${cx + 26}" cy="46" r="7" fill="${variant === "mono" ? fg : pal.nova}"/>`,
+          word(cx, 124, fs, { weight: 700, text: t, anchor: "middle" }),
+        ].join(""));
+      }
       return wrap(w, 180, [
         `<circle cx="${cx}" cy="52" r="20" fill="none" stroke="${motif}" stroke-width="5"/>`,
-        word(cx, 132, fs, { weight: 700, text: name.toLowerCase(), anchor: "middle" }),
+        word(cx, 132, fs, { weight: 700, text: t, anchor: "middle" }),
       ].join(""));
     }
     case "firstlight": {
       const mv = midVowel(name);
+      if (v === 1) { // rays break over the wordmark
+        const w = wWord(name, fs) + pad * 2;
+        const cx = w / 2;
+        const ray = (a: number) => {
+          const x2 = cx + Math.sin(a) * 34, y2 = 62 - Math.cos(a) * 34;
+          const x1 = cx + Math.sin(a) * 18, y1 = 62 - Math.cos(a) * 18;
+          return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${motif}" stroke-width="5" stroke-linecap="round"/>`;
+        };
+        return wrap(w, 175, ray(-0.7) + ray(0) + ray(0.7) + word(cx, 130, fs, { ...face, anchor: "middle" }));
+      }
+      if (v === 2) { // the sun rises out of the last letter's baseline
+        const w = wWord(name, fs) + 44 + pad * 2;
+        return wrap(w, 140, word(pad, 88, fs, { ...face }) + sun(pad + wWord(name, fs) + 26, 88, 16));
+      }
       const a = mv.i > 0 ? name.slice(0, mv.i) : name;
       const b = mv.i > 0 ? name.slice(mv.i + 1) : "";
       const r = fs * 0.30;
-      const wA = wordW(a, fs), wB = wordW(b, fs);
+      const wA = wWord(a, fs), wB = wWord(b, fs);
       const w = wA + r * 2 + 12 + wB + pad * 2;
       let x = pad;
       const parts: string[] = [];
       parts.push(word(x, 96, fs, { text: a }));
       x += wA + 6;
-      parts.push(`<path d="M ${x} 92 A ${r} ${r} 0 0 1 ${x + r * 2} 92 Z" fill="${motif}"/>`);
+      parts.push(sun(x + r, 92, r));
       x += r * 2 + 6;
       if (b) parts.push(word(x, 96, fs, { text: b }));
       return wrap(w, 150, parts.join(""));
     }
     default: { // plain wordmark
-      const w = wordW(name, fs) + pad * 2;
-      return wrap(w, 130, word(w / 2, 84, fs, { anchor: "middle" }));
+      const w = wWord(name, fs) + pad * 2;
+      return wrap(w, 130, word(w / 2, 84, fs, { ...face, anchor: "middle" }));
     }
   }
 }

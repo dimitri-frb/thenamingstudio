@@ -113,7 +113,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     setNames(s.names || null);
     setPicked(s.picked || null);
     setSteps(s.steps || {});
-    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: "dawn" });
+    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0 });
     if (s.picked) setStep("reveal");
     else if (s.names?.length) setStep("names");
     else if (s.concept) setStep("words");
@@ -132,7 +132,9 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     putSearch({
       id: processId(), at: startedAt.current, updated: Date.now(),
       sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
-      picked, steps, status, ...over,
+      picked, steps, status,
+      logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent } : null,
+      ...over,
     } as SavedSearch);
   }
 
@@ -345,7 +347,8 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
 
   function registerDomain() {
     if (!domSel) return;
-    window.open(registrarUrl(domSel.domain), "_blank", "noopener");
+    // A for-sale domain opens its actual marketplace listing when we have it.
+    window.open(domSel.offerUrl || registrarUrl(domSel.domain), "_blank", "noopener");
     track("domain", { domain: domSel.domain, price: domSel.price || domSel.offerPrice || "" });
     markStep("domain", "done", "logo");
   }
@@ -355,11 +358,11 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     const pal = toPalette(book?.palette);
     const nm = picked.name.toLowerCase();
     const svgs: Record<string, string> = {
-      [`${nm}-primary.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "light", accent: logoSel.accent }),
-      [`${nm}-reversed.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "night", accent: logoSel.accent }),
-      [`${nm}-gradient.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "dawn", accent: logoSel.accent }),
-      [`${nm}-mono.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "mono", accent: logoSel.accent }),
-      [`${nm}-appicon.svg`]: logoSvg("appicon", picked.name, pal, { variant: "icon", accent: logoSel.accent }),
+      [`${nm}-primary.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "light", accent: logoSel.accent, seed: logoSel.seed }),
+      [`${nm}-reversed.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "night", accent: logoSel.accent, seed: logoSel.seed }),
+      [`${nm}-gradient.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "dawn", accent: logoSel.accent, seed: logoSel.seed }),
+      [`${nm}-mono.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "mono", accent: logoSel.accent, seed: logoSel.seed }),
+      [`${nm}-appicon.svg`]: logoSvg("appicon", picked.name, pal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed }),
     };
     const enc = new TextEncoder();
     const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([name, svg]) => ({ name, data: enc.encode(svg) }));
@@ -440,7 +443,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
-    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn",
+    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0,
   } : null;
 
   return (
@@ -768,7 +771,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                 {logoConcepts(logoSeed).map((c) => (
                   <button key={c.key} className={"wr-ltile" + (logoSel?.key === c.key ? " sel" : "")} onClick={() => setLogoSel(c)}>
                     {logoSel?.key === c.key && <span className="ck">✓</span>}
-                    <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, height: 54 }) }} />
+                    <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, height: 54 }) }} />
                     <span className="ln">{c.title}</span>
                   </button>
                 ))}
@@ -791,7 +794,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 10 }}>
             <div className="inner-nar">
               <p className="wr-kicker" style={{ marginBottom: 12 }}>Your logo · {logoSel.title}</p>
-              <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, height: 110 }) }} />
+              <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, height: 110 }) }} />
               <p className="wr-lead" style={{ margin: "16px 0 14px", maxWidth: 500 }}>
                 <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
               </p>
@@ -801,7 +804,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                 {([["light", "Primary · on light", "#fff"], ["night", "Reversed · on night", pal.night], ["dawn", "On the Dawn gradient", "transparent"], ["icon", "App icon · favicon", "transparent"]] as const).map(([v, label, bg]) => (
                   <div key={v} className="wr-lver">
                     <div className="vv" style={{ background: bg === "transparent" ? "var(--surface3)" : bg }}
-                      dangerouslySetInnerHTML={{ __html: logoSvg(v === "icon" ? "appicon" : logoSel.key, picked.name, pal, { variant: v === "icon" ? "icon" : v, accent: logoSel.accent, height: 46 }) }} />
+                      dangerouslySetInnerHTML={{ __html: logoSvg(v === "icon" ? "appicon" : logoSel.key, picked.name, pal, { variant: v === "icon" ? "icon" : v, accent: logoSel.accent, seed: logoSel.seed, height: 46 }) }} />
                     <div className="vl">{label}</div>
                   </div>
                 ))}
