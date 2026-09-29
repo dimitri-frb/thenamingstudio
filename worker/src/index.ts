@@ -231,8 +231,10 @@ export default {
       const prices = await tldPrices(env);
       const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
       const i = states.findIndex((s) => s === "available");
-      const t = i >= 0 ? WRAP_DOM_TLDS[i] : "";
-      return json({ dom: t ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0] } : null }, env);
+      const dom = i >= 0
+        ? { domain: `${slug}.${WRAP_DOM_TLDS[i]}`, tld: "." + WRAP_DOM_TLDS[i], price: (prices[WRAP_DOM_TLDS[i]] || BOARD_PRICE[WRAP_DOM_TLDS[i]] || ["$15"])[0], free: true }
+        : { domain: `${slug}.com`, tld: ".com", free: false }; // honest: the founder still sees the read
+      return json({ dom }, env);
     }
 
     const spec = PROMPTS[phase];
@@ -319,6 +321,22 @@ function json(data: unknown, env: Env, status = 200): Response {
     headers: { "content-type": "application/json", ...cors(env) },
   });
 }
+
+// Founder refinements from the "refine your brief" page, folded into prompts.
+const prefLine = (p: any): string => {
+  if (!p) return "";
+  const lean: string[] = [];
+  const hard: string[] = [];
+  if (p.tone && p.tone !== "Balanced") lean.push(`tone: ${p.tone}`);
+  if (p.style && p.style !== "Any") lean.push(`name style: ${p.style}`);
+  if (p.length && p.length !== "Any") lean.push(`length: ${p.length}`);
+  if (Array.isArray(p.langs) && p.langs.length) hard.push(`must read and sound clean in: ${p.langs.join(", ")}`);
+  if (Array.isArray(p.avoid) && p.avoid.length) hard.push(`never use these words or patterns: ${p.avoid.join(", ")}`);
+  let out = "";
+  if (lean.length) out += `\nFOUNDER LEANINGS: make the MAJORITY of your output match these, but keep some variety beyond them: ${lean.join("; ")}.`;
+  if (hard.length) out += `\nHARD CONSTRAINTS (no exceptions): ${hard.join("; ")}.`;
+  return out ? out + "\n" : "";
+};
 
 // A labelled brief the model can actually reason over (beats dumping raw JSON).
 const briefV1 = (b: any) => [
@@ -464,7 +482,8 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
     `2) "para": 2 or 3 sentences (max 55 words), speaking directly to the founder as "you". Start CONCRETE: recap the specifics of THEIR idea in fresh words, name the actual product, the actual audience and what it does for them (e.g. "You're building a budgeting app that gives students their first grip on money"). Then say what the name has to carry for exactly that business. Specific nouns over abstractions; reframe, never parrot their sentence; no generic filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
-    `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}]}.` }),
+    `4) "alts": exactly 2 ALTERNATIVE "concept" candidates (same 2-4 lowercase word format, genuinely different angles).\n` +
+    `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}],"alts":["...","..."]}.` }),
 
   // 03 The words: 96 words across 6 styles, generated as SIX parallel one-style
   // calls on the fast model, so the whole field lands in a few seconds and each
@@ -479,9 +498,11 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       `Spread rich material: English words, Latin/Greek roots, foreign gems, myth, concrete images. Short, evocative, sayable words a brand name could grow from. No duplicates, nothing generic (avoid: solution, system, tech).\n`;
     const st = b.payload?.style;
     if (st?.name) {
+      const excl = Array.isArray(b.payload?.prefs?.exclude) ? b.payload.prefs.exclude : [];
       return { model: MODEL.fast, max: 950, prompt:
-        common +
+        common + prefLine(b.payload?.prefs) +
         `Produce exactly ONE word style named "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 16 words that mine this angle for THIS brief.\n` +
+        (excl.length ? `Never repeat these already-shown words: ${excl.slice(-64).join(", ")}.\n` : "") +
         wordSpec +
         `Return ONLY JSON {"styles":[{"name":"${String(st.name).slice(0, 40)}","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 1 style of exactly 16 words.` };
     }
@@ -499,7 +520,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   wrapnames: (b) => ({ model: MODEL.opus, max: 2200, prompt:
     `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
-    `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` +
+    `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` + prefLine(b.payload?.prefs) +
     `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
     `Coin exactly 6 brand names built from and around that material. Every one must be a name you would stake the studio's reputation on: no filler, no near-duplicates, nothing generic.\n\n` +
     `WHAT GREAT LOOKS LIKE:\n` +
@@ -659,10 +680,9 @@ async function enrichWrapNames(env: Env, data: any): Promise<any> {
     if (!slug) return;
     const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
     const i = states.findIndex((s) => s === "available");
-    if (i >= 0) {
-      const t = WRAP_DOM_TLDS[i];
-      n.dom = { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0] };
-    }
+    n.dom = i >= 0
+      ? { domain: `${slug}.${WRAP_DOM_TLDS[i]}`, tld: "." + WRAP_DOM_TLDS[i], price: (prices[WRAP_DOM_TLDS[i]] || BOARD_PRICE[WRAP_DOM_TLDS[i]] || ["$15"])[0], free: true }
+      : { domain: `${slug}.com`, tld: ".com", free: false };
   }));
   data.names = list;
   return data;

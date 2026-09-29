@@ -3,7 +3,7 @@
 // (Download PDF = the browser's print-to-PDF on #bk-print).
 import { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
-import { logoSvg, toPalette, type Palette } from "./logos";
+import { logoSvg, toPalette, type LogoFont, type Palette } from "./logos";
 
 export interface BookCtx {
   name: string;
@@ -12,6 +12,7 @@ export interface BookCtx {
   logoKey: string;         // chosen logo concept (falls back to sunrise)
   logoAccent: "dawn" | "haze" | "nova";
   logoSeed?: number;       // which round the concept came from (shapes vary per seed)
+  logoFont?: LogoFont;     // explicit font pick from the logo page
 }
 
 const PAGE_W = 794;  // 210mm @96dpi
@@ -28,7 +29,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   const pal = toPalette(book.palette);
   const grad = `linear-gradient(120deg, ${pal.dawn}, ${pal.haze} 50%, ${pal.nova})`;
   const mark = (variant: "light" | "night" | "dawn" | "mono", h = 60) =>
-    ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, seed: ctx.logoSeed || 0, height: h }) });
+    ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, height: h }) });
 
   const foot = i > 0 ? (
     <div className="bk-foot">
@@ -49,7 +50,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       <div className="bk-page dark" style={{ ["--bk-night" as any]: pal.night, background: pal.night }}>
         <div style={S.kick}>Brand book · Edition 1</div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", gap: 18 }}>
-          <div style={{ width: 130, height: 65, borderRadius: "130px 130px 0 0", background: grad }} />
+          <div dangerouslySetInnerHTML={{ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant: "tile", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, height: 64 }) }} />
           <div style={{ ...S.h, fontSize: "44pt", lineHeight: 1 }}>{name}</div>
           <div style={{ ...S.h, fontStyle: "italic", fontSize: "13pt", opacity: 0.85 }}>{book.tagline}</div>
           <div style={{ ...S.kick, marginTop: 10 }}>{book.saying.plain} · {book.saying.ipa}</div>

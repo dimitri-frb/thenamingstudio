@@ -17,8 +17,9 @@ export function toPalette(swatches?: { name: string; hex: string }[] | null): Pa
 }
 
 export type LogoVariant = "light" | "night" | "dawn" | "mono" | "icon" | "tile";
+export type LogoFont = "bold" | "serif" | "light";
 export type Accent = "dawn" | "haze" | "nova";
-export interface LogoConcept { key: string; title: string; accent: Accent; seed: number }
+export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont }
 
 const BASE: { key: string; title: string }[] = [
   { key: "sunrise", title: "Sunrise" },
@@ -72,7 +73,7 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : 
 
 const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
-export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number } = {}): string {
+export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont } = {}): string {
   const variant = opts.variant || "light";
   const accent = pal[opts.accent || "dawn"];
   const name = cap((rawName || "Name").trim());
@@ -93,9 +94,12 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   const word = (x: number, y: number, fs: number, o: { weight?: number; spacing?: number; color?: string; text?: string; anchor?: string; serif?: boolean; italic?: boolean } = {}) =>
     `<text x="${x}" y="${y}" font-family="${o.serif ? SERIF : FONT}" font-size="${fs}" font-weight="${o.weight ?? 800}" letter-spacing="${o.spacing ?? -fs * 0.03}" ${o.italic ? `font-style="italic"` : ""} fill="${o.color || fg}" ${o.anchor ? `text-anchor="${o.anchor}"` : ""}>${esc(o.text ?? name)}</text>`;
 
-  // The wordmark voice also rotates with the round: heavy sans → serif → light sans.
-  const face: { serif?: boolean; weight: number; wf: number } =
-    v === 1 ? { serif: true, weight: 500, wf: 0.56 } : v === 2 ? { weight: 400, wf: 0.58 } : { weight: 800, wf: 0.60 };
+  // The wordmark voice rotates with the round (heavy sans → serif → light sans),
+  // unless the founder picked a font explicitly on the logo page.
+  const FACES: Record<LogoFont, { serif?: boolean; weight: number; wf: number }> = {
+    bold: { weight: 800, wf: 0.60 }, serif: { serif: true, weight: 500, wf: 0.56 }, light: { weight: 400, wf: 0.58 },
+  };
+  const face = opts.font ? FACES[opts.font] : v === 1 ? FACES.serif : v === 2 ? FACES.light : FACES.bold;
   const wWord = (text: string, fs: number, spacing = 0) => Math.max(fs, text.length * fs * face.wf + text.length * spacing);
 
   const fs = 44;
@@ -294,16 +298,16 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
 /* ── the downloadable logo pack (shared by the flow and the account page) ── */
 export async function buildLogoPack(
   name: string, key: string, accent: Accent, seed: number,
-  swatches?: { name: string; hex: string }[] | null,
+  swatches?: { name: string; hex: string }[] | null, font?: LogoFont,
 ): Promise<{ blob: Blob; filename: string }> {
   const { makeZip } = await import("./zip");
   const pal = toPalette(swatches);
   const nm = (name || "logo").toLowerCase();
   const svgs: Record<string, string> = {
-    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed }),
-    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed }),
-    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed }),
-    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed }),
+    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font }),
+    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font }),
+    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font }),
+    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font }),
     [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed }),
   };
   const enc = new TextEncoder();

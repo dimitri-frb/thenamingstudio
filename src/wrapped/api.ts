@@ -28,11 +28,11 @@ export function setProcessId(id: string): void { if (id) PROCESS = id; }
 
 /* ── types ── */
 export interface WTerritory { name: string; desc: string }
-export interface WConcept { concept: string; para: string; territories: WTerritory[] }
+export interface WConcept { concept: string; para: string; territories: WTerritory[]; alts?: string[] }
 export interface WWord { w: string; m: string; lang?: string }
 export interface WStyle { name: string; words: WWord[] }
 export interface WNamePart { part: string; note: string }
-export interface WDom { domain: string; tld?: string; price?: string }
+export interface WDom { domain: string; tld?: string; price?: string; free?: boolean }
 export interface WName { name: string; roots: string; parts: WNamePart[]; tagline: string; score: number; dom?: WDom | null }
 
 export interface BookValue { name: string; note: string }
@@ -111,8 +111,8 @@ export const wrapApi = {
 
   // One style per call, six calls in parallel: the field lands in a single
   // fast-model latency and each column renders the moment it arrives.
-  wordStyle: (sentence: string, concept: string, territories: WTerritory[], style: WTerritory, idx: number) =>
-    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style }, () =>
+  wordStyle: (sentence: string, concept: string, territories: WTerritory[], style: WTerritory, idx: number, prefs?: unknown) =>
+    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style, prefs }, () =>
       ({ styles: [SAMPLE.styles[idx] || SAMPLE.styles[0]] })),
 
   namesRaw: (payload: Record<string, unknown>) => gen<{ names: WName[] }>("wrapnames", payload, () =>
@@ -176,8 +176,8 @@ export async function fetchFreeDom(name: string): Promise<WDom | null> {
   return r?.dom ?? null;
 }
 
-export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []): NameStream {
-  const payload = { sentence, chips, concept, words, exclude };
+export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = [], prefs?: unknown): NameStream {
+  const payload = { sentence, chips, concept, words, exclude, prefs };
   const ctrl = new AbortController();
   const st: NameStream = { names: [], done: false, error: false, listeners: new Set(), final: null as any, abort: () => ctrl.abort() };
   const notify = () => st.listeners.forEach((f) => { try { f(); } catch { /* listener gone */ } });
@@ -359,6 +359,7 @@ export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; more
   concept: {
     concept: "a new beginning",
     para: "Founders come to you at the start of something. The name has to carry that, clear, bright, and its own.",
+    alts: ["quiet confidence", "a sharp mind"],
     territories: [
       { name: "Light", desc: "first light, dawn, clarity" },
       { name: "Ignition", desc: "the spark that starts it" },

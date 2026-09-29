@@ -9,8 +9,6 @@ import {
 } from "./api";
 import { buildLogoPack, DEFAULT_PALETTE, logoSvg, toPalette, type Accent } from "./logos";
 import { download } from "./zip";
-import { printBook } from "./Book";
-import { ReportPrint } from "./Report";
 
 const BASE = () => (import.meta as any).env.BASE_URL || "/";
 
@@ -144,7 +142,7 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
   }, [onClose]);
   async function logoPack() {
     if (!s.logo) { open(s, "logo"); return; }
-    const pack = await buildLogoPack(name, s.logo.key, (s.logo.accent as Accent) || "dawn", s.logo.seed || 0, s.palette);
+    const pack = await buildLogoPack(name, s.logo.key, (s.logo.accent as Accent) || "dawn", s.logo.seed || 0, s.palette, (s.logo as any).font);
     download(pack.blob, pack.filename);
   }
   return (
@@ -180,11 +178,6 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
             <span className="tt"><b>Brand book</b><small>PDF · 10 pages</small></span>
             <span className="act">↓</span>
           </button>
-          <button className="row" onClick={() => printBook(`${name} - Naming report`)}>
-            <span className="ic dark">✦</span>
-            <span className="tt"><b>Naming report</b><small>PDF · 4 pages</small></span>
-            <span className="act">↓</span>
-          </button>
           <button className="row" onClick={() => open(s, "socials")}>
             <span className="ic dark">@</span>
             <span className="tt"><b>Social accounts</b><small>Instagram, X, TikTok, LinkedIn</small></span>
@@ -192,7 +185,6 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
           </button>
         </div>
       </div>
-      <ReportPrint s={s} />
     </div>
   );
 }

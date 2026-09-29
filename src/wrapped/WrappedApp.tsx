@@ -11,11 +11,11 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept } from "./logos";
+import { buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont } from "./logos";
 import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
-type Step = "land" | "how" | "ask" | "brief" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
+type Step = "land" | "how" | "ask" | "brief" | "refine" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
 const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, names: 4, reveal: 5 };
 const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
 const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
@@ -23,7 +23,7 @@ const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", words: "3-words", names: "4-names", reveal: "5-reveal",
+  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", words: "3-words", names: "4-names", reveal: "5-reveal",
   domain: "6-domain", logo: "7-logo", logodone: "7-logo-chosen", book: "8-brand-book", socials: "9-socials", done: "10-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
@@ -49,6 +49,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [chipsBusy, setChipsBusy] = useState(false);
   const [addingChip, setAddingChip] = useState(false);
   const [concept, setConcept] = useState<WConcept | null>(test ? SAMPLE.concept : null);
+  const [feelOpts, setFeelOpts] = useState<string[]>(test ? [SAMPLE.concept.concept, ...(SAMPLE.concept.alts || [])] : []);
+  // The refine page's founder preferences, folded into every later generation.
+  const [prefs, setPrefs] = useState<{ tone: string; style: string; length: string; langs: string[]; avoid: string[]; terr: string[] }>({
+    tone: "Balanced", style: "Any", length: "Any", langs: ["English"], avoid: [], terr: [],
+  });
   const [styles, setStyles] = useState<WStyle[] | null>(test ? SAMPLE.styles : null);
   const [wtab, setWtab] = useState(0);
   const [starred, setStarred] = useState<WWord[]>(test ? [SAMPLE.styles[0].words[0], SAMPLE.styles[0].words[1], SAMPLE.styles[1].words[0], SAMPLE.styles[1].words[2]] : []);
@@ -78,6 +83,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const wordsReq = useRef("");
   const bookPre = useRef(new Map<string, Promise<WBook | null>>());
   const namesPre = useRef<{ key: string; st: NameStream } | null>(null);
+  const morePre = useRef<{ key: string; st: NameStream } | null>(null);
   const stepRef = useRef(step);
   stepRef.current = step;
 
@@ -91,12 +97,17 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return bookPre.current.get(n.name)!;
   };
   const starKey = (ws: WWord[]) => ws.map((w) => w.w).sort().join("|");
+  const conceptReady = !!concept && (test || conceptFor.current === sentence.trim());
 
   useEffect(() => { setTestMode(test); }, [test]);
 
   /* ── resume: from the account page (?resume=id) or a same-browser refresh ── */
   useEffect(() => {
-    if (test) return;
+    if (test) { // sample data is all seeded, so any step URL works directly
+      const t = SLUG_STEP[pathSlug()];
+      if (t) { if (t === "logodone") setLogoSel(logoConcepts(0)[0]); setStep(t); }
+      return;
+    }
     (async () => {
       if (resume) {
         const me = await fetchMe();
@@ -119,6 +130,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         setLogoSel(snap.logoSel || null);
         setLogoSeed(snap.logoSeed || 0);
         setBook(snap.book || null);
+        if (snap.prefs) setPrefs(snap.prefs);
+        if (snap.feelOpts) setFeelOpts(snap.feelOpts);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           slugStep === "ask" ||
@@ -149,7 +162,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setNames(s.names || null);
     setPicked(s.picked || null);
     setSteps(s.steps || {});
-    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0 });
+    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0, font: (s.logo as any).font });
     const target: Step =
       s.picked && go && ["domain", "book", "socials"].includes(go) ? (go as Step) :
       s.picked && go === "logo" ? (s.logo ? "logodone" : "logo") :
@@ -163,8 +176,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
-    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book });
-  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book]);
+    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts });
+  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts]);
 
   function persist(over: Partial<SavedSearch> = {}) {
     if (test || !sentence.trim()) return;
@@ -173,7 +186,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       id: processId(), at: startedAt.current, updated: Date.now(),
       sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
       picked, steps, status,
-      logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent } : null,
+      logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font } : null,
       ...over,
     } as SavedSearch);
   }
@@ -211,6 +224,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           }
           conceptFor.current = s;
           setConcept(c);
+          setFeelOpts([c.concept, ...(c.alts || [])].filter(Boolean).slice(0, 3));
           fail("concept", false);
         } else {
           conceptReq.current = "";
@@ -219,39 +233,77 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       });
     };
     if (step === "ask" || step === "land") { const t = setTimeout(go, 800); return () => clearTimeout(t); }
+    if (step === "refine") { const t = setTimeout(go, 1000); return () => clearTimeout(t); } // typing in the refine brief box
     if (["brief", "words", "names"].includes(step)) go();
   }, [test, step, sentence, chips, concept, retryTick]);
 
-  useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands,
-    // each column rendered the moment it arrives (fixed order, no reflow surprises).
-    if (test || !concept || styles) return;
-    const key = concept.concept + "|" + retryTick;
-    if (wordsReq.current === key) return;
-    wordsReq.current = key;
-    const slots: (WStyle | null)[] = new Array(6).fill(null);
-    let settled = 0;
-    const s = sentence.trim();
-    const plan: WTerritory[] = [
-      ...concept.territories.slice(0, 3),
+  const wordsPlan = (): WTerritory[] => {
+    const terrs = (concept?.territories || []).filter((t) => !prefs.terr.length || prefs.terr.includes(t.name));
+    const extras = [
       { name: "Motion", desc: "movement, drive, pace" },
       { name: "Clarity", desc: "clear, pure, true" },
       { name: "Languages", desc: "the idea in other tongues" },
+      { name: "Craft", desc: "made with care, by hand" },
+      { name: "Texture", desc: "how it feels to the touch" },
     ];
-    plan.forEach((st, i) => {
-      wrapApi.wordStyle(s, concept.concept, concept.territories, st, i).then((r) => {
+    return [...terrs, ...extras].slice(0, 6);
+  };
+  const wordsKey = () =>
+    (concept?.concept || "") + "|" + JSON.stringify([prefs.terr, prefs.langs, prefs.tone, prefs.style, prefs.avoid]) + "|" + retryTick;
+  const wordsBusyMore = useRef(false);
+  const wordsBatches = useRef(0);
+
+  useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands,
+    // each column rendered the moment it arrives; a failed column retries once.
+    if (test || !conceptReady || styles) return;
+    const key = wordsKey();
+    if (wordsReq.current === key) return;
+    wordsReq.current = key;
+    wordsBatches.current = 0;
+    const slots: (WStyle | null)[] = new Array(6).fill(null);
+    let failed = 0;
+    const s = sentence.trim();
+    const run = (i: number, st: WTerritory, attempt: number) => {
+      wrapApi.wordStyle(s, concept!.concept, concept!.territories, st, i, prefs).then((r) => {
         if (wordsReq.current !== key) return; // superseded
-        settled++;
         if (r?.styles?.[0]?.words?.length) {
           slots[i] = r.styles[0];
-          const have = slots.filter(Boolean) as WStyle[];
-          setStyles(have);
+          setStyles(slots.filter(Boolean) as WStyle[]);
           fail("words", false);
-        } else if (settled === 6 && !slots.some(Boolean)) {
-          fail("words", true);
+        } else if (attempt < 1) {
+          run(i, st, attempt + 1); // one quiet retry so columns never just go missing
+        } else {
+          failed++;
+          if (failed >= 6) fail("words", true);
         }
       });
+    };
+    wordsPlan().forEach((st, i) => run(i, st, 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, concept, conceptReady, styles, sentence, retryTick, prefs]);
+
+  // Page 3 infinite scroll: nearing the bottom appends 16 fresh words per style.
+  function loadMoreWords() {
+    if (test || !styles || !concept || wordsBusyMore.current || wordsBatches.current >= 3) return;
+    wordsBusyMore.current = true;
+    wordsBatches.current++;
+    const key = wordsReq.current;
+    const s = sentence.trim();
+    let pending = styles.length;
+    styles.forEach((st, i) => {
+      wrapApi.wordStyle(s, concept.concept, concept.territories, { name: st.name, desc: "" }, i, { ...prefs, exclude: st.words.map((w) => w.w) }).then((r) => {
+        pending--;
+        if (pending <= 0) wordsBusyMore.current = false;
+        if (wordsReq.current !== key || !r?.styles?.[0]?.words?.length) return;
+        const fresh = r.styles[0].words;
+        setStyles((cur) => cur?.map((c, j) => {
+          if (j !== i) return c;
+          const seen = new Set(c.words.map((w) => w.w));
+          return { ...c, words: [...c.words, ...fresh.filter((w) => !seen.has(w.w))] };
+        }) || cur);
+      });
     });
-  }, [test, concept, styles, sentence, retryTick]);
+  }
 
   useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
     if (test || step !== "words" || names?.length || starred.length < 2) return;
@@ -259,7 +311,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (namesPre.current?.key === key) return;
     const t = setTimeout(() => {
       namesPre.current?.st.abort(); // a stale set's stream is money down the drain
-      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred) };
+      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs) };
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -356,7 +408,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const canEnter = (t: Step) => {
     const d = dataRef.current;
     if (t === "land" || t === "how" || t === "ask") return true;
-    if (t === "brief" || t === "words") return !!d.sentence.trim();
+    if (t === "brief" || t === "refine" || t === "words") return !!d.sentence.trim();
     if (t === "names") return !!(d.names?.length || d.starred.length);
     return !!d.picked;
   };
@@ -414,6 +466,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         bookFetch(fin[0]);
         fin.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name), i * 350));
       }
+      // "Generate six more" should feel instant: the next batch coins itself now.
+      if (!test) {
+        const exKey = fin.map((n) => n.name).join("|");
+        morePre.current = { key: exKey, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs) };
+      }
     };
     st.listeners.add(upd);
     upd();
@@ -430,7 +487,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     let entry = namesPre.current;
     if (!entry || entry.key !== key) { // the stars changed since the prefetch
       entry?.st.abort();
-      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred) };
+      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs) };
       namesPre.current = entry;
     }
     attachStream(entry.st, []);
@@ -440,7 +497,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (moreBusy || !names) return;
     setMoreBusy(true);
     fail("more", false);
-    attachStream(coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name)), names);
+    const exKey = names.map((n) => n.name).join("|");
+    const st = morePre.current?.key === exKey
+      ? morePre.current.st
+      : coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs);
+    morePre.current = null;
+    attachStream(st, names);
   }
 
   function pickName(n: WName) {
@@ -472,7 +534,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   async function downloadLogoPack() {
     if (!picked || !logoSel) return;
-    const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed, book?.palette);
+    const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed, book?.palette, logoSel.font);
     download(pack.blob, pack.filename);
     track("logopack", { name: picked.name, concept: logoSel.title });
   }
@@ -538,14 +600,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
 
   const backTarget: Partial<Record<Step, Step>> = {
-    ask: "land", brief: "ask", words: "brief", names: "words", reveal: "names",
+    ask: "land", brief: "ask", refine: "brief", words: "brief", names: "words", reveal: "names",
     domain: "reveal", logo: "domain", logodone: "logo", book: "logodone", socials: "book",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
     const t: Step | null =
       step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
-      step === "brief" ? (concept ? "words" : null) :
+      step === "brief" || step === "refine" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
       step === "names" ? (picked && !gated ? "reveal" : null) :
       step === "reveal" ? "domain" :
@@ -561,7 +623,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
-    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0,
+    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font,
   } : null;
 
   return (
@@ -694,7 +756,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <Grow value={sentence} onChange={setSentence} onEnter={submitAsk} placeholder="One sentence is enough" />
               <div style={{ marginTop: 22 }}>
                 <p className="wr-kicker" style={{ fontSize: 11, marginBottom: 10 }}>
-                  We picked up {chipsBusy && <span className="wr-spin" style={{ display: "inline-block", verticalAlign: "-3px", marginLeft: 6 }} />}
+                  What we're hearing {chipsBusy && <span className="wr-spin" style={{ display: "inline-block", verticalAlign: "-3px", marginLeft: 6 }} />}
                 </p>
                 <div className="wr-chips">
                   {chips.map((c) => (
@@ -722,7 +784,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <>
           <div className="wr-stage center">
             <div className="inner-nar">
-              {!concept ? (
+              {!conceptReady ? (
                 fails.concept
                   ? <GenFail note="We couldn't read your brief just now." onRetry={() => retry("concept")} />
                   : <div className="wr-load"><span className="wr-spin" /> Reading your brief…</div>
@@ -730,12 +792,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <>
                   <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Here's what we heard</p>
                   <h1 className="wr-h rise" style={{ marginBottom: 18 }}>
-                    Your name should feel like <span className="wr-cpill">{concept.concept}</span>
+                    Your name should feel like <span className="wr-cpill">{concept!.concept}</span>
                   </h1>
-                  <p className="wr-lead rise" style={{ marginBottom: 30, maxWidth: 470 }}>{concept.para}</p>
+                  <p className="wr-lead rise" style={{ marginBottom: 30 }}>{concept!.para}</p>
                   <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Our inspirations</p>
                   <div className="wr-terr">
-                    {concept.territories.map((t, i) => (
+                    {concept!.territories.map((t, i) => (
                       <div key={t.name} className="t" style={{ animationDelay: `${i * 0.08}s` }}>
                         <b>{t.name}</b><span>{t.desc}</span>
                       </div>
@@ -746,10 +808,111 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("ask")}>Not quite? Rewrite the brief</button>
-            <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!concept} onClick={() => toStep("words")}>Show me the words →</button>
+            <button className="wr-link" onClick={() => toStep("refine")}>Not quite? Refine the brief</button>
+            <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("words")}>Show me the words →</button>
           </div>
         </>
+      )}
+
+      {/* ═══ 02b refine the brief ═══ */}
+      {step === "refine" && (
+        <div className="wr-stage" style={{ paddingTop: 8 }}>
+          <div className="wr-refine">
+            <p className="wr-kicker" style={{ marginBottom: 10 }}>Refine your brief</p>
+            <div className="headline">
+              <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>
+                Your name should feel like <span className="wr-cpill">{concept?.concept || "…"}</span>
+              </h1>
+              <span className="wr-hint">Updates as you change things</span>
+            </div>
+            <Grow value={sentence} onChange={setSentence} onEnter={() => conceptReady && toStep("words")} placeholder="What are you building?" boxed />
+            <div className="cols">
+              <div>
+                <p className="lbl">Feels like</p>
+                <div className="opts">
+                  {(feelOpts.length ? feelOpts : concept ? [concept.concept] : []).map((f) => (
+                    <button key={f} className={"wr-opt" + (concept?.concept === f ? " on" : "")}
+                      onClick={() => { if (!concept || concept.concept === f) return; setConcept({ ...concept, concept: f }); setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; }}>
+                      {concept?.concept === f ? "✓ " : ""}{f}
+                    </button>
+                  ))}
+                </div>
+                <p className="lbl">Tone</p>
+                <div className="opts">
+                  {["Friendly", "Balanced", "Serious", "Playful"].map((t) => (
+                    <button key={t} className={"wr-opt" + (prefs.tone === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, tone: t })}>{prefs.tone === t ? "✓ " : ""}{t}</button>
+                  ))}
+                </div>
+                <p className="lbl">Length</p>
+                <div className="opts">
+                  {["Short · 1–2 syllables", "Medium", "Any"].map((t) => (
+                    <button key={t} className={"wr-opt" + (prefs.length === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, length: t })}>{prefs.length === t ? "✓ " : ""}{t}</button>
+                  ))}
+                </div>
+                <p className="lbl">Space</p>
+                <div className="opts">
+                  {chips.map((c) => (
+                    <span key={c} className="wr-opt chip">{c}<button className="x" onClick={() => setChips(chips.filter((x) => x !== c))}>✕</button></span>
+                  ))}
+                  {addingChip
+                    ? <span className="wr-opt chip"><input autoFocus placeholder="add"
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v) setChips([...chips, v]); setAddingChip(false); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
+                    : <button className="wr-opt add" onClick={() => setAddingChip(true)}>＋ add</button>}
+                </div>
+              </div>
+              <div>
+                <p className="lbl">Draw from</p>
+                <div className="opts">
+                  {(concept?.territories || []).map((t) => {
+                    const active = !prefs.terr.length || prefs.terr.includes(t.name);
+                    return (
+                      <button key={t.name} className={"wr-opt" + (active ? " on" : "")}
+                        onClick={() => {
+                          const all = (concept?.territories || []).map((x) => x.name);
+                          const cur = prefs.terr.length ? prefs.terr : all;
+                          const next = active ? cur.filter((x) => x !== t.name) : [...cur, t.name];
+                          if (!next.length) return; // keep at least one
+                          setPrefs({ ...prefs, terr: next.length === all.length ? [] : next });
+                          setStyles(null); setNames(null); namesPre.current = null; morePre.current = null;
+                        }}>{active ? "✓ " : ""}{t.name}</button>
+                    );
+                  })}
+                </div>
+                <p className="lbl">Name style</p>
+                <div className="opts">
+                  {["Invented", "Real word", "Compound", "Any"].map((t) => (
+                    <button key={t} className={"wr-opt" + (prefs.style === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, style: t })}>{prefs.style === t ? "✓ " : ""}{t}</button>
+                  ))}
+                </div>
+                <p className="lbl">Must work in</p>
+                <div className="opts">
+                  {["English", "French", "Spanish", "German"].map((t) => {
+                    const on = prefs.langs.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
+                  })}
+                </div>
+                <p className="lbl">Avoid</p>
+                <div className="opts">
+                  {prefs.avoid.map((w) => (
+                    <span key={w} className="wr-opt chip">“{w}”<button className="x" onClick={() => setPrefs({ ...prefs, avoid: prefs.avoid.filter((x) => x !== w) })}>✕</button></span>
+                  ))}
+                  <AvoidAdd onAdd={(w) => setPrefs({ ...prefs, avoid: [...prefs.avoid, w] })} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {step === "refine" && (
+        <div className="wr-foot">
+          <button className="wr-link" onClick={() => toStep("brief")}>← Back</button>
+          <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady}
+            onClick={() => { if (wordsReq.current !== wordsKey()) { setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; } toStep("words"); }}>
+            Show me the words →
+          </button>
+        </div>
       )}
 
       {/* ═══ 03 the words ═══ */}
@@ -788,6 +951,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     </div>
                   ))}
                 </div>
+                <MoreWordsSentinel onMore={loadMoreWords} />
               </>
             )}
           </div>
@@ -817,7 +981,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               ) : namesBusy && !names?.length ? (
                 <NamingWait coined={namesProg} starred={starred} />
               ) : (
-                <div className={"wr-names" + (gated ? " gatecol" : "")}>
+                <div className={gated ? "wr-gatecols" : "wr-names"}>
                   {(gated ? (names || []).slice(0, 1) : names || []).map((n, i) => (
                     <button
                       key={n.name}
@@ -833,7 +997,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                           {gated && i === 0 && <span className="wr-freebadge">Free preview</span>}
                         </span>
                         {n.tagline && <span className="tg">{n.tagline}</span>}
-                        {n.dom && <span className="dm"><i className="dot" />{n.dom.domain} free</span>}
+                        {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
                       </span>
                       <span className="sc">
                         <span className="n">{n.score}<small>/100</small></span>
@@ -844,15 +1008,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     </button>
                   ))}
                   {gated && (
-                    <>
+                    <div className="left">
                       <p className="wr-hint" style={{ margin: "8px 0 2px" }}>+ {(names?.length || 6) - 1} more names, locked</p>
                       {(names || []).slice(1).map((n) => (
                         <div key={n.name} className="wr-lockrow">
                           <span>🔒</span><b>{n.name}</b><span className="sc">{n.score}/100</span>
                         </div>
                       ))}
-                    </>
+                    </div>
                   )}
+                  {gated && <SignupGate onUser={(u) => setUser(u)} count={names?.length || 6} />}
                   {!gated && !!names?.length && !namesBusy && (
                     <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
                       {moreBusy
@@ -869,7 +1034,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <span className="wr-hint">Pick one, it opens straight into the reveal</span>
             </div>
           )}
-          {gated && <SignupGate onUser={(u) => setUser(u)} count={names?.length || 6} />}
         </>
       )}
 
@@ -887,19 +1051,39 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 ))}
               </div>
               <div className="wr-next rise" style={{ marginTop: 28 }}>
-                <p className="wr-kicker" style={{ marginBottom: 8 }}>What's next</p>
-                {[
-                  { n: "1", t: "Claim the domain", s: domRows.filter((d) => d.status === "available").slice(0, 2).map((d) => `${d.domain} · ${d.price || ""}`).join("   ") || picked.dom?.domain || "checking…", to: "domain" as Step },
-                  { n: "2", t: "Find your perfect logo", s: "Nine logo concepts from the name", to: "logo" as Step },
-                  { n: "3", t: "Open your brand book", s: "voice, colours, story", to: "book" as Step },
-                  { n: "4", t: "Create your social accounts", s: "Instagram · X · TikTok · LinkedIn", to: "socials" as Step },
-                ].map((r) => (
-                  <button key={r.n} className="row" onClick={() => toStep(r.to)}>
-                    <span className="i">{r.n}</span>
-                    <span><span className="tt" style={{ display: "block" }}>{r.t}</span><span className="ss">{r.s}</span></span>
-                    <span className="ar">→</span>
-                  </button>
-                ))}
+                <p className="head"><i className="ck">✓</i> What's next</p>
+                <button className="row lead" onClick={() => toStep("domain")}>
+                  <span className="i">1</span>
+                  <span className="mid">
+                    <span className="tt">Claim the domain</span>
+                    {(domRows.filter((d) => d.status === "available").slice(0, 2)).map((d) => (
+                      <span key={d.domain} className="dl"><i />{d.domain} · {d.price}</span>
+                    ))}
+                    {!domRows.some((d) => d.status === "available") && <span className="ss">{picked.dom?.domain || "checking…"}</span>}
+                  </span>
+                  <span className="ar">→</span>
+                </button>
+                <button className="row" onClick={() => toStep("logo")}>
+                  <span className="i">2</span>
+                  <span className="mid"><span className="tt">Find your perfect logo</span><span className="ss">Nine logo concepts from the name</span></span>
+                  <span className="ar">→</span>
+                </button>
+                <button className="row" onClick={() => toStep("book")}>
+                  <span className="i">3</span>
+                  <span className="mid">
+                    <span className="tt">Open your brand book</span>
+                    <span className="ss">
+                      {(book?.palette || []).slice(0, 3).map((c) => <i key={c.name} className="sw" style={{ background: c.hex }} />)}
+                      voice, colours, story
+                    </span>
+                  </span>
+                  <span className="ar">→</span>
+                </button>
+                <button className="row" onClick={() => toStep("socials")}>
+                  <span className="i">4</span>
+                  <span className="mid"><span className="tt">Create your social accounts</span><span className="ss">Instagram · X · TikTok · LinkedIn</span></span>
+                  <span className="ar">→</span>
+                </button>
               </div>
             </div>
           </div>
@@ -962,16 +1146,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <p className="wr-lead" style={{ marginBottom: 18, maxWidth: 460 }}>
                 Nine concepts drawn from the story of the name. Pick one; it flows into your brand book.
               </p>
-              <div className="wr-lgrid">
-                {logoConcepts(logoSeed).map((c) => (
-                  <button key={c.key} className={"wr-ltile" + (logoSel?.key === c.key ? " sel" : "")} onClick={() => setLogoSel(c)}>
-                    {logoSel?.key === c.key && <span className="ck">✓</span>}
-                    <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, height: 54 }) }} />
-                    <span className="ln">{c.title}</span>
-                  </button>
-                ))}
-              </div>
-              <button className="wr-link" style={{ marginTop: 12 }} onClick={() => { setLogoSeed((s) => s + 1); setLogoSel(null); }}>↻ Nine more concepts</button>
+              {Array.from({ length: logoSeed + 1 }, (_, round) => (
+                <div className="wr-lgrid" key={round} style={{ marginTop: round ? 12 : 0 }}>
+                  {logoConcepts(round).map((c) => {
+                    const on = logoSel?.key === c.key && logoSel?.seed === c.seed;
+                    return (
+                      <button key={c.key + round} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
+                        {on && <span className="ck">✓</span>}
+                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, height: 54 }) }} />
+                        <span className="ln">{c.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              <button className="wr-link" style={{ marginTop: 12 }} onClick={() => setLogoSeed((s) => s + 1)}>↻ Nine more concepts</button>
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8 }}>
@@ -989,7 +1178,24 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 10 }}>
             <div className="inner-nar">
               <p className="wr-kicker" style={{ marginBottom: 12 }}>Your logo · {logoSel.title}</p>
-              <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, height: 110 }) }} />
+              <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, height: 110 }) }} />
+              <div className="wr-logoctl">
+                <label>Colour
+                  <select value={logoSel.accent} onChange={(e) => setLogoSel({ ...logoSel, accent: e.target.value as LogoConcept["accent"] })}>
+                    {(book?.palette || [{ name: "Dawn" }, { name: "Haze" }, { name: "Nova" }]).slice(0, 3).map((c, i) => (
+                      <option key={c.name} value={(["dawn", "haze", "nova"] as const)[i]}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>Font
+                  <select value={logoSel.font || "auto"} onChange={(e) => setLogoSel({ ...logoSel, font: e.target.value === "auto" ? undefined : (e.target.value as LogoFont) })}>
+                    <option value="auto">Auto</option>
+                    <option value="bold">Heavy sans</option>
+                    <option value="serif">Serif</option>
+                    <option value="light">Light sans</option>
+                  </select>
+                </label>
+              </div>
               <p className="wr-lead" style={{ margin: "16px 0 14px", maxWidth: 500 }}>
                 <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
               </p>
@@ -999,7 +1205,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 {([["light", "Primary · on light", "#fff"], ["night", "Reversed · on night", pal.night], ["dawn", "On the Dawn gradient", "transparent"], ["icon", "App icon · favicon", "transparent"]] as const).map(([v, label, bg]) => (
                   <div key={v} className="wr-lver">
                     <div className="vv" style={{ background: bg === "transparent" ? "var(--surface3)" : bg }}
-                      dangerouslySetInnerHTML={{ __html: logoSvg(v === "icon" ? "appicon" : logoSel.key, picked.name, pal, { variant: v === "icon" ? "icon" : v, accent: logoSel.accent, seed: logoSel.seed, height: 46 }) }} />
+                      dangerouslySetInnerHTML={{ __html: logoSvg(v === "icon" ? "appicon" : logoSel.key, picked.name, pal, { variant: v === "icon" ? "icon" : v, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, height: 46 }) }} />
                     <div className="vl">{label}</div>
                   </div>
                 ))}
@@ -1235,7 +1441,7 @@ function WordRow({ w, on, onClick }: { w: WWord; on: boolean; onClick: () => voi
 }
 
 /* ── auto-growing serif textarea (the ask) ── */
-function Grow({ value, onChange, onEnter, placeholder }: { value: string; onChange: (v: string) => void; onEnter: () => void; placeholder: string }) {
+function Grow({ value, onChange, onEnter, placeholder, boxed }: { value: string; onChange: (v: string) => void; onEnter: () => void; placeholder: string; boxed?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -1245,12 +1451,38 @@ function Grow({ value, onChange, onEnter, placeholder }: { value: string; onChan
   }, [value]);
   return (
     <textarea
-      ref={ref} className="wr-ask" rows={1} autoFocus
+      ref={ref} className={boxed ? "wr-refbrief" : "wr-ask"} rows={1} autoFocus={!boxed}
       value={value} placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onEnter(); } }}
     />
   );
+}
+
+/* small input for the refine page's Avoid list */
+function AvoidAdd({ onAdd }: { onAdd: (w: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>＋ word to avoid</button>;
+  return (
+    <span className="wr-opt chip">
+      <input autoFocus placeholder="word"
+        onBlur={(e) => { const v = e.target.value.trim(); if (v) onAdd(v); setOpen(false); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} />
+    </span>
+  );
+}
+
+/* page 3 infinite scroll: fires when the founder nears the end of the field */
+function MoreWordsSentinel({ onMore }: { onMore: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) onMore(); }, { rootMargin: "300px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onMore]);
+  return <div ref={ref} style={{ height: 1 }} />;
 }
 
 /* ── 04b sign-up gate (Google only) ── */
@@ -1275,15 +1507,13 @@ function SignupGate({ onUser, count }: { onUser: (u: WUser) => void; count: numb
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div className="wr-gatewrap">
-      <div className="wr-gate">
-        <p className="k">Free account</p>
-        <h3>Unlock all {count} names</h3>
-        <p>Plus your saved words, domain checks and brand book.</p>
-        <div className="gbtn" ref={gbtn} />
-        {err && <p className="alt" style={{ color: "#c0392b" }}>{err}</p>}
-        <p className="alt">Have an account? Same button, we'll recognise you.</p>
-      </div>
+    <div className="wr-gate">
+      <p className="k">Free account</p>
+      <h3>Unlock all {count} names</h3>
+      <p>Plus your saved words, domain checks and brand book.</p>
+      <div className="gbtn" ref={gbtn} />
+      {err && <p className="alt" style={{ color: "#c0392b" }}>{err}</p>}
+      <p className="alt">Have an account? Same button, we'll recognise you.</p>
     </div>
   );
 }
