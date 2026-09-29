@@ -109,15 +109,8 @@ export const wrapApi = {
     gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style }, () =>
       ({ styles: [SAMPLE.styles[idx] || SAMPLE.styles[0]] })),
 
-  names: async (sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []) => {
-    const r = await gen<{ names: WName[] }>("wrapnames", { sentence, chips, concept, words, exclude }, () =>
-      ({ names: exclude.length ? SAMPLE.moreNames : SAMPLE.names }));
-    // The model sometimes wraps taglines in markdown emphasis; never show raw *…*.
-    r?.names?.forEach((n) => { n.tagline = (n.tagline || "").replace(/^[*_\s]+|[*_\s]+$/g, ""); });
-    // Strongest first, whatever order the model chose (the top card is the top pick).
-    r?.names?.sort((a, b) => (b.score || 0) - (a.score || 0));
-    return r;
-  },
+  namesRaw: (payload: Record<string, unknown>) => gen<{ names: WName[] }>("wrapnames", payload, () =>
+    ({ names: (payload.exclude as string[])?.length ? SAMPLE.moreNames : SAMPLE.names })),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
   book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[]): Promise<WBook | null> => {
@@ -130,6 +123,109 @@ export const wrapApi = {
     return { ...a, ...b } as WBook;
   },
 };
+
+/* ── streaming names: Opus quality, cards appearing as they're coined ── */
+export interface NameStream {
+  names: WName[];          // grows as the model writes
+  done: boolean;
+  error: boolean;
+  listeners: Set<() => void>;
+  final: Promise<WName[] | null>;
+  abort: () => void;
+}
+
+const cleanName = (n: WName): WName => {
+  n.tagline = (n.tagline || "").replace(/^[*_\s]+|[*_\s]+$/g, "");
+  if (!Array.isArray(n.parts)) n.parts = [];
+  return n;
+};
+
+// Pull every COMPLETE {"name": …} object out of a partially-streamed JSON text.
+function extractNames(text: string): WName[] {
+  const out: WName[] = [];
+  let i = 0;
+  while ((i = text.indexOf('{"name"', i)) !== -1) {
+    let depth = 0, j = i, inStr = false, esc = false, closed = false;
+    for (; j < text.length; j++) {
+      const c = text[j];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === "{") depth++;
+      else if (c === "}") { depth--; if (!depth) { closed = true; break; } }
+    }
+    if (!closed) break; // still streaming this one
+    try {
+      const o = JSON.parse(text.slice(i, j + 1));
+      if (o?.name && typeof o.score === "number") out.push(o as WName);
+    } catch { /* malformed fragment, skip */ }
+    i = j + 1;
+  }
+  return out;
+}
+
+export async function fetchFreeDom(name: string): Promise<WDom | null> {
+  const r = await post<{ dom: WDom | null }>({ phase: "freedom", payload: { name } });
+  return r?.dom ?? null;
+}
+
+export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []): NameStream {
+  const payload = { sentence, chips, concept, words, exclude };
+  const ctrl = new AbortController();
+  const st: NameStream = { names: [], done: false, error: false, listeners: new Set(), final: null as any, abort: () => ctrl.abort() };
+  const notify = () => st.listeners.forEach((f) => { try { f(); } catch { /* listener gone */ } });
+
+  st.final = (async (): Promise<WName[] | null> => {
+    if (TEST) {
+      await pause(400);
+      st.names = (exclude.length ? SAMPLE.moreNames : SAMPLE.names).map((n) => ({ ...n }));
+      st.done = true; notify();
+      return st.names;
+    }
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phase: "wrapstream", payload, process: PROCESS, test: TEST }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) throw new Error("stream unavailable");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", seen = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const objs = extractNames(buf);
+        for (const n of objs.slice(seen)) {
+          cleanName(n);
+          st.names = [...st.names, n];
+          notify();
+          // Each card's verified free domain fills in the moment we have it.
+          fetchFreeDom(n.name).then((d) => { n.dom = d; notify(); }).catch(() => {});
+        }
+        seen = Math.max(seen, objs.length);
+      }
+      if (!st.names.length) throw new Error("empty stream");
+      st.done = true; notify();
+      return st.names;
+    } catch {
+      if (ctrl.signal.aborted) { st.done = true; st.error = true; notify(); return null; }
+      // One non-streaming retry (server-enriched) before giving up honestly.
+      const r = await wrapApi.namesRaw(payload);
+      if (r?.names?.length) {
+        st.names = r.names.map(cleanName);
+        st.done = true; notify();
+        return st.names;
+      }
+      st.error = true; st.done = true; notify();
+      return null;
+    }
+  })();
+  return st;
+}
 
 /* ── tracking (best-effort, never in test mode) ── */
 export function track(event: string, payload: Record<string, unknown> = {}): void {

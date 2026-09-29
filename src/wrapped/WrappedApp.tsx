@@ -5,9 +5,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
-  GOOGLE_CLIENT_ID, SAMPLE, authGoogle, clearSnap, fetchDomainBoard, fetchMe,
+  GOOGLE_CLIENT_ID, SAMPLE, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
-  saveSnap, setProcessId, setTestMode, track, wrapApi,
+  saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
@@ -60,7 +60,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const conceptFor = useRef("");   // the sentence the current concept was built from
   const wordsReq = useRef("");
   const bookPre = useRef(new Map<string, Promise<WBook | null>>());
-  const namesPre = useRef<{ key: string; p: Promise<{ names: WName[] } | null> } | null>(null);
+  const namesPre = useRef<{ key: string; st: NameStream } | null>(null);
   const stepRef = useRef(step);
   stepRef.current = step;
 
@@ -219,13 +219,14 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     });
   }, [test, concept, styles, sentence, retryTick]);
 
-  useEffect(() => { // names: pre-coined in the background while the founder is still starring
+  useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
     if (test || step !== "words" || names?.length || starred.length < 2) return;
     const key = starKey(starred);
     if (namesPre.current?.key === key) return;
     const t = setTimeout(() => {
-      namesPre.current = { key, p: wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred) };
-    }, 1000);
+      namesPre.current?.st.abort(); // a stale set's stream is money down the drain
+      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred) };
+    }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, step, starred, names, sentence, chips, concept]);
@@ -320,36 +321,54 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     setStarred((prev) => prev.some((x) => x.w === w.w) ? prev.filter((x) => x.w !== w.w) : [...prev, w]);
   }
 
-  async function makeNames() {
+  // Subscribe the page to a (possibly mid-flight) name stream: cards appear as
+  // Opus coins them; on completion the batch is sorted strongest-first and the
+  // next steps (book, domain boards) start warming.
+  function attachStream(st: NameStream, base: WName[]) {
+    const upd = () => {
+      if (st.names.length) setNames([...base, ...st.names]);
+      if (!st.done) return;
+      st.listeners.delete(upd);
+      if (st.error || !st.names.length) {
+        setNamesBusy(false); setMoreBusy(false);
+        if (base.length) fail("more", true);
+        else { setNames(null); fail("names", true); }
+        return;
+      }
+      const batch = [...st.names].sort((x, y) => (y.score || 0) - (x.score || 0));
+      const fin = [...base, ...batch];
+      setNames(fin);
+      setNamesBusy(false); setMoreBusy(false);
+      persist({ names: fin });
+      if (!test && !base.length && fin[0]) {
+        bookFetch(fin[0]);
+        fin.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name), i * 350));
+      }
+    };
+    st.listeners.add(upd);
+    upd();
+  }
+
+  function makeNames() {
     toStep("names");
     if (names?.length || namesBusy) return;
     setNamesBusy(true);
     fail("names", false);
-    // Use the background pre-coined batch when it matches the final starred set.
     const key = starKey(starred);
-    const pre = namesPre.current?.key === key ? namesPre.current.p : null;
-    let r = pre ? await pre : null;
-    if (!r?.names?.length) r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred);
-    setNamesBusy(false);
-    if (!r?.names?.length) { fail("names", true); return; }
-    setNames(r.names);
-    persist({ names: r.names });
-    // Warm what comes next: the top pick's brand book, and the domain boards
-    // for the three strongest names, while the founder is still reading.
-    if (!test && r.names[0]) {
-      bookFetch(r.names[0]);
-      r.names.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name), i * 350));
+    let entry = namesPre.current;
+    if (!entry || entry.key !== key) { // the stars changed since the prefetch
+      entry?.st.abort();
+      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred) };
+      namesPre.current = entry;
     }
+    attachStream(entry.st, []);
   }
 
-  async function moreNames() {
+  function moreNames() {
     if (moreBusy || !names) return;
     setMoreBusy(true);
     fail("more", false);
-    const r = await wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name));
-    setMoreBusy(false);
-    if (!r?.names?.length) { fail("more", true); return; }
-    setNames((prev) => [...(prev || []), ...r.names]);
+    attachStream(coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name)), names);
   }
 
   function pickName(n: WName) {
@@ -686,7 +705,10 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                       ))}
                     </>
                   )}
-                  {!gated && !!names?.length && (
+                  {!gated && !!names?.length && namesBusy && (
+                    <div className="wr-load" style={{ padding: "4px 2px" }}><span className="wr-spin" /> still coining…</div>
+                  )}
+                  {!gated && !!names?.length && !namesBusy && (
                     <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
                       {moreBusy
                         ? <span className="wr-load"><span className="wr-spin" /> Coining six more…</span>

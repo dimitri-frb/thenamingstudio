@@ -180,6 +180,61 @@ export default {
       return json({ votes, total, voters: (session.voters || []).length }, env);
     }
 
+    // Streaming names: the same Opus prompt as wrapnames, but tokens are piped
+    // to the client as they generate, so the first name shows within seconds.
+    // The parsed result is logged once the stream completes.
+    if (phase === "wrapstream") {
+      const spec = PROMPTS.wrapnames(body);
+      const upstream = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: spec.model, max_tokens: spec.max, stream: true,
+          system: [{ type: "text", text: SYS, cache_control: { type: "ephemeral" } }],
+          messages: [{ role: "user", content: spec.prompt }],
+        }),
+      });
+      if (!upstream.ok || !upstream.body) return json({ error: `anthropic ${upstream.status}` }, env, 502);
+      let acc = "", buf = "";
+      let logDone!: () => void;
+      const finished = new Promise<void>((r) => { logDone = r; });
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      const ts = new TransformStream({
+        transform(chunk, controller) {
+          buf += decoder.decode(chunk as Uint8Array, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            try {
+              const ev = JSON.parse(line.slice(5).trim());
+              const delta = ev?.delta?.text;
+              if (typeof delta === "string" && delta) { acc += delta; controller.enqueue(encoder.encode(delta)); }
+            } catch { /* keepalives and other event types */ }
+          }
+        },
+        flush() { logDone(); },
+      });
+      if (env.LOG && !skipLog) {
+        ctx.waitUntil(finished.then(() => writeLog(env, "wrapnames", body.process, { payload: body.payload }, parseJSON(acc) || { raw: acc.slice(0, 2000) })));
+      }
+      return new Response(upstream.body.pipeThrough(ts), {
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...cors(env) },
+      });
+    }
+
+    // One name's free domain + live price (fills streamed name cards in).
+    if (phase === "freedom") {
+      const slug = String(body?.payload?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!slug) return json({ dom: null }, env);
+      const prices = await tldPrices(env);
+      const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
+      const i = states.findIndex((s) => s === "available");
+      const t = i >= 0 ? WRAP_DOM_TLDS[i] : "";
+      return json({ dom: t ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0] } : null }, env);
+    }
+
     const spec = PROMPTS[phase];
     if (!spec) return json({ error: `unknown phase: ${phase}` }, env, 400);
 
