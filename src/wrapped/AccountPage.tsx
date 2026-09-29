@@ -101,7 +101,7 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
             </div>
             {!searches.length && <p className="wr-hint" style={{ marginTop: 18 }}>Nothing yet. Start your first name.</p>}
             <div className="wr-sgrid">
-              {searches.map((s) => <SearchCard key={s.id} s={s} onOpen={() => (s.status === "claimed" ? setModal(s) : open(s))} />)}
+              {searches.map((s) => <SearchCard key={s.id} s={s} onOpen={() => setModal(s)} />)}
             </div>
           </>
         )}
@@ -146,7 +146,11 @@ const open = (s: SavedSearch, go?: string) =>
 
 /* ── 10b: everything for a claimed name, in one place ── */
 function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
-  const name = s.picked?.name || "Untitled";
+  const name = s.picked?.name || s.names?.[0]?.name || "Untitled";
+  const statusLabel = s.status === "claimed" ? "Claimed" : s.status === "ready" ? "Names ready" : "Exploring";
+  const nextLabel =
+    s.names?.length && !s.picked ? `Pick one of ${s.names.length} names` :
+    s.starred?.length && !s.names?.length ? `${s.starred.length} words starred` : "Continue the brief";
   const pal = toPalette(s.palette || null) || DEFAULT_PALETTE;
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const grad = `linear-gradient(120deg, ${pal.dawn}, ${pal.haze} 50%, ${pal.nova})`;
@@ -169,13 +173,20 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
             {s.logo && <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: (s.logo.accent as Accent) || "dawn", seed: s.logo.seed || 0, height: 44 }) }} />}
           </span>
           <div>
-            <p className="k">Claimed · {date}</p>
+            <p className="k">{statusLabel} · {date}</p>
             <h3>{name}</h3>
           </div>
         </div>
         <p className="brief">{s.sentence}</p>
         <p className="k" style={{ margin: "18px 0 10px" }}>Everything for {name}</p>
         <div className="rows">
+          {!s.picked && (
+            <button className="row lead" onClick={() => open(s)}>
+              <span className="ic">→</span>
+              <span className="tt"><b>Continue where you left off</b><small>{nextLabel}</small></span>
+              <span className="act">Open ↗</span>
+            </button>
+          )}
           {s.domain && (
             <a className="row lead" href={`https://${s.domain}`} target="_blank" rel="noopener noreferrer">
               <span className="ic"><i className="dot" /></span>
@@ -183,6 +194,14 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
               <span className="act">Manage ↗</span>
             </a>
           )}
+          {s.picked && !s.domain && (
+            <button className="row lead" onClick={() => open(s, "domain")}>
+              <span className="ic"><i className="dot" /></span>
+              <span className="tt"><b>Claim the domain</b><small>{s.picked.dom?.domain || "pick your address"}</small></span>
+              <span className="act">Open ↗</span>
+            </button>
+          )}
+          {s.picked && <>
           <button className="row" onClick={logoPack}>
             <span className="ic dark"><svg width="16" height="16" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#fff" /></svg></span>
             <span className="tt"><b>Logo pack</b><small>{s.logo ? `${s.logo.title} · SVG + PNG` : "Pick a concept first"}</small></span>
@@ -198,6 +217,7 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
             <span className="tt"><b>Social accounts</b><small>Instagram, X, TikTok, LinkedIn</small></span>
             <span className="act">Open ↗</span>
           </button>
+          </>}
         </div>
       </div>
     </div>
