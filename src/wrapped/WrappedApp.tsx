@@ -20,6 +20,7 @@ const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, nam
 const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
 const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
 
+const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
 const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
   { name: "X", desc: "Updates and conversation", url: "https://x.com/i/flow/signup" },
@@ -514,7 +515,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
             : inOwn && picked
               ? <span className="wr-topname">{picked.name}</span>
               : step === "land"
-                ? <button className="wr-signin" onClick={gotoAccount}>Sign in</button>
+                ? <button className="wr-link" onClick={() => document.getElementById("youget")?.scrollIntoView({ behavior: "smooth" })}>How it works</button>
                 : step === "done" ? <span className="wr-count">done</span> : null}
         </span>
       </div>
@@ -529,17 +530,28 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       {/* ═══ 00 landing ═══ */}
       {step === "land" && (
         <div className="wr-land">
-          <p className="wr-kicker rise">Names for companies, apps and products</p>
-          <h1 className="wr-h rise" style={{ margin: "14px 0 12px" }}>Find your name.<br />Own it.</h1>
-          <p className="wr-lead rise" style={{ maxWidth: 430, margin: "0 0 26px" }}>
-            Describe what you're building. Get a name with its domain, logo and brand book, in minutes.
-          </p>
-          <button className="wr-btn rise" style={{ maxWidth: 260 }} onClick={() => startFlow(sentence)}>Start naming →</button>
-          <div style={{ marginTop: 44 }} className="rise">
-            <p className="wr-kicker" style={{ marginBottom: 12 }}>You get</p>
-            <div className="wr-youget">
-              {["Your name", "The domain", "Social accounts", "A logo", "A brand book"].map((x) => <span key={x} className="wr-frost">{x}</span>)}
+          <div className="hero">
+            <h1 className="wr-h rise" style={{ margin: "0 0 18px" }}>Find your name.<br />Own it.</h1>
+            <p className="wr-lead rise" style={{ maxWidth: 470, margin: "0 0 34px" }}>
+              Describe what you're building. Get a name with its domain, logo and brand book, in minutes.
+            </p>
+            <div className="wr-herobtns rise">
+              <button className="wr-btn" style={{ maxWidth: 240, height: 54, borderRadius: 980 }} onClick={() => startFlow(sentence)}>Start naming →</button>
+              {user
+                ? <button className="wr-gbtn" onClick={gotoAccount}><span className="gi">G</span> My account →</button>
+                : <GoogleCTA onDone={gotoAccount} />}
             </div>
+            <div className="wr-eg rise">
+              {EXAMPLES.map((x) => <button key={x} onClick={() => startFlow(x)}>{x}</button>)}
+            </div>
+          </div>
+          <div className="wr-youget2" id="youget">
+            <span className="k">You get</span>
+            {["Your name", "The domain", "Social accounts", "A logo", "A brand book"].map((x, i) => (
+              <span key={x} style={{ display: "inline-flex", alignItems: "center", gap: 18 }}>
+                {i > 0 && <i className="dot" />}<span className="it">{x}</span>
+              </span>
+            ))}
           </div>
         </div>
       )}
@@ -1056,6 +1068,30 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
       <button className="wr-btn2" onClick={onRetry}>↻ Try again</button>
     </div>
   );
+}
+
+/* ── landing "Sign up with Google": the mock's pill, with the REAL Google
+   button laid invisibly on top so the click is a genuine Google sign-in ── */
+function GoogleCTA({ onDone }: { onDone: () => void }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const init = () => {
+      const w = window as any;
+      if (!w.google?.accounts?.id || !host.current) return;
+      w.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (resp: any) => { const r = await authGoogle(resp.credential); if (r) onDone(); },
+      });
+      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "signup_with", shape: "pill", width: 280 });
+    };
+    return loadGsi(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!GOOGLE_CLIENT_ID) return null;
+  // The official Google button, rendered visibly: Google's own dark pill is
+  // near-identical to the mock and the click path is bulletproof.
+  return <span className="wr-gwrap" ref={host} />;
 }
 
 /* ── word row ── */
