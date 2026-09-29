@@ -589,9 +589,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               Describe what you're building. Get a name with its domain, logo and brand book, in minutes.
             </p>
             <div className="wr-herobtns rise">
-              <button className="wr-btn" style={{ maxWidth: 240, height: 54, borderRadius: 980 }} onClick={() => startFlow(sentence)}>Start naming →</button>
+              <button className="wr-btn herocta" onClick={() => startFlow(sentence)}>Start naming →</button>
               {user
-                ? <button className="wr-gbtn" onClick={gotoAccount}><span className="gi">G</span> My account →</button>
+                ? <button className="wr-gbtn herocta" onClick={gotoAccount}><span className="gi">G</span> My account →</button>
                 : <GoogleCTA onDone={gotoAccount} />}
             </div>
             <div className="wr-eg rise">
