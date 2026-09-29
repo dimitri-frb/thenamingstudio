@@ -447,22 +447,22 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     <div className="wr">
       {(step === "land" || step === "reveal" || step === "done") && <div className="wr-glow" />}
 
-      {/* top bar */}
+      {/* top bar: the logo never moves; the back arrow lives at the far right */}
       <div className="wr-top">
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+        <button className="wr-brand" onClick={() => (step === "land" ? undefined : restart())}>
+          <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
+          <span className="bt">the naming studio</span>
+        </button>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
+          {flowNo
+            ? <span className="wr-count"><b>{flowNo}</b> of 5</span>
+            : inOwn && picked
+              ? <span className="wr-topname">{picked.name}</span>
+              : step === "land"
+                ? <button className="wr-signin" onClick={gotoAccount}>Sign in</button>
+                : step === "done" ? <span className="wr-count">done</span> : null}
           {backTarget[step] && <button className="wr-back" onClick={() => toStep(backTarget[step]!)} aria-label="Back">‹</button>}
-          <button className="wr-brand" onClick={() => (step === "land" ? undefined : restart())}>
-            <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
-            <span className="bt">the naming studio</span>
-          </button>
         </span>
-        {flowNo
-          ? <span className="wr-count"><b>{flowNo}</b> of 5</span>
-          : inOwn && picked
-            ? <span className="wr-topname">{picked.name}</span>
-            : step === "land"
-              ? <button className="wr-signin" onClick={gotoAccount}>Sign in</button>
-              : step === "done" ? <span className="wr-count">done</span> : <span />}
       </div>
 
       {flowNo && (
@@ -514,7 +514,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
                     : <button className="wr-chipadd" onClick={() => setAddingChip(true)}>＋ add</button>}
                 </div>
-                <p className="wr-hint" style={{ marginTop: 12 }}>Edit a chip if we read it wrong</p>
               </div>
             </div>
           </div>
