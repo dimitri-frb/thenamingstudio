@@ -291,6 +291,30 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   }
 }
 
+/* ── the downloadable logo pack (shared by the flow and the account page) ── */
+export async function buildLogoPack(
+  name: string, key: string, accent: Accent, seed: number,
+  swatches?: { name: string; hex: string }[] | null,
+): Promise<{ blob: Blob; filename: string }> {
+  const { makeZip } = await import("./zip");
+  const pal = toPalette(swatches);
+  const nm = (name || "logo").toLowerCase();
+  const svgs: Record<string, string> = {
+    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed }),
+    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed }),
+    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed }),
+    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed }),
+    [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed }),
+  };
+  const enc = new TextEncoder();
+  const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([n, svg]) => ({ name: n, data: enc.encode(svg) }));
+  try {
+    files.push({ name: `${nm}-primary@1024.png`, data: await svgToPng(svgs[`${nm}-primary.svg`], 1024) });
+    files.push({ name: `${nm}-appicon@512.png`, data: await svgToPng(svgs[`${nm}-appicon.svg`], 512) });
+  } catch { /* svg-only pack if the canvas fails */ }
+  return { blob: makeZip(files), filename: `${nm}-logo-pack.zip` };
+}
+
 /* ── raster export (SVG string → PNG bytes, drawn at 2x) ── */
 export function svgToPng(svg: string, heightPx: number): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {

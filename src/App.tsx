@@ -21,6 +21,7 @@ export default function App() {
     <WrappedApp
       test={params.has("test") || hash === "test"}
       resume={params.get("resume") || undefined}
+      go={params.get("go") || undefined}
     />
   );
 }

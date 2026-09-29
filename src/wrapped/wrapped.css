@@ -541,14 +541,41 @@
 .wr-scard .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 6px; }
 .wr-scard .na { font-size: 12.5px; color: var(--text3); }
 .wr-scard .opn { font-size: 13.5px; font-weight: 700; color: #fff; }
-.wr-readybar {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
-  border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface1);
-  padding: 14px 18px; margin-top: 16px;
+.wr-scard .opn.pill { background: #fff; color: #000; border-radius: 980px; padding: 8px 16px; font-size: 13px; }
+
+/* ── 10b: "everything for <name>" modal ── */
+.wr-nmodal { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 18px; }
+.wr-nmodal .panel {
+  position: relative; width: 100%; max-width: 470px; max-height: 92vh; overflow-y: auto;
+  background: linear-gradient(180deg, #1a1a1e 0%, #101012 90px);
+  border: 1px solid var(--hairline2); border-radius: 24px;
+  padding: 24px 22px 22px;
+  animation: wr-rise 0.3s ease both;
 }
-.wr-readybar .t { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); }
-.wr-readybar .acts { display: inline-flex; gap: 14px; flex-wrap: wrap; }
-.wr-readybar .acts .wr-link { color: #fff; font-weight: 600; text-decoration: none; padding: 4px 2px; }
+.wr-nmodal .x { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.1); color: var(--text2); cursor: pointer; font-size: 13px; }
+.wr-nmodal .head { display: flex; align-items: center; gap: 14px; }
+.wr-nmodal .head .tile { width: 52px; height: 52px; border-radius: 14px; overflow: hidden; display: grid; place-items: center; flex: 0 0 auto; }
+.wr-nmodal .k { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text3); margin: 0; }
+.wr-nmodal h3 { font-family: var(--serif); font-weight: 500; font-size: 30px; letter-spacing: -0.02em; margin: 3px 0 0; }
+.wr-nmodal .brief { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin: 14px 0 0; }
+.wr-nmodal .rows { display: flex; flex-direction: column; gap: 8px; }
+.wr-nmodal .row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 12px 14px; cursor: pointer; font-family: inherit; text-decoration: none;
+  transition: border-color 0.15s;
+}
+.wr-nmodal .row:hover { border-color: rgba(255, 255, 255, 0.32); }
+.wr-nmodal .row.lead { background: #fff; color: #000; border-color: #fff; }
+.wr-nmodal .row .ic { width: 36px; height: 36px; border-radius: 10px; background: rgba(0, 0, 0, 0.07); display: grid; place-items: center; flex: 0 0 auto; font-size: 15px; }
+.wr-nmodal .row .ic.dark { background: var(--surface3); border: 1px solid var(--hairline); color: #fff; }
+.wr-nmodal .row .ic .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+.wr-nmodal .row .tt { flex: 1; min-width: 0; }
+.wr-nmodal .row .tt b { display: block; font-size: 14.5px; }
+.wr-nmodal .row .tt small { display: block; font-size: 12px; opacity: 0.6; margin-top: 1px; }
+.wr-nmodal .row .act { flex: 0 0 auto; font-size: 13.5px; font-weight: 700; }
 .wr-acctbar {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; justify-content: space-around;

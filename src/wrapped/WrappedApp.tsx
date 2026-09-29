@@ -11,8 +11,8 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { logoConcepts, logoSvg, svgToPng, toPalette, whyItWorks, type LogoConcept } from "./logos";
-import { download, makeZip } from "./zip";
+import { buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept } from "./logos";
+import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
 type Step = "land" | "ask" | "brief" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
@@ -28,7 +28,7 @@ const SOCIALS = [
   { name: "LinkedIn", desc: "Company page", url: "https://www.linkedin.com/company/setup/new/" },
 ];
 
-export function WrappedApp({ test, resume }: { test: boolean; resume?: string }) {
+export function WrappedApp({ test, resume, go }: { test: boolean; resume?: string; go?: string }) {
   const [step, setStep] = useState<Step>(test ? "land" : "land");
   const [sentence, setSentence] = useState(test ? "An AI naming studio that gives founders a strategist's rigor in minutes" : "");
   const [chips, setChips] = useState<string[]>(test ? ["B2B SaaS", "Global", "Founders"] : []);
@@ -123,6 +123,8 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     setPicked(s.picked || null);
     setSteps(s.steps || {});
     if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0 });
+    if (s.picked && go && ["domain", "book", "socials"].includes(go)) { setStep(go as Step); return; }
+    if (s.picked && go === "logo") { setStep(s.logo ? "logodone" : "logo"); return; }
     if (s.picked) setStep("reveal");
     else if (s.names?.length) setStep("names");
     else if (s.concept) setStep("words");
@@ -245,7 +247,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     const who = picked.name;
     bookFetch(picked).then((b) => {
       if (picked?.name !== who) return; // superseded by another pick
-      if (b?.palette) { setBook(b); fail("book", false); } else { bookPre.current.delete(who); fail("book", true); }
+      if (b?.palette) { setBook(b); fail("book", false); persist({ palette: b.palette }); } else { bookPre.current.delete(who); fail("book", true); }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picked, test, retryTick]);
@@ -407,22 +409,8 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
 
   async function downloadLogoPack() {
     if (!picked || !logoSel) return;
-    const pal = toPalette(book?.palette);
-    const nm = picked.name.toLowerCase();
-    const svgs: Record<string, string> = {
-      [`${nm}-primary.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "light", accent: logoSel.accent, seed: logoSel.seed }),
-      [`${nm}-reversed.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "night", accent: logoSel.accent, seed: logoSel.seed }),
-      [`${nm}-gradient.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "dawn", accent: logoSel.accent, seed: logoSel.seed }),
-      [`${nm}-mono.svg`]: logoSvg(logoSel.key, picked.name, pal, { variant: "mono", accent: logoSel.accent, seed: logoSel.seed }),
-      [`${nm}-appicon.svg`]: logoSvg("appicon", picked.name, pal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed }),
-    };
-    const enc = new TextEncoder();
-    const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([name, svg]) => ({ name, data: enc.encode(svg) }));
-    try {
-      files.push({ name: `${nm}-primary@1024.png`, data: await svgToPng(svgs[`${nm}-primary.svg`], 1024) });
-      files.push({ name: `${nm}-appicon@512.png`, data: await svgToPng(svgs[`${nm}-appicon.svg`], 512) });
-    } catch { /* svg-only pack if the canvas fails */ }
-    download(makeZip(files), `${nm}-logo-pack.zip`);
+    const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed, book?.palette);
+    download(pack.blob, pack.filename);
     track("logopack", { name: picked.name, concept: logoSel.title });
   }
 

@@ -7,7 +7,10 @@ import {
   GOOGLE_CLIENT_ID, authGoogle, fetchMe, loadGsi, loadSession, saveSession,
   type SavedSearch, type WUser,
 } from "./api";
-import { DEFAULT_PALETTE, logoSvg } from "./logos";
+import { buildLogoPack, DEFAULT_PALETTE, logoSvg, toPalette, type Accent } from "./logos";
+import { download } from "./zip";
+import { printBook } from "./Book";
+import { ReportPrint } from "./Report";
 
 const BASE = () => (import.meta as any).env.BASE_URL || "/";
 
@@ -30,6 +33,7 @@ export function AccountPage() {
   const [searches, setSearches] = useState<SavedSearch[]>(DEMO ? DEMO_DATA.searches : []);
   const [checked, setChecked] = useState(DEMO);
   const [tab, setTab] = useState<Tab>("names");
+  const [modal, setModal] = useState<SavedSearch | null>(null);
 
   useEffect(() => {
     if (DEMO) return;
@@ -45,7 +49,6 @@ export function AccountPage() {
   const first = (user.name || user.email).split(/[ @]/)[0];
   const initials = (user.name || user.email).split(/[ @.]/).slice(0, 2).map((x) => x[0] || "").join("").toUpperCase();
   const ready = searches.filter((s) => s.picked);
-  const claimed = searches.filter((s) => s.picked && (s.status === "claimed" || s.steps?.book === "done"));
 
   const NAV: { k: Tab; label: string; n?: number }[] = [
     { k: "names", label: "My names", n: searches.length },
@@ -94,18 +97,8 @@ export function AccountPage() {
             </div>
             {!searches.length && <p className="wr-hint" style={{ marginTop: 18 }}>Nothing yet. Start your first name.</p>}
             <div className="wr-sgrid">
-              {searches.map((s) => <SearchCard key={s.id} s={s} />)}
+              {searches.map((s) => <SearchCard key={s.id} s={s} onOpen={() => (s.status === "claimed" ? setModal(s) : open(s))} />)}
             </div>
-            {claimed.map((s) => (
-              <div key={s.id} className="wr-readybar">
-                <span className="t">{s.picked!.name} · ready to use</span>
-                <span className="acts">
-                  <button className="wr-link" onClick={() => open(s)}>↓ Brand book</button>
-                  <button className="wr-link" onClick={() => open(s)}>↓ Logo pack</button>
-                  {s.domain && <a className="wr-link" href={`https://${s.domain}`} target="_blank" rel="noopener noreferrer">Manage {s.domain} ↗</a>}
-                </span>
-              </div>
-            ))}
           </>
         )}
 
@@ -141,6 +134,8 @@ export function AccountPage() {
         )}
       </main>
 
+      {modal && <NameModal s={modal} onClose={() => setModal(null)} />}
+
       {/* mobile bottom bar */}
       <div className="wr-acctbar wr-hidedesk">
         {NAV.map((n) => (
@@ -155,18 +150,85 @@ export function AccountPage() {
 }
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-const open = (s: SavedSearch) => window.location.assign(BASE() + "?resume=" + encodeURIComponent(s.id));
+const open = (s: SavedSearch, go?: string) =>
+  window.location.assign(BASE() + "?resume=" + encodeURIComponent(s.id) + (go ? "&go=" + go : ""));
 
-function SearchCard({ s }: { s: SavedSearch }) {
+/* ── 10b: everything for a claimed name, in one place ── */
+function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
+  const name = s.picked?.name || "Untitled";
+  const pal = toPalette(s.palette || null) || DEFAULT_PALETTE;
+  const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const grad = `linear-gradient(120deg, ${pal.dawn}, ${pal.haze} 50%, ${pal.nova})`;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  async function logoPack() {
+    if (!s.logo) { open(s, "logo"); return; }
+    const pack = await buildLogoPack(name, s.logo.key, (s.logo.accent as Accent) || "dawn", s.logo.seed || 0, s.palette);
+    download(pack.blob, pack.filename);
+  }
+  return (
+    <div className="wr-nmodal" onClick={onClose}>
+      <div className="panel" onClick={(e) => e.stopPropagation()}>
+        <button className="x" onClick={onClose} aria-label="Close">✕</button>
+        <div className="head">
+          <span className="tile" style={{ background: grad }}>
+            {s.logo && <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: (s.logo.accent as Accent) || "dawn", seed: s.logo.seed || 0, height: 44 }) }} />}
+          </span>
+          <div>
+            <p className="k">Claimed · {date}</p>
+            <h3>{name}</h3>
+          </div>
+        </div>
+        <p className="brief">{s.sentence}</p>
+        <p className="k" style={{ margin: "18px 0 10px" }}>Everything for {name}</p>
+        <div className="rows">
+          {s.domain && (
+            <a className="row lead" href={`https://${s.domain}`} target="_blank" rel="noopener noreferrer">
+              <span className="ic"><i className="dot" /></span>
+              <span className="tt"><b>{s.domain}</b><small>Registered</small></span>
+              <span className="act">Manage ↗</span>
+            </a>
+          )}
+          <button className="row" onClick={logoPack}>
+            <span className="ic dark"><svg width="16" height="16" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#fff" /></svg></span>
+            <span className="tt"><b>Logo pack</b><small>{s.logo ? `${s.logo.title} · SVG + PNG` : "Pick a concept first"}</small></span>
+            <span className="act">↓</span>
+          </button>
+          <button className="row" onClick={() => open(s, "book")}>
+            <span className="ic" style={{ background: grad, color: pal.night, fontWeight: 800, fontSize: 12 }}>Aa</span>
+            <span className="tt"><b>Brand book</b><small>PDF · 10 pages</small></span>
+            <span className="act">↓</span>
+          </button>
+          <button className="row" onClick={() => printBook(`${name} - Naming report`)}>
+            <span className="ic dark">✦</span>
+            <span className="tt"><b>Naming report</b><small>PDF · 4 pages</small></span>
+            <span className="act">↓</span>
+          </button>
+          <button className="row" onClick={() => open(s, "socials")}>
+            <span className="ic dark">@</span>
+            <span className="tt"><b>Social accounts</b><small>Instagram, X, TikTok, LinkedIn</small></span>
+            <span className="act">Open ↗</span>
+          </button>
+        </div>
+      </div>
+      <ReportPrint s={s} />
+    </div>
+  );
+}
+
+function SearchCard({ s, onOpen }: { s: SavedSearch; onOpen: () => void }) {
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const label = s.status === "claimed" ? "Claimed" : s.status === "ready" ? "Names ready" : "Exploring";
   const segs = [s.steps?.domain === "done", s.steps?.logo === "done", s.steps?.book === "done", s.steps?.socials === "done"];
   const next =
-    s.status === "claimed" ? [s.domain, s.steps?.book === "done" ? "brand book" : ""].filter(Boolean).join(" · ") :
+    s.status === "claimed" ? "Everything is ready" :
     s.names?.length ? `Pick one of ${s.names.length} names` :
     s.starred?.length ? `${s.starred.length} words starred` : "Continue the brief";
   return (
-    <button className="wr-scard" onClick={() => open(s)}>
+    <button className="wr-scard" onClick={onOpen}>
       <span className="top">
         <span className={"wr-status" + (s.status === "claimed" ? " claimed" : "")}>{label}</span>
         <span className="date">{date}</span>
@@ -183,7 +245,7 @@ function SearchCard({ s }: { s: SavedSearch }) {
       <span className="wr-seg4">{segs.map((on, i) => <span key={i} className={on ? "on" : ""} />)}</span>
       <span className="foot">
         <span className="na">{next}</span>
-        <span className="opn">Open →</span>
+        <span className="opn pill">Open →</span>
       </span>
     </button>
   );

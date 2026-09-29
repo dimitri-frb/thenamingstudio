@@ -66,6 +66,7 @@ export interface SavedSearch {
   picked?: WName | null;
   domain?: string;          // the registered/chosen domain
   logo?: { key: string; title: string; seed: number; accent?: string } | null;
+  palette?: { name: string; hex: string }[]; // brand colours once the book exists
   steps: { domain?: "done" | "skipped"; logo?: "done" | "skipped"; book?: "done" | "skipped"; socials?: "done" | "skipped" };
   status: "exploring" | "ready" | "claimed";
 }
