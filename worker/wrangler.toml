@@ -14,7 +14,7 @@ id = "6deae9f7e8774986ab1e38423de11394"
 # (optional) protect the read endpoint with a key the /admin page must supply:
 #   npx wrangler secret put ADMIN_KEY
 
-# Google sign-in: set the OAuth Web client id (it is public, not a secret) so the
-# Worker verifies sign-in tokens were minted for THIS app:
-# [vars]
-# GOOGLE_CLIENT_ID = "1234567890-abc.apps.googleusercontent.com"
+# Google sign-in: the OAuth Web client id (public, not a secret). The Worker
+# verifies sign-in tokens were minted for THIS app.
+[vars]
+GOOGLE_CLIENT_ID = "406174169000-ma0br2rqmorv5iqcfmo4dck0at5ivohu.apps.googleusercontent.com"

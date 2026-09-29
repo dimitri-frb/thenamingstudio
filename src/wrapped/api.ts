@@ -8,7 +8,12 @@ export const ENDPOINT =
   (import.meta as any).env?.VITE_NAMING_API ||
   "https://naming-studio-api.kairosfund.workers.dev";
 
-export const GOOGLE_CLIENT_ID = ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined) || "";
+// The Google OAuth Web client id (a public identifier, not a secret). The env
+// var wins so another deployment can override it; this default keeps dev and
+// prod working either way.
+export const GOOGLE_CLIENT_ID =
+  ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined) ||
+  "406174169000-ma0br2rqmorv5iqcfmo4dck0at5ivohu.apps.googleusercontent.com";
 
 /* ── process + test mode ── */
 let TEST = false;
