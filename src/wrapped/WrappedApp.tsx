@@ -454,6 +454,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <span className="bt">the naming studio</span>
         </button>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
+          {backTarget[step] && <button className="wr-back" onClick={() => toStep(backTarget[step]!)} aria-label="Back">‹</button>}
           {flowNo
             ? <span className="wr-count"><b>{flowNo}</b> of 5</span>
             : inOwn && picked
@@ -461,7 +462,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
               : step === "land"
                 ? <button className="wr-signin" onClick={gotoAccount}>Sign in</button>
                 : step === "done" ? <span className="wr-count">done</span> : null}
-          {backTarget[step] && <button className="wr-back" onClick={() => toStep(backTarget[step]!)} aria-label="Back">‹</button>}
         </span>
       </div>
 
