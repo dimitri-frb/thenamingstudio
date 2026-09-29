@@ -517,8 +517,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <span className="wr-khint"><span className="wr-key">⏎</span> continue</span>
+          <div className="wr-foot" style={{ justifyContent: "flex-end" }}>
             <button className="wr-btn" style={{ maxWidth: 420 }} disabled={sentence.trim().length < 4} onClick={submitAsk}>Continue</button>
           </div>
         </>
@@ -554,7 +553,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("ask")}>Not quite? Rewrite the brief</button>
-            <span className="wr-khint"><span className="wr-key">⏎</span></span>
             <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!concept} onClick={() => toStep("words")}>Show me the words →</button>
           </div>
         </>
@@ -673,7 +671,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           {!gated && (
             <div className="wr-foot">
               <span className="wr-hint">Pick one, it opens straight into the reveal</span>
-              <span className="wr-khint"><span className="wr-key">↑</span><span className="wr-key">↓</span> to browse · <span className="wr-key">⏎</span> to pick</span>
             </div>
           )}
           {gated && <SignupGate onUser={(u) => setUser(u)} count={names?.length || 6} />}

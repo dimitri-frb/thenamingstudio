@@ -88,7 +88,7 @@
 .wr-signin { font-size: 13px; font-weight: 600; color: var(--text2); background: none; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 980px; padding: 7px 15px; cursor: pointer; }
 .wr-signin:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 
-.wr-prog { display: flex; gap: 5px; padding: 12px 22px 0; flex: 0 0 auto; }
+.wr-prog { display: flex; gap: 5px; padding: 12px 22px 22px; flex: 0 0 auto; }
 .wr-prog span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.26); }
 .wr-prog span.on { background: #fff; }
 
@@ -528,7 +528,7 @@
 /* ═════════ desktop ═════════ */
 @media (min-width: 721px) {
   .wr-top { padding: 24px 44px 0; }
-  .wr-prog { padding: 14px 44px 0; }
+  .wr-prog { padding: 14px 44px 28px; }
   .wr-tabs { padding: 16px 44px 0; }
   .wr-stage { padding: 0 96px; }
   .wr-stage .inner-nar { max-width: 620px; margin: 0 auto; width: 100%; }
