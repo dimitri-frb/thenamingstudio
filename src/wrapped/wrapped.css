@@ -228,6 +228,30 @@
 .wr-load { display: inline-flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text3); }
 .wr-spin { width: 15px; height: 15px; flex: 0 0 auto; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: wr-spin 0.8s linear infinite; }
 
+/* ── the naming wait (trivia + real-time progress) ── */
+.wr-wait { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8vh 0 20px; gap: 34px; }
+.wr-wait .story { max-width: 760px; }
+.wr-wait .story h2 { font-family: var(--serif); font-weight: 500; font-size: 34px; letter-spacing: -0.02em; line-height: 1.12; margin: 0 0 16px; }
+.wr-wait .story h2 i { font-style: italic; }
+.wr-wait .story p { font-size: 16px; line-height: 1.6; color: var(--text2); margin: 0 auto; max-width: 620px; }
+.wr-wait .dots { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 18px; }
+.wr-wait .dots i { width: 6px; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.25); }
+.wr-wait .dots i.on { width: 20px; background: #fff; }
+.wr-wait .prog { width: 100%; max-width: 640px; text-align: left; }
+.wr-wait .prog .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+.wr-wait .prog .row b { font-size: 15px; font-weight: 700; }
+.wr-wait .prog .row span { font-size: 14px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.wr-wait .bar { height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.wr-wait .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--dawn), var(--haze) 55%, var(--nova)); transition: width 0.3s ease; }
+.wr-wait .steps { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 14px; }
+.wr-wait .steps span { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text3); }
+.wr-wait .steps span.now { color: #fff; font-weight: 700; }
+.wr-wait .steps span.done { color: var(--text2); }
+.wr-wait .steps .ck { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #000; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; }
+.wr-wait .steps .ring { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.28); }
+.wr-wait .wr-spin.sm { width: 16px; height: 16px; }
+.wr-wait .eta { font-size: 13.5px; color: var(--text3); margin: 6px 0 0; }
+
 /* ── generation failure (engine unreachable) ── */
 .wr-fail { border: 1px dashed rgba(255, 255, 255, 0.25); border-radius: 14px; padding: 18px; max-width: 440px; }
 .wr-fail p { font-size: 13.5px; color: var(--text2); line-height: 1.55; margin: 0 0 12px; }

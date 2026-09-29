@@ -7,7 +7,7 @@ import "./wrapped.css";
 import {
   GOOGLE_CLIENT_ID, SAMPLE, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
-  saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
+  loadEta, recordEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
@@ -40,6 +40,8 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const [names, setNames] = useState<WName[] | null>(test ? SAMPLE.names : null);
   const [nameIdx, setNameIdx] = useState(0);
   const [namesBusy, setNamesBusy] = useState(false);
+  const [namesProg, setNamesProg] = useState(0);      // names coined so far (drives the wait screen)
+  const waitStart = useRef(0);
   const [moreBusy, setMoreBusy] = useState(false);
   const [picked, setPicked] = useState<WName | null>(test ? SAMPLE.names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
@@ -326,9 +328,11 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   // next steps (book, domain boards) start warming.
   function attachStream(st: NameStream, base: WName[]) {
     const upd = () => {
-      if (st.names.length) setNames([...base, ...st.names]);
-      if (!st.done) return;
+      // The founder sees all six at once; meanwhile the coined count feeds the
+      // real-time wait screen.
+      if (!st.done) { if (!base.length) setNamesProg(st.names.length); return; }
       st.listeners.delete(upd);
+      if (!base.length && waitStart.current) { recordEta(Date.now() - waitStart.current); waitStart.current = 0; }
       if (st.error || !st.names.length) {
         setNamesBusy(false); setMoreBusy(false);
         if (base.length) fail("more", true);
@@ -353,6 +357,8 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     toStep("names");
     if (names?.length || namesBusy) return;
     setNamesBusy(true);
+    setNamesProg(0);
+    waitStart.current = Date.now();
     fail("names", false);
     const key = starKey(starred);
     let entry = namesPre.current;
@@ -662,12 +668,14 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
             <div className="wr-nameswrap">
-              <h1 className="wr-h" style={{ marginBottom: 6 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
-              <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
+              {!(namesBusy && !names?.length) && <>
+                <h1 className="wr-h" style={{ marginBottom: 6 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
+                <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
+              </>}
               {fails.names && !names?.length ? (
                 <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={makeNames} /></div>
               ) : namesBusy && !names?.length ? (
-                <div className="wr-load" style={{ margin: "34px 0" }}><span className="wr-spin" /> Coining names from your words…</div>
+                <NamingWait coined={namesProg} starred={starred} />
               ) : (
                 <div className={"wr-names" + (gated ? " gatecol" : "")}>
                   {(gated ? (names || []).slice(0, 1) : names || []).map((n, i) => (
@@ -704,9 +712,6 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                         </div>
                       ))}
                     </>
-                  )}
-                  {!gated && !!names?.length && namesBusy && (
-                    <div className="wr-load" style={{ padding: "4px 2px" }}><span className="wr-spin" /> still coining…</div>
                   )}
                   {!gated && !!names?.length && !namesBusy && (
                     <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
@@ -985,6 +990,60 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── the wait for the six (only when they aren't ready): naming trivia +
+   a real-time bar fed by elapsed time vs the learned estimate and by the
+   actual count of names already coined ── */
+const NAMING_STORIES = [
+  { h: <>Amazon almost launched as <i>Cadabra</i>.</>, p: "In 1994 Jeff Bezos's lawyer heard it on the phone as “cadaver”. He switched to the name of the world's largest river, which also sat near the top of alphabetical lists." },
+  { h: <>Google began as <i>BackRub</i>.</>, p: "The rename came from googol, the number 1 followed by 100 zeros, accidentally misspelled when the domain was registered. The typo stuck." },
+  { h: <>Nike spent 7 years as <i>Blue Ribbon Sports</i>.</>, p: "The name of the Greek goddess of victory came to employee Jeff Johnson in a dream, the night before the deadline. Phil Knight: “I guess we'll go with that for now.”" },
+  { h: <>Twitter launched as <i>twttr</i>.</>, p: "Vowel-less like Flickr, because twitter.com belonged to a bird-sounds hobbyist. They bought the vowels six months later." },
+] as const;
+
+function NamingWait({ coined, starred }: { coined: number; starred: WWord[] }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [storyIdx, setStoryIdx] = useState(() => Math.floor(Math.random() * NAMING_STORIES.length));
+  const eta = useRef(loadEta());
+  const t0 = useRef(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(Date.now() - t0.current), 150);
+    const rot = setInterval(() => setStoryIdx((i) => (i + 1) % NAMING_STORIES.length), 8000);
+    return () => { clearInterval(t); clearInterval(rot); };
+  }, []);
+  // Real progress: whichever is further along, the clock or the coined count.
+  const pct = Math.round(Math.min(97, Math.max((elapsed / eta.current) * 88, (coined / 6) * 92, 2)));
+  const stage = coined >= 6 ? 2 : coined >= 1 ? 1 : 0;
+  const stages = ["Blending your words", "Scoring against the brief", "Checking domains"];
+  const mix = starred.slice(0, 4).map((w) => w.w);
+  const mixLabel = mix.length > 1 ? mix.slice(0, -1).join(", ") + " and " + mix[mix.length - 1] : mix[0] || "your words";
+  const story = NAMING_STORIES[storyIdx];
+  return (
+    <div className="wr-wait">
+      <div className="story rise" key={storyIdx}>
+        <h2>{story.h}</h2>
+        <p>{story.p}</p>
+        <div className="dots">
+          {NAMING_STORIES.map((_, i) => <i key={i} className={i === storyIdx ? "on" : ""} />)}
+          <button className="wr-link" onClick={() => setStoryIdx((i) => (i + 1) % NAMING_STORIES.length)}>Another story →</button>
+        </div>
+      </div>
+      <div className="prog">
+        <div className="row"><b>Mixing {mixLabel}…</b><span>{pct}%</span></div>
+        <div className="bar"><i style={{ width: pct + "%" }} /></div>
+        <div className="steps">
+          {stages.map((label, i) => (
+            <span key={label} className={i < stage ? "done" : i === stage ? "now" : ""}>
+              {i < stage ? <i className="ck">✓</i> : i === stage ? <i className="wr-spin sm" /> : <i className="ring" />}
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <p className="eta">About {Math.max(5, Math.round(eta.current / 5000) * 5)} seconds · six names on the way</p>
     </div>
   );
 }

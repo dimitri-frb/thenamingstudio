@@ -293,6 +293,25 @@ export function loadGsi(onReady: () => void): () => void {
   return () => s.removeEventListener("load", onReady);
 }
 
+/* ── learned wait estimate for the names run (drives the real-time bar) ── */
+const ETA_KEY = "ns.nameEta";
+export function loadEta(): number {
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(ETA_KEY) || "[]");
+    if (!arr.length) return 20000;
+    const s = [...arr].sort((a, b) => a - b);
+    return Math.min(45000, Math.max(6000, s[Math.floor(s.length / 2)]));
+  } catch { return 20000; }
+}
+export function recordEta(ms: number): void {
+  if (ms < 3000) return; // a warm, prefetched run says nothing about cold waits
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(ETA_KEY) || "[]");
+    arr.push(Math.round(ms));
+    localStorage.setItem(ETA_KEY, JSON.stringify(arr.slice(-6)));
+  } catch { /* ignore */ }
+}
+
 /* ── refresh-resume snapshot (this browser only) ── */
 const SNAP_KEY = "ns.wrapped";
 export function saveSnap(snap: Record<string, unknown>): void {
