@@ -20,6 +20,20 @@ const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, nam
 const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
 const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
 
+// The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
+// are and the browser's back/forward walk the flow.
+const STEP_SLUG: Record<Step, string> = {
+  land: "", ask: "1-brief", brief: "2-concept", words: "3-words", names: "4-names", reveal: "5-reveal",
+  domain: "6-domain", logo: "7-logo", logodone: "7-logo-chosen", book: "8-brand-book", socials: "9-socials", done: "10-done",
+};
+const SLUG_STEP: Record<string, Step> = Object.fromEntries(
+  (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
+) as Record<string, Step>;
+const pathSlug = () => {
+  const base = ((import.meta as any).env.BASE_URL || "/").replace(/\/$/, "");
+  return window.location.pathname.replace(base, "").replace(/^\/+|\/+$/g, "");
+};
+
 const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
 const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
@@ -105,7 +119,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         setLogoSel(snap.logoSel || null);
         setLogoSeed(snap.logoSeed || 0);
         setBook(snap.book || null);
-        setStep(snap.step);
+        const slugStep = SLUG_STEP[pathSlug()];
+        const okSlug = slugStep && (
+          slugStep === "ask" ||
+          (["brief", "words"].includes(slugStep) && snap.sentence) ||
+          (slugStep === "names" && (snap.names?.length || snap.starred?.length)) ||
+          (!["ask", "brief", "words", "names"].includes(slugStep) && snap.picked)
+        );
+        const target: Step = okSlug ? slugStep : snap.step;
+        setStep(target);
+        pushUrl(target, true);
+      } else {
+        const slugStep = SLUG_STEP[pathSlug()];
+        if (slugStep === "ask") { setStep("ask"); pushUrl("ask", true); }
+        else if (slugStep) pushUrl("land", true); // a deep link with no run behind it
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,12 +150,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setPicked(s.picked || null);
     setSteps(s.steps || {});
     if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0 });
-    if (s.picked && go && ["domain", "book", "socials"].includes(go)) { setStep(go as Step); return; }
-    if (s.picked && go === "logo") { setStep(s.logo ? "logodone" : "logo"); return; }
-    if (s.picked) setStep("reveal");
-    else if (s.names?.length) setStep("names");
-    else if (s.concept) setStep("words");
-    else setStep("brief");
+    const target: Step =
+      s.picked && go && ["domain", "book", "socials"].includes(go) ? (go as Step) :
+      s.picked && go === "logo" ? (s.logo ? "logodone" : "logo") :
+      s.picked ? "reveal" :
+      s.names?.length ? "names" :
+      s.concept ? "words" : "brief";
+    setStep(target);
+    pushUrl(target, true);
   }
 
   /* ── persistence (refresh-resume + account) ── */
@@ -311,16 +340,50 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     conceptReq.current = ""; wordsReq.current = "";
     if (from.trim()) setSentence(from);
     setStep("ask");
+    pushUrl("ask");
   }
 
   function submitAsk() {
     if (sentence.trim().length < 4) return;
     track("search", { sentence: sentence.trim(), chips });
     setStep("brief");
+    pushUrl("brief");
     persist();
   }
 
-  function toStep(s: Step) { setStep(s); window.scrollTo(0, 0); }
+  const dataRef = useRef({ sentence, starred, names, picked });
+  dataRef.current = { sentence, starred, names, picked };
+  const canEnter = (t: Step) => {
+    const d = dataRef.current;
+    if (t === "land" || t === "ask") return true;
+    if (t === "brief" || t === "words") return !!d.sentence.trim();
+    if (t === "names") return !!(d.names?.length || d.starred.length);
+    return !!d.picked;
+  };
+  const urlFor = (t: Step) => {
+    const base = (import.meta as any).env.BASE_URL || "/";
+    return base + STEP_SLUG[t] + (test ? (STEP_SLUG[t] ? "?test" : "?test") : "");
+  };
+  const pushUrl = (t: Step, replace = false) => {
+    try {
+      const u = urlFor(t);
+      if (window.location.pathname + window.location.search === u) return;
+      if (replace) window.history.replaceState({ step: t }, "", u);
+      else window.history.pushState({ step: t }, "", u);
+    } catch { /* older browsers */ }
+  };
+  function toStep(s: Step) { setStep(s); pushUrl(s); window.scrollTo(0, 0); }
+
+  useEffect(() => { // browser back/forward walks the flow
+    const onPop = (e: PopStateEvent) => {
+      const t = ((e.state?.step as Step) || SLUG_STEP[pathSlug()] || "land");
+      if (canEnter(t)) { setStep(t); window.scrollTo(0, 0); }
+      else pushUrl(stepRef.current, true);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function starToggle(w: WWord) {
     setStarred((prev) => prev.some((x) => x.w === w.w) ? prev.filter((x) => x.w !== w.w) : [...prev, w]);
