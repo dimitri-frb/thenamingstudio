@@ -562,7 +562,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       {step === "words" && (
         <>
           <div className="wr-stage" style={{ paddingTop: 16 }}>
-            <h1 className="wr-h" style={{ fontSize: 27, marginBottom: 4 }}>Star the words that inspire you.</h1>
+            <h1 className="wr-h" style={{ marginBottom: 6 }}>Star the words that inspire you.</h1>
             <p className="wr-hint" style={{ marginBottom: 14 }}>
               {styles ? `${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll` : ""}
             </p>
@@ -614,7 +614,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
             <div className="wr-nameswrap">
-              <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 4 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
+              <h1 className="wr-h" style={{ marginBottom: 6 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
               <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
               {fails.names && !names?.length ? (
                 <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={makeNames} /></div>
@@ -760,7 +760,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <div className="wr-stage center">
             <div className="inner-nar">
               <p className="wr-kicker" style={{ marginBottom: 8 }}>Your logo</p>
-              <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 6 }}>Give {picked.name} a face.</h1>
+              <h1 className="wr-h" style={{ marginBottom: 8 }}>Give {picked.name} a face.</h1>
               <p className="wr-lead" style={{ marginBottom: 18, maxWidth: 460 }}>
                 Nine concepts drawn from the story of the name. Pick one; it flows into your brand book.
               </p>
@@ -833,7 +833,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
             <div className="inner-nar wr-owncols">
               <div>
                 <p className="wr-kicker" style={{ marginBottom: 8 }}>Brand book {book ? "· ready" : ""}</p>
-                <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 10 }}>{picked.name}, ready for you.</h1>
+                <h1 className="wr-h" style={{ marginBottom: 10 }}>{picked.name}, ready for you.</h1>
                 <p className="wr-lead" style={{ marginBottom: 20, maxWidth: 440 }}>
                   The story and meaning of the name, your {logoSel?.title || "chosen"} logo in every version, the colours, type and voice.
                   Hand it to a designer and they can start the same day.
@@ -870,7 +870,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
           <div className="wr-stage center">
             <div className="inner-nar">
               <p className="wr-kicker" style={{ marginBottom: 8 }}>One name everywhere</p>
-              <h1 className="wr-h" style={{ fontSize: 30, marginBottom: 8 }}>Set up {picked.name}'s socials.</h1>
+              <h1 className="wr-h" style={{ marginBottom: 8 }}>Set up {picked.name}'s socials.</h1>
               <p className="wr-lead" style={{ marginBottom: 14 }}>
                 Each link opens the sign-up page in a new tab. Try <b style={{ color: "#fff" }}>@{picked.name.toLowerCase()}</b> first.
               </p>
