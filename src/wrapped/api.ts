@@ -103,11 +103,11 @@ export const wrapApi = {
   concept: (sentence: string, chips: string[]) =>
     gen<WConcept>("wrapconcept", { sentence, chips }, () => SAMPLE.concept),
 
-  // Two parallel halves: extra=false → the 3 territory styles, extra=true → 3
-  // complementary styles. Fired together, merged by the caller, half the wait.
-  words: (sentence: string, concept: string, territories: WTerritory[], extra: boolean) =>
-    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, extra }, () =>
-      ({ styles: extra ? SAMPLE.styles.slice(3) : SAMPLE.styles.slice(0, 3) })),
+  // One style per call, six calls in parallel: the field lands in a single
+  // fast-model latency and each column renders the moment it arrives.
+  wordStyle: (sentence: string, concept: string, territories: WTerritory[], style: WTerritory, idx: number) =>
+    gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style }, () =>
+      ({ styles: [SAMPLE.styles[idx] || SAMPLE.styles[0]] })),
 
   names: async (sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = []) => {
     const r = await gen<{ names: WName[] }>("wrapnames", { sentence, chips, concept, words, exclude }, () =>
@@ -119,8 +119,16 @@ export const wrapApi = {
     return r;
   },
 
-  book: (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[]) =>
-    gen<WBook>("wrapbook", { sentence, chips, concept, name, parts }, () => sampleBook(name)),
+  // Two parallel halves merged into one book: a single Sonnet-latency total.
+  book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[]): Promise<WBook | null> => {
+    const base = { sentence, chips, concept, name, parts };
+    const [a, b] = await Promise.all([
+      gen<Partial<WBook>>("wrapbook", { ...base, half: "a" }, () => sampleBook(name)),
+      gen<Partial<WBook>>("wrapbook", { ...base, half: "b" }, () => sampleBook(name)),
+    ]);
+    if (!a?.story || !b?.palette) return null;
+    return { ...a, ...b } as WBook;
+  },
 };
 
 /* ── tracking (best-effort, never in test mode) ── */

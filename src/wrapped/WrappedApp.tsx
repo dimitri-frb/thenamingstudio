@@ -9,7 +9,7 @@ import {
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
   saveSnap, setProcessId, setTestMode, track, wrapApi,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
-  type WName, type WStyle, type WUser, type WWord,
+  type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { logoConcepts, logoSvg, svgToPng, toPalette, whyItWorks, type LogoConcept } from "./logos";
 import { download, makeZip } from "./zip";
@@ -59,14 +59,20 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   const conceptReq = useRef("");
   const conceptFor = useRef("");   // the sentence the current concept was built from
   const wordsReq = useRef("");
-  const wordsParts = useRef<{ a?: WStyle[]; b?: WStyle[] }>({});
-  const bookReq = useRef("");
+  const bookPre = useRef(new Map<string, Promise<WBook | null>>());
   const namesPre = useRef<{ key: string; p: Promise<{ names: WName[] } | null> } | null>(null);
   const stepRef = useRef(step);
   stepRef.current = step;
 
   const fail = (k: string, v: boolean) => setFails((f) => ({ ...f, [k]: v }));
-  const retry = (k: string) => { fail(k, false); if (k === "book") bookReq.current = ""; setRetryTick((t) => t + 1); };
+  const retry = (k: string) => { fail(k, false); if (k === "book" && picked) bookPre.current.delete(picked.name); setRetryTick((t) => t + 1); };
+  // The brand book for a name, fetched once and shared between prefetch and use.
+  const bookFetch = (n: WName) => {
+    if (!bookPre.current.has(n.name)) {
+      bookPre.current.set(n.name, wrapApi.book(sentence.trim(), chips, concept?.concept || "", n.name, n.parts || []));
+    }
+    return bookPre.current.get(n.name)!;
+  };
   const starKey = (ws: WWord[]) => ws.map((w) => w.w).sort().join("|");
 
   useEffect(() => { setTestMode(test); }, [test]);
@@ -148,7 +154,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       const r = await wrapApi.chips(s);
       setChipsBusy(false);
       setChips((prev) => (prev.length ? prev : (r.chips || []).slice(0, 4)));
-    }, 900);
+    }, 600);
     return () => clearTimeout(t);
   }, [test, step, sentence]);
 
@@ -166,7 +172,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
         if (c?.concept) {
           // A concept for a rewritten brief invalidates everything built downstream.
           if (conceptFor.current && conceptFor.current !== s) {
-            setStyles(null); wordsParts.current = {}; wordsReq.current = "";
+            setStyles(null); wordsReq.current = "";
             setStarred([]); setNames(null); namesPre.current = null;
           }
           conceptFor.current = s;
@@ -178,29 +184,39 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
         }
       });
     };
-    if (step === "ask" || step === "land") { const t = setTimeout(go, 1400); return () => clearTimeout(t); }
+    if (step === "ask" || step === "land") { const t = setTimeout(go, 800); return () => clearTimeout(t); }
     if (["brief", "words", "names"].includes(step)) go();
   }, [test, step, sentence, chips, concept, retryTick]);
 
-  useEffect(() => { // words: both halves fired the instant the concept lands, shown as they arrive
+  useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands,
+    // each column rendered the moment it arrives (fixed order, no reflow surprises).
     if (test || !concept || styles) return;
     const key = concept.concept + "|" + retryTick;
     if (wordsReq.current === key) return;
     wordsReq.current = key;
-    wordsParts.current = {};
+    const slots: (WStyle | null)[] = new Array(6).fill(null);
+    let settled = 0;
     const s = sentence.trim();
-    const put = (which: "a" | "b", r: { styles: WStyle[] } | null) => {
-      if (wordsReq.current !== key) return; // superseded
-      if (r?.styles?.length) {
-        wordsParts.current[which] = r.styles;
-        const { a, b } = wordsParts.current;
-        if (a) { setStyles(b ? [...a, ...b] : a); fail("words", false); } // territories first, extras appended
-      } else if (which === "a" && !wordsParts.current.a) {
-        fail("words", true); // the territory half is the page's backbone
-      }
-    };
-    wrapApi.words(s, concept.concept, concept.territories, false).then((r) => put("a", r));
-    wrapApi.words(s, concept.concept, concept.territories, true).then((r) => put("b", r));
+    const plan: WTerritory[] = [
+      ...concept.territories.slice(0, 3),
+      { name: "Motion", desc: "movement, drive, pace" },
+      { name: "Clarity", desc: "clear, pure, true" },
+      { name: "Languages", desc: "the idea in other tongues" },
+    ];
+    plan.forEach((st, i) => {
+      wrapApi.wordStyle(s, concept.concept, concept.territories, st, i).then((r) => {
+        if (wordsReq.current !== key) return; // superseded
+        settled++;
+        if (r?.styles?.[0]?.words?.length) {
+          slots[i] = r.styles[0];
+          const have = slots.filter(Boolean) as WStyle[];
+          setStyles(have);
+          fail("words", false);
+        } else if (settled === 6 && !slots.some(Boolean)) {
+          fail("words", true);
+        }
+      });
+    });
   }, [test, concept, styles, sentence, retryTick]);
 
   useEffect(() => { // names: pre-coined in the background while the founder is still starring
@@ -209,7 +225,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     if (namesPre.current?.key === key) return;
     const t = setTimeout(() => {
       namesPre.current = { key, p: wrapApi.names(sentence.trim(), chips, concept?.concept || "", starred) };
-    }, 1600);
+    }, 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, step, starred, names, sentence, chips, concept]);
@@ -221,11 +237,11 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
       fail("board", !b.tlds.length);
     });
     if (test) { setBook(sampleBook(picked.name)); return; }
-    if (bookReq.current === picked.name) return;
-    bookReq.current = picked.name;
     setBook(null);
-    wrapApi.book(sentence.trim(), chips, concept?.concept || "", picked.name, picked.parts || []).then((b) => {
-      if (b?.palette) { setBook(b); fail("book", false); } else fail("book", true);
+    const who = picked.name;
+    bookFetch(picked).then((b) => {
+      if (picked?.name !== who) return; // superseded by another pick
+      if (b?.palette) { setBook(b); fail("book", false); } else { bookPre.current.delete(who); fail("book", true); }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picked, test, retryTick]);
@@ -318,6 +334,12 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
     if (!r?.names?.length) { fail("names", true); return; }
     setNames(r.names);
     persist({ names: r.names });
+    // Warm what comes next: the top pick's brand book, and the domain boards
+    // for the three strongest names, while the founder is still reading.
+    if (!test && r.names[0]) {
+      bookFetch(r.names[0]);
+      r.names.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name), i * 350));
+    }
   }
 
   async function moreNames() {
@@ -348,9 +370,13 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
   function registerDomain() {
     if (!domSel) return;
     // A for-sale domain opens its actual marketplace listing when we have it.
+    // The registrar opens in a NEW tab and the flow stays right here on the
+    // domain step; "Next: Logo" appears for when the founder is ready.
     window.open(domSel.offerUrl || registrarUrl(domSel.domain), "_blank", "noopener");
     track("domain", { domain: domSel.domain, price: domSel.price || domSel.offerPrice || "" });
-    markStep("domain", "done", "logo");
+    const ns = { ...steps, domain: "done" as const };
+    setSteps(ns);
+    persist({ steps: ns, domain: domSel.domain });
   }
 
   async function downloadLogoPack() {
@@ -752,7 +778,9 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
             <button className="wr-btn" disabled={!domSel} onClick={registerDomain}>
               Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
             </button>
-            <button className="wr-link" onClick={() => markStep("domain", "skipped", "logo")}>Skip for now</button>
+            {steps.domain === "done"
+              ? <button className="wr-btn2" onClick={() => toStep("logo")}>Next: Logo →</button>
+              : <button className="wr-link" onClick={() => markStep("domain", "skipped", "logo")}>Skip for now</button>}
           </div>
         </>
       )}
@@ -847,7 +875,7 @@ export function WrappedApp({ test, resume }: { test: boolean; resume?: string })
                     : <div className="wr-load"><span className="wr-spin" /> Writing {picked.name}'s brand book…</div>
                 ) : (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { printBook(); track("book", { name: picked.name }); }}>↓ Download PDF</button>
+                    <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { printBook(`${picked.name} - Brand book`); track("book", { name: picked.name }); }}>↓ Download PDF</button>
                     <button className="wr-btn2" onClick={() => { setBookOpen(true); track("bookpreview", { name: picked.name }); }}>Preview</button>
                   </div>
                 )}

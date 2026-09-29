@@ -105,8 +105,9 @@
   display: inline-flex; align-items: center; gap: 6px;
 }
 .wr-tab .ck { color: var(--ok); font-size: 11px; }
-.wr-tab.on { background: #fff; color: #000; border-color: #fff; }
 .wr-tab.done { color: var(--text2); }
+.wr-tab.on, .wr-tab.on.done { background: #fff; color: #000; border-color: #fff; }
+.wr-tab.on .ck { color: #0a9550; }
 
 .wr-stage {
   flex: 1;
@@ -576,7 +577,15 @@
 @media print {
   body * { visibility: hidden; }
   #bk-print, #bk-print * { visibility: visible; }
-  #bk-print { position: absolute; left: 0; top: 0; }
-  #bk-print .bk-page { page-break-after: always; margin: 0; box-shadow: none; }
+  /* !important: the element parks itself off-screen via an inline style while
+     the app is on screen; print must win over that or the PDF comes out blank. */
+  #bk-print { position: absolute !important; left: 0 !important; top: 0 !important; }
+  #bk-print .bk-page {
+    page-break-after: always;
+    margin: 0;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   @page { size: A4 portrait; margin: 0; }
 }

@@ -399,8 +399,10 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `(2) the reach ("Global" unless the sentence names a market, then that market), (3) the audience (e.g. "Founders", "Students", "Restaurants"). ` +
     `1-2 words each, Title Case, in that order.\nReturn ONLY JSON {"chips":["...","...","..."]}.` }),
 
-  // 02 Your brief, wrapped: the concept + one paragraph + three inspiration territories.
-  wrapconcept: (b) => ({ model: MODEL.smart, max: 650, prompt:
+  // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
+  // territories. On the fast model: this answer gates the whole flow, and the
+  // page should feel instant.
+  wrapconcept: (b) => ({ model: MODEL.fast, max: 650, prompt:
     `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     `Distill what their NAME should feel like.\n` +
@@ -409,18 +411,33 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
     `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}]}.` }),
 
-  // 03 The words: ~96 real words across 6 styles, generated as TWO parallel
-  // halves (extra=false → the 3 territory styles; extra=true → 3 complementary
-  // styles) so the words page fills in half the time.
-  wrapwords: (b) => ({ model: MODEL.smart, max: 2600, prompt:
-    `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
-    `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n` +
-    (b.payload?.extra
-      ? `The territory styles are being produced separately. Produce 3 COMPLEMENTARY word styles that widen the hunt from different angles: pick the 3 best fits for this brief from Motion, Clarity, Texture, Sound, Place, Languages, Craft, Nature (never reuse a territory name). 16 words each (48 total).\n`
-      : `Produce the 3 territory styles: your styles ARE the three territories above, same names, same order, 16 words each (48 total).\n`) +
-    `Each word: "w" = one real word (lowercase unless a proper noun), "m" = its meaning in 2 to 5 plain words, and "lang" = a 2-letter uppercase code (IT, LA, GR, ES, FR, JP…) ONLY when the word is not English. ` +
-    `Spread rich material: English words, Latin/Greek roots, foreign gems, myth, concrete images. Short, evocative, sayable words a brand name could grow from. No duplicates, nothing generic (avoid: solution, system, tech).\n` +
-    `Return ONLY JSON {"styles":[{"name":"...","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 3 styles of exactly 16 words.` }),
+  // 03 The words: 96 words across 6 styles, generated as SIX parallel one-style
+  // calls on the fast model, so the whole field lands in a few seconds and each
+  // column can render the moment it arrives. (The legacy 3-style batch form is
+  // kept for clients built before the split.)
+  wrapwords: (b) => {
+    const common =
+      `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
+      `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n`;
+    const wordSpec =
+      `Each word: "w" = one real word (lowercase unless a proper noun), "m" = its meaning in 2 to 5 plain words, and "lang" = a 2-letter uppercase code (IT, LA, GR, ES, FR, JP…) ONLY when the word is not English. ` +
+      `Spread rich material: English words, Latin/Greek roots, foreign gems, myth, concrete images. Short, evocative, sayable words a brand name could grow from. No duplicates, nothing generic (avoid: solution, system, tech).\n`;
+    const st = b.payload?.style;
+    if (st?.name) {
+      return { model: MODEL.fast, max: 950, prompt:
+        common +
+        `Produce exactly ONE word style named "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 16 words that mine this angle for THIS brief.\n` +
+        wordSpec +
+        `Return ONLY JSON {"styles":[{"name":"${String(st.name).slice(0, 40)}","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 1 style of exactly 16 words.` };
+    }
+    return { model: MODEL.smart, max: 2600, prompt:
+      common +
+      (b.payload?.extra
+        ? `The territory styles are being produced separately. Produce 3 COMPLEMENTARY word styles that widen the hunt from different angles: pick the 3 best fits for this brief from Motion, Clarity, Texture, Sound, Place, Languages, Craft, Nature (never reuse a territory name). 16 words each (48 total).\n`
+        : `Produce the 3 territory styles: your styles ARE the three territories above, same names, same order, 16 words each (48 total).\n`) +
+      wordSpec +
+      `Return ONLY JSON {"styles":[{"name":"...","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 3 styles of exactly 16 words.` };
+  },
 
   // 04 The names: six scored names coined from the starred words. Enriched server-side
   // with a real free domain per name (RDAP), so "domains checked" is true.
@@ -449,20 +466,30 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- "score": brief fit 0-100, honest spread (most 72-90, reserve 93+ for the rare exceptional one). Order strongest first.\n` +
     `Return ONLY minified JSON {"names":[{"name":"","roots":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
 
-  // 07 The brand book: everything the 10-page PDF template needs, in one call.
-  wrapbook: (b) => ({ model: MODEL.smart, max: 3400, prompt:
-    `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
-    `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
-    `Write the brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. Return ONLY JSON with EXACTLY this shape:\n` +
-    `{"tagline":"6-8 word brand tagline",` +
-    `"story":{"headline":"5-8 word poetic line","para":"3 sentences on why this company exists and what the name holds","oneSentence":"NAME helps … (one line)","believe":"one line","wedo":"one line","whofor":"one line"},` +
-    `"origin":{"headline":"4-7 words on the construction","parts":[{"part":"aurora","lang":"Latin","gloss":"Dawn","para":"2 sentences of real etymology and story"}],"carries":[{"word":"Light","note":"clarity where there was none"},{"word":"...","note":"..."},{"word":"...","note":"..."},{"word":"...","note":"..."}],"closing":"1-2 sentences on why the coinage is ownable"},` +
-    `"saying":{"ipa":"/…/","plain":"aw-ROH-vuh","syllables":[{"s":"aw"},{"s":"ROH","stress":true},{"s":"vuh"}],"world":[{"language":"English","sounds":"aw-ROH-vuh","note":"reference pronunciation"},{"language":"French","sounds":"…","note":"…"},{"language":"Spanish · Italian","sounds":"…","note":"…"},{"language":"German","sounds":"…","note":"…"}],"writeYes":["Name , one word, capital N","Name's (possessive)"],"writeNever":["ALLCAPS","MidCaps","Name.","Nameh"]},` +
-    `"who":{"mission":"one line","vision":"one line","values":[{"name":"two words","note":"one line"},{"name":"...","note":"..."},{"name":"...","note":"..."}],"personality":[{"left":"Playful","right":"Serious","pos":30},{"left":"Warm","right":"Cool","pos":20},{"left":"Classic","right":"Modern","pos":75},{"left":"Quiet","right":"Loud","pos":35}]},` +
-    `"palette":[{"name":"Dawn","hex":"#FF9E7A"},{"name":"Haze","hex":"#C9B6FF"},{"name":"Nova","hex":"#7C9CFF"},{"name":"Night","hex":"#0F0D24"}],"colourNote":"2 sentences on the palette's logic",` +
-    `"voice":{"words":["Clear","Warm","Confident"],"lines":[{"word":"Clear","note":"one line"},{"word":"Warm","note":"one line"},{"word":"Confident","note":"one line"}],"yes":"a sample on-brand sentence","not":"a sample off-brand jargon sentence"},` +
-    `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}\n` +
-    `Personality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; "Night" style near-black always last. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name.` }),
+  // 07 The brand book: generated as TWO parallel halves (half:"a" = tagline,
+  // story, origin, saying; half:"b" = who, palette, voice, messaging) so the
+  // whole book lands in one Sonnet-latency, not two.
+  wrapbook: (b) => {
+    const intro =
+      `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
+      `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
+      `Write brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name. Return ONLY JSON with EXACTLY this shape:\n`;
+    const shapeA =
+      `{"tagline":"6-8 word brand tagline",` +
+      `"story":{"headline":"5-8 word poetic line","para":"3 sentences on why this company exists and what the name holds","oneSentence":"NAME helps … (one line)","believe":"one line","wedo":"one line","whofor":"one line"},` +
+      `"origin":{"headline":"4-7 words on the construction","parts":[{"part":"aurora","lang":"Latin","gloss":"Dawn","para":"2 sentences of real etymology and story"}],"carries":[{"word":"Light","note":"clarity where there was none"},{"word":"...","note":"..."},{"word":"...","note":"..."},{"word":"...","note":"..."}],"closing":"1-2 sentences on why the coinage is ownable"},` +
+      `"saying":{"ipa":"/…/","plain":"aw-ROH-vuh","syllables":[{"s":"aw"},{"s":"ROH","stress":true},{"s":"vuh"}],"world":[{"language":"English","sounds":"aw-ROH-vuh","note":"reference pronunciation"},{"language":"French","sounds":"…","note":"…"},{"language":"Spanish · Italian","sounds":"…","note":"…"},{"language":"German","sounds":"…","note":"…"}],"writeYes":["Name , one word, capital N","Name's (possessive)"],"writeNever":["ALLCAPS","MidCaps","Name.","Nameh"]}}`;
+    const shapeB =
+      `{"who":{"mission":"one line","vision":"one line","values":[{"name":"two words","note":"one line"},{"name":"...","note":"..."},{"name":"...","note":"..."}],"personality":[{"left":"Playful","right":"Serious","pos":30},{"left":"Warm","right":"Cool","pos":20},{"left":"Classic","right":"Modern","pos":75},{"left":"Quiet","right":"Loud","pos":35}]},` +
+      `"palette":[{"name":"Dawn","hex":"#FF9E7A"},{"name":"Haze","hex":"#C9B6FF"},{"name":"Nova","hex":"#7C9CFF"},{"name":"Night","hex":"#0F0D24"}],"colourNote":"2 sentences on the palette's logic",` +
+      `"voice":{"words":["Clear","Warm","Confident"],"lines":[{"word":"Clear","note":"one line"},{"word":"Warm","note":"one line"},{"word":"Confident","note":"one line"}],"yes":"a sample on-brand sentence","not":"a sample off-brand jargon sentence"},` +
+      `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}`;
+    const tailB = `\nPersonality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; the near-black always last.`;
+    const half = b.payload?.half;
+    if (half === "a") return { model: MODEL.smart, max: 1900, prompt: intro + shapeA };
+    if (half === "b") return { model: MODEL.smart, max: 1700, prompt: intro + shapeB + tailB };
+    return { model: MODEL.smart, max: 3400, prompt: intro + shapeA.slice(0, -1) + "," + shapeB.slice(1) + tailB };
+  },
 
   /* ---------------- v2 (studioApi) ---------------- */
   territories: (b) => ({ model: MODEL.smart, max: 1300, prompt:

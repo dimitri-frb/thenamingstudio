@@ -335,7 +335,13 @@ export function BookPrint({ ctx }: { ctx: BookCtx }) {
   );
 }
 
-export function printBook(): void {
+export function printBook(title?: string): void {
+  // The browser names the PDF after the page title, so the download carries
+  // the found name ("Aurova - Brand book.pdf"), not the site's title.
+  const prev = document.title;
+  if (title) document.title = title;
+  const restore = () => { document.title = prev; window.removeEventListener("afterprint", restore); };
+  window.addEventListener("afterprint", restore);
   requestAnimationFrame(() => setTimeout(() => window.print(), 60));
 }
 
@@ -378,7 +384,7 @@ export function BookPreview({ ctx, onClose }: { ctx: BookCtx; onClose: () => voi
         <span className="t">{ctx.name} · Brand book</span>
         <span className="pg">Page {page + 1} of 10</span>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="wr-btn2" onClick={printBook}>↓ Export PDF</button>
+          <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ Export PDF</button>
         </div>
       </div>
       <div className="main">
