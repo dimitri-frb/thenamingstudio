@@ -541,6 +541,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     ask: "land", brief: "ask", words: "brief", names: "words", reveal: "names",
     domain: "reveal", logo: "domain", logodone: "logo", book: "logodone", socials: "book",
   };
+  // Forward mirrors back, but only where the run's data already allows the step.
+  const fwdTarget = (): Step | null => {
+    const t: Step | null =
+      step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
+      step === "brief" ? (concept ? "words" : null) :
+      step === "words" ? (names?.length ? "names" : null) :
+      step === "names" ? (picked && !gated ? "reveal" : null) :
+      step === "reveal" ? "domain" :
+      step === "domain" ? "logo" :
+      step === "logo" ? (logoSel ? "logodone" : "book") :
+      step === "logodone" ? "book" :
+      step === "book" ? "socials" :
+      step === "socials" ? (steps.socials ? "done" : null) : null;
+    return t;
+  };
 
   const pal = toPalette(book?.palette);
   const bookCtx: BookCtx | null = picked && book ? {
@@ -570,6 +585,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 : step === "how"
                   ? <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>
                 : step === "done" ? <span className="wr-count">done</span> : null}
+          {backTarget[step] && (fwdTarget()
+            ? <button className="wr-back" onClick={() => toStep(fwdTarget()!)} aria-label="Forward">›</button>
+            : <span className="wr-back" style={{ opacity: 0.25, cursor: "default" }}>›</span>)}
         </span>
       </div>
 
