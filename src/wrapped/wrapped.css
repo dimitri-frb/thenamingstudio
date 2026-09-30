@@ -444,6 +444,22 @@
 .wr-lockrow b { color: var(--text2); font-family: var(--serif); font-weight: 500; font-size: 17px; filter: blur(5px); }
 .wr-lockrow .sc { margin-left: auto; font-family: var(--mono); font-size: 12px; filter: blur(4px); }
 
+/* ── sign-up pop-up over the landing ── */
+.wr-sumodal { position: fixed; inset: 0; z-index: 85; background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(9px); display: grid; place-items: center; padding: 20px; }
+.wr-sumodal .panel {
+  position: relative; width: 100%; max-width: 400px;
+  background: #141416; border: 1px solid var(--hairline2); border-radius: 24px;
+  padding: 30px 28px 24px; text-align: center;
+  animation: wr-rise 0.3s ease both;
+}
+.wr-sumodal .x { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.1); color: var(--text2); cursor: pointer; font-size: 13px; }
+.wr-sumodal .tile { width: 46px; height: 46px; border-radius: 13px; background: #fff; display: inline-grid; place-items: center; margin-bottom: 14px; }
+.wr-sumodal h3 { font-family: var(--serif); font-weight: 500; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; }
+.wr-sumodal p { font-size: 14px; color: var(--text2); margin: 0 0 20px; }
+.wr-sumodal .gbtn { display: flex; justify-content: center; min-height: 44px; }
+.wr-sumodal .small { font-size: 12.5px; color: var(--text2); margin: 14px 0 0; }
+.wr-sumodal .small.dim { color: var(--text3); font-size: 11.5px; margin-top: 8px; }
+
 /* ── 05 reveal ── */
 .wr-reveal { position: relative; text-align: center; }
 .wr-bigname { font-family: var(--serif); font-weight: 500; font-size: 66px; letter-spacing: -0.03em; line-height: 1; margin: 0; }

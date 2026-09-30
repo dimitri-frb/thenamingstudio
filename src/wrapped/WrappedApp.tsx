@@ -73,6 +73,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   const [bookOpen, setBookOpen] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
   // Which generations failed (engine unreachable / bad answer) → honest retry UI.
   const [fails, setFails] = useState<Record<string, boolean>>({});
@@ -559,7 +560,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       if (bookOpen) return;
       const tag = (e.target as HTMLElement)?.tagName;
       const typing = tag === "INPUT" || tag === "TEXTAREA";
-      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && step === "names" && !typing && names?.length && !gated) {
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && step === "names" && !typing && names?.length) {
         e.preventDefault();
         setNameIdx((i) => Math.min(names.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1))));
         return;
@@ -569,7 +570,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         else if (!typing) {
           if (step === "brief" && concept) { e.preventDefault(); toStep("words"); }
           else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
-          else if (step === "names" && names?.length && !gated) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
+          else if (step === "names" && names?.length) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
           else if (step === "reveal") { e.preventDefault(); toStep("domain"); }
           else if (step === "domain" && domSel) { e.preventDefault(); registerDomain(); }
           else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
@@ -585,7 +586,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── shared chrome ── */
   const flowNo = FLOW_NO[step];
   const inOwn = OWN_STEPS.includes(step);
-  const gated = step === "names" && !!names?.length && !user && !!GOOGLE_CLIENT_ID && !test;
 
   const ownTab = (k: "domain" | "logo" | "book" | "socials") => {
     const active = (k === "logo" && (step === "logo" || step === "logodone")) || step === k;
@@ -609,7 +609,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
       step === "brief" || step === "refine" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
-      step === "names" ? (picked && !gated ? "reveal" : null) :
+      step === "names" ? (picked ? "reveal" : null) :
       step === "reveal" ? "domain" :
       step === "domain" ? "logo" :
       step === "logo" ? (logoSel ? "logodone" : "book") :
@@ -643,7 +643,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             : inOwn && picked
               ? <span className="wr-topname">{picked.name}</span>
               : step === "land"
-                ? <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
+                ? <>
+                    <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
+                    <button className="wr-signin" onClick={() => (user ? gotoAccount() : setSignupOpen(true))}>{user ? "My account" : "Sign up"}</button>
+                  </>
                 : step === "how"
                   ? <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>
                 : step === "done" ? <span className="wr-count">done</span> : null}
@@ -670,9 +673,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </p>
             <div className="wr-herobtns rise">
               <button className="wr-btn herocta" onClick={() => startFlow(sentence)}>Start naming →</button>
-              {user
-                ? <button className="wr-gbtn herocta" onClick={gotoAccount}><span className="gi">G</span> My account →</button>
-                : <GoogleCTA onDone={gotoAccount} />}
             </div>
             <div className="wr-eg rise">
               {EXAMPLES.map((x) => <button key={x} onClick={() => startFlow(x)}>{x}</button>)}
@@ -998,20 +998,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               ) : namesBusy && !names?.length ? (
                 <NamingWait coined={namesProg} starred={starred} />
               ) : (
-                <div className={gated ? "wr-gatecols" : "wr-names"}>
-                  {(gated ? (names || []).slice(0, 1) : names || []).map((n, i) => (
+                <div className="wr-names">
+                  {(names || []).map((n, i) => (
                     <button
                       key={n.name}
-                      className={"wr-ncard" + (i === 0 ? " top" : "") + (!gated && i === nameIdx ? " sel" : "")}
+                      className={"wr-ncard" + (i === 0 ? " top" : "") + (i === nameIdx ? " sel" : "")}
                       style={{ animationDelay: `${Math.min(i, 6) * 0.07}s` }}
                       onClick={() => pickName(n)}
-                      onMouseEnter={() => !gated && setNameIdx(i)}
+                      onMouseEnter={() => setNameIdx(i)}
                     >
                       <span className="main">
                         <span className="hd">
                           <span className="nm">{n.name}</span>
                           <span className="rt">{n.roots}</span>
-                          {gated && i === 0 && <span className="wr-freebadge">Free preview</span>}
                         </span>
                         {n.tagline && <span className="tg">{n.tagline}</span>}
                         {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
@@ -1024,18 +1023,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                       <span className="go">→</span>
                     </button>
                   ))}
-                  {gated && (
-                    <div className="left">
-                      <p className="wr-hint" style={{ margin: "8px 0 2px" }}>+ {(names?.length || 6) - 1} more names, locked</p>
-                      {(names || []).slice(1).map((n) => (
-                        <div key={n.name} className="wr-lockrow">
-                          <span>🔒</span><b>{n.name}</b><span className="sc">{n.score}/100</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {gated && <SignupGate onUser={(u) => setUser(u)} count={names?.length || 6} />}
-                  {!gated && !!names?.length && !namesBusy && (
+                  {!!names?.length && !namesBusy && (
                     <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
                       {moreBusy
                         ? <span className="wr-load"><span className="wr-spin" /> Coining six more…</span>
@@ -1046,11 +1034,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               )}
             </div>
           </div>
-          {!gated && (
-            <div className="wr-foot">
-              <span className="wr-hint">Pick one, it opens straight into the reveal</span>
-            </div>
-          )}
+          <div className="wr-foot">
+            <span className="wr-hint">Pick one, it opens straight into the reveal</span>
+          </div>
         </>
       )}
 
@@ -1339,6 +1325,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* overlays */}
+      {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
       {bookOpen && bookCtx && <BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} />}
       {bookCtx && <BookPrint ctx={bookCtx} />}
 
@@ -1421,10 +1408,15 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
   );
 }
 
-/* ── landing "Sign up with Google": the mock's pill, with the REAL Google
-   button laid invisibly on top so the click is a genuine Google sign-in ── */
-function GoogleCTA({ onDone }: { onDone: () => void }) {
+/* ── sign-up pop-up over the landing (the only sign-up in the flow) ── */
+function SignupModal({ onClose, onUser }: { onClose: () => void; onUser: (u: WUser) => void }) {
   const host = useRef<HTMLDivElement>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
     const init = () => {
@@ -1432,17 +1424,31 @@ function GoogleCTA({ onDone }: { onDone: () => void }) {
       if (!w.google?.accounts?.id || !host.current) return;
       w.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
-        callback: async (resp: any) => { const r = await authGoogle(resp.credential); if (r) onDone(); },
+        callback: async (resp: any) => {
+          const r = await authGoogle(resp.credential);
+          if (r) onUser(r.user);
+          else setErr("Sign-in didn't stick, try again.");
+        },
       });
-      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "signup_with", shape: "pill", width: 280 });
+      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
     };
     return loadGsi(init);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  if (!GOOGLE_CLIENT_ID) return null;
-  // The official Google button, rendered visibly: Google's own dark pill is
-  // near-identical to the mock and the click path is bulletproof.
-  return <span className="wr-gwrap" ref={host} />;
+  return (
+    <div className="wr-sumodal" onClick={onClose}>
+      <div className="panel" onClick={(e) => e.stopPropagation()}>
+        <button className="x" onClick={onClose} aria-label="Close">✕</button>
+        <span className="tile"><svg width="15" height="15" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
+        <h3>Start naming, free.</h3>
+        <p>Save your names and pick up where you left off.</p>
+        <div className="gbtn" ref={host} />
+        {err && <p className="small" style={{ color: "#ff7a6e" }}>{err}</p>}
+        <p className="small">Have an account? Same button, we'll recognise you.</p>
+        <p className="small dim">By continuing you agree to our Terms and Privacy Policy.</p>
+      </div>
+    </div>
+  );
 }
 
 /* ── word row ── */
@@ -1513,39 +1519,6 @@ function MoreWordsSentinel({ onMore }: { onMore: () => void }) {
     return () => io.disconnect();
   }, [onMore]);
   return <div ref={ref} style={{ height: 1 }} />;
-}
-
-/* ── 04b sign-up gate (Google only) ── */
-function SignupGate({ onUser, count }: { onUser: (u: WUser) => void; count: number }) {
-  const gbtn = useRef<HTMLDivElement>(null);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    const init = () => {
-      const w = window as any;
-      if (!w.google?.accounts?.id || !gbtn.current) return;
-      w.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: async (resp: any) => {
-          const r = await authGoogle(resp.credential);
-          if (r) onUser(r.user);
-          else setErr("Sign-in didn't stick, try again.");
-        },
-      });
-      w.google.accounts.id.renderButton(gbtn.current, { type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", logo_alignment: "center", width: 320 });
-    };
-    return loadGsi(init);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return (
-    <div className="wr-gate">
-      <p className="k">Free account</p>
-      <h3>Unlock all {count} names</h3>
-      <p>Plus your saved words, domain checks and brand book.</p>
-      <div className="gbtn" ref={gbtn} />
-      {err && <p className="alt" style={{ color: "#c0392b" }}>{err}</p>}
-      <p className="alt">Have an account? Same button, we'll recognise you.</p>
-    </div>
-  );
 }
 
 /* ── social icons (inline, official-ish glyph shapes) ── */
