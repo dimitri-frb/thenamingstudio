@@ -628,7 +628,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }
 
   function share() {
-    const text = `${picked?.name || "My new name"} — found with The Naming Studio`;
+    const text = `${picked?.name || "My new name"}, found with The Naming Studio`;
     const url = "https://dimitri-frb.github.io/thenamingstudio/";
     if (navigator.share) { navigator.share({ title: picked?.name, text, url }).catch(() => {}); return; }
     navigator.clipboard?.writeText(`${text} · ${url}`).then(() => setShareMsg("Copied to clipboard"));
@@ -755,7 +755,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-youget2">
-            <span className="line">Name → Domain → Brand — in minutes.</span>
+            <span className="line">Name → Domain → Brand, in minutes.</span>
           </div>
         </div>
       )}
@@ -1090,6 +1090,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                         </span>
                         {n.tagline && <span className="tg">{n.tagline}</span>}
                         {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
+                        {n.dom?.free === false && n.alt && <span className="dm"><i className="dot" />{n.alt.domain} free</span>}
                       </span>
                       <span className="sc">
                         <span className="n">{n.score}<small>/100</small></span>
@@ -1125,13 +1126,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <p className="wr-kicker" style={{ marginBottom: 14 }}>Your name</p>
                 <h1 className="wr-bigname pop" style={{ textAlign: "left" }}>{picked.name}</h1>
                 <p className="meaning">
-                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)} — {picked.parts[0].note}{picked.parts[1] ? <> — fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
+                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
                   {" "}{picked.tagline}
                 </p>
               </div>
               <div className="right rise">
                 <p className="tri">One name down. <i>Two steps to make it real.</i></p>
-                <div className="rrow">
+                <div className="rrow one">
                   <span className="i ok">✓</span>
                   <span className="mid">
                     <span className="hl"><b>Name</b><small>You've got it. Congrats!</small></span>

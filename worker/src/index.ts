@@ -241,11 +241,18 @@ export default {
       const prices = await tldPrices(env);
       const order = domCheckOrder(body?.payload?.doms);
       const states = await Promise.all(order.map((t) => rdap(slug, t)));
-      const i = states.findIndex((s) => s === "available");
-      const dom = i >= 0
-        ? { domain: `${slug}.${order[i]}`, tld: "." + order[i], price: (prices[order[i]] || BOARD_PRICE[order[i]] || ["$15"])[0], free: true }
-        : { domain: `${slug}.${order[0]}`, tld: "." + order[0], free: false }; // honest: the founder still sees the read
-      return json({ dom }, env);
+      const mk = (t: string, free: boolean) => free
+        ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true }
+        : { domain: `${slug}.${t}`, tld: "." + t, free: false };
+      // The primary read is the preferred extension; when it's taken, also
+      // hand back ONE free alternative so the card never dead-ends.
+      const dom = mk(order[0], states[0] === "available");
+      let alt = null;
+      if (states[0] !== "available") {
+        const j = states.findIndex((st, k) => k > 0 && st === "available");
+        if (j > 0) alt = mk(order[j], true);
+      }
+      return json({ dom, alt }, env);
     }
 
     const spec = PROMPTS[phase];
@@ -705,10 +712,15 @@ async function enrichWrapNames(env: Env, data: any, doms?: unknown): Promise<any
     n.dom = null;
     if (!slug) return;
     const states = await Promise.all(order.map((t) => rdap(slug, t)));
-    const i = states.findIndex((s) => s === "available");
-    n.dom = i >= 0
-      ? { domain: `${slug}.${order[i]}`, tld: "." + order[i], price: (prices[order[i]] || BOARD_PRICE[order[i]] || ["$15"])[0], free: true }
-      : { domain: `${slug}.${order[0]}`, tld: "." + order[0], free: false };
+    const mk = (t: string, free: boolean) => free
+      ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true }
+      : { domain: `${slug}.${t}`, tld: "." + t, free: false };
+    n.dom = mk(order[0], states[0] === "available");
+    n.alt = null;
+    if (states[0] !== "available") {
+      const j = states.findIndex((st, k) => k > 0 && st === "available");
+      if (j > 0) n.alt = mk(order[j], true);
+    }
   }));
   data.names = list;
   return data;

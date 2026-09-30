@@ -589,6 +589,8 @@
 .wr-revcols .rrow .dl { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px; color: rgba(0, 0, 0, 0.75); margin-top: 4px; }
 .wr-revcols .rrow .dl.dim { color: rgba(0, 0, 0, 0.45); }
 .wr-revcols .rrow .dl i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: 0 0 auto; }
+.wr-revcols .rrow.one { align-items: center; }
+.wr-revcols .rrow.one .i { margin-top: 0; }
 .wr-revcols .rrow .nm2 { font-family: var(--serif); font-weight: 500; font-size: 18px; margin-left: auto; align-self: center; }
 .wr-revcols .rrow .ar { margin-left: 4px; align-self: center; opacity: 0.55; }
 .wr-revcols .minis { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }

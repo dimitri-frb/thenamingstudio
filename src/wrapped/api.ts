@@ -33,7 +33,7 @@ export interface WWord { w: string; m: string; lang?: string }
 export interface WStyle { name: string; words: WWord[] }
 export interface WNamePart { part: string; note: string }
 export interface WDom { domain: string; tld?: string; price?: string; free?: boolean }
-export interface WName { name: string; roots: string; parts: WNamePart[]; tagline: string; score: number; dom?: WDom | null }
+export interface WName { name: string; roots: string; parts: WNamePart[]; tagline: string; score: number; dom?: WDom | null; alt?: WDom | null }
 
 export interface BookValue { name: string; note: string }
 export interface WBook {
@@ -172,9 +172,9 @@ function extractNames(text: string): WName[] {
   return out;
 }
 
-export async function fetchFreeDom(name: string, doms?: string[]): Promise<WDom | null> {
-  const r = await post<{ dom: WDom | null }>({ phase: "freedom", payload: { name, doms } });
-  return r?.dom ?? null;
+export async function fetchFreeDom(name: string, doms?: string[]): Promise<{ dom: WDom | null; alt: WDom | null }> {
+  const r = await post<{ dom: WDom | null; alt: WDom | null }>({ phase: "freedom", payload: { name, doms } });
+  return { dom: r?.dom ?? null, alt: r?.alt ?? null };
 }
 
 export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = [], prefs?: unknown): NameStream {
@@ -211,7 +211,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
           st.names = [...st.names, n];
           notify();
           // Each card's verified free domain fills in the moment we have it.
-          fetchFreeDom(n.name, (prefs as any)?.doms).then((d) => { n.dom = d; notify(); }).catch(() => {});
+          fetchFreeDom(n.name, (prefs as any)?.doms).then((d) => { n.dom = d.dom; n.alt = d.alt; notify(); }).catch(() => {});
         }
         seen = Math.max(seen, objs.length);
       }
