@@ -556,7 +556,12 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- Original and evocative: it suggests a feeling tied to this brief, never literally describes the product.\n` +
     `- Ownable: distinctive enough to be a real trademark.\n` +
     `- Sound: real mouthfeel and rhythm.\n\n` +
-    `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least one REAL WORD repurposed, one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style.\n\n` +
+    ((() => {
+      const picked = (Array.isArray(b.payload?.prefs?.style) ? b.payload.prefs.style : b.payload?.prefs?.style ? [b.payload.prefs.style] : []).filter((x: string) => x && x !== "Any");
+      return picked.length
+        ? `TECHNIQUES — the founder asked for: ${picked.join(", ")}. Make MOST of the six match those (cover each picked style at least once), and include one or two from other styles for range.\n\n`
+        : `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least one REAL WORD repurposed, one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style.\n\n`;
+    })()) +
     `HARD RULES:\n` +
     `- No tired startup tells: no -ly / -ify / -io / -ai / -hub / -fy endings, no dropped-vowel tricks.\n` +
     `- Never output a starred word verbatim or trivially capitalised: every name is a NEW coinage built FROM the material.\n` +

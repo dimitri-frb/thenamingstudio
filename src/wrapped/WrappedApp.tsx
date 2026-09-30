@@ -1774,7 +1774,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
           </div>
         </div>
       </div>
-      <div className="wr-foot">
+      <div className="wr-foot wr-tfoot">
         <button className="wr-link" onClick={onBack}>← Back</button>
         <span style={{ display: "inline-flex", gap: 10 }}>
           <button className="wr-btn2" onClick={onNext}>Skip</button>

@@ -647,7 +647,7 @@
 .wr-dom .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 7px; vertical-align: middle; }
 .wr-dom .dot.sale { background: var(--sale); }
 .wr-dom .d { font-family: var(--mono); font-size: 17px; font-weight: 500; }
-.wr-dom .bp { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ok); }
+.wr-dom .bp { margin-left: auto; white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ok); }
 .wr-dom .st { margin-left: auto; font-size: 13px; color: inherit; opacity: 0.65; display: inline-flex; align-items: center; }
 .wr-dom .bp + .st { margin-left: 0; }
 .wr-dom .pr { font-family: var(--mono); font-size: 15px; font-weight: 600; min-width: 46px; text-align: right; }
@@ -928,10 +928,78 @@
   .wr-owncols { display: flex; gap: 60px; align-items: flex-start; }
   .wr-owncols > div { flex: 1; min-width: 0; }
 }
+/* ═════════ mobile (handoff: Wrapped Flow Mobile, 390×844) ═════════ */
 @media (max-width: 720px) {
   .wr-hidemob { display: none !important; }
-  .wr-foot .wr-btn { width: 100%; height: 50px; }
-  .wr-chapter { display: none; }
+
+  /* top bar: mark left, chapter centred (10px), arrows right */
+  .wr-top { padding: 12px 20px 0; min-height: 44px; }
+  .wr-top .wr-link, .wr-signin { white-space: nowrap; }
+  .wr-top:has(.wr-chapter) .wr-brand .bt { display: none; }
+  .wr-chapter { display: block; font-size: 10px; letter-spacing: 0.14em; }
+  .wr-arr { width: 28px; height: 28px; font-size: 15px; }
+  .wr-prog { padding: 12px 22px 18px; gap: 5px; }
+
+  /* content: one column, 20-22px gutters */
+  .wr-stage { padding: 0 20px; }
+
+  /* footer: primary pinned full-width 52px pill, links centred under it */
+  .wr-foot { flex-direction: column-reverse; align-items: stretch; gap: 12px; padding: 12px 20px 30px; }
+  .wr-foot .wr-btn { width: 100%; max-width: none !important; height: 52px; font-size: 16px; }
+  .wr-foot > span { display: flex !important; flex-direction: column-reverse; align-items: stretch; gap: 12px; width: 100%; }
+  .wr-foot .wr-btn2,
+  .wr-foot .wr-link { background: none; border: none; height: auto; padding: 2px 0; font-size: 13.5px; color: var(--text3); text-align: center; width: 100%; }
+  .wr-foot .wr-hint { text-align: center; }
+  /* taste screens: no Skip on mobile, back only (design 06c) */
+  .wr-tfoot .wr-btn2 { display: none; }
+
+  /* taste cards: 2×2, shorter visuals */
+  .wr-tpick .qrow { margin-bottom: 18px; }
+  .wr-tpick .qrow .wr-h { font-size: 28px !important; }
+  .wr-tpick .cards { gap: 10px; }
+  .wr-tpick .tcard .v { height: 118px; margin: 8px 8px 0; font-size: 20px; }
+  .wr-tpick .tcard .v.type { font-size: 21px; }
+  .wr-tpick .tcard .v.cols i { height: 70px; }
+  .wr-tpick .tcard .v.shape i { width: 56px; height: 56px; }
+  .wr-tpick .tcard .tx { padding: 10px 12px 13px; }
+  .wr-tpick .tcard b { font-size: 16px; }
+  .wr-tpick .tcard small { font-size: 12px; }
+
+  /* logos: 3×3 stays, compact tiles */
+  .wr-lwrap .lhead { margin-bottom: 12px; }
+  .wr-lwrap .lhead .wr-h { font-size: 26px !important; }
+  .wr-lgrid { gap: 9px; }
+  .wr-ltile { padding: 8px 6px 8px; border-radius: 12px; }
+  .wr-ltile .lt { height: 74px; }
+  .wr-ltile .lt svg { max-height: 58px; }
+  .wr-ltile .ln { font-size: 10.5px; }
+
+  /* your logo: single column */
+  .wr-ldet { gap: 24px; }
+  .wr-ldet .ldl, .wr-ldet .ldr { flex: 1 1 100%; min-width: 0; }
+  .wr-lhero { padding: 22px 12px; }
+
+  /* domain: stacked, compact rows */
+  .wr-domcols { gap: 20px; }
+  .wr-domcols .dcl .wr-h { font-size: 34px !important; }
+  .wr-dom { padding: 14px 14px; gap: 10px; border-radius: 14px; }
+  .wr-dom .d { font-size: 14.5px; }
+  .wr-dom .st { font-size: 11.5px; }
+  .wr-dom .pr { font-size: 13px; min-width: 38px; }
+  .wr-dom .bp { font-size: 9.5px; }
+
+  /* reveal: one column */
+  .wr-revcols { gap: 26px; }
+  .wr-bigname { font-size: 58px; }
+
+  /* words wait screen */
+  .wr-wload .wr-h { font-size: 30px !important; }
+  .wr-wload .stages { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .wr-wload .eta { margin-top: 7vh; }
+
+  /* sign-up: bottom sheet over the blurred landing (design 00·s) */
+  .wr-sumodal { place-items: end stretch; padding: 0; }
+  .wr-sumodal .panel { width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding-bottom: 38px; animation: wr-rise 0.35s ease both; }
 }
 @media (min-width: 721px) {
   .wr-hidedesk { display: none !important; }
