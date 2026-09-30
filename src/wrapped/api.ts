@@ -108,16 +108,16 @@ export const wrapApi = {
     (await gen<{ chips: string[] }>("wrapchips", { sentence }, () => ({ chips: localChips(sentence) }))) ?? { chips: localChips(sentence) },
 
   concept: (sentence: string, chips: string[]) =>
-    gen<WConcept>("wrapconcept", { sentence, chips }, () => SAMPLE.concept),
+    gen<WConcept>("wrapconcept", { sentence, chips }, () => ACTIVE().concept),
 
   // One style per call, six calls in parallel: the field lands in a single
   // fast-model latency and each column renders the moment it arrives.
   wordStyle: (sentence: string, concept: string, territories: WTerritory[], style: WTerritory, idx: number, prefs?: unknown) =>
     gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style, prefs }, () =>
-      ({ styles: [SAMPLE.styles[idx] || SAMPLE.styles[0]] })),
+      ({ styles: [ACTIVE().styles[idx] || ACTIVE().styles[0]] })),
 
   namesRaw: (payload: Record<string, unknown>) => gen<{ names: WName[] }>("wrapnames", payload, () =>
-    ({ names: (payload.exclude as string[])?.length ? SAMPLE.moreNames : SAMPLE.names })),
+    ({ names: (payload.exclude as string[])?.length ? ACTIVE().moreNames : ACTIVE().names })),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
   book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
@@ -186,7 +186,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
   st.final = (async (): Promise<WName[] | null> => {
     if (TEST) {
       await pause(400);
-      st.names = (exclude.length ? SAMPLE.moreNames : SAMPLE.names).map((n) => ({ ...n }));
+      st.names = (exclude.length ? ACTIVE().moreNames : ACTIVE().names).map((n) => ({ ...n }));
       st.done = true; notify();
       return st.names;
     }
@@ -423,6 +423,84 @@ export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; more
   ],
 };
 
+// Second test fixture: Tiller, an iPad POS for restaurants — /test/<step> URLs
+// run the whole flow on it so any screen is one click away.
+export const TILLER: typeof SAMPLE = {
+  concept: {
+    concept: "a steady hand on the service",
+    para: "A restaurant at full tilt is a hundred decisions a minute: orders, tables, stock, staff. The name has to feel like the thing that keeps it all steady, calm, capable, in charge.",
+    alts: ["order in the rush", "the counter, in control"],
+    territories: [
+      { name: "Service", desc: "hosting, welcome, the room" },
+      { name: "The till", desc: "counts, ledgers, the counter" },
+      { name: "Rhythm", desc: "the rush, pace, the flow of a shift" },
+    ],
+  },
+  styles: [
+    { name: "Service", words: [
+      W("serve", "to look after a table"), W("host", "the one who welcomes"), W("salle", "the dining room", "FR"), W("maitre", "the master of the room", "FR"),
+      W("table", "where it all happens"), W("cover", "one seated guest"), W("carte", "the menu", "FR"), W("plate", "what leaves the pass"),
+      W("course", "one act of the meal"), W("mesa", "table", "ES"), W("tavola", "table", "IT"), W("convivio", "a shared meal", "IT"),
+      W("banquet", "a feast for many"), W("regale", "to feast, to delight"), W("care", "attention to each guest"), W("welcome", "the first thing served"),
+    ] },
+    { name: "The till", words: [
+      W("till", "the counter's cash drawer"), W("ledger", "where every count lives"), W("tally", "a running count"), W("caisse", "the register", "FR"),
+      W("count", "to know exactly"), W("counter", "where trade happens"), W("register", "the record of the day"), W("tab", "what the table owes"),
+      W("conto", "the bill", "IT"), W("cuenta", "the account", "ES"), W("abacus", "the first calculator"), W("sum", "everything, added up"),
+      W("balance", "when it all adds up"), W("comanda", "the kitchen order slip", "ES"), W("addition", "the bill", "FR"), W("cash", "money in hand"),
+    ] },
+    { name: "Rhythm", words: [
+      W("rush", "the busiest hour"), W("tempo", "the pace", "IT"), W("shift", "one working stretch"), W("flow", "continuous motion"),
+      W("cadence", "a steady rhythm"), W("pulse", "the beat of the room"), W("turn", "a table served and reset"), W("swing", "full speed, in control"),
+      W("pace", "how fast it moves"), W("steady", "calm under load"), W("prime", "the peak hour"), W("hum", "a room running well"),
+      W("beat", "a steady time"), W("clock", "the service timer"), W("stream", "steady and unbroken"), W("brio", "spirited energy", "IT"),
+    ] },
+    { name: "The helm", words: [
+      W("tiller", "the bar that steers a boat"), W("helm", "where the ship is steered"), W("rudder", "what sets the course"), W("keel", "what keeps it steady"),
+      W("anchor", "holds firm in any rush"), W("compass", "always knows the way"), W("pilot", "the one who guides"), W("steer", "to set direction"),
+      W("captain", "in charge of the crew"), W("crew", "the team on shift"), W("deck", "where the work happens"), W("port", "safe harbour"),
+      W("north", "the fixed point"), W("course", "the route you hold"), W("timon", "tiller, helm", "ES"), W("barre", "the tiller", "FR"),
+    ] },
+    { name: "Craft", words: [
+      W("craft", "skill made visible"), W("forge", "to shape with heat"), W("plancha", "the flat iron grill", "ES"), W("brigade", "the kitchen's crew", "FR"),
+      W("mise", "everything in its place", "FR"), W("prep", "ready before the rush"), W("knife", "the chef's first tool"), W("flame", "the heart of the stove"),
+      W("season", "to bring to taste"), W("simmer", "controlled heat"), W("atelier", "a maker's workshop", "FR"), W("bottega", "artisan's workshop", "IT"),
+      W("officina", "workshop", "IT"), W("whisk", "the cook's quick tool"), W("hand", "made by someone"), W("maker", "one who builds"),
+    ] },
+    { name: "Languages", words: [
+      W("oste", "innkeeper", "IT"), W("fonda", "a small inn", "ES"), W("bistro", "a small quick restaurant", "FR"), W("taberna", "tavern", "LA"),
+      W("meson", "a traditional inn", "ES"), W("locanda", "a country inn", "IT"), W("auberge", "an inn", "FR"), W("cantina", "cellar, canteen", "IT"),
+      W("izakaya", "a stay-and-drink house", "JP"), W("gasthaus", "guest house", "DE"), W("patron", "the owner of the house", "FR"), W("chef", "the chief", "FR"),
+      W("cocina", "kitchen", "ES"), W("cucina", "kitchen", "IT"), W("wirt", "the host, the innkeeper", "DE"), W("kuche", "kitchen", "DE"),
+    ] },
+  ],
+  names: [
+    { name: "Tiller", roots: "till + tiller", parts: [{ part: "till", note: "the counter's cash drawer" }, { part: "tiller", note: "the bar that steers a boat" }], tagline: "One hand on the till, one on the helm. Every service, steered calmly.", score: 96, dom: { domain: "tiller.com", tld: ".com", price: "$32" } },
+    { name: "Servio", roots: "servire, Latin to serve", parts: [{ part: "servire", note: "Latin, to serve" }], tagline: "Service, made effortless. The room runs itself.", score: 88, dom: { domain: "servio.com", tld: ".com", price: "$12" } },
+    { name: "Comanda", roots: "comanda, the order slip", parts: [{ part: "comanda", note: "the kitchen's order slip" }], tagline: "Every order, exactly where it should be.", score: 84, dom: { domain: "comanda.io", tld: ".io", price: "$38" } },
+    { name: "Mesa", roots: "mesa, Spanish table", parts: [{ part: "mesa", note: "Spanish, the table" }], tagline: "The whole restaurant, on one table.", score: 80, dom: { domain: "mesa.app", tld: ".app", price: "$14" } },
+    { name: "Caisso", roots: "caisse + o", parts: [{ part: "caisse", note: "French, the register" }], tagline: "The register, reinvented for the iPad.", score: 75, dom: { domain: "caisso.com", tld: ".com", price: "$12" } },
+    { name: "Brigade", roots: "brigade, the kitchen's crew", parts: [{ part: "brigade", note: "the kitchen's chain of command" }], tagline: "Run the room like a brigade: everyone, in step.", score: 72, dom: { domain: "brigade.app", tld: ".app", price: "$14" } },
+  ],
+  moreNames: [
+    { name: "Tablio", roots: "tavola + io", parts: [{ part: "tavola", note: "Italian, the table" }], tagline: "Every table, in view.", score: 81, dom: { domain: "tablio.com", tld: ".com", price: "$12" } },
+    { name: "Contero", roots: "conto + counter", parts: [{ part: "conto", note: "Italian, the bill" }], tagline: "Counts you can trust.", score: 77, dom: { domain: "contero.com", tld: ".com", price: "$12" } },
+    { name: "Sallo", roots: "salle + o", parts: [{ part: "salle", note: "French, the dining room" }], tagline: "The room, run right.", score: 74, dom: { domain: "sallo.io", tld: ".io", price: "$38" } },
+    { name: "Plancha", roots: "plancha, the flat grill", parts: [{ part: "plancha", note: "Spanish, the flat iron grill" }], tagline: "Hot, fast, precise.", score: 72, dom: { domain: "plancha.app", tld: ".app", price: "$14" } },
+    { name: "Turno", roots: "turno, the shift", parts: [{ part: "turno", note: "Spanish, the shift" }], tagline: "Shift after shift, smooth.", score: 70, dom: { domain: "turno.com", tld: ".com", price: "$12" } },
+    { name: "Ancora", roots: "ancora, Italian anchor", parts: [{ part: "ancora", note: "Italian, the anchor" }], tagline: "Steady through the rush.", score: 68, dom: { domain: "ancora.dev", tld: ".dev", price: "$12" } },
+  ],
+};
+
+// Which fixture test mode runs on: ?test = Aurova (the design sample),
+// /test/<step> = Tiller. Set once by the router before the app renders.
+let FIXTURE: "aurova" | "tiller" = "aurova";
+export function setFixture(f: "aurova" | "tiller") { FIXTURE = f; }
+export const ACTIVE = () => FIXTURE === "tiller" ? TILLER : SAMPLE;
+export const ACTIVE_BRIEF = () => FIXTURE === "tiller"
+  ? { sentence: "An iPad-based POS and management platform for restaurant owners and merchants", chips: ["B2B SaaS", "Restaurants", "Merchants"] }
+  : { sentence: "An AI naming studio that gives founders a strategist's rigor in minutes", chips: ["B2B SaaS", "Global", "Founders"] };
+
 const SAMPLE_BOARD = (name: string): DomainBoardData => {
   const slug = name.replace(/[^a-z0-9]/g, "");
   return {
@@ -443,6 +521,7 @@ const SAMPLE_BOARD = (name: string): DomainBoardData => {
 };
 
 export function sampleBook(name: string): WBook {
+  if (FIXTURE === "tiller") return tillerBook();
   const n = name || "Aurova";
   return {
     tagline: "Every great company starts at first light.",
@@ -516,6 +595,84 @@ export function sampleBook(name: string): WBook {
       boilerplate: `${n} is a naming studio for founders. Founded in 2026, it combines naming strategy with AI to help early-stage companies find, test and own their name in a single session. Learn more at ${n.toLowerCase()}.com.`,
       use: ["clear", "first", "craft", "yours"],
       avoid: ["leverage", "disrupt", "synergy", "optimise"],
+    },
+  };
+}
+
+// The Tiller fixture's brand book (mirrors sampleBook's shape).
+export function tillerBook(): WBook {
+  return {
+    tagline: "Every great service runs on a steady hand.",
+    story: {
+      headline: "The calm behind the counter.",
+      para: "A restaurant at full tilt is a hundred decisions a minute: orders, tables, stock, staff. The tools behind the counter should carry that load, not add to it. Tiller exists for that.",
+      oneSentence: "Tiller gives restaurant owners one calm place to run orders, payments and the whole house.",
+      believe: "The rush should never run the restaurant.",
+      wedo: "Put the whole service on one screen.",
+      whofor: "Restaurant owners and merchants.",
+    },
+    origin: {
+      headline: "One word, two lives",
+      parts: [
+        { part: "till", lang: "Middle English", gloss: "The cash drawer", para: "The drawer where the day's takings live, from Middle English tillen, to draw out. For centuries the till has been the heart of every counter: the place where the trade adds up, coin by coin, cover by cover." },
+        { part: "tiller", lang: "Old French", gloss: "The steering bar", para: "The bar that steers a boat, from telier, a weaver's beam. One hand on the tiller holds the whole vessel on course: small movements, full control, especially in rough water." },
+      ],
+      carries: [
+        { word: "Trade", note: "the till: where business adds up" },
+        { word: "Control", note: "the tiller: a steady course" },
+        { word: "Calm", note: "small movements, not big corrections" },
+        { word: "Trust", note: "the count is always right" },
+      ],
+      closing: "Tiller is a real, warm English word that already lives behind a counter and at a helm. That double life is the brand.",
+    },
+    saying: {
+      ipa: "/\u02c8t\u026al.\u0259r/", plain: "TILL-er",
+      syllables: [{ s: "TILL", stress: true }, { s: "er" }],
+      world: [
+        { language: "English", sounds: "TILL-er", note: "reference pronunciation" },
+        { language: "French", sounds: "ti-LAIR", note: "the stress slides to the end" },
+        { language: "Spanish · Italian", sounds: "TI-ler", note: "reads exactly as spelled" },
+        { language: "German", sounds: "TIL-la", note: "the final r rounds off" },
+      ],
+      writeYes: ["Tiller, one word, capital T", "Tiller's (possessive)"],
+      writeNever: ["TILLER", "TilLer", "Tiller.", "Tillr"],
+    },
+    who: {
+      mission: "Give every restaurant owner a calm, exact view of their whole house.",
+      vision: "A world where running a restaurant feels as good as a full room.",
+      values: [
+        { name: "Count everything", note: "The numbers are always right, and always yours." },
+        { name: "Calm under rush", note: "Built for the worst Friday night, not the demo." },
+        { name: "Merchant-side", note: "We work for the owner, not the platform." },
+      ],
+      personality: [
+        { left: "Playful", right: "Serious", pos: 70 },
+        { left: "Warm", right: "Cool", pos: 30 },
+        { left: "Classic", right: "Modern", pos: 60 },
+        { left: "Quiet", right: "Loud", pos: 25 },
+      ],
+    },
+    palette: [
+      { name: "Copper", hex: "#D97B4F" }, { name: "Cream", hex: "#F2E5D0" },
+      { name: "Olive", hex: "#8A9464" }, { name: "Charcoal", hex: "#191611" },
+    ],
+    colourNote: "Copper for the warmth of the room, Cream for the tablecloth, Olive for the kitchen's calm, Charcoal for the counter. Charcoal carries text and most surfaces; Copper is saved for the moments that matter.",
+    voice: {
+      words: ["Exact", "Warm", "Steady"],
+      lines: [
+        { word: "Exact", note: "Numbers first. Every claim checks out." },
+        { word: "Warm", note: "We talk like someone who has worked a floor." },
+        { word: "Steady", note: "No drama at 8pm, no drama in the copy." },
+      ],
+      yes: "Service ends. The count is done.",
+      not: "Leverage our seamless omnichannel restaurant solution.",
+    },
+    messaging: {
+      oneLiner: "Tiller puts a restaurant's whole service, orders, payments and stock, on one iPad.",
+      pitch: "Running a restaurant means juggling a register, a kitchen, a stock room and a team, usually across four different tools. Tiller puts the whole house on one iPad: orders flow to the kitchen, payments land in the count, stock updates itself, and the owner sees everything in one calm screen. You close the night with the count already done.",
+      boilerplate: "Tiller is an iPad-based point of sale and management platform for restaurants and merchants. Founded in 2026, it gives independent owners the control of a large group: orders, payments, stock and staff in one place. Learn more at tiller.com.",
+      use: ["count", "service", "steady", "yours"],
+      avoid: ["leverage", "seamless", "omnichannel", "disrupt"],
     },
   };
 }

@@ -5,7 +5,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
-  GOOGLE_CLIENT_ID, SAMPLE, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
   loadEta, recordEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
@@ -55,8 +55,10 @@ const SLUG_STEP: Record<string, Step> = Object.fromEntries(
 ) as Record<string, Step>;
 const pathSlug = () => {
   const base = ((import.meta as any).env.BASE_URL || "/").replace(/\/$/, "");
-  return window.location.pathname.replace(base, "").replace(/^\/+|\/+$/g, "");
+  return window.location.pathname.replace(base, "").replace(/^\/+|\/+$/g, "").replace(/^test\/?/, "");
 };
+// Entered through /test/<step>? Then every URL we push keeps the prefix.
+const TEST_PATH = /(?:^|\/)test(?:\/|$)/.test(window.location.pathname);
 
 const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
 // The Brand chapter's taste quiz: four picks, then sliders.
@@ -136,33 +138,33 @@ const SOCIALS = [
 
 export function WrappedApp({ test, resume, go }: { test: boolean; resume?: string; go?: string }) {
   const [step, setStep] = useState<Step>(test ? "land" : "land");
-  const [sentence, setSentence] = useState(test ? "An AI naming studio that gives founders a strategist's rigor in minutes" : "");
-  const [chips, setChips] = useState<string[]>(test ? ["B2B SaaS", "Global", "Founders"] : []);
+  const [sentence, setSentence] = useState(test ? ACTIVE_BRIEF().sentence : "");
+  const [chips, setChips] = useState<string[]>(test ? ACTIVE_BRIEF().chips : []);
   const [chipsBusy, setChipsBusy] = useState(false);
   const [addingChip, setAddingChip] = useState(false);
-  const [concept, setConcept] = useState<WConcept | null>(test ? SAMPLE.concept : null);
-  const [feelOpts, setFeelOpts] = useState<string[]>(test ? [SAMPLE.concept.concept, ...(SAMPLE.concept.alts || [])] : []);
+  const [concept, setConcept] = useState<WConcept | null>(test ? ACTIVE().concept : null);
+  const [feelOpts, setFeelOpts] = useState<string[]>(test ? [ACTIVE().concept.concept, ...(ACTIVE().concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
   const [prefs, setPrefs] = useState<{ tone: string; style: string; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[] }>({
     tone: "Balanced", style: "Any", length: "Any", langs: ["English"], avoid: [], terr: [], doms: [],
   });
-  const [styles, setStyles] = useState<WStyle[] | null>(test ? SAMPLE.styles : null);
+  const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
   const [wtab, setWtab] = useState(0);
-  const [starred, setStarred] = useState<WWord[]>(test ? [SAMPLE.styles[0].words[0], SAMPLE.styles[0].words[1], SAMPLE.styles[1].words[0], SAMPLE.styles[1].words[2]] : []);
-  const [names, setNames] = useState<WName[] | null>(test ? SAMPLE.names : null);
+  const [starred, setStarred] = useState<WWord[]>(test ? [ACTIVE().styles[0].words[0], ACTIVE().styles[0].words[1], ACTIVE().styles[1].words[0], ACTIVE().styles[1].words[2]] : []);
+  const [names, setNames] = useState<WName[] | null>(test ? ACTIVE().names : null);
   const [nameIdx, setNameIdx] = useState(0);
   const [namesBusy, setNamesBusy] = useState(false);
   const [namesProg, setNamesProg] = useState(0);      // names coined so far (drives the wait screen)
   const waitStart = useRef(0);
   const [moreBusy, setMoreBusy] = useState(false);
-  const [picked, setPicked] = useState<WName | null>(test ? SAMPLE.names[0] : null);
+  const [picked, setPicked] = useState<WName | null>(test ? ACTIVE().names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [domShow, setDomShow] = useState(4);
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
-  const [book, setBook] = useState<WBook | null>(test ? sampleBook("Aurova") : null);
+  const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   const [bookOpen, setBookOpen] = useState(false);
@@ -360,29 +362,30 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const wordsBusyMore = useRef(false);
   const wordsBatches = useRef(0);
 
-  useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands,
-    // each column rendered the moment it arrives; a failed column retries once.
+  useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands.
+    // The page renders once, with every column at the same time — the calls fire
+    // during the concept page, so by the time the founder arrives it's instant.
     if (test || !conceptReady || styles) return;
     const key = wordsKey();
     if (wordsReq.current === key) return;
     wordsReq.current = key;
     wordsBatches.current = 0;
     const slots: (WStyle | null)[] = new Array(6).fill(null);
-    let failed = 0;
+    let settled = 0;
     const s = sentence.trim();
+    const finish = () => {
+      settled++;
+      if (settled < 6 || wordsReq.current !== key) return;
+      const got = slots.filter(Boolean) as WStyle[];
+      if (got.length) { setStyles(got); fail("words", false); }
+      else fail("words", true);
+    };
     const run = (i: number, st: WTerritory, attempt: number) => {
       wrapApi.wordStyle(s, concept!.concept, concept!.territories, st, i, prefs).then((r) => {
         if (wordsReq.current !== key) return; // superseded
-        if (r?.styles?.[0]?.words?.length) {
-          slots[i] = r.styles[0];
-          setStyles(slots.filter(Boolean) as WStyle[]);
-          fail("words", false);
-        } else if (attempt < 1) {
-          run(i, st, attempt + 1); // one quiet retry so columns never just go missing
-        } else {
-          failed++;
-          if (failed >= 6) fail("words", true);
-        }
+        if (r?.styles?.[0]?.words?.length) { slots[i] = r.styles[0]; finish(); }
+        else if (attempt < 1) run(i, st, attempt + 1); // one quiet retry so columns never just go missing
+        else finish();
       });
     };
     wordsPlan().forEach((st, i) => run(i, st, 0));
@@ -521,7 +524,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
   const urlFor = (t: Step) => {
     const base = (import.meta as any).env.BASE_URL || "/";
-    return base + STEP_SLUG[t] + (test ? (STEP_SLUG[t] ? "?test" : "?test") : "");
+    if (test && TEST_PATH) return base + "test/" + STEP_SLUG[t];
+    return base + STEP_SLUG[t] + (test ? "?test" : "");
   };
   const pushUrl = (t: Step, replace = false) => {
     try {
@@ -1653,19 +1657,14 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
   step: "feel" | "tcol" | "ttype" | "tshape"; name: string; taste: Taste;
   onChange: (t: Taste) => void; onBack: () => void; onNext: () => void;
 }) {
-  const multi = step === "feel" || step === "tcol";
   const q = step === "feel" ? `How should ${name} feel?` : step === "tcol" ? "Which colours feel right?" : step === "ttype" ? `How should ${name} be written?` : "Round or sharp?";
   const opts = TASTE_OPTS[step];
   const cur: string[] = step === "feel" ? taste.feeling : step === "tcol" ? taste.colours : step === "ttype" ? [taste.type] : [taste.shape];
-  const pickIt = (k: string) => {
-    let next: Taste;
-    if (multi) {
-      const list = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
-      if (!list.length) return;
-      next = step === "feel" ? { ...taste, feeling: list } : { ...taste, colours: list };
-    } else {
-      next = step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k };
-    }
+  const pickIt = (k: string) => { // one pick per question, everywhere
+    const next: Taste =
+      step === "feel" ? { ...taste, feeling: [k] } :
+      step === "tcol" ? { ...taste, colours: [k] } :
+      step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k };
     onChange({ ...next, sliders: seedSliders(next) });
   };
   const viz = (k: string) => {
@@ -1709,7 +1708,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
         <div className="wr-tpick">
           <div className="qrow">
             <h1 className="wr-h" style={{ fontSize: 38, margin: 0 }}>{q}</h1>
-            <span className="wr-hint">{multi ? "Pick one or more" : "Pick one"}</span>
+            <span className="wr-hint">Pick one</span>
           </div>
           <div className="cards">
             {opts.map((o) => {

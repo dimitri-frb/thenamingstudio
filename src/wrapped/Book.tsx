@@ -205,7 +205,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
     case 6: return ( // Colour & type
       <div className="bk-page">
         <div style={S.kick}>06 · Colour & type</div>
-        <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>From first light to night</h2>
+        <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>From {(book.palette[0]?.name || "dawn").toLowerCase()} to {(book.palette[book.palette.length - 1]?.name || "night").toLowerCase()}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10pt", marginBottom: "12pt" }}>
           {book.palette.map((c) => (
             <div key={c.name}>
