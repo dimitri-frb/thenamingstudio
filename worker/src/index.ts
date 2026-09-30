@@ -240,17 +240,19 @@ export default {
       if (!slug) return json({ dom: null }, env);
       const prices = await tldPrices(env);
       const order = domCheckOrder(body?.payload?.doms);
-      const states = await Promise.all(order.map((t) => rdap(slug, t)));
+      // Widen the hunt past the preferred order so a free line is near-guaranteed.
+      const cand = [...order, ...["dev", "co", "net", "xyz"].filter((t) => !order.includes(t) && RDAP_BASE[t])];
+      const states = await Promise.all(cand.map((t) => rdap(slug, t)));
       const mk = (t: string, free: boolean) => free
         ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true }
         : { domain: `${slug}.${t}`, tld: "." + t, free: false };
-      // The primary read is the preferred extension; when it's taken, also
-      // hand back ONE free alternative so the card never dead-ends.
-      const dom = mk(order[0], states[0] === "available");
+      // Primary read: the preferred extension. An unverifiable read is null,
+      // never shown as "taken"; when taken, ONE verified-free alternative rides along.
+      const dom = states[0] === "available" ? mk(cand[0], true) : states[0] === "taken" ? mk(cand[0], false) : null;
       let alt = null;
       if (states[0] !== "available") {
         const j = states.findIndex((st, k) => k > 0 && st === "available");
-        if (j > 0) alt = mk(order[j], true);
+        if (j > 0) alt = mk(cand[j], true);
       }
       return json({ dom, alt }, env);
     }
@@ -724,15 +726,16 @@ async function enrichWrapNames(env: Env, data: any, doms?: unknown): Promise<any
     const slug = (n?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     n.dom = null;
     if (!slug) return;
-    const states = await Promise.all(order.map((t) => rdap(slug, t)));
+    const cand = [...order, ...["dev", "co", "net", "xyz"].filter((t) => !order.includes(t) && RDAP_BASE[t])];
+    const states = await Promise.all(cand.map((t) => rdap(slug, t)));
     const mk = (t: string, free: boolean) => free
       ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true }
       : { domain: `${slug}.${t}`, tld: "." + t, free: false };
-    n.dom = mk(order[0], states[0] === "available");
+    n.dom = states[0] === "available" ? mk(cand[0], true) : states[0] === "taken" ? mk(cand[0], false) : null;
     n.alt = null;
     if (states[0] !== "available") {
       const j = states.findIndex((st, k) => k > 0 && st === "available");
-      if (j > 0) n.alt = mk(order[j], true);
+      if (j > 0) n.alt = mk(cand[j], true);
     }
   }));
   data.names = list;

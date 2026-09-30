@@ -321,36 +321,80 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
       if (b) parts.push(word(x, 96, fs, { text: b }));
       return wrap(w, 150, parts.join(""));
     }
-    case "nightserif": { // the name, set with care, in serif
+    case "nightserif": { // the name, set with care, in serif — three cuts per round
+      if (v === 1) {
+        const t = name;
+        const w = wWord(t, fs * 0.98) + pad * 2;
+        return wrap(w, 130, word(w / 2, 84, fs * 0.98, { serif: true, italic: true, weight: 500, anchor: "middle" }));
+      }
+      if (v === 2) {
+        const t = name.toUpperCase();
+        const sp = fs * 0.22;
+        const w = wWord(t, fs * 0.66, sp) + pad * 2;
+        return wrap(w, 120, word(w / 2, 78, fs * 0.66, { serif: true, weight: 600, spacing: sp, text: t, anchor: "middle" }));
+      }
       const w = wWord(name, fs) + pad * 2;
       return wrap(w, 130, word(w / 2, 84, fs, { serif: true, weight: 500, anchor: "middle" }));
     }
-    case "dawnsun": { // a big sun rising behind the word
+    case "dawnsun": { // a big sun rising behind the word — placement shifts per round
       const w = wWord(name, fs) + pad * 2;
       const cx = w / 2;
+      if (v === 1) return wrap(w, 185, sun(cx, 56, 26) + word(cx, 128, fs, { anchor: "middle" }));
+      if (v === 2) return wrap(w, 170, sun(cx - wWord(name, fs) / 2 + fs * 0.3, 118, 40, motif) + word(cx, 118, fs, { anchor: "middle" }));
       return wrap(w, 170, sun(cx, 118, 52) + word(cx, 118, fs, { anchor: "middle" }));
     }
-    case "sidebyside": { // small sun left, word right
+    case "sidebyside": { // small sun and word, side by side — the lockup flips per round
       const r = 17;
       const w = r * 2 + 16 + wWord(name, fs) + pad * 2;
+      if (v === 1) return wrap(w, 124, dot(pad + r, 68, r * 0.7) + word(pad + r * 2 + 16, 78, fs, { ...face }));
+      if (v === 2) return wrap(w, 124, word(pad, 78, fs, { ...face }) + sun(pad + wWord(name, fs) + 16 + r, 74, r));
       return wrap(w, 124, sun(pad + r, 74, r) + word(pad + r * 2 + 16, 78, fs, {}));
     }
-    case "hazeitalic": { // italic serif lowercase, haze-tinted
+    case "hazeitalic": { // italic serif, haze-tinted — voice shifts per round
+      const hz = variant === "mono" ? fg : (variant === "tile" || variant === "night") ? pal.haze : fg;
+      if (v === 1) {
+        const t = name;
+        const w = wWord(t, fs * 0.94) + 26 + pad * 2;
+        return wrap(w, 130, dot(pad + 7, 78, 6, motif) + word(pad + 24, 84, fs * 0.94, { serif: true, italic: true, weight: 500, text: t, color: hz }));
+      }
+      if (v === 2) {
+        const t = name.toLowerCase();
+        const sp = fs * 0.1;
+        const w = wWord(t, fs * 0.9, sp) + pad * 2;
+        return wrap(w, 140, word(w / 2, 80, fs * 0.9, { serif: true, italic: true, weight: 400, spacing: sp, text: t, anchor: "middle", color: hz }) +
+          `<line x1="${w / 2 - 30}" y1="102" x2="${w / 2 + 30}" y2="102" stroke="${motif}" stroke-width="3" stroke-linecap="round"/>`);
+      }
       const t = name.toLowerCase();
       const w = wWord(t, fs * 0.98) + pad * 2;
-      return wrap(w, 130, word(w / 2, 84, fs * 0.98, { serif: true, italic: true, weight: 400, text: t, anchor: "middle", color: variant === "mono" ? fg : (variant === "tile" || variant === "night") ? pal.haze : fg }));
+      return wrap(w, 130, word(w / 2, 84, fs * 0.98, { serif: true, italic: true, weight: 400, text: t, anchor: "middle", color: hz }));
     }
-    case "outlinesun": { // the sun as a thin outline over the word
+    case "outlinesun": { // the sun as a thin line drawing — changes per round
       const w = wWord(name, fs) + pad * 2;
       const cx = w / 2;
+      if (v === 1) return wrap(w, 180, [
+        `<circle cx="${cx}" cy="56" r="19" fill="none" stroke="${motif}" stroke-width="4"/>`,
+        word(cx, 130, fs, { ...face, anchor: "middle" }),
+      ].join(""));
+      if (v === 2) return wrap(w, 175, [
+        `<path d="M ${cx - 30} 60 A 30 30 0 0 1 ${cx + 30} 60" fill="none" stroke="${motif}" stroke-width="6" stroke-linecap="round"/>`,
+        word(cx, 128, fs, { ...face, anchor: "middle" }),
+      ].join(""));
       return wrap(w, 180, [
         `<path d="M ${cx - 24} 66 A 24 24 0 0 1 ${cx + 24} 66" fill="none" stroke="${motif}" stroke-width="4" stroke-linecap="round"/>`,
         `<line x1="${cx - 34}" y1="66" x2="${cx + 34}" y2="66" stroke="${fg}" stroke-width="3" stroke-linecap="round"/>`,
         word(cx, 130, fs, { anchor: "middle" }),
       ].join(""));
     }
-    case "risingdot": { // a single dot lifting off the wordmark
+    case "risingdot": { // a single dot in motion — where it lands changes per round
       const w = wWord(name, fs) + 30 + pad * 2;
+      if (v === 1) return wrap(w, 150, [
+        word(pad, 96, fs, { ...face }),
+        dot(pad + wWord(name, fs) + 16, 92, 8),
+      ].join(""));
+      if (v === 2) return wrap(w, 165, [
+        dot(pad + fs * 0.3, 46, 8),
+        word(pad, 118, fs, { ...face }),
+      ].join(""));
       return wrap(w, 150, [
         word(pad, 96, fs, {}),
         dot(pad + wWord(name, fs) + 18, 58, 9),

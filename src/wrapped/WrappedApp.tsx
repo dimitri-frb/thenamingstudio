@@ -1052,10 +1052,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "words" && (
         <>
           <div className="wr-stage" style={{ paddingTop: 16 }}>
-            <h1 className="wr-h" style={{ marginBottom: 6 }}>Star the words that inspire you.</h1>
-            <p className="wr-hint" style={{ marginBottom: 14 }}>
-              {styles ? `${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll` : ""}
-            </p>
+            {styles && <>
+              <h1 className="wr-h" style={{ marginBottom: 6 }}>Star the words that inspire you.</h1>
+              <p className="wr-hint" style={{ marginBottom: 14 }}>
+                {`${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll`}
+              </p>
+            </>}
             {!styles ? (
               fails.words || fails.concept
                 ? <div style={{ margin: "40px 0" }}><GenFail note="We couldn't gather your words just now." onRetry={() => { retry("concept"); retry("words"); }} /></div>
@@ -1129,7 +1131,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                         </span>
                         {n.tagline && <span className="tg">{n.tagline}</span>}
                         {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
-                        {n.dom?.free === false && n.alt && <span className="dm"><i className="dot" />{n.alt.domain} free</span>}
+                        {n.alt && n.dom?.free !== true && <span className="dm"><i className="dot" />{n.alt.domain} free</span>}
                       </span>
                       <span className="sc">
                         <span className="n">{n.score}<small>/100</small></span>
@@ -1220,7 +1222,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div className="wr-lwrap wr-domcols">
               <div className="dcl">
                 <p className="wr-kicker" style={{ marginBottom: 12 }}>Where {picked.name} lives</p>
-                <h1 className="wr-h" style={{ fontSize: 52, lineHeight: 1.05, marginBottom: 16 }}>Pick your address.</h1>
+                <h1 className="wr-h" style={{ fontSize: 52, lineHeight: 1.05, marginBottom: 16 }}>Pick your favorite domain.</h1>
                 <p className="wr-lead">Register your name in under a minute.</p>
               </div>
               <div className="dcr">
@@ -1251,13 +1253,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot">
-            <button className="wr-btn2" onClick={() => toStep("reveal")}>← Your name</button>
-            <span style={{ display: "inline-flex", gap: 16, alignItems: "center" }}>
-              <button className="wr-link" onClick={() => steps.domain === "done" ? toStep("brand") : markStep("domain", "skipped", "brand")}>The brand →</button>
-              <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!domSel} onClick={registerDomain}>
-                Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
-              </button>
-            </span>
+            <button className="wr-btn2 aslink" onClick={() => toStep("reveal")}>← Your name</button>
+            <button className="wr-link mla" onClick={() => steps.domain === "done" ? toStep("brand") : markStep("domain", "skipped", "brand")}>Skip, create your brand →</button>
+            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!domSel} onClick={registerDomain}>
+              Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
+            </button>
           </div>
         </>
       )}
@@ -1347,12 +1347,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
-            <span style={{ display: "inline-flex", gap: 10 }}>
-              <button className="wr-btn2" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
-              <button className="wr-btn" style={{ maxWidth: 220 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
-                Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
-              </button>
-            </span>
+            <button className="wr-btn2 mla" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
+            <button className="wr-btn" style={{ maxWidth: 220 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
+              Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
+            </button>
           </div>
         </>
       )}
@@ -1776,10 +1774,8 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
       </div>
       <div className="wr-foot wr-tfoot">
         <button className="wr-link" onClick={onBack}>← Back</button>
-        <span style={{ display: "inline-flex", gap: 10 }}>
-          <button className="wr-btn2" onClick={onNext}>Skip</button>
-          <button className="wr-btn" style={{ maxWidth: 180 }} onClick={onNext}>Next →</button>
-        </span>
+        <button className="wr-btn2 mla" onClick={onNext}>Skip</button>
+        <button className="wr-btn" style={{ maxWidth: 180 }} onClick={onNext}>Next →</button>
       </div>
     </>
   );

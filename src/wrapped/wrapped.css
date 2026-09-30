@@ -547,12 +547,12 @@
 .wr-tpick .tcard:hover { border-color: rgba(255, 255, 255, 0.32); transform: translateY(-1px); }
 .wr-tpick .tcard.sel { box-shadow: 0 0 0 2.5px #fff; border-color: transparent; }
 .wr-tpick .tcard .ck { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #000; font-size: 12px; font-weight: 800; display: grid; place-items: center; z-index: 1; }
-.wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 200px; margin: 12px 12px 0; border-radius: 12px; background: var(--surface2); font-size: 26px; color: #fff; overflow: hidden; }
+.wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 200px; margin: 0; border-radius: 0; background: var(--surface2); font-size: 26px; color: #fff; overflow: hidden; }
 .wr-tpick .tcard .v.cols { gap: 8px; padding: 0 14px; }
 .wr-tpick .tcard .v.cols i { width: 22%; height: 120px; border-radius: 10px; }
 .wr-tpick .tcard .v.type { font-size: 30px; }
 .wr-tpick .tcard .v.shape i { width: 88px; height: 88px; background: #fff; display: block; }
-.wr-tpick .tcard .tx { padding: 16px 20px 20px; }
+.wr-tpick .tcard .tx { padding: 26px 22px 28px; }
 .wr-tpick .tcard b { font-family: var(--serif); font-weight: 500; font-size: 19px; display: block; }
 .wr-tpick .tcard small { font-size: 13px; color: var(--text3); display: block; margin-top: 3px; }
 @media (min-width: 980px) { .wr-tpick .cards { grid-template-columns: repeat(4, 1fr); } }
@@ -894,6 +894,7 @@
   .wr-stage { padding: 0 96px; }
   .wr-stage .inner-nar { max-width: 620px; margin: 0 auto; width: 100%; }
   .wr-foot { padding: 16px 44px 30px; }
+  .wr-foot .mla { margin-left: auto; }
   .wr-khint { display: inline-flex; }
   .wr-h { font-size: 48px; }
   .wr-land .wr-h { font-size: 64px; }
@@ -943,13 +944,15 @@
   /* content: one column, 20-22px gutters */
   .wr-stage { padding: 0 20px; }
 
-  /* footer: primary pinned full-width 52px pill, links centred under it */
-  .wr-foot { flex-direction: column-reverse; align-items: stretch; gap: 12px; padding: 12px 20px 30px; }
-  .wr-foot .wr-btn { width: 100%; max-width: none !important; height: 52px; font-size: 16px; }
-  .wr-foot > span { display: flex !important; flex-direction: column-reverse; align-items: stretch; gap: 12px; width: 100%; }
+  /* footer: primary pinned full-width 52px pill; links share one row under it
+     (back left · secondary right, or a lone back centred) */
+  .wr-foot:not(.col) { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 10px; padding: 12px 20px 30px; }
+  .wr-foot.col { padding: 12px 20px 30px; }
+  .wr-foot .wr-btn { order: -1; flex: 0 0 100%; width: 100%; max-width: none !important; height: 52px; font-size: 16px; }
   .wr-foot .wr-btn2,
-  .wr-foot .wr-link { background: none; border: none; height: auto; padding: 2px 0; font-size: 13.5px; color: var(--text3); text-align: center; width: 100%; }
-  .wr-foot .wr-hint { text-align: center; }
+  .wr-foot .wr-link { background: none; border: none; height: auto; padding: 2px 0; font-size: 13.5px; color: var(--text3); width: auto; }
+  .wr-foot:not(.col) > :not(.wr-btn):first-child:nth-last-child(2) { flex: 1; text-align: center; }
+  .wr-foot .wr-hint { flex: 1; text-align: center; }
   /* taste screens: no Skip on mobile, back only (design 06c) */
   .wr-tfoot .wr-btn2 { display: none; }
 
@@ -957,11 +960,11 @@
   .wr-tpick .qrow { margin-bottom: 18px; }
   .wr-tpick .qrow .wr-h { font-size: 28px !important; }
   .wr-tpick .cards { gap: 10px; }
-  .wr-tpick .tcard .v { height: 118px; margin: 8px 8px 0; font-size: 20px; }
+  .wr-tpick .tcard .v { height: 118px; font-size: 20px; }
   .wr-tpick .tcard .v.type { font-size: 21px; }
   .wr-tpick .tcard .v.cols i { height: 70px; }
   .wr-tpick .tcard .v.shape i { width: 56px; height: 56px; }
-  .wr-tpick .tcard .tx { padding: 10px 12px 13px; }
+  .wr-tpick .tcard .tx { padding: 17px 16px 19px; }
   .wr-tpick .tcard b { font-size: 16px; }
   .wr-tpick .tcard small { font-size: 12px; }
 
@@ -992,8 +995,9 @@
   .wr-revcols { gap: 26px; }
   .wr-bigname { font-size: 58px; }
 
-  /* words wait screen */
-  .wr-wload .wr-h { font-size: 30px !important; }
+  /* words wait screen: left-aligned on the phone */
+  .wr-wload { text-align: left; margin-top: 16vh; }
+  .wr-wload .wr-h { font-size: 34px !important; }
   .wr-wload .stages { flex-direction: column; align-items: flex-start; gap: 10px; }
   .wr-wload .eta { margin-top: 7vh; }
 
