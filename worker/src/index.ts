@@ -350,8 +350,13 @@ const prefLine = (p: any): string => {
   if (!p) return "";
   const lean: string[] = [];
   const hard: string[] = [];
-  if (p.tone && p.tone !== "Balanced") lean.push(`tone: ${p.tone}`);
-  if (p.style && p.style !== "Any") lean.push(`name style: ${p.style}`);
+  // tone/style may be a single pill (legacy) or a multi-select list.
+  const many = (x: any, skip: string[]) =>
+    (Array.isArray(x) ? x : x ? [x] : []).filter((v: string) => v && !skip.includes(v));
+  const tones = many(p.tone, ["Balanced"]);
+  const stylesPicked = many(p.style, ["Any"]);
+  if (tones.length) lean.push(`tone: ${tones.join(" and ")}`);
+  if (stylesPicked.length) lean.push(`name style(s): ${stylesPicked.join(", ")} — cover EACH picked style in the set`);
   if (p.length && p.length !== "Any") lean.push(`length: ${p.length}`);
   if (Array.isArray(p.langs) && p.langs.length) hard.push(`must read and sound clean in: ${p.langs.join(", ")}`);
   if (Array.isArray(p.avoid) && p.avoid.length) hard.push(`never use these words or patterns: ${p.avoid.join(", ")}`);
@@ -551,19 +556,20 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- Original and evocative: it suggests a feeling tied to this brief, never literally describes the product.\n` +
     `- Ownable: distinctive enough to be a real trademark.\n` +
     `- Sound: real mouthfeel and rhythm.\n\n` +
-    `TECHNIQUES, use a spread: a real word repurposed; a blend of two starred words; a coined word from a Latin/Greek root; a foreign gem; a sound-led invention; a myth or place bent to fit.\n\n` +
+    `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least one REAL WORD repurposed, one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style.\n\n` +
     `HARD RULES:\n` +
     `- No tired startup tells: no -ly / -ify / -io / -ai / -hub / -fy endings, no dropped-vowel tricks.\n` +
     `- Never output a starred word verbatim or trivially capitalised: every name is a NEW coinage built FROM the material.\n` +
     `- Nothing unpronounceable, nothing a famous company already owns.\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
-      ? `- Already proposed, the founder wants DIFFERENT ones (do not repeat or lightly vary): ${b.payload.exclude.slice(-30).join(", ")}.\n` : ``) +
+      ? `- Already proposed, the founder wants DIFFERENT ones: ${b.payload.exclude.slice(-30).join(", ")}. Do not repeat or lightly vary them — and OPEN THE SEARCH WIDER: avoid their first letters and endings, draw on different starred words and different techniques, change the register (if they were soft, go bolder; if latinate, go anglo; if abstract, go concrete). The new six should feel like a different studio round, not the same idea again.\n` : ``) +
     `\nFor each name give:\n` +
     `- "roots": the recipe in 2-4 words, mono-style (e.g. "aurora + nova", "spark, respelled", "vela, Latin sail").\n` +
     `- "parts": 1 or 2 origin cards, each {"part":"aurora","note":"the sky's first colour"} (note max 6 words; if a language matters, start the note with it, e.g. "Latin, a new star").\n` +
     `- "tagline": an inspiring italic line about this name for THIS brand: two short sentences, 8 to 16 words total (e.g. "The sky's first colour, meeting a new star. A beginning that shines.").\n` +
     `- "score": brief fit 0-100, honest spread (most 72-90, reserve 93+ for the rare exceptional one). Order strongest first.\n` +
-    `Return ONLY minified JSON {"names":[{"name":"","roots":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
+    `- "style": the technique, exactly one of "invented", "real word", "compound", "classical", "foreign".\n` +
+    `Return ONLY minified JSON {"names":[{"name":"","roots":"","style":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
 
   // 07 The brand book: generated as TWO parallel halves (half:"a" = tagline,
   // story, origin, saying; half:"b" = who, palette, voice, messaging) so the
@@ -573,6 +579,8 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
       `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
       (b.payload?.taste ? `THE FOUNDER'S TASTE (the brand must wear it): feeling ${JSON.stringify(b.payload.taste.feeling || [])}, colour direction ${JSON.stringify(b.payload.taste.colours || [])}, type ${b.payload.taste.type || ""}, shapes ${b.payload.taste.shape || ""}. The palette MUST follow the colour direction.\n` : "") +
+      (Array.isArray(b.payload?.taste?.palette) && b.payload.taste.palette.length === 4
+        ? `THE PALETTE IS ALREADY CHOSEN: use EXACTLY these 4 hexes in this order, verbatim (rename each with one evocative word that fits THIS brand): ${JSON.stringify(b.payload.taste.palette.map((c: any) => c.hex))}.\n` : "") +
       `Write brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name. Return ONLY JSON with EXACTLY this shape:\n`;
     const shapeA =
       `{"tagline":"6-8 word brand tagline",` +
@@ -586,7 +594,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}`;
     const tailB = `\nPersonality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; the near-black always last.`;
     const half = b.payload?.half;
-    if (half === "a") return { model: MODEL.smart, max: 1900, prompt: intro + shapeA };
+    if (half === "a") return { model: MODEL.smart, max: 1900, prompt: intro + shapeA + `\nGive one "parts" card per component of the name (two when it blends two words), each with real etymology.` };
     if (half === "b") return { model: MODEL.smart, max: 1700, prompt: intro + shapeB + tailB };
     return { model: MODEL.smart, max: 3400, prompt: intro + shapeA.slice(0, -1) + "," + shapeB.slice(1) + tailB };
   },

@@ -7,7 +7,7 @@ import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
-  loadEta, recordEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
+  loadEta, loadWordsEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
@@ -145,8 +145,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [concept, setConcept] = useState<WConcept | null>(test ? ACTIVE().concept : null);
   const [feelOpts, setFeelOpts] = useState<string[]>(test ? [ACTIVE().concept.concept, ...(ACTIVE().concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
-  const [prefs, setPrefs] = useState<{ tone: string; style: string; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[] }>({
-    tone: "Balanced", style: "Any", length: "Any", langs: ["English"], avoid: [], terr: [], doms: [],
+  const [prefs, setPrefs] = useState<{ tone: string[]; style: string[]; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[] }>({
+    tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [],
   });
   const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
   const [wtab, setWtab] = useState(0);
@@ -186,9 +186,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const fail = (k: string, v: boolean) => setFails((f) => ({ ...f, [k]: v }));
   const retry = (k: string) => { fail(k, false); if (k === "book" && picked) bookPre.current.delete(picked.name); setRetryTick((t) => t + 1); };
   // The brand book for a name, fetched once and shared between prefetch and use.
+  // The taste payload carries the founder's palette hexes, so the book's
+  // colours (and the logo drawn with them) match the logo pages exactly.
+  const tasteForBook = (t: Taste) => {
+    const lp = tastePalette(t);
+    return { ...t, palette: [{ name: "Dawn", hex: lp.dawn }, { name: "Haze", hex: lp.haze }, { name: "Nova", hex: lp.nova }, { name: "Night", hex: lp.night }] };
+  };
   const bookFetch = (n: WName, t?: Taste) => {
     if (!bookPre.current.has(n.name)) {
-      bookPre.current.set(n.name, wrapApi.book(sentence.trim(), chips, concept?.concept || "", n.name, n.parts || [], t || taste));
+      bookPre.current.set(n.name, wrapApi.book(sentence.trim(), chips, concept?.concept || "", n.name, n.parts || [], tasteForBook(t || taste)));
     }
     return bookPre.current.get(n.name)!;
   };
@@ -372,12 +378,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     wordsBatches.current = 0;
     const slots: (WStyle | null)[] = new Array(6).fill(null);
     let settled = 0;
+    const t0 = Date.now();
     const s = sentence.trim();
     const finish = () => {
       settled++;
       if (settled < 6 || wordsReq.current !== key) return;
       const got = slots.filter(Boolean) as WStyle[];
-      if (got.length) { setStyles(got); fail("words", false); }
+      if (got.length) { recordWordsEta(Date.now() - t0); setStyles(got); fail("words", false); }
       else fail("words", true);
     };
     const run = (i: number, st: WTerritory, attempt: number) => {
@@ -944,9 +951,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 </div>
                 <p className="lbl">Tone</p>
                 <div className="opts">
-                  {["Friendly", "Balanced", "Serious", "Playful"].map((t) => (
-                    <button key={t} className={"wr-opt" + (prefs.tone === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, tone: t })}>{prefs.tone === t ? "✓ " : ""}{t}</button>
-                  ))}
+                  {["Balanced", "Friendly", "Serious", "Playful"].map((t) => {
+                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
+                  })}
                 </div>
                 <p className="lbl">Length</p>
                 <div className="opts">
@@ -986,9 +995,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 </div>
                 <p className="lbl">Name style</p>
                 <div className="opts">
-                  {["Invented", "Real word", "Compound", "Any"].map((t) => (
-                    <button key={t} className={"wr-opt" + (prefs.style === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, style: t })}>{prefs.style === t ? "✓ " : ""}{t}</button>
-                  ))}
+                  {["Any", "Invented", "Real word", "Compound"].map((t) => {
+                    const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
+                  })}
                 </div>
                 <p className="lbl">Must work in</p>
                 <div className="opts">
@@ -1048,9 +1059,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             {!styles ? (
               fails.words || fails.concept
                 ? <div style={{ margin: "40px 0" }}><GenFail note="We couldn't gather your words just now." onRetry={() => { retry("concept"); retry("words"); }} /></div>
-                : <div className="wr-load" style={{ margin: "40px 0" }}>
-                    <span className="wr-spin" /> Finding words for “{concept?.concept || "your brief"}”…
-                  </div>
+                : <WordsLoader concept={concept?.concept || "your brief"} />
             ) : (
               <>
                 {/* mobile: style tabs + list */}
@@ -1116,6 +1125,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                         <span className="hd">
                           <span className="nm">{n.name}</span>
                           <span className="rt">{n.roots}</span>
+                          {n.style && <span className="sty">{n.style}</span>}
                         </span>
                         {n.tagline && <span className="tg">{n.tagline}</span>}
                         {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
@@ -1649,6 +1659,43 @@ function Grow({ value, onChange, onEnter, placeholder, boxed }: { value: string;
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onEnter(); } }}
     />
+  );
+}
+
+/* ── the words page's wait screen (design: One moment / Finding words for…).
+   Appears only when the hunt takes over a second; the bar runs on a learned ETA. ── */
+function WordsLoader({ concept }: { concept: string }) {
+  const [elapsed, setElapsed] = useState(0);
+  const eta = useRef(loadWordsEta());
+  useEffect(() => {
+    const t0 = Date.now();
+    const t = setInterval(() => setElapsed(Date.now() - t0), 120);
+    return () => clearInterval(t);
+  }, []);
+  if (elapsed < 1000) return <div style={{ margin: "40px 0" }} />; // under a second: no ceremony
+  const p = Math.min(0.96, elapsed / eta.current);
+  const stage = p < 0.18 ? 0 : p < 0.8 ? 1 : 2;
+  const stages = ["Reading your brief", "Exploring universes", "Adding meaning & language"];
+  const barLabel = stage === 0 ? "Reading your brief…" : stage === 1 ? "Exploring your six universes…" : "Adding meaning & language…";
+  return (
+    <div className="wr-wload">
+      <p className="wr-kicker" style={{ marginBottom: 10 }}>One moment</p>
+      <h1 className="wr-h" style={{ fontSize: 44, margin: "0 0 34px" }}>Finding words for <i>{concept}</i>…</h1>
+      <div className="barrow">
+        <b>{barLabel}</b>
+        <span>{Math.round(p * 100)}%</span>
+      </div>
+      <div className="bar"><i style={{ width: `${Math.max(2, p * 100)}%` }} /></div>
+      <div className="stages">
+        {stages.map((st, i) => (
+          <span key={st} className={"st" + (i < stage ? " done" : i === stage ? " now" : "")}>
+            {i < stage ? <i className="tick">✓</i> : i === stage ? <span className="wr-spin" /> : <i className="tick idle" />}
+            {st}
+          </span>
+        ))}
+      </div>
+      <p className="eta">About {Math.max(2, Math.round(eta.current / 1000))} seconds · 96 words on the way</p>
+    </div>
   );
 }
 

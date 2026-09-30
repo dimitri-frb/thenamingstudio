@@ -33,7 +33,7 @@ export interface WWord { w: string; m: string; lang?: string }
 export interface WStyle { name: string; words: WWord[] }
 export interface WNamePart { part: string; note: string }
 export interface WDom { domain: string; tld?: string; price?: string; free?: boolean }
-export interface WName { name: string; roots: string; parts: WNamePart[]; tagline: string; score: number; dom?: WDom | null; alt?: WDom | null }
+export interface WName { name: string; roots: string; style?: string; parts: WNamePart[]; tagline: string; score: number; dom?: WDom | null; alt?: WDom | null }
 
 export interface BookValue { name: string; note: string }
 export interface WBook {
@@ -319,6 +319,25 @@ export function recordEta(ms: number): void {
   } catch { /* ignore */ }
 }
 
+/* same idea for the words hunt (usually precharged, so this only shows cold) */
+const WETA_KEY = "ns.wordsEta";
+export function loadWordsEta(): number {
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(WETA_KEY) || "[]");
+    if (!arr.length) return 5000;
+    const s = [...arr].sort((a, b) => a - b);
+    return Math.min(20000, Math.max(2500, s[Math.floor(s.length / 2)]));
+  } catch { return 5000; }
+}
+export function recordWordsEta(ms: number): void {
+  if (ms < 1200) return;
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(WETA_KEY) || "[]");
+    arr.push(Math.round(ms));
+    localStorage.setItem(WETA_KEY, JSON.stringify(arr.slice(-6)));
+  } catch { /* ignore */ }
+}
+
 /* ── refresh-resume snapshot (this browser only) ── */
 const SNAP_KEY = "ns.wrapped";
 export function saveSnap(snap: Record<string, unknown>): void {
@@ -406,20 +425,20 @@ export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; more
     ] },
   ],
   names: [
-    { name: "Aurova", roots: "aurora + nova", parts: [{ part: "aurora", note: "the sky's first colour" }, { part: "nova", note: "Latin, a new star" }], tagline: "The sky's first colour, meeting a new star. A beginning that shines.", score: 97, dom: { domain: "aurova.com", tld: ".com", price: "$12" } },
-    { name: "Embra", roots: "ember + bravo", parts: [{ part: "ember", note: "a live glowing coal" }, { part: "bravo", note: "warm approval" }], tagline: "A glow that never goes out, with the courage to catch fire.", score: 88, dom: { domain: "embra.com", tld: ".com", price: "$12" } },
-    { name: "Albara", roots: "alba + clara", parts: [{ part: "alba", note: "Italian, dawn" }, { part: "clara", note: "clear, bright" }], tagline: "Italian dawn, made clear. Soft light on a fresh page.", score: 84, dom: { domain: "albara.io", tld: ".io", price: "$38" } },
-    { name: "Sparq", roots: "spark, respelled", parts: [{ part: "spark", note: "the flash that starts it" }], tagline: "The flash that starts everything. Quick, bright, unforgettable.", score: 79, dom: { domain: "sparq.com", tld: ".com", price: "$12" } },
-    { name: "Novalba", roots: "nova + alba", parts: [{ part: "nova", note: "a new star" }, { part: "alba", note: "Italian, dawn" }], tagline: "A new star at first light. Two beginnings in one word.", score: 74, dom: { domain: "novalba.com", tld: ".com", price: "$12" } },
-    { name: "Lumen", roots: "lumen, Latin light", parts: [{ part: "lumen", note: "Latin, a unit of light" }], tagline: "Light you can measure. Calm, exact, quietly bright.", score: 71, dom: { domain: "lumen.app", tld: ".app", price: "$14" } },
+    { name: "Aurova", roots: "aurora + nova", style: "compound", parts: [{ part: "aurora", note: "the sky's first colour" }, { part: "nova", note: "Latin, a new star" }], tagline: "The sky's first colour, meeting a new star. A beginning that shines.", score: 97, dom: { domain: "aurova.com", tld: ".com", price: "$12" } },
+    { name: "Embra", roots: "ember + bravo", style: "compound", parts: [{ part: "ember", note: "a live glowing coal" }, { part: "bravo", note: "warm approval" }], tagline: "A glow that never goes out, with the courage to catch fire.", score: 88, dom: { domain: "embra.com", tld: ".com", price: "$12" } },
+    { name: "Albara", roots: "alba + clara", style: "compound", parts: [{ part: "alba", note: "Italian, dawn" }, { part: "clara", note: "clear, bright" }], tagline: "Italian dawn, made clear. Soft light on a fresh page.", score: 84, dom: { domain: "albara.io", tld: ".io", price: "$38" } },
+    { name: "Sparq", roots: "spark, respelled", style: "invented", parts: [{ part: "spark", note: "the flash that starts it" }], tagline: "The flash that starts everything. Quick, bright, unforgettable.", score: 79, dom: { domain: "sparq.com", tld: ".com", price: "$12" } },
+    { name: "Novalba", roots: "nova + alba", style: "compound", parts: [{ part: "nova", note: "a new star" }, { part: "alba", note: "Italian, dawn" }], tagline: "A new star at first light. Two beginnings in one word.", score: 74, dom: { domain: "novalba.com", tld: ".com", price: "$12" } },
+    { name: "Lumen", roots: "lumen, Latin light", style: "classical", parts: [{ part: "lumen", note: "Latin, a unit of light" }], tagline: "Light you can measure. Calm, exact, quietly bright.", score: 71, dom: { domain: "lumen.app", tld: ".app", price: "$14" } },
   ],
   moreNames: [
-    { name: "Solva", roots: "solis + nova", parts: [{ part: "solis", note: "Latin, of the sun" }], tagline: "The sun, at work.", score: 82, dom: { domain: "solva.io", tld: ".io", price: "$38" } },
-    { name: "Kindra", roots: "kindle + ra", parts: [{ part: "kindle", note: "to set alight" }], tagline: "Lit from within.", score: 78, dom: { domain: "kindra.app", tld: ".app", price: "$14" } },
-    { name: "Origo", roots: "origo, Latin origin", parts: [{ part: "origo", note: "Latin, origin" }], tagline: "Back to the source.", score: 76, dom: { domain: "origo.dev", tld: ".dev", price: "$12" } },
-    { name: "Halcy", roots: "halo + clarity", parts: [{ part: "halo", note: "ring of light" }], tagline: "Calm, bright, yours.", score: 73, dom: { domain: "halcy.com", tld: ".com", price: "$12" } },
-    { name: "Primave", roots: "prima + wave", parts: [{ part: "prima", note: "first, best" }], tagline: "The first wave.", score: 70, dom: { domain: "primave.com", tld: ".com", price: "$12" } },
-    { name: "Eosia", roots: "eos + ia", parts: [{ part: "eos", note: "Greek goddess of dawn" }], tagline: "Dawn, made daily.", score: 68, dom: { domain: "eosia.com", tld: ".com", price: "$12" } },
+    { name: "Solva", roots: "solis + nova", style: "compound", parts: [{ part: "solis", note: "Latin, of the sun" }], tagline: "The sun, at work.", score: 82, dom: { domain: "solva.io", tld: ".io", price: "$38" } },
+    { name: "Kindra", roots: "kindle + ra", style: "invented", parts: [{ part: "kindle", note: "to set alight" }], tagline: "Lit from within.", score: 78, dom: { domain: "kindra.app", tld: ".app", price: "$14" } },
+    { name: "Origo", roots: "origo, Latin origin", style: "classical", parts: [{ part: "origo", note: "Latin, origin" }], tagline: "Back to the source.", score: 76, dom: { domain: "origo.dev", tld: ".dev", price: "$12" } },
+    { name: "Halcy", roots: "halo + clarity", style: "invented", parts: [{ part: "halo", note: "ring of light" }], tagline: "Calm, bright, yours.", score: 73, dom: { domain: "halcy.com", tld: ".com", price: "$12" } },
+    { name: "Primave", roots: "prima + wave", style: "compound", parts: [{ part: "prima", note: "first, best" }], tagline: "The first wave.", score: 70, dom: { domain: "primave.com", tld: ".com", price: "$12" } },
+    { name: "Eosia", roots: "eos + ia", style: "invented", parts: [{ part: "eos", note: "Greek goddess of dawn" }], tagline: "Dawn, made daily.", score: 68, dom: { domain: "eosia.com", tld: ".com", price: "$12" } },
   ],
 };
 
@@ -475,20 +494,20 @@ export const TILLER: typeof SAMPLE = {
     ] },
   ],
   names: [
-    { name: "Tiller", roots: "till + tiller", parts: [{ part: "till", note: "the counter's cash drawer" }, { part: "tiller", note: "the bar that steers a boat" }], tagline: "One hand on the till, one on the helm. Every service, steered calmly.", score: 96, dom: { domain: "tiller.com", tld: ".com", price: "$32" } },
-    { name: "Servio", roots: "servire, Latin to serve", parts: [{ part: "servire", note: "Latin, to serve" }], tagline: "Service, made effortless. The room runs itself.", score: 88, dom: { domain: "servio.com", tld: ".com", price: "$12" } },
-    { name: "Comanda", roots: "comanda, the order slip", parts: [{ part: "comanda", note: "the kitchen's order slip" }], tagline: "Every order, exactly where it should be.", score: 84, dom: { domain: "comanda.io", tld: ".io", price: "$38" } },
-    { name: "Mesa", roots: "mesa, Spanish table", parts: [{ part: "mesa", note: "Spanish, the table" }], tagline: "The whole restaurant, on one table.", score: 80, dom: { domain: "mesa.app", tld: ".app", price: "$14" } },
-    { name: "Caisso", roots: "caisse + o", parts: [{ part: "caisse", note: "French, the register" }], tagline: "The register, reinvented for the iPad.", score: 75, dom: { domain: "caisso.com", tld: ".com", price: "$12" } },
-    { name: "Brigade", roots: "brigade, the kitchen's crew", parts: [{ part: "brigade", note: "the kitchen's chain of command" }], tagline: "Run the room like a brigade: everyone, in step.", score: 72, dom: { domain: "brigade.app", tld: ".app", price: "$14" } },
+    { name: "Tiller", roots: "till + tiller", style: "real word", parts: [{ part: "till", note: "the counter's cash drawer" }, { part: "tiller", note: "the bar that steers a boat" }], tagline: "One hand on the till, one on the helm. Every service, steered calmly.", score: 96, dom: { domain: "tiller.com", tld: ".com", price: "$32" } },
+    { name: "Servio", roots: "servire, Latin to serve", style: "classical", parts: [{ part: "servire", note: "Latin, to serve" }], tagline: "Service, made effortless. The room runs itself.", score: 88, dom: { domain: "servio.com", tld: ".com", price: "$12" } },
+    { name: "Comanda", roots: "comanda, the order slip", style: "foreign", parts: [{ part: "comanda", note: "the kitchen's order slip" }], tagline: "Every order, exactly where it should be.", score: 84, dom: { domain: "comanda.io", tld: ".io", price: "$38" } },
+    { name: "Mesa", roots: "mesa, Spanish table", style: "foreign", parts: [{ part: "mesa", note: "Spanish, the table" }], tagline: "The whole restaurant, on one table.", score: 80, dom: { domain: "mesa.app", tld: ".app", price: "$14" } },
+    { name: "Caisso", roots: "caisse + o", style: "invented", parts: [{ part: "caisse", note: "French, the register" }], tagline: "The register, reinvented for the iPad.", score: 75, dom: { domain: "caisso.com", tld: ".com", price: "$12" } },
+    { name: "Brigade", roots: "brigade, the kitchen's crew", style: "real word", parts: [{ part: "brigade", note: "the kitchen's chain of command" }], tagline: "Run the room like a brigade: everyone, in step.", score: 72, dom: { domain: "brigade.app", tld: ".app", price: "$14" } },
   ],
   moreNames: [
-    { name: "Tablio", roots: "tavola + io", parts: [{ part: "tavola", note: "Italian, the table" }], tagline: "Every table, in view.", score: 81, dom: { domain: "tablio.com", tld: ".com", price: "$12" } },
-    { name: "Contero", roots: "conto + counter", parts: [{ part: "conto", note: "Italian, the bill" }], tagline: "Counts you can trust.", score: 77, dom: { domain: "contero.com", tld: ".com", price: "$12" } },
-    { name: "Sallo", roots: "salle + o", parts: [{ part: "salle", note: "French, the dining room" }], tagline: "The room, run right.", score: 74, dom: { domain: "sallo.io", tld: ".io", price: "$38" } },
-    { name: "Plancha", roots: "plancha, the flat grill", parts: [{ part: "plancha", note: "Spanish, the flat iron grill" }], tagline: "Hot, fast, precise.", score: 72, dom: { domain: "plancha.app", tld: ".app", price: "$14" } },
-    { name: "Turno", roots: "turno, the shift", parts: [{ part: "turno", note: "Spanish, the shift" }], tagline: "Shift after shift, smooth.", score: 70, dom: { domain: "turno.com", tld: ".com", price: "$12" } },
-    { name: "Ancora", roots: "ancora, Italian anchor", parts: [{ part: "ancora", note: "Italian, the anchor" }], tagline: "Steady through the rush.", score: 68, dom: { domain: "ancora.dev", tld: ".dev", price: "$12" } },
+    { name: "Tablio", roots: "tavola + io", style: "invented", parts: [{ part: "tavola", note: "Italian, the table" }], tagline: "Every table, in view.", score: 81, dom: { domain: "tablio.com", tld: ".com", price: "$12" } },
+    { name: "Contero", roots: "conto + counter", style: "compound", parts: [{ part: "conto", note: "Italian, the bill" }], tagline: "Counts you can trust.", score: 77, dom: { domain: "contero.com", tld: ".com", price: "$12" } },
+    { name: "Sallo", roots: "salle + o", style: "invented", parts: [{ part: "salle", note: "French, the dining room" }], tagline: "The room, run right.", score: 74, dom: { domain: "sallo.io", tld: ".io", price: "$38" } },
+    { name: "Plancha", roots: "plancha, the flat grill", style: "foreign", parts: [{ part: "plancha", note: "Spanish, the flat iron grill" }], tagline: "Hot, fast, precise.", score: 72, dom: { domain: "plancha.app", tld: ".app", price: "$14" } },
+    { name: "Turno", roots: "turno, the shift", style: "foreign", parts: [{ part: "turno", note: "Spanish, the shift" }], tagline: "Shift after shift, smooth.", score: 70, dom: { domain: "turno.com", tld: ".com", price: "$12" } },
+    { name: "Ancora", roots: "ancora, Italian anchor", style: "foreign", parts: [{ part: "ancora", note: "Italian, the anchor" }], tagline: "Steady through the rush.", score: 68, dom: { domain: "ancora.dev", tld: ".dev", price: "$12" } },
   ],
 };
 

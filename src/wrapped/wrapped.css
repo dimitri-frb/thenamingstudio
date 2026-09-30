@@ -406,6 +406,7 @@
 .wr-ncard .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .wr-ncard .nm { font-family: var(--serif); font-weight: 500; font-size: 24px; letter-spacing: -0.02em; }
 .wr-ncard .rt { font-family: var(--mono); font-size: 11.5px; color: var(--text3); }
+.wr-ncard .sty { font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text3); border: 1px solid var(--hairline); border-radius: 980px; padding: 2px 8px; }
 .wr-ncard .tg { font-size: 13.5px; line-height: 1.45; color: var(--text2); }
 .wr-ncard .dm { font-family: var(--mono); font-size: 11.5px; color: var(--text3); display: inline-flex; align-items: center; gap: 6px; }
 .wr-ncard .dm .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
@@ -516,6 +517,22 @@
 .wr-next .row .mini .mv.sws b { width: 7px; height: 18px; border-radius: 3px; }
 .wr-next .row .mini .mv.pg { background: #fff; }
 .wr-next .row .mini .mv.at { color: #fff; font-size: 14px; }
+
+/* ── words page: wait screen (One moment / gradient bar / stage chips) ── */
+.wr-wload { margin: 10vh auto 0; max-width: 720px; width: 100%; text-align: center; }
+.wr-wload .barrow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; font-size: 15px; }
+.wr-wload .barrow b { font-weight: 700; }
+.wr-wload .barrow span { color: var(--text2); font-size: 14px; }
+.wr-wload .bar { height: 7px; border-radius: 980px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.wr-wload .bar i { display: block; height: 100%; border-radius: 980px; background: linear-gradient(90deg, var(--dawn), var(--haze), var(--nova)); transition: width 0.15s linear; }
+.wr-wload .stages { display: flex; justify-content: space-between; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+.wr-wload .st { display: inline-flex; align-items: center; gap: 9px; font-size: 14.5px; color: var(--text3); }
+.wr-wload .st.now { color: #fff; font-weight: 700; }
+.wr-wload .st.done { color: var(--text2); }
+.wr-wload .tick { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 800; font-style: normal; background: rgba(255, 255, 255, 0.1); border: 1.5px solid rgba(255, 255, 255, 0.25); color: #000; flex: 0 0 auto; }
+.wr-wload .st.done .tick { background: #fff; border-color: #fff; }
+.wr-wload .tick.idle { background: none; }
+.wr-wload .eta { margin-top: 12vh; font-size: 13.5px; color: var(--text3); }
 
 /* ── Brand · taste pickers ── */
 .wr-tpick { width: 100%; max-width: 1180px; margin: 0 auto; }

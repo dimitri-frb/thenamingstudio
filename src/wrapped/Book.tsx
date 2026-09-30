@@ -183,13 +183,17 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
     case 5: return ( // The wordmark
       <div className="bk-page">
         <div style={S.kick}>05 · The wordmark</div>
-        <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>One word, set with care</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", marginBottom: "18pt" }}>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", display: "grid", placeItems: "center", padding: "16pt 6pt" }} dangerouslySetInnerHTML={mark("light", 46)} />
-          <div style={{ background: pal.night, borderRadius: "8pt", display: "grid", placeItems: "center", padding: "16pt 6pt" }} dangerouslySetInnerHTML={mark("night", 46)} />
-          <div style={{ background: grad, borderRadius: "8pt", display: "grid", placeItems: "center", padding: "16pt 6pt" }} dangerouslySetInnerHTML={mark("mono", 46)} />
+        <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 14pt" }}>One word, set with care</h2>
+        <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "10pt", display: "grid", placeItems: "center", padding: "34pt 10pt", marginBottom: "12pt" }} dangerouslySetInnerHTML={mark("light", 78)} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", marginBottom: "16pt" }}>
+          {([["night", pal.night, "On night"], ["mono", grad, "One colour, on the gradient"], ["light", "#f4f2ee", "On paper"]] as const).map(([v, bg, label]) => (
+            <div key={label}>
+              <div style={{ background: bg, borderRadius: "8pt", display: "grid", placeItems: "center", padding: "20pt 6pt", border: "1px solid rgba(0,0,0,.06)" }} dangerouslySetInnerHTML={mark(v, 34)} />
+              <div style={{ ...S.kick, marginTop: "5pt", letterSpacing: "0.1em" }}>{label}</div>
+            </div>
+          ))}
         </div>
-        <div style={{ display: "flex", gap: "16pt", paddingBottom: "24pt" }}>
+        <div style={{ display: "flex", gap: "16pt" }}>
           <div style={{ flex: 1 }}>
             <div style={{ ...S.kick, marginBottom: "6pt" }}>Do</div>
             <p style={S.small}>Keep clear space equal to the “{name[0] || "A"}” height. Use on white, {book.palette[3]?.name || "Night"}, or the {book.palette[0]?.name || "Dawn"} gradient. Set in one colour only.</p>
@@ -197,6 +201,16 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           <div style={{ flex: 1 }}>
             <div style={{ ...S.kick, marginBottom: "6pt" }}>Don't</div>
             <p style={S.small}>Stretch, outline or add effects. Place on busy photography. Recreate it in another typeface.</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "16pt", marginTop: "auto", paddingBottom: "24pt" }}>
+          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+            <div style={{ ...S.kick, marginBottom: "4pt" }}>Minimum size</div>
+            <p style={{ ...S.small, margin: 0 }}>24 px high on screen · 8 mm in print.</p>
+          </div>
+          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+            <div style={{ ...S.kick, marginBottom: "4pt" }}>Files</div>
+            <p style={{ ...S.small, margin: 0 }}>The logo pack ships SVG and PNG, in every version shown here.</p>
           </div>
         </div>
         {foot}
@@ -285,29 +299,33 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       <div className="bk-page">
         <div style={S.kick}>09 · In use</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{name}, out in the world</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", paddingBottom: "24pt" }}>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "110pt" }}>
-            <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, height: 74 }) }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", flex: 1, gridTemplateRows: "1fr auto auto", paddingBottom: "24pt" }}>
+          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "150pt" }}>
+            <div style={{ textAlign: "center" }}>
+              <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, height: 92 }) }} />
+              <div style={{ ...S.kick, marginTop: "8pt" }}>App icon</div>
+            </div>
           </div>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
-            <div dangerouslySetInnerHTML={mark("light", 26)} />
-            <div style={{ fontSize: "9pt", fontWeight: 600, marginTop: "6pt" }}>Camille Martin</div>
+          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "16pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
+            <div dangerouslySetInnerHTML={mark("light", 34)} />
+            <div style={{ fontSize: "10pt", fontWeight: 600, marginTop: "10pt" }}>Camille Martin</div>
             <div style={{ ...S.small }}>Founder · camille@{ctx.domain}</div>
+            <div style={{ ...S.kick, marginTop: "8pt", opacity: 0.4 }}>Business card</div>
           </div>
-          <div style={{ gridColumn: "1 / -1", background: pal.night, color: "#fff", borderRadius: "8pt", padding: "14pt" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12pt" }}>
-              <div dangerouslySetInnerHTML={mark("night", 20)} />
-              <div style={{ fontSize: "7.5pt", opacity: 0.7, display: "flex", gap: "10pt" }}>
-                <span>How it works</span><span>Pricing</span><span style={{ background: "#fff", color: "#000", borderRadius: 99, padding: "2pt 7pt", fontWeight: 700 }}>Start</span>
+          <div style={{ gridColumn: "1 / -1", background: pal.night, color: "#fff", borderRadius: "8pt", padding: "18pt" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16pt" }}>
+              <div dangerouslySetInnerHTML={mark("night", 26)} />
+              <div style={{ fontSize: "8.5pt", opacity: 0.8, display: "flex", gap: "12pt", alignItems: "center" }}>
+                <span>How it works</span><span>Pricing</span><span style={{ background: "#fff", color: "#000", borderRadius: 99, padding: "3pt 9pt", fontWeight: 700 }}>Start</span>
               </div>
             </div>
-            <div style={{ fontFamily: "var(--serif)", fontSize: "16pt", fontWeight: 500 }}>{book.tagline}</div>
-            <div style={{ fontSize: "8.5pt", marginTop: "5pt", opacity: 0.7 }}>Website header</div>
+            <div style={{ fontFamily: "var(--serif)", fontSize: "19pt", fontWeight: 500 }}>{book.tagline}</div>
+            <div style={{ fontSize: "8.5pt", marginTop: "6pt", opacity: 0.7 }}>Website header</div>
           </div>
-          <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "10pt", fontSize: "8.5pt", opacity: 0.8 }}>
+          <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "13pt", fontSize: "9.5pt", opacity: 0.85 }}>
             Camille Martin · Founder<br />
             <b>{name}</b> · {ctx.domain} · {book.tagline}
-            <div style={{ ...S.kick, marginTop: "5pt", opacity: 0.4 }}>Email signature</div>
+            <div style={{ ...S.kick, marginTop: "6pt", opacity: 0.4 }}>Email signature</div>
           </div>
         </div>
         {foot}
