@@ -518,26 +518,28 @@
 .wr-next .row .mini .mv.at { color: #fff; font-size: 14px; }
 
 /* ── Brand · taste pickers ── */
-.wr-tpick { width: 100%; max-width: 1080px; margin: 0 auto; }
-.wr-tpick .qrow { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-.wr-tpick .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wr-tpick { width: 100%; max-width: 1180px; margin: 0 auto; }
+.wr-tpick .qrow { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+.wr-tpick .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .wr-tpick .tcard {
   position: relative;
-  background: var(--surface1); border: 1px solid var(--hairline); border-radius: 16px;
-  padding: 12px 14px 14px; cursor: pointer; text-align: left; color: var(--text); font-family: inherit;
+  background: var(--surface1); border: 1px solid var(--hairline); border-radius: 18px;
+  padding: 0; overflow: hidden; cursor: pointer; text-align: left; color: var(--text); font-family: inherit;
   transition: border-color 0.15s, transform 0.15s;
 }
 .wr-tpick .tcard:hover { border-color: rgba(255, 255, 255, 0.32); transform: translateY(-1px); }
 .wr-tpick .tcard.sel { box-shadow: 0 0 0 2.5px #fff; border-color: transparent; }
-.wr-tpick .tcard .ck { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #000; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
-.wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 96px; border-radius: 11px; margin-bottom: 12px; background: var(--surface2); font-size: 19px; color: #fff; overflow: hidden; }
-.wr-tpick .tcard .v.cols { gap: 6px; }
-.wr-tpick .tcard .v.cols i { width: 22%; height: 56px; border-radius: 8px; }
-.wr-tpick .tcard .v.type { font-size: 24px; }
-.wr-tpick .tcard .v.shape i { width: 52px; height: 52px; background: #fff; display: block; }
+.wr-tpick .tcard .ck { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #000; font-size: 12px; font-weight: 800; display: grid; place-items: center; z-index: 1; }
+.wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 200px; margin: 10px 10px 0; border-radius: 12px; background: var(--surface2); font-size: 26px; color: #fff; overflow: hidden; }
+.wr-tpick .tcard .v.cols { gap: 8px; padding: 0 14px; }
+.wr-tpick .tcard .v.cols i { width: 22%; height: 120px; border-radius: 10px; }
+.wr-tpick .tcard .v.type { font-size: 30px; }
+.wr-tpick .tcard .v.shape i { width: 88px; height: 88px; background: #fff; display: block; }
+.wr-tpick .tcard .tx { padding: 13px 16px 15px; }
 .wr-tpick .tcard b { font-family: var(--serif); font-weight: 500; font-size: 19px; display: block; }
-.wr-tpick .tcard small { font-size: 12.5px; color: var(--text3); display: block; margin-top: 3px; }
+.wr-tpick .tcard small { font-size: 13px; color: var(--text3); display: block; margin-top: 3px; }
 @media (min-width: 980px) { .wr-tpick .cards { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 720px) { .wr-tpick .tcard .v { height: 130px; } }
 
 /* ── Brand · your taste ── */
 .wr-tasteband { display: flex; align-items: center; gap: 7px; }
@@ -548,9 +550,7 @@
 .wr-slider > span:last-child { text-align: right; }
 .wr-slider input[type="range"] { flex: 1; accent-color: #fff; height: 3px; cursor: pointer; }
 
-/* logo tile: the per-concept More link */
-.wr-ltile .ln .more { background: none; border: none; color: var(--text3); font-size: 10px; font-family: inherit; cursor: pointer; margin-left: 7px; padding: 0; }
-.wr-ltile .ln .more:hover { color: #fff; }
+
 
 /* ── 09 the triptych ── */
 .wr-trip { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
@@ -629,13 +629,15 @@
 .wr-dom .pr { font-family: var(--mono); font-size: 14px; font-weight: 600; }
 
 /* ── 06b logo grid ── */
-.wr-lgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 560px; }
+.wr-lwrap { width: 100%; max-width: 1060px; margin: 0 auto; }
+.wr-lwrap .lhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.wr-lgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; }
 .wr-ltile {
   position: relative;
   background: var(--surface3);
   border: 1px solid var(--hairline);
-  border-radius: 13px;
-  padding: 10px 8px 8px;
+  border-radius: 15px;
+  padding: 14px 12px 12px;
   cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   transition: border-color 0.15s, transform 0.15s;
@@ -643,13 +645,17 @@
 }
 .wr-ltile:hover { border-color: rgba(255, 255, 255, 0.3); transform: translateY(-1px); }
 .wr-ltile.sel { box-shadow: 0 0 0 2.5px #fff; border-color: transparent; }
-.wr-ltile .lt { width: 100%; height: 62px; display: grid; place-items: center; overflow: hidden; }
+.wr-ltile .lt { width: 100%; height: 150px; display: grid; place-items: center; overflow: hidden; }
 .wr-ltile .lt svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
-.wr-ltile .ln { font-size: 11px; font-weight: 600; color: var(--text3); }
+.wr-ltile .ln { font-size: 12.5px; font-weight: 600; color: var(--text3); }
 .wr-ltile.sel .ln { color: #fff; }
-.wr-ltile .ck { position: absolute; top: 7px; right: 7px; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #000; font-size: 10px; display: grid; place-items: center; font-weight: 800; }
+.wr-ltile .ck { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #000; font-size: 10px; display: grid; place-items: center; font-weight: 800; }
 
 /* ── 06c your logo ── */
+.wr-ldet { display: flex; gap: 44px; align-items: flex-start; flex-wrap: wrap; }
+.wr-ldet .ldl { flex: 1 1 340px; min-width: 300px; }
+.wr-ldet .ldr { flex: 1.15 1 400px; min-width: 320px; }
+.wr-ldet .ldhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
 .wr-lhero { width: 100%; max-width: 560px; background: #fff; border-radius: 18px; display: grid; place-items: center; padding: 30px 16px; }
 .wr-lhero svg { max-width: 100%; height: auto; }
 .wr-lvers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 560px; }

@@ -11,7 +11,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { BRAND_TILES, buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont } from "./logos";
+import { BRAND_TILES, buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
@@ -92,10 +92,30 @@ const tastePalette = (t: Taste) => {
   const pal = (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
   return { dawn: pal[0], haze: pal[1], nova: pal[2], night: pal[3] };
 };
+// Every quiz pick re-seeds the recap sliders, so the sliders (and everything
+// built from them) start where the founder's choices put them.
+const seedSliders = (t: Taste): Taste["sliders"] => {
+  const has = (k: string) => t.feeling.includes(k);
+  return {
+    ce: has("Bold & bright") || has("Playful") ? 72 : has("Calm & minimal") ? 22 : 35,
+    wc: t.colours.includes("Citrus pop") ? 18 : t.colours.includes("Dawn to night") ? 30 : t.colours.includes("Forest & sand") ? 45 : 60,
+    rs: t.shape === "Round & soft" ? 20 : t.shape === "Organic" ? 35 : t.shape === "Geometric" ? 62 : 82,
+    ss: t.type === "Elegant serif" ? 20 : t.type === "Technical mono" ? 70 : t.type === "Strong caps" ? 78 : 65,
+    mb: has("Bold & bright") ? 72 : has("Calm & minimal") ? 24 : 40,
+  };
+};
 const tasteFont = (t: Taste): LogoFont => {
-  const ss = t.sliders.ss;
-  if (ss < 45) return "serif";
-  return t.sliders.mb >= 55 ? "bold" : t.type === "Technical mono" ? "light" : "bold";
+  // The type pick decides; the serif↔sans slider can overrule at the extremes.
+  const base: LogoFont = t.type === "Elegant serif" ? "serif" : t.type === "Technical mono" ? "light" : "bold";
+  if (t.sliders.ss <= 35) return "serif";
+  if (t.sliders.ss >= 65 && base === "serif") return t.sliders.mb >= 55 ? "bold" : "light";
+  return base;
+};
+const tasteShape = (t: Taste): LogoShape => {
+  const base: LogoShape = t.shape === "Sharp & angular" ? "sharp" : t.shape === "Organic" ? "organic" : t.shape === "Geometric" ? "geometric" : "round";
+  if (t.sliders.rs >= 88) return "sharp";
+  if (t.sliders.rs <= 10) return "round";
+  return base;
 };
 const tasteLine = (t: Taste) => {
   const feel: Record<string, string> = { "Soft & warm": "warm", "Bold & bright": "bold", "Calm & minimal": "calm", "Playful": "playful" };
@@ -140,7 +160,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [domShow, setDomShow] = useState(4);
   const [logoSeed, setLogoSeed] = useState(0);
-  const [logoFocus, setLogoFocus] = useState<string | null>(null);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
   const [book, setBook] = useState<WBook | null>(test ? sampleBook("Aurova") : null);
@@ -622,7 +641,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   async function downloadLogoPack() {
     if (!picked || !logoSel) return;
-    const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed, book?.palette, logoSel.font);
+    const lp = tastePalette(taste);
+    const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed,
+      [{ name: "Dawn", hex: lp.dawn }, { name: "Haze", hex: lp.haze }, { name: "Nova", hex: lp.nova }, { name: "Night", hex: lp.night }],
+      logoSel.font, tasteShape(taste));
     download(pack.blob, pack.filename);
     track("logopack", { name: picked.name, concept: logoSel.title });
   }
@@ -702,10 +724,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
 
   const pal = book?.palette ? toPalette(book.palette) : tastePalette(taste);
+  // Logos always wear the quiz picks directly (never a stale pre-taste book palette).
+  const lpal = tastePalette(taste);
+  const lshape = tasteShape(taste);
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
-    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font,
+    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape,
   } : null;
 
   return (
@@ -1274,37 +1299,26 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "logo" && picked && (
         <>
           <div className="wr-stage" style={{ paddingTop: 20 }}>
-            <div className="inner-nar wr-owncols" style={{ alignItems: "flex-start" }}>
-              <div style={{ flex: "0 0 260px" }}>
-                <p className="wr-kicker" style={{ marginBottom: 8 }}>{logoFocus ? "More like this" : "Made from your taste"}</p>
-                <h1 className="wr-h" style={{ fontSize: 32, marginBottom: 10 }}>
-                  {logoFocus ? `${BRAND_TILES.find((t) => t.key === logoFocus)?.title}, nine ways.` : `Nine logos, made for ${picked.name}.`}
-                </h1>
-                <p className="wr-lead" style={{ marginBottom: 14 }}>
-                  {logoFocus ? "Variations on the one you liked." : "Built from what you liked. Pick one, or ask for more like any of them."}
-                </p>
-                {logoFocus
-                  ? <button className="wr-link" style={{ paddingLeft: 0 }} onClick={() => setLogoFocus(null)}>← All concepts</button>
-                  : <button className="wr-link" style={{ paddingLeft: 0 }} onClick={() => setLogoSeed((x) => x + 1)}>↻ Show nine more</button>}
+            <div className="wr-lwrap">
+              <div className="lhead">
+                <div>
+                  <p className="wr-kicker" style={{ marginBottom: 8 }}>Made from your taste</p>
+                  <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>Nine logos, made for {picked.name}.</h1>
+                </div>
+                <button className="wr-link" style={{ whiteSpace: "nowrap" }} onClick={() => setLogoSeed((x) => x + 1)}>↻ Show nine more</button>
               </div>
-              <div>
-                <div className="wr-lgrid">
-                  {(logoFocus
-                    ? Array.from({ length: 9 }, (_, i) => ({ key: logoFocus, title: `${BRAND_TILES.find((t) => t.key === logoFocus)?.title} ${i + 1}`, accent: (["dawn", "haze", "nova"] as const)[i % 3], seed: i, font: tasteFont(taste) }))
-                    : BRAND_TILES.map((t, i) => ({ key: t.key, title: t.title, accent: (["dawn", "haze", "nova"] as const)[(i + logoSeed) % 3], seed: logoSeed, font: tasteFont(taste) }))
-                  ).map((c) => {
+              <div className="wr-lgrid">
+                {BRAND_TILES.map((t, i) => ({ key: t.key, title: t.title, accent: (["dawn", "haze", "nova"] as const)[(i + logoSeed) % 3], seed: logoSeed, font: tasteFont(taste), shape: lshape }))
+                  .map((c) => {
                     const on = logoSel?.key === c.key && logoSel?.seed === c.seed && logoSel?.accent === c.accent;
                     return (
                       <button key={c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
                         {on && <span className="ck">✓</span>}
-                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, height: 54 }) }} />
-                        <span className="ln">{c.title}
-                          {!logoFocus && <span role="button" tabIndex={0} className="more" onClick={(e) => { e.stopPropagation(); setLogoFocus(c.key); }}>↻ More</span>}
-                        </span>
+                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
+                        <span className="ln">{c.title}</span>
                       </button>
                     );
                   })}
-                </div>
               </div>
             </div>
           </div>
@@ -1324,33 +1338,51 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "logodone" && picked && logoSel && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 10 }}>
-            <div className="inner-nar">
-              <p className="wr-kicker" style={{ marginBottom: 12 }}>Your logo · {logoSel.title}</p>
-              <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, height: 110 }) }} />
-              <p className="wr-lead" style={{ margin: "16px 0 14px", maxWidth: 500 }}>
-                <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
-              </p>
-              <button className="wr-btn2" onClick={downloadLogoPack}>↓ Download logo pack · SVG · PNG</button>
-              <p className="wr-kicker" style={{ margin: "26px 0 10px" }}>Every version</p>
-              <div className="wr-lvers">
-                {([["light", "Primary · on light", "#fff"], ["night", "Reversed · on night", pal.night], ["dawn", "On the Dawn gradient", "transparent"], ["icon", "App icon · favicon", "transparent"]] as const).map(([v, label, bg]) => (
-                  <div key={v} className="wr-lver">
-                    <div className="vv" style={{ background: bg === "transparent" ? "var(--surface3)" : bg }}
-                      dangerouslySetInnerHTML={{ __html: logoSvg(v === "icon" ? "appicon" : logoSel.key, picked.name, pal, { variant: v === "icon" ? "icon" : v, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, height: 46 }) }} />
-                    <div className="vl">{label}</div>
-                  </div>
-                ))}
+            <div className="wr-lwrap wr-ldet">
+              <div className="ldl">
+                <p className="wr-kicker" style={{ marginBottom: 12 }}>{logoSel.title} · primary</p>
+                <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 120 }) }} />
+                <p className="wr-lead" style={{ margin: "18px 0 0" }}>
+                  <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
+                </p>
               </div>
-              <div className="wr-specs" style={{ marginTop: 22 }}>
-                <div className="wr-spec"><b>Colours</b>
-                  <span className="wr-swatches">
-                    {(book?.palette || [{ name: "Dawn", hex: pal.dawn }, { name: "Night", hex: pal.night }, { name: "White", hex: "#ffffff" }]).slice(0, 4).map((c) => (
-                      <span key={c.name} className="wr-swatch"><i style={{ background: c.hex }} />{c.name}</span>
-                    ))}
-                  </span>
+              <div className="ldr">
+                <div className="ldhead">
+                  <p className="wr-kicker" style={{ margin: 0 }}>Every version</p>
+                  <button className="wr-btn2" onClick={downloadLogoPack}>↓ Download logo pack · SVG · PNG</button>
                 </div>
-                <div className="wr-spec"><b>Minimum size</b><span>24 px high on screen · 8 mm in print</span></div>
-                <div className="wr-spec"><b>Don't</b><span>Stretch it, recolour the sun, or add effects</span></div>
+                <div className="wr-lvers">
+                  {([["light", "Primary · on light", "#fff"], ["night", "Reversed · on night", lpal.night], ["dawn", "On the Dawn gradient", "transparent"], ["mono", "Horizontal · one colour", "#f1efe9"]] as const).map(([v, label, bg]) => (
+                    <div key={v} className="wr-lver">
+                      <div className="vv" style={{ background: bg === "transparent" ? "var(--surface3)" : bg }}
+                        dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: v, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 46 }) }} />
+                      <div className="vl">{label}</div>
+                    </div>
+                  ))}
+                  <div className="wr-lver">
+                    <div className="vv" style={{ background: "var(--surface3)" }}
+                      dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 56 }) }} />
+                    <div className="vl">App icon</div>
+                  </div>
+                  <div className="wr-lver">
+                    <div className="vv" style={{ background: "var(--surface3)", gap: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 32 }) }} />
+                      <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 16 }) }} />
+                    </div>
+                    <div className="vl">Favicon · 32 & 16 px</div>
+                  </div>
+                </div>
+                <div className="wr-specs" style={{ marginTop: 18 }}>
+                  <div className="wr-spec"><b>Colours</b>
+                    <span className="wr-swatches">
+                      {[{ name: "Dawn", hex: lpal.dawn }, { name: "Haze", hex: lpal.haze }, { name: "Nova", hex: lpal.nova }, { name: "Night", hex: lpal.night }].map((c) => (
+                        <span key={c.name} className="wr-swatch"><i style={{ background: c.hex }} />{c.name}</span>
+                      ))}
+                    </span>
+                  </div>
+                  <div className="wr-spec"><b>Minimum size</b><span>24 px high on screen · 8 mm in print</span></div>
+                  <div className="wr-spec"><b>Don't</b><span>Stretch it, recolour the sun, or add effects</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -1617,13 +1649,15 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
   const opts = TASTE_OPTS[step];
   const cur: string[] = step === "feel" ? taste.feeling : step === "tcol" ? taste.colours : step === "ttype" ? [taste.type] : [taste.shape];
   const pickIt = (k: string) => {
+    let next: Taste;
     if (multi) {
       const list = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
       if (!list.length) return;
-      onChange(step === "feel" ? { ...taste, feeling: list } : { ...taste, colours: list });
+      next = step === "feel" ? { ...taste, feeling: list } : { ...taste, colours: list };
     } else {
-      onChange(step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k });
+      next = step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k };
     }
+    onChange({ ...next, sliders: seedSliders(next) });
   };
   const viz = (k: string) => {
     if (step === "tcol") {
@@ -1633,7 +1667,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
     if (step === "ttype") {
       const st = k === "Elegant serif" ? { fontFamily: "var(--serif)", fontWeight: 500 }
         : k === "Clean sans" ? { fontWeight: 600 }
-        : k === "Strong caps" ? { fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.06em", fontSize: 22 }
+        : k === "Strong caps" ? { fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.06em", fontSize: 26 }
         : { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" as const };
       return <span className="v type" style={st}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
     }
@@ -1645,18 +1679,27 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
         <i style={{ borderRadius: 8 }} />
       }</span>;
     }
-    const st = k === "Soft & warm" ? { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "linear-gradient(135deg, rgba(255,158,122,.35), rgba(201,182,255,.25))" }
-      : k === "Bold & bright" ? { fontWeight: 800, textTransform: "uppercase" as const, background: "rgba(255,158,122,.28)" }
-      : k === "Calm & minimal" ? { fontWeight: 300, letterSpacing: "0.14em", background: "rgba(255,255,255,.05)" }
-      : { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "rgba(124,156,255,.25)", transform: "rotate(-3deg)" };
-    return <span className="v feel" style={st}>{k.split(" ")[0]}</span>;
+    // Full-bleed moodcards, matching the design frames.
+    if (k === "Playful") {
+      return (
+        <span className="v feel" style={{ background: "linear-gradient(135deg, #8f97f8, #b9a7f5)", gap: 10 }}>
+          <i style={{ width: 34, height: 34, borderRadius: "50%", background: "#f6d34c", display: "inline-block" }} />
+          <i style={{ width: 34, height: 34, borderRadius: 12, background: "#f07a4e", display: "inline-block", transform: "rotate(8deg)" }} />
+          <i style={{ width: 34, height: 34, borderRadius: "50%", background: "#ffffff", display: "inline-block" }} />
+        </span>
+      );
+    }
+    const st = k === "Soft & warm" ? { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "linear-gradient(160deg, #fbe3d4, #f0b49a)", color: "#3c241a" }
+      : k === "Bold & bright" ? { fontWeight: 800, textTransform: "uppercase" as const, background: "linear-gradient(160deg, #e8445a, #f5a03c)", color: "#fff" }
+      : { fontWeight: 400, letterSpacing: "0.22em", background: "#f4f2ee", color: "#17151a", fontFamily: "var(--mono)" };
+    return <span className="v feel" style={st}>{k === "Bold & bright" ? "BOLD" : k === "Calm & minimal" ? "calm" : "Soft"}</span>;
   };
   return (
     <>
       <div className="wr-stage center">
         <div className="wr-tpick">
           <div className="qrow">
-            <h1 className="wr-h" style={{ fontSize: 36, margin: 0 }}>{q}</h1>
+            <h1 className="wr-h" style={{ fontSize: 38, margin: 0 }}>{q}</h1>
             <span className="wr-hint">{multi ? "Pick one or more" : "Pick one"}</span>
           </div>
           <div className="cards">
@@ -1666,8 +1709,10 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
                 <button key={o.k} className={"tcard" + (on ? " sel" : "")} onClick={() => pickIt(o.k)}>
                   {on && <span className="ck">✓</span>}
                   {viz(o.k)}
-                  <b>{o.k}</b>
-                  <small>{o.d}</small>
+                  <span className="tx">
+                    <b>{o.k}</b>
+                    <small>{o.d}</small>
+                  </span>
                 </button>
               );
             })}

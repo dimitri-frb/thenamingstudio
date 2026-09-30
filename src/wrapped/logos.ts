@@ -18,8 +18,9 @@ export function toPalette(swatches?: { name: string; hex: string }[] | null): Pa
 
 export type LogoVariant = "light" | "night" | "dawn" | "mono" | "icon" | "tile";
 export type LogoFont = "bold" | "serif" | "light";
+export type LogoShape = "round" | "sharp" | "organic" | "geometric";
 export type Accent = "dawn" | "haze" | "nova";
-export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont }
+export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont; shape?: LogoShape }
 
 // The Brand chapter's nine concepts (built from the taste picks).
 export const BRAND_TILES: { key: string; title: string }[] = [
@@ -92,10 +93,11 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : 
 
 const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
-export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont } = {}): string {
+export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape } = {}): string {
   const variant = opts.variant || "light";
   const accent = pal[opts.accent || "dawn"];
   const name = cap((rawName || "Name").trim());
+  const shape: LogoShape = opts.shape || "round";
   const v = ((opts.seed || 0) % 3 + 3) % 3; // structural variant per round
   const isDark = variant === "night" || variant === "tile";
   const fg = variant === "mono" ? pal.night : isDark ? "#ffffff" : pal.night;
@@ -123,8 +125,20 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
 
   const fs = 44;
   const pad = 34;
+  // The founder's shape pick changes the motif language itself:
+  // round = rising half-sun, sharp = peak, geometric = flat-topped block, organic = leaning hill.
   const sun = (cx: number, baseY: number, r: number, color = motif) =>
-    `<path d="M ${cx - r} ${baseY} A ${r} ${r} 0 0 1 ${cx + r} ${baseY} Z" fill="${color}"/>`;
+    shape === "sharp" ? `<path d="M ${cx - r} ${baseY} L ${cx} ${baseY - r} L ${cx + r} ${baseY} Z" fill="${color}"/>`
+    : shape === "geometric" ? `<path d="M ${cx - r} ${baseY} L ${cx - r} ${baseY - r * 0.82} L ${cx + r} ${baseY - r * 0.82} L ${cx + r} ${baseY} Z" fill="${color}"/>`
+    : shape === "organic" ? `<path d="M ${cx - r} ${baseY} C ${cx - r * 0.9} ${baseY - r * 1.25} ${cx + r * 0.25} ${baseY - r * 1.1} ${cx + r} ${baseY} Z" fill="${color}"/>`
+    : `<path d="M ${cx - r} ${baseY} A ${r} ${r} 0 0 1 ${cx + r} ${baseY} Z" fill="${color}"/>`;
+  const dot = (cx: number, cy: number, r: number, color = motif) =>
+    shape === "sharp" ? `<path d="M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z" fill="${color}"/>`
+    : shape === "geometric" ? `<rect x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" rx="${r * 0.25}" fill="${color}"/>`
+    : shape === "organic" ? `<path d="M ${cx - r} ${cy} C ${cx - r} ${cy - r * 1.2} ${cx + r * 1.15} ${cy - r} ${cx + r} ${cy + r * 0.15} C ${cx + r * 0.85} ${cy + r * 1.1} ${cx - r * 0.9} ${cy + r} ${cx - r} ${cy} Z" fill="${color}"/>`
+    : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"/>`;
+  // Corner radius language follows the shape pick too.
+  const rxf = shape === "sharp" ? 0.06 : shape === "geometric" ? 0.12 : shape === "organic" ? 0.30 : 0.225;
 
   if (key === "appicon" || variant === "icon") {
     // Square app icon: three treatments per round.
@@ -139,7 +153,7 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
         : sun(S / 2, S * 0.72, S * 0.20, v === 1 ? pal.night : accent) +
           `<text x="${S / 2}" y="${S * 0.60}" text-anchor="middle" font-family="${v === 1 ? SERIF : FONT}" font-size="${S * 0.42}" font-weight="${v === 1 ? 500 : 800}" fill="${letterFg}">${esc(letter)}</text>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${H}" height="${H}">${defs}` +
-      `<rect width="${S}" height="${S}" rx="${S * 0.225}" fill="${tileBg}" ${v === 2 ? `stroke="rgba(0,0,0,.12)" stroke-width="2"` : ""}/>` + inner + `</svg>`;
+      `<rect width="${S}" height="${S}" rx="${S * rxf}" fill="${tileBg}" ${v === 2 ? `stroke="rgba(0,0,0,.12)" stroke-width="2"` : ""}/>` + inner + `</svg>`;
   }
 
   switch (key) {
@@ -191,11 +205,11 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
       if (v === 2) { // bare letter with an accent full stop
         return wrap(S, S, [
           `<text x="${S / 2 - 12}" y="${S / 2 + 34}" text-anchor="middle" font-family="${FONT}" font-size="98" font-weight="800" fill="${fg}">${esc(letter.toLowerCase())}</text>`,
-          `<circle cx="${S / 2 + 42}" cy="${S / 2 + 26}" r="10" fill="${motif}"/>`,
+          dot(S / 2 + 42, S / 2 + 26, 10),
         ].join(""));
       }
       return wrap(S, S, [
-        `<rect x="14" y="14" width="${S - 28}" height="${S - 28}" rx="30" fill="none" stroke="${motif}" stroke-width="6"/>`,
+        `<rect x="14" y="14" width="${S - 28}" height="${S - 28}" rx="${(S - 28) * rxf}" fill="none" stroke="${motif}" stroke-width="6"/>`,
         `<text x="${S / 2}" y="${S / 2 + 24}" text-anchor="middle" font-family="${FONT}" font-size="72" font-weight="800" fill="${fg}">${esc(letter)}</text>`,
       ].join(""));
     }
@@ -251,7 +265,7 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
         ].join(""));
       }
       const inner = `<text x="${w / 2}" y="86" text-anchor="middle" font-family="${FONT}" font-size="${fs}" font-weight="800" letter-spacing="${-fs * 0.03}" fill="${pal.night}">${esc(name)}</text>`;
-      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 140" width="${(w / 140) * H}" height="${H}">${defs}<rect width="${w}" height="140" rx="20" fill="url(#dg)"/>${inner}</svg>`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 140" width="${(w / 140) * H}" height="${H}">${defs}<rect width="${w}" height="140" rx="${140 * rxf * 0.7}" fill="url(#dg)"/>${inner}</svg>`;
     }
     case "halo": {
       const t = name.toLowerCase();
@@ -266,9 +280,9 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
       }
       if (v === 2) { // three dawn dots above
         return wrap(w, 170, [
-          `<circle cx="${cx - 26}" cy="46" r="7" fill="${variant === "mono" ? fg : pal.dawn}"/>`,
-          `<circle cx="${cx}" cy="40" r="7" fill="${variant === "mono" ? fg : pal.haze}"/>`,
-          `<circle cx="${cx + 26}" cy="46" r="7" fill="${variant === "mono" ? fg : pal.nova}"/>`,
+          dot(cx - 26, 46, 7, variant === "mono" ? fg : pal.dawn),
+          dot(cx, 40, 7, variant === "mono" ? fg : pal.haze),
+          dot(cx + 26, 46, 7, variant === "mono" ? fg : pal.nova),
           word(cx, 124, fs, { weight: 700, text: t, anchor: "middle" }),
         ].join(""));
       }
@@ -339,7 +353,7 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
       const w = wWord(name, fs) + 30 + pad * 2;
       return wrap(w, 150, [
         word(pad, 96, fs, {}),
-        `<circle cx="${pad + wWord(name, fs) + 18}" cy="58" r="9" fill="${motif}"/>`,
+        dot(pad + wWord(name, fs) + 18, 58, 9),
       ].join(""));
     }
     default: { // plain wordmark
@@ -352,17 +366,17 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
 /* ── the downloadable logo pack (shared by the flow and the account page) ── */
 export async function buildLogoPack(
   name: string, key: string, accent: Accent, seed: number,
-  swatches?: { name: string; hex: string }[] | null, font?: LogoFont,
+  swatches?: { name: string; hex: string }[] | null, font?: LogoFont, shape?: LogoShape,
 ): Promise<{ blob: Blob; filename: string }> {
   const { makeZip } = await import("./zip");
   const pal = toPalette(swatches);
   const nm = (name || "logo").toLowerCase();
   const svgs: Record<string, string> = {
-    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font }),
-    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font }),
-    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font }),
-    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font }),
-    [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed }),
+    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font, shape }),
+    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font, shape }),
+    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font, shape }),
+    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font, shape }),
+    [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed, shape }),
   };
   const enc = new TextEncoder();
   const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([n, svg]) => ({ name: n, data: enc.encode(svg) }));
