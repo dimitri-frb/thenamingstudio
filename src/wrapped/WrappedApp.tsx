@@ -1504,10 +1504,6 @@ function NamingWait({ coined, starred }: { coined: number; starred: WWord[] }) {
       <div className="story rise" key={storyIdx}>
         <h2>{story.h}</h2>
         <p>{story.p}</p>
-        <div className="dots">
-          {NAMING_STORIES.map((_, i) => <i key={i} className={i === storyIdx ? "on" : ""} />)}
-          <button className="wr-link" onClick={() => setStoryIdx((i) => (i + 1) % NAMING_STORIES.length)}>Another story →</button>
-        </div>
       </div>
       <div className="prog">
         <div className="row"><b>Mixing {mixLabel}…</b><span>{pct}%</span></div>
