@@ -21,6 +21,19 @@ export type LogoFont = "bold" | "serif" | "light";
 export type Accent = "dawn" | "haze" | "nova";
 export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont }
 
+// The Brand chapter's nine concepts (built from the taste picks).
+export const BRAND_TILES: { key: string; title: string }[] = [
+  { key: "sunrise", title: "Sunrise" },
+  { key: "nightserif", title: "Night serif" },
+  { key: "dawnsun", title: "Dawn sun" },
+  { key: "appicon", title: "App icon" },
+  { key: "sidebyside", title: "Side by side" },
+  { key: "hazeitalic", title: "Haze italic" },
+  { key: "outlinesun", title: "Outline sun" },
+  { key: "risingdot", title: "Rising dot" },
+  { key: "monogram", title: "Monogram" },
+];
+
 const BASE: { key: string; title: string }[] = [
   { key: "sunrise", title: "Sunrise" },
   { key: "airy", title: "Airy" },
@@ -51,6 +64,12 @@ export function whyItWorks(key: string, name: string, concept: string): string {
     appicon: `The name reduced to its first letter and a period: made for the home screen, the tab bar, the places brands actually live.`,
     dawn: `The wordmark carried by the brand gradient: colour does the talking, so the letters stay quiet and sure.`,
     halo: `A thin ring floating over the name: light with nothing extra. Understated, and unmistakably yours.`,
+    nightserif: `${name} set in a confident serif, nothing else: literary, trusted, timeless. The name does all the talking.`,
+    dawnsun: `A full sun rising behind the letters: the brand as ${concept || "first light"}, impossible to miss.`,
+    sidebyside: `The sun and the name, side by side: a lockup that works in a header, a card, a sign.`,
+    hazeitalic: `Lowercase italic serif: soft, human, a little literary. It reads like a signature.`,
+    outlinesun: `The sun drawn as a single line: light, precise, modern. Strong at any size.`,
+    risingdot: `One dot, lifting off the end of the name: quiet motion, easy to animate, unmistakably yours.`,
     firstlight: `The sun rises inside the name itself, replacing its ${midVowel(name).ch || "o"}: the story of the brand told in one glyph.`,
   };
   return map[key] || map.sunrise;
@@ -287,6 +306,41 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
       x += r * 2 + 6;
       if (b) parts.push(word(x, 96, fs, { text: b }));
       return wrap(w, 150, parts.join(""));
+    }
+    case "nightserif": { // the name, set with care, in serif
+      const w = wWord(name, fs) + pad * 2;
+      return wrap(w, 130, word(w / 2, 84, fs, { serif: true, weight: 500, anchor: "middle" }));
+    }
+    case "dawnsun": { // a big sun rising behind the word
+      const w = wWord(name, fs) + pad * 2;
+      const cx = w / 2;
+      return wrap(w, 170, sun(cx, 118, 52) + word(cx, 118, fs, { anchor: "middle" }));
+    }
+    case "sidebyside": { // small sun left, word right
+      const r = 17;
+      const w = r * 2 + 16 + wWord(name, fs) + pad * 2;
+      return wrap(w, 124, sun(pad + r, 74, r) + word(pad + r * 2 + 16, 78, fs, {}));
+    }
+    case "hazeitalic": { // italic serif lowercase, haze-tinted
+      const t = name.toLowerCase();
+      const w = wWord(t, fs * 0.98) + pad * 2;
+      return wrap(w, 130, word(w / 2, 84, fs * 0.98, { serif: true, italic: true, weight: 400, text: t, anchor: "middle", color: variant === "mono" ? fg : (variant === "tile" || variant === "night") ? pal.haze : fg }));
+    }
+    case "outlinesun": { // the sun as a thin outline over the word
+      const w = wWord(name, fs) + pad * 2;
+      const cx = w / 2;
+      return wrap(w, 180, [
+        `<path d="M ${cx - 24} 66 A 24 24 0 0 1 ${cx + 24} 66" fill="none" stroke="${motif}" stroke-width="4" stroke-linecap="round"/>`,
+        `<line x1="${cx - 34}" y1="66" x2="${cx + 34}" y2="66" stroke="${fg}" stroke-width="3" stroke-linecap="round"/>`,
+        word(cx, 130, fs, { anchor: "middle" }),
+      ].join(""));
+    }
+    case "risingdot": { // a single dot lifting off the wordmark
+      const w = wWord(name, fs) + 30 + pad * 2;
+      return wrap(w, 150, [
+        word(pad, 96, fs, {}),
+        `<circle cx="${pad + wWord(name, fs) + 18}" cy="58" r="9" fill="${motif}"/>`,
+      ].join(""));
     }
     default: { // plain wordmark
       const w = wWord(name, fs) + pad * 2;

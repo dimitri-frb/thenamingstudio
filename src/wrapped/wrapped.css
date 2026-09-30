@@ -82,6 +82,20 @@
 .wr-brand .bx { width: 22px; height: 22px; border-radius: 6px; background: #fff; display: grid; place-items: center; flex: 0 0 auto; }
 .wr-brand .bx svg { display: block; }
 .wr-brand .bt { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.wr-chapter {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7); white-space: nowrap; pointer-events: none;
+}
+.wr-arr {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: none; color: var(--text2);
+  font-size: 14px; line-height: 1; cursor: pointer;
+  display: inline-grid; place-items: center; padding: 0;
+}
+.wr-arr:hover { border-color: rgba(255, 255, 255, 0.6); color: #fff; }
+.wr-arr.dim { opacity: 0.3; cursor: default; }
 .wr-count { font-size: 12px; font-family: var(--mono); color: var(--text3); letter-spacing: 0.06em; white-space: nowrap; }
 .wr-count b { color: var(--text); font-weight: 600; }
 .wr-topname { font-family: var(--serif); font-size: 19px; font-weight: 500; letter-spacing: -0.02em; }
@@ -160,11 +174,11 @@
 
 /* ── buttons ── */
 .wr-btn {
-  font-size: 16.5px; font-weight: 700;
+  font-size: 15px; font-weight: 700;
   background: #fff; color: #000;
-  border: none; border-radius: 16px;
-  height: 54px; padding: 0 26px;
-  width: 100%;
+  border: none; border-radius: 980px;
+  height: 46px; padding: 0 22px;
+  width: auto;
   cursor: pointer;
   transition: transform 0.15s, opacity 0.15s;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -173,10 +187,10 @@
 .wr-btn:disabled { opacity: 0.35; cursor: default; }
 .wr-btn2 {
   font-size: 14px; font-weight: 600;
-  background: none; color: var(--text2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 980px; padding: 11px 20px;
-  cursor: pointer;
+  background: none; color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 980px; height: 46px; padding: 0 20px;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
 }
 .wr-btn2:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .wr-link { background: none; border: none; color: var(--text3); font-size: 13.5px; font-weight: 500; cursor: pointer; padding: 8px 6px; }
@@ -492,6 +506,64 @@
 .wr-next .row .ss .sw { width: 13px; height: 13px; border-radius: 4px; display: inline-block; }
 .wr-next .row .ar { margin-left: auto; color: inherit; opacity: 0.55; }
 
+.wr-next .tri { font-family: var(--serif); font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin: 0 0 14px; }
+.wr-next .tri i { font-style: italic; color: var(--text2); }
+.wr-next .row.done2 { cursor: default; }
+.wr-next .row .i.ok { background: none; border-color: var(--ok); color: var(--ok); }
+.wr-next .row .nm2 { font-family: var(--serif); font-weight: 500; font-size: 19px; margin-left: auto; }
+.wr-next .row .minis { display: flex; gap: 12px; margin-top: 9px; flex-wrap: wrap; }
+.wr-next .row .mini { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); }
+.wr-next .row .mini .mv { width: 34px; height: 34px; border-radius: 9px; background: var(--surface3); border: 1px solid var(--hairline); display: grid; place-items: center; font-style: normal; overflow: hidden; }
+.wr-next .row .mini .mv.aa { font-family: var(--serif); font-size: 15px; color: #fff; }
+.wr-next .row .mini .mv.sws { display: flex; gap: 2px; padding: 0 4px; }
+.wr-next .row .mini .mv.sws b { width: 7px; height: 18px; border-radius: 3px; }
+.wr-next .row .mini .mv.pg { background: #fff; }
+.wr-next .row .mini .mv.at { color: #fff; font-size: 14px; }
+
+/* ── Brand · taste pickers ── */
+.wr-tpick { width: 100%; max-width: 1080px; margin: 0 auto; }
+.wr-tpick .qrow { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.wr-tpick .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wr-tpick .tcard {
+  position: relative;
+  background: var(--surface1); border: 1px solid var(--hairline); border-radius: 16px;
+  padding: 12px 14px 14px; cursor: pointer; text-align: left; color: var(--text); font-family: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.wr-tpick .tcard:hover { border-color: rgba(255, 255, 255, 0.32); transform: translateY(-1px); }
+.wr-tpick .tcard.sel { box-shadow: 0 0 0 2.5px #fff; border-color: transparent; }
+.wr-tpick .tcard .ck { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #000; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 96px; border-radius: 11px; margin-bottom: 12px; background: var(--surface2); font-size: 19px; color: #fff; overflow: hidden; }
+.wr-tpick .tcard .v.cols { gap: 6px; }
+.wr-tpick .tcard .v.cols i { width: 22%; height: 56px; border-radius: 8px; }
+.wr-tpick .tcard .v.type { font-size: 24px; }
+.wr-tpick .tcard .v.shape i { width: 52px; height: 52px; background: #fff; display: block; }
+.wr-tpick .tcard b { font-family: var(--serif); font-weight: 500; font-size: 19px; display: block; }
+.wr-tpick .tcard small { font-size: 12.5px; color: var(--text3); display: block; margin-top: 3px; }
+@media (min-width: 980px) { .wr-tpick .cards { grid-template-columns: repeat(4, 1fr); } }
+
+/* ── Brand · your taste ── */
+.wr-tasteband { display: flex; align-items: center; gap: 7px; }
+.wr-tasteband i { width: 34px; height: 34px; border-radius: 9px; display: inline-block; border: 1px solid rgba(255, 255, 255, 0.12); }
+.wr-tasteband .aa { font-size: 24px; font-weight: 500; margin-left: 8px; }
+.wr-slider { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.wr-slider > span { flex: 0 0 62px; font-size: 12.5px; color: var(--text2); }
+.wr-slider > span:last-child { text-align: right; }
+.wr-slider input[type="range"] { flex: 1; accent-color: #fff; height: 3px; cursor: pointer; }
+
+/* logo tile: the per-concept More link */
+.wr-ltile .ln .more { background: none; border: none; color: var(--text3); font-size: 10px; font-family: inherit; cursor: pointer; margin-left: 7px; padding: 0; }
+.wr-ltile .ln .more:hover { color: #fff; }
+
+/* ── 09 the triptych ── */
+.wr-trip { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.wr-trip .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 980px; padding: 10px 16px; font-size: 13.5px; color: var(--text2); }
+.wr-trip .pill b { color: #fff; font-weight: 600; }
+.wr-trip .pill i { font-style: normal; }
+.wr-trip .pill .ok { color: var(--ok); }
+.wr-trip .pill .no { color: var(--text3); }
+.wr-trip .joins { color: var(--text3); }
+
 /* ── 06 domain ── */
 .wr-doms { display: flex; flex-direction: column; gap: 9px; width: 100%; max-width: 520px; }
 .wr-dom {
@@ -752,7 +824,6 @@
   .wr-h { font-size: 48px; }
   .wr-land .wr-h { font-size: 64px; }
   .wr-ask { font-size: 36px; }
-  .wr-btn { width: auto; height: auto; padding: 15px 28px; border-radius: 980px; font-size: 15.5px; }
   .wr-newbtn { height: 54px; width: auto; padding: 0 26px; }
   .wr-bigname { font-size: 104px; }
   .wr-tagline { font-size: 22px; }
@@ -785,6 +856,8 @@
 }
 @media (max-width: 720px) {
   .wr-hidemob { display: none !important; }
+  .wr-foot .wr-btn { width: 100%; height: 50px; }
+  .wr-chapter { display: none; }
 }
 @media (min-width: 721px) {
   .wr-hidedesk { display: none !important; }

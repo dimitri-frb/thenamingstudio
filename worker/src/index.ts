@@ -565,6 +565,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     const intro =
       `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
       `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
+      (b.payload?.taste ? `THE FOUNDER'S TASTE (the brand must wear it): feeling ${JSON.stringify(b.payload.taste.feeling || [])}, colour direction ${JSON.stringify(b.payload.taste.colours || [])}, type ${b.payload.taste.type || ""}, shapes ${b.payload.taste.shape || ""}. The palette MUST follow the colour direction.\n` : "") +
       `Write brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name. Return ONLY JSON with EXACTLY this shape:\n`;
     const shapeA =
       `{"tagline":"6-8 word brand tagline",` +

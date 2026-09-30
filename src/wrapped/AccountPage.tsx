@@ -227,7 +227,11 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
 function SearchCard({ s, onOpen }: { s: SavedSearch; onOpen: () => void }) {
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const label = s.status === "claimed" ? "Claimed" : s.status === "ready" ? "Names ready" : "Exploring";
-  const segs = [s.steps?.domain === "done", s.steps?.logo === "done", s.steps?.book === "done", s.steps?.socials === "done"];
+  const chap = [
+    { l: "Name", on: !!s.picked },
+    { l: "Domain", on: s.steps?.domain === "done" },
+    { l: "Brand", on: !!s.logo || s.steps?.book === "done" || s.steps?.socials === "done" },
+  ];
   const next =
     s.status === "claimed" ? "Everything is ready" :
     s.names?.length ? `Pick one of ${s.names.length} names` :
@@ -247,7 +251,9 @@ function SearchCard({ s, onOpen }: { s: SavedSearch; onOpen: () => void }) {
         <span className="nm">{s.picked?.name || s.names?.[0]?.name || "Untitled"}</span>
       </span>
       <span className="br">{s.sentence}</span>
-      <span className="wr-seg4">{segs.map((on, i) => <span key={i} className={on ? "on" : ""} />)}</span>
+      <span className="wr-chaps">{chap.map((c) => (
+        <span key={c.l} className={c.on ? "on" : ""}>{c.on ? "✓ " : ""}{c.l}</span>
+      ))}</span>
       <span className="foot">
         <span className="na">{next}</span>
         <span className="opn pill">Open →</span>

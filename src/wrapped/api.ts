@@ -66,6 +66,7 @@ export interface SavedSearch {
   picked?: WName | null;
   domain?: string;          // the registered/chosen domain
   logo?: { key: string; title: string; seed: number; accent?: string } | null;
+  taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
   steps: { domain?: "done" | "skipped"; logo?: "done" | "skipped"; book?: "done" | "skipped"; socials?: "done" | "skipped" };
   status: "exploring" | "ready" | "claimed";
@@ -119,8 +120,8 @@ export const wrapApi = {
     ({ names: (payload.exclude as string[])?.length ? SAMPLE.moreNames : SAMPLE.names })),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
-  book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[]): Promise<WBook | null> => {
-    const base = { sentence, chips, concept, name, parts };
+  book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
+    const base = { sentence, chips, concept, name, parts, taste };
     const [a, b] = await Promise.all([
       gen<Partial<WBook>>("wrapbook", { ...base, half: "a" }, () => sampleBook(name)),
       gen<Partial<WBook>>("wrapbook", { ...base, half: "b" }, () => sampleBook(name)),

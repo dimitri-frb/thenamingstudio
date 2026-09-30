@@ -11,20 +11,44 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont } from "./logos";
+import { BRAND_TILES, buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont } from "./logos";
 import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
-type Step = "land" | "how" | "ask" | "brief" | "refine" | "words" | "names" | "reveal" | "domain" | "logo" | "logodone" | "book" | "socials" | "done";
-const FLOW_NO: Partial<Record<Step, number>> = { ask: 1, brief: 2, words: 3, names: 4, reveal: 5 };
-const OWN_STEPS: Step[] = ["domain", "logo", "logodone", "book", "socials"];
-const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "logo", "logodone", "book", "socials", "done"];
+type Step =
+  | "land" | "how" | "ask" | "brief" | "refine" | "words" | "names" | "reveal"
+  | "domain"
+  | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "book" | "socials"
+  | "done";
+// The product is a triptych: Name → Domain → Brand.
+const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
+  ask:    { label: "Chapter 1 · Name", segs: 5, idx: 0 },
+  brief:  { label: "Chapter 1 · Name", segs: 5, idx: 1 },
+  refine: { label: "Chapter 1 · Name", segs: 5, idx: 1 },
+  words:  { label: "Chapter 1 · Name", segs: 5, idx: 2 },
+  names:  { label: "Chapter 1 · Name", segs: 5, idx: 3 },
+  reveal: { label: "Chapter 1 · Name", segs: 5, idx: 4 },
+  domain: { label: "Chapter 2 · Domain", segs: 0, idx: 0 },
+  brand:  { label: "Chapter 3 · Brand", segs: 0, idx: 0 },
+  feel:   { label: "Chapter 3 · Brand · Feeling", segs: 9, idx: 0 },
+  tcol:   { label: "Chapter 3 · Brand · Colours", segs: 9, idx: 1 },
+  ttype:  { label: "Chapter 3 · Brand · Type", segs: 9, idx: 2 },
+  tshape: { label: "Chapter 3 · Brand · Shape", segs: 9, idx: 3 },
+  taste:  { label: "Chapter 3 · Brand · Your taste", segs: 9, idx: 4 },
+  logo:   { label: "Chapter 3 · Brand · Logos", segs: 9, idx: 5 },
+  logodone: { label: "Chapter 3 · Brand · Your logo", segs: 9, idx: 6 },
+  book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
+  socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
+};
+const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "book", "socials", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
   land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", words: "3-words", names: "4-names", reveal: "5-reveal",
-  domain: "6-domain", logo: "7-logo", logodone: "7-logo-chosen", book: "8-brand-book", socials: "9-socials", done: "10-done",
+  domain: "6-domain",
+  brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
+  logo: "8-logos", logodone: "8-logo", book: "9-brand-book", socials: "10-socials", done: "11-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -35,6 +59,54 @@ const pathSlug = () => {
 };
 
 const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
+// The Brand chapter's taste quiz: four picks, then sliders.
+export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number } }
+const TASTE_DEFAULT: Taste = { feeling: ["Soft & warm"], colours: ["Dawn to night"], type: "Elegant serif", shape: "Round & soft", sliders: { ce: 35, wc: 28, rs: 30, ss: 28, mb: 35 } };
+const TASTE_OPTS = {
+  feel: [
+    { k: "Soft & warm", d: "Calm, gentle, human" },
+    { k: "Bold & bright", d: "Loud, confident, fast" },
+    { k: "Calm & minimal", d: "Quiet, clear, essential" },
+    { k: "Playful", d: "Curious, fun, a little wild" },
+  ],
+  tcol: [
+    { k: "Dawn to night", d: "Warm peach into deep blue", pal: ["#ff9e7a", "#c9b6ff", "#7c9cff", "#0f0d24"] },
+    { k: "Forest & sand", d: "Natural, grounded", pal: ["#8a9b6e", "#d8c3a5", "#4e6e58", "#1b241b"] },
+    { k: "Monochrome", d: "Timeless, serious", pal: ["#e8e8e8", "#9a9a9a", "#4a4a4a", "#101010"] },
+    { k: "Citrus pop", d: "Energetic, bright", pal: ["#ffb238", "#ff6b35", "#f7c548", "#241a10"] },
+  ],
+  ttype: [
+    { k: "Elegant serif", d: "Literary, trusted" },
+    { k: "Clean sans", d: "Modern, simple" },
+    { k: "Strong caps", d: "Bold, architectural" },
+    { k: "Technical mono", d: "Precise, digital" },
+  ],
+  tshape: [
+    { k: "Round & soft", d: "Curves, gentle edges" },
+    { k: "Sharp & angular", d: "Edges, precision" },
+    { k: "Organic", d: "Hand-shaped, natural" },
+    { k: "Geometric", d: "Grids, order" },
+  ],
+} as const;
+const tastePalette = (t: Taste) => {
+  const pal = (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
+  return { dawn: pal[0], haze: pal[1], nova: pal[2], night: pal[3] };
+};
+const tasteFont = (t: Taste): LogoFont => {
+  const ss = t.sliders.ss;
+  if (ss < 45) return "serif";
+  return t.sliders.mb >= 55 ? "bold" : t.type === "Technical mono" ? "light" : "bold";
+};
+const tasteLine = (t: Taste) => {
+  const feel: Record<string, string> = { "Soft & warm": "warm", "Bold & bright": "bold", "Calm & minimal": "calm", "Playful": "playful" };
+  const shape: Record<string, string> = { "Round & soft": "rounded", "Sharp & angular": "sharp", "Organic": "organic", "Geometric": "geometric" };
+  const type: Record<string, string> = { "Elegant serif": "an elegant serif", "Clean sans": "a clean sans", "Strong caps": "strong caps", "Technical mono": "a technical mono" };
+  const feels = t.feeling.map((f) => feel[f]).filter(Boolean);
+  const parts = [...feels, shape[t.shape]].filter(Boolean);
+  const head = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "balanced";
+  return head[0].toUpperCase() + head.slice(1) + ", with " + (type[t.type] || "a clean sans") + ".";
+};
+
 const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
   { name: "X", desc: "Updates and conversation", url: "https://x.com/i/flow/signup" },
@@ -68,6 +140,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [domShow, setDomShow] = useState(4);
   const [logoSeed, setLogoSeed] = useState(0);
+  const [logoFocus, setLogoFocus] = useState<string | null>(null);
+  const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
   const [book, setBook] = useState<WBook | null>(test ? sampleBook("Aurova") : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
@@ -91,11 +165,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const fail = (k: string, v: boolean) => setFails((f) => ({ ...f, [k]: v }));
   const retry = (k: string) => { fail(k, false); if (k === "book" && picked) bookPre.current.delete(picked.name); setRetryTick((t) => t + 1); };
   // The brand book for a name, fetched once and shared between prefetch and use.
-  const bookFetch = (n: WName) => {
+  const bookFetch = (n: WName, t?: Taste) => {
     if (!bookPre.current.has(n.name)) {
-      bookPre.current.set(n.name, wrapApi.book(sentence.trim(), chips, concept?.concept || "", n.name, n.parts || []));
+      bookPre.current.set(n.name, wrapApi.book(sentence.trim(), chips, concept?.concept || "", n.name, n.parts || [], t || taste));
     }
     return bookPre.current.get(n.name)!;
+  };
+  // Finishing the taste quiz regenerates the book WITH the taste, quietly,
+  // while the founder is still browsing logos (two screens of cover).
+  const refreshBookForTaste = (t: Taste) => {
+    if (test || !picked) return;
+    bookPre.current.delete(picked.name);
+    const who = picked.name;
+    bookFetch(picked, t).then((b) => {
+      if (picked?.name !== who) return;
+      if (b?.palette) { setBook(b); persist({ palette: b.palette }); }
+    });
   };
   const starKey = (ws: WWord[]) => ws.map((w) => w.w).sort().join("|");
   const conceptReady = !!concept && (test || conceptFor.current === sentence.trim());
@@ -133,6 +218,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         setBook(snap.book || null);
         if (snap.prefs) setPrefs(snap.prefs);
         if (snap.feelOpts) setFeelOpts(snap.feelOpts);
+        if (snap.taste) setTaste(snap.taste);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           slugStep === "ask" ||
@@ -177,8 +263,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
-    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts });
-  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts]);
+    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste });
+  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste]);
 
   function persist(over: Partial<SavedSearch> = {}) {
     if (test || !sentence.trim()) return;
@@ -188,6 +274,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
       picked, steps, status,
       logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font } : null,
+      taste,
       ...over,
     } as SavedSearch);
   }
@@ -584,24 +671,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   });
 
   /* ── shared chrome ── */
-  const flowNo = FLOW_NO[step];
-  const inOwn = OWN_STEPS.includes(step);
-
-  const ownTab = (k: "domain" | "logo" | "book" | "socials") => {
-    const active = (k === "logo" && (step === "logo" || step === "logodone")) || step === k;
-    const done = steps[k] === "done";
-    const target: Step = k === "logo" ? (logoSel ? "logodone" : "logo") : k;
-    return (
-      <button key={k} className={"wr-tab" + (active ? " on" : "") + (done ? " done" : "")} onClick={() => toStep(target)}>
-        {done && <span className="ck">✓</span>}
-        {{ domain: "1 · Domain", logo: "2 · Logo", book: "3 · Brand book", socials: "4 · Socials" }[k]}
-      </button>
-    );
-  };
+  const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
     ask: "land", brief: "ask", refine: "brief", words: "brief", names: "words", reveal: "names",
-    domain: "reveal", logo: "domain", logodone: "logo", book: "logodone", socials: "book",
+    domain: "reveal",
+    brand: "domain", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
+    logo: "taste", logodone: "logo", book: "logodone", socials: "book",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -611,15 +687,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "words" ? (names?.length ? "names" : null) :
       step === "names" ? (picked ? "reveal" : null) :
       step === "reveal" ? "domain" :
-      step === "domain" ? "logo" :
+      step === "domain" ? "brand" :
+      step === "brand" ? "feel" :
+      step === "feel" ? "tcol" :
+      step === "tcol" ? "ttype" :
+      step === "ttype" ? "tshape" :
+      step === "tshape" ? "taste" :
+      step === "taste" ? "logo" :
       step === "logo" ? (logoSel ? "logodone" : "book") :
       step === "logodone" ? "book" :
       step === "book" ? "socials" :
-      step === "socials" ? (steps.socials ? "done" : null) : null;
+      step === "socials" ? "done" : null;
     return t;
   };
 
-  const pal = toPalette(book?.palette);
+  const pal = book?.palette ? toPalette(book.palette) : tastePalette(taste);
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
@@ -630,37 +712,31 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     <div className="wr">
       {(step === "land" || step === "reveal" || step === "done") && <div className="wr-glow" />}
 
-      {/* top bar: the logo never moves; the back arrow lives at the far right */}
+      {/* shared header: logo left, chapter label centred, round ‹ › right */}
       <div className="wr-top">
         <button className="wr-brand" onClick={() => (step === "land" ? undefined : restart())}>
           <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
           <span className="bt">the naming studio</span>
         </button>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
-          {backTarget[step] && <button className="wr-back" onClick={() => toStep(backTarget[step]!)} aria-label="Back">‹</button>}
-          {flowNo
-            ? <span className="wr-count"><b>{flowNo}</b> of 5</span>
-            : inOwn && picked
-              ? <span className="wr-topname">{picked.name}</span>
-              : step === "land"
-                ? <>
-                    <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
-                    <button className="wr-signin" onClick={() => (user ? gotoAccount() : setSignupOpen(true))}>{user ? "My account" : "Sign up"}</button>
-                  </>
-                : step === "how"
-                  ? <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>
-                : step === "done" ? <span className="wr-count">done</span> : null}
-          {backTarget[step] && (fwdTarget()
-            ? <button className="wr-back" onClick={() => toStep(fwdTarget()!)} aria-label="Forward">›</button>
-            : <span className="wr-back" style={{ opacity: 0.25, cursor: "default" }}>›</span>)}
+        {chapter && <span className="wr-chapter">{chapter.label}</span>}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          {step === "land" && <>
+            <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
+            <button className="wr-signin" onClick={() => (user ? gotoAccount() : setSignupOpen(true))}>{user ? "My account" : "Sign up"}</button>
+          </>}
+          {step === "how" && <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>}
+          {step === "done" && <span className="wr-count">done</span>}
+          {chapter && <>
+            <button className="wr-arr" onClick={() => backTarget[step] && toStep(backTarget[step]!)} aria-label="Back">‹</button>
+            {fwdTarget()
+              ? <button className="wr-arr" onClick={() => toStep(fwdTarget()!)} aria-label="Forward">›</button>
+              : <span className="wr-arr dim">›</span>}
+          </>}
         </span>
       </div>
 
-      {flowNo && (
-        <div className="wr-prog">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={i <= flowNo ? "on" : ""} />)}</div>
-      )}
-      {inOwn && (
-        <div className="wr-tabs">{(["domain", "logo", "book", "socials"] as const).map(ownTab)}</div>
+      {chapter && chapter.segs > 0 && step !== "brand" && (
+        <div className="wr-prog">{Array.from({ length: chapter.segs }, (_, i) => <span key={i} className={i <= chapter.idx ? "on" : ""} />)}</div>
       )}
 
       {/* ═══ 00 landing ═══ */}
@@ -679,7 +755,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-youget2">
-            <span className="line">A name, its domain, logo and brand book, in minutes.</span>
+            <span className="line">Name → Domain → Brand — in minutes.</span>
           </div>
         </div>
       )}
@@ -689,7 +765,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <div className="wr-stage" style={{ paddingTop: 26 }}>
           <div className="wr-hiw">
             <h1 className="wr-h" style={{ textAlign: "center", margin: "10px 0 8px" }}>From one sentence to a name you own.</h1>
-            <p className="wr-lead" style={{ textAlign: "center", color: "var(--text3)", marginBottom: 34 }}>Five steps. About five minutes.</p>
+            <p className="wr-lead" style={{ textAlign: "center", color: "var(--text3)", marginBottom: 34 }}>Name → Domain → Brand · about five minutes.</p>
             <div className="row">
               <div className="hcard">
                 <div className="hart">
@@ -1053,38 +1129,37 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <div key={p.part} className="wr-partcard wr-frost"><b>{p.part}</b><span>{p.note}</span></div>
                 ))}
               </div>
-              <div className="wr-next rise" style={{ marginTop: 28 }}>
-                <p className="head"><i className="ck">✓</i> What's next</p>
+              <div className="wr-next rise" style={{ marginTop: 26 }}>
+                <p className="tri">One name down. <i>Two steps to make it real.</i></p>
+                <div className="row done2">
+                  <span className="i ok">✓</span>
+                  <span className="mid"><span className="tt">Name</span><span className="ss">You've got it. Congrats!</span></span>
+                  <span className="nm2">{picked.name}</span>
+                </div>
                 <button className="row lead" onClick={() => toStep("domain")}>
-                  <span className="i">1</span>
+                  <span className="i">2</span>
                   <span className="mid">
-                    <span className="tt">Claim the domain</span>
+                    <span className="tt">Domain</span>
+                    <span className="ss" style={{ display: "block" }}>Claim it now</span>
                     {(domRows.filter((d) => d.status === "available").slice(0, 2)).map((d) => (
                       <span key={d.domain} className="dl"><i />{d.domain} · {d.price}</span>
                     ))}
-                    {!domRows.some((d) => d.status === "available") && <span className="ss">{picked.dom?.domain || "checking…"}</span>}
                   </span>
                   <span className="ar">→</span>
                 </button>
-                <button className="row" onClick={() => toStep("logo")}>
-                  <span className="i">2</span>
-                  <span className="mid"><span className="tt">Find your perfect logo</span><span className="ss">Nine logo concepts from the name</span></span>
-                  <span className="ar">→</span>
-                </button>
-                <button className="row" onClick={() => toStep("book")}>
+                <button className="row" onClick={() => toStep("brand")}>
                   <span className="i">3</span>
                   <span className="mid">
-                    <span className="tt">Open your brand book</span>
-                    <span className="ss">
-                      {(book?.palette || []).slice(0, 3).map((c) => <i key={c.name} className="sw" style={{ background: c.hex }} />)}
-                      voice, colours, story
+                    <span className="tt">Brand</span>
+                    <span className="ss">Built from your taste</span>
+                    <span className="minis">
+                      <span className="mini"><i className="mv" dangerouslySetInnerHTML={{ __html: logoSvg("sunrise", picked.name, pal, { variant: "tile", accent: "dawn", height: 22 }) }} />Logo</span>
+                      <span className="mini"><i className="mv aa">Aa</i>Font</span>
+                      <span className="mini"><i className="mv sws"><b style={{ background: pal.dawn }} /><b style={{ background: pal.haze }} /><b style={{ background: pal.nova }} /></i>Colours</span>
+                      <span className="mini"><i className="mv pg" />Brand book</span>
+                      <span className="mini"><i className="mv at">@</i>Socials</span>
                     </span>
                   </span>
-                  <span className="ar">→</span>
-                </button>
-                <button className="row" onClick={() => toStep("socials")}>
-                  <span className="i">4</span>
-                  <span className="mid"><span className="tt">Create your social accounts</span><span className="ss">Instagram · X · TikTok · LinkedIn</span></span>
                   <span className="ar">→</span>
                 </button>
               </div>
@@ -1133,44 +1208,114 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
             </button>
             {steps.domain === "done"
-              ? <button className="wr-btn2" onClick={() => toStep("logo")}>Next: Logo →</button>
-              : <button className="wr-link" onClick={() => markStep("domain", "skipped", "logo")}>Skip for now</button>}
+              ? <button className="wr-btn2" onClick={() => toStep("brand")}>Next: Your brand →</button>
+              : <button className="wr-link" onClick={() => markStep("domain", "skipped", "brand")}>Skip for now</button>}
           </div>
         </>
       )}
 
-      {/* ═══ 06b logo grid ═══ */}
-      {step === "logo" && picked && (
+      {/* ═══ Chapter 3 · Brand — opener ═══ */}
+      {step === "brand" && picked && (
+        <>
+          <div className="wr-stage center" style={{ textAlign: "center", alignItems: "center" }}>
+            <h1 className="wr-h pop" style={{ fontSize: 58, marginBottom: 14 }}>Now, your brand.</h1>
+            <p className="wr-lead rise" style={{ marginBottom: 30 }}>A minute of swiping, and we build the rest.</p>
+            <button className="wr-btn rise" style={{ maxWidth: 200 }} onClick={() => toStep("feel")}>Start →</button>
+            <button className="wr-link rise" style={{ marginTop: 10 }} onClick={() => { track("brandlater", { name: picked.name }); toStep("done"); }}>Do it later</button>
+          </div>
+        </>
+      )}
+
+      {/* ═══ Brand · taste pickers (Feeling / Colours / Type / Shape) ═══ */}
+      {(step === "feel" || step === "tcol" || step === "ttype" || step === "tshape") && picked && (
+        <TastePicker
+          step={step} name={picked.name} taste={taste}
+          onChange={(t) => setTaste(t)}
+          onBack={() => toStep(backTarget[step]!)}
+          onNext={() => toStep(fwdTarget() || "taste")}
+        />
+      )}
+
+      {/* ═══ Brand · your taste (recap + sliders) ═══ */}
+      {step === "taste" && picked && (
         <>
           <div className="wr-stage center">
-            <div className="inner-nar">
-              <p className="wr-kicker" style={{ marginBottom: 8 }}>Your logo</p>
-              <h1 className="wr-h" style={{ marginBottom: 8 }}>Give {picked.name} a face.</h1>
-              <p className="wr-lead" style={{ marginBottom: 18, maxWidth: 460 }}>
-                Nine concepts drawn from the story of the name. Pick one; it flows into your brand book.
-              </p>
-              {Array.from({ length: logoSeed + 1 }, (_, round) => (
-                <div className="wr-lgrid" key={round} style={{ marginTop: round ? 12 : 0 }}>
-                  {logoConcepts(round).map((c) => {
-                    const on = logoSel?.key === c.key && logoSel?.seed === c.seed;
+            <div className="inner-nar wr-owncols">
+              <div>
+                <p className="wr-kicker" style={{ marginBottom: 10 }}>Your taste</p>
+                <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 18 }}>{tasteLine(taste)}</h1>
+                <div className="wr-tasteband">
+                  {[tastePalette(taste).dawn, tastePalette(taste).haze, tastePalette(taste).nova, tastePalette(taste).night].map((c) => <i key={c} style={{ background: c }} />)}
+                  <span className="aa" style={{ fontFamily: tasteFont(taste) === "serif" ? "var(--serif)" : "var(--sans)" }}>Aa</span>
+                </div>
+                <button className="wr-link" style={{ marginTop: 16, paddingLeft: 0 }} onClick={() => toStep("feel")}>↻ Swipe again</button>
+              </div>
+              <div>
+                <p className="wr-kicker" style={{ marginBottom: 14 }}>Drag to adjust</p>
+                {([["Calm", "Energetic", "ce"], ["Warm", "Cool", "wc"], ["Round", "Sharp", "rs"], ["Serif", "Sans", "ss"], ["Minimal", "Bold", "mb"]] as const).map(([l, r, k]) => (
+                  <div className="wr-slider" key={k}>
+                    <span>{l}</span>
+                    <input type="range" min={0} max={100} value={taste.sliders[k]}
+                      onChange={(e) => setTaste({ ...taste, sliders: { ...taste.sliders, [k]: Number(e.target.value) } })} />
+                    <span>{r}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="wr-foot">
+            <button className="wr-link" onClick={() => toStep("tshape")}>← Back</button>
+            <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); toStep("logo"); }}>Show me my logos →</button>
+          </div>
+        </>
+      )}
+
+      {/* ═══ Brand · logos (nine, made from the taste) ═══ */}
+      {step === "logo" && picked && (
+        <>
+          <div className="wr-stage" style={{ paddingTop: 20 }}>
+            <div className="inner-nar wr-owncols" style={{ alignItems: "flex-start" }}>
+              <div style={{ flex: "0 0 260px" }}>
+                <p className="wr-kicker" style={{ marginBottom: 8 }}>{logoFocus ? "More like this" : "Made from your taste"}</p>
+                <h1 className="wr-h" style={{ fontSize: 32, marginBottom: 10 }}>
+                  {logoFocus ? `${BRAND_TILES.find((t) => t.key === logoFocus)?.title}, nine ways.` : `Nine logos, made for ${picked.name}.`}
+                </h1>
+                <p className="wr-lead" style={{ marginBottom: 14 }}>
+                  {logoFocus ? "Variations on the one you liked." : "Built from what you liked. Pick one, or ask for more like any of them."}
+                </p>
+                {logoFocus
+                  ? <button className="wr-link" style={{ paddingLeft: 0 }} onClick={() => setLogoFocus(null)}>← All concepts</button>
+                  : <button className="wr-link" style={{ paddingLeft: 0 }} onClick={() => setLogoSeed((x) => x + 1)}>↻ Show nine more</button>}
+              </div>
+              <div>
+                <div className="wr-lgrid">
+                  {(logoFocus
+                    ? Array.from({ length: 9 }, (_, i) => ({ key: logoFocus, title: `${BRAND_TILES.find((t) => t.key === logoFocus)?.title} ${i + 1}`, accent: (["dawn", "haze", "nova"] as const)[i % 3], seed: i, font: tasteFont(taste) }))
+                    : BRAND_TILES.map((t, i) => ({ key: t.key, title: t.title, accent: (["dawn", "haze", "nova"] as const)[(i + logoSeed) % 3], seed: logoSeed, font: tasteFont(taste) }))
+                  ).map((c) => {
+                    const on = logoSel?.key === c.key && logoSel?.seed === c.seed && logoSel?.accent === c.accent;
                     return (
-                      <button key={c.key + round} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
+                      <button key={c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
                         {on && <span className="ck">✓</span>}
-                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, height: 54 }) }} />
-                        <span className="ln">{c.title}</span>
+                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, height: 54 }) }} />
+                        <span className="ln">{c.title}
+                          {!logoFocus && <button className="more" onClick={(e) => { e.stopPropagation(); setLogoFocus(c.key); }}>↻ More</button>}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              ))}
-              <button className="wr-link" style={{ marginTop: 12 }} onClick={() => setLogoSeed((s) => s + 1)}>↻ Nine more concepts</button>
+              </div>
             </div>
           </div>
-          <div className="wr-foot col" style={{ gap: 8 }}>
-            <button className="wr-btn" disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
-              Use {logoSel?.title || "this concept"} →
-            </button>
-            <button className="wr-link" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
+          <div className="wr-foot">
+            <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
+            <span style={{ display: "inline-flex", gap: 10 }}>
+              <button className="wr-btn2" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
+              <button className="wr-btn" style={{ maxWidth: 220 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
+                Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
+              </button>
+            </span>
           </div>
         </>
       )}
@@ -1182,23 +1327,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div className="inner-nar">
               <p className="wr-kicker" style={{ marginBottom: 12 }}>Your logo · {logoSel.title}</p>
               <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, pal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, height: 110 }) }} />
-              <div className="wr-logoctl">
-                <label>Colour
-                  <select value={logoSel.accent} onChange={(e) => setLogoSel({ ...logoSel, accent: e.target.value as LogoConcept["accent"] })}>
-                    {(book?.palette || [{ name: "Dawn" }, { name: "Haze" }, { name: "Nova" }]).slice(0, 3).map((c, i) => (
-                      <option key={c.name} value={(["dawn", "haze", "nova"] as const)[i]}>{c.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>Font
-                  <select value={logoSel.font || "auto"} onChange={(e) => setLogoSel({ ...logoSel, font: e.target.value === "auto" ? undefined : (e.target.value as LogoFont) })}>
-                    <option value="auto">Auto</option>
-                    <option value="bold">Heavy sans</option>
-                    <option value="serif">Serif</option>
-                    <option value="light">Light sans</option>
-                  </select>
-                </label>
-              </div>
               <p className="wr-lead" style={{ margin: "16px 0 14px", maxWidth: 500 }}>
                 <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
               </p>
@@ -1306,11 +1434,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div style={{ position: "relative", zIndex: 2 }}>
               <p className="wr-kicker rise" style={{ marginBottom: 16 }}>It's yours</p>
               <h1 className="wr-bigname pop" style={{ marginBottom: 26 }}>{picked.name}</h1>
-              <div className="wr-checks rise">
-                {steps.domain === "done" && <div><span className="c">✓</span> {domSel?.domain || picked.dom?.domain}</div>}
-                {steps.logo === "done" && <div><span className="c">✓</span> Logo · {logoSel?.title}</div>}
-                <div><span className="c">✓</span> Brand book</div>
-                {steps.socials === "done" && <div><span className="c">✓</span> Socials set up</div>}
+              <div className="wr-trip rise">
+                <span className="pill"><i className="ok">✓</i> Name <b>{picked.name}</b></span>
+                <span className="joins">→</span>
+                <span className="pill"><i className={steps.domain === "done" ? "ok" : "no"}>{steps.domain === "done" ? "✓" : "·"}</i> Domain <b>{steps.domain === "done" ? (domSel?.domain || picked.dom?.domain) : "later"}</b></span>
+                <span className="joins">→</span>
+                <span className="pill"><i className={logoSel || steps.book === "done" || steps.socials === "done" ? "ok" : "no"}>{logoSel || steps.book === "done" || steps.socials === "done" ? "✓" : "·"}</i> Brand <b>logo · book · socials</b></span>
               </div>
               {shareMsg && <p className="wr-hint rise" style={{ marginTop: 12 }}>{shareMsg}</p>}
             </div>
@@ -1479,6 +1608,84 @@ function Grow({ value, onChange, onEnter, placeholder, boxed }: { value: string;
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onEnter(); } }}
     />
+  );
+}
+
+/* ── the four taste pickers of the Brand chapter ── */
+function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
+  step: "feel" | "tcol" | "ttype" | "tshape"; name: string; taste: Taste;
+  onChange: (t: Taste) => void; onBack: () => void; onNext: () => void;
+}) {
+  const multi = step === "feel" || step === "tcol";
+  const q = step === "feel" ? `How should ${name} feel?` : step === "tcol" ? "Which colours feel right?" : step === "ttype" ? `How should ${name} be written?` : "Round or sharp?";
+  const opts = TASTE_OPTS[step];
+  const cur: string[] = step === "feel" ? taste.feeling : step === "tcol" ? taste.colours : step === "ttype" ? [taste.type] : [taste.shape];
+  const pickIt = (k: string) => {
+    if (multi) {
+      const list = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
+      if (!list.length) return;
+      onChange(step === "feel" ? { ...taste, feeling: list } : { ...taste, colours: list });
+    } else {
+      onChange(step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k });
+    }
+  };
+  const viz = (k: string) => {
+    if (step === "tcol") {
+      const palette = (TASTE_OPTS.tcol.find((o) => o.k === k) || TASTE_OPTS.tcol[0]).pal;
+      return <span className="v cols">{palette.map((c) => <i key={c} style={{ background: c }} />)}</span>;
+    }
+    if (step === "ttype") {
+      const st = k === "Elegant serif" ? { fontFamily: "var(--serif)", fontWeight: 500 }
+        : k === "Clean sans" ? { fontWeight: 600 }
+        : k === "Strong caps" ? { fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.06em", fontSize: 22 }
+        : { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" as const };
+      return <span className="v type" style={st}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
+    }
+    if (step === "tshape") {
+      return <span className="v shape">{
+        k === "Round & soft" ? <i style={{ borderRadius: "50%" }} /> :
+        k === "Sharp & angular" ? <i style={{ borderRadius: 2, transform: "rotate(45deg) scale(.82)" }} /> :
+        k === "Organic" ? <i style={{ borderRadius: "58% 42% 55% 45% / 45% 58% 42% 55%" }} /> :
+        <i style={{ borderRadius: 8 }} />
+      }</span>;
+    }
+    const st = k === "Soft & warm" ? { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "linear-gradient(135deg, rgba(255,158,122,.35), rgba(201,182,255,.25))" }
+      : k === "Bold & bright" ? { fontWeight: 800, textTransform: "uppercase" as const, background: "rgba(255,158,122,.28)" }
+      : k === "Calm & minimal" ? { fontWeight: 300, letterSpacing: "0.14em", background: "rgba(255,255,255,.05)" }
+      : { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "rgba(124,156,255,.25)", transform: "rotate(-3deg)" };
+    return <span className="v feel" style={st}>{k.split(" ")[0]}</span>;
+  };
+  return (
+    <>
+      <div className="wr-stage center">
+        <div className="wr-tpick">
+          <div className="qrow">
+            <h1 className="wr-h" style={{ fontSize: 36, margin: 0 }}>{q}</h1>
+            <span className="wr-hint">{multi ? "Pick one or more" : "Pick one"}</span>
+          </div>
+          <div className="cards">
+            {opts.map((o) => {
+              const on = cur.includes(o.k);
+              return (
+                <button key={o.k} className={"tcard" + (on ? " sel" : "")} onClick={() => pickIt(o.k)}>
+                  {on && <span className="ck">✓</span>}
+                  {viz(o.k)}
+                  <b>{o.k}</b>
+                  <small>{o.d}</small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="wr-foot">
+        <button className="wr-link" onClick={onBack}>← Back</button>
+        <span style={{ display: "inline-flex", gap: 10 }}>
+          <button className="wr-btn2" onClick={onNext}>Skip</button>
+          <button className="wr-btn" style={{ maxWidth: 180 }} onClick={onNext}>Next →</button>
+        </span>
+      </div>
+    </>
   );
 }
 
