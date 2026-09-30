@@ -165,10 +165,7 @@
 /* concept pill inside the title */
 .wr-cpill {
   display: inline-block;
-  background: #fff;
-  color: #000;
-  border-radius: 980px;
-  padding: 0 0.42em;
+  color: inherit;
   white-space: nowrap;
 }
 

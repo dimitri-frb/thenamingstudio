@@ -1299,7 +1299,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                         {on && <span className="ck">✓</span>}
                         <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, pal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, height: 54 }) }} />
                         <span className="ln">{c.title}
-                          {!logoFocus && <button className="more" onClick={(e) => { e.stopPropagation(); setLogoFocus(c.key); }}>↻ More</button>}
+                          {!logoFocus && <span role="button" tabIndex={0} className="more" onClick={(e) => { e.stopPropagation(); setLogoFocus(c.key); }}>↻ More</span>}
                         </span>
                       </button>
                     );
