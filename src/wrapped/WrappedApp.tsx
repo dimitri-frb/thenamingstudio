@@ -1116,48 +1116,49 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 05 the reveal ═══ */}
+      {/* ═══ 05 the reveal (two columns, per the design) ═══ */}
       {step === "reveal" && picked && (
         <>
-          <div className="wr-stage center wr-reveal">
-            <div style={{ position: "relative", zIndex: 2 }}>
-              <p className="wr-kicker rise" style={{ marginBottom: 16 }}>Your name</p>
-              <h1 className="wr-bigname pop">{picked.name}</h1>
-              <p className="wr-tagline rise" style={{ margin: "14px 0 22px" }}>{picked.tagline}</p>
-              <div className="wr-partcards rise">
-                {(picked.parts || []).map((p) => (
-                  <div key={p.part} className="wr-partcard wr-frost"><b>{p.part}</b><span>{p.note}</span></div>
-                ))}
+          <div className="wr-stage center">
+            <div className="wr-revcols">
+              <div className="left rise">
+                <p className="wr-kicker" style={{ marginBottom: 14 }}>Your name</p>
+                <h1 className="wr-bigname pop" style={{ textAlign: "left" }}>{picked.name}</h1>
+                <p className="meaning">
+                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)} — {picked.parts[0].note}{picked.parts[1] ? <> — fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
+                  {" "}{picked.tagline}
+                </p>
               </div>
-              <div className="wr-next rise" style={{ marginTop: 26 }}>
+              <div className="right rise">
                 <p className="tri">One name down. <i>Two steps to make it real.</i></p>
-                <div className="row done2">
+                <div className="rrow">
                   <span className="i ok">✓</span>
-                  <span className="mid"><span className="tt">Name</span><span className="ss">You've got it. Congrats!</span></span>
+                  <span className="mid">
+                    <span className="hl"><b>Name</b><small>You've got it. Congrats!</small></span>
+                  </span>
                   <span className="nm2">{picked.name}</span>
                 </div>
-                <button className="row lead" onClick={() => toStep("domain")}>
+                <button className="rrow lead" onClick={() => toStep("domain")}>
                   <span className="i">2</span>
                   <span className="mid">
-                    <span className="tt">Domain</span>
-                    <span className="ss" style={{ display: "block" }}>Claim it now</span>
+                    <span className="hl"><b>Domain</b><small className="right">Claim it now</small></span>
                     {(domRows.filter((d) => d.status === "available").slice(0, 2)).map((d) => (
                       <span key={d.domain} className="dl"><i />{d.domain} · {d.price}</span>
                     ))}
+                    {!domRows.some((d) => d.status === "available") && <span className="dl dim">{picked.dom?.domain || "checking…"}</span>}
                   </span>
                   <span className="ar">→</span>
                 </button>
-                <button className="row" onClick={() => toStep("brand")}>
+                <button className="rrow" onClick={() => toStep("brand")}>
                   <span className="i">3</span>
                   <span className="mid">
-                    <span className="tt">Brand</span>
-                    <span className="ss">Built from your taste</span>
+                    <span className="hl"><b>Brand</b><small className="right">Built from your taste</small></span>
                     <span className="minis">
-                      <span className="mini"><i className="mv" dangerouslySetInnerHTML={{ __html: logoSvg("sunrise", picked.name, pal, { variant: "tile", accent: "dawn", height: 22 }) }} />Logo</span>
-                      <span className="mini"><i className="mv aa">Aa</i>Font</span>
-                      <span className="mini"><i className="mv sws"><b style={{ background: pal.dawn }} /><b style={{ background: pal.haze }} /><b style={{ background: pal.nova }} /></i>Colours</span>
-                      <span className="mini"><i className="mv pg" />Brand book</span>
-                      <span className="mini"><i className="mv at">@</i>Socials</span>
+                      <span className="mini"><i className="mv" dangerouslySetInnerHTML={{ __html: logoSvg("sunrise", picked.name, pal, { variant: "tile", accent: "dawn", height: 20 }) }} /><em>Logo</em></span>
+                      <span className="mini"><i className="mv aa">Aa</i><em>Font</em></span>
+                      <span className="mini"><i className="mv sws"><b style={{ background: pal.dawn }} /><b style={{ background: pal.haze }} /><b style={{ background: pal.nova }} /></i><em>Colours</em></span>
+                      <span className="mini"><i className="mv pg" /><em>Brand book</em></span>
+                      <span className="mini"><i className="mv at">@</i><em>Socials</em></span>
                     </span>
                   </span>
                   <span className="ar">→</span>
@@ -1167,9 +1168,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("domain")}>
-              Claim {domSel?.domain || picked.dom?.domain || "the domain"} →
-            </button>
+            <span />
           </div>
         </>
       )}
