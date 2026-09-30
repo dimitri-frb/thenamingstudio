@@ -171,8 +171,8 @@ function extractNames(text: string): WName[] {
   return out;
 }
 
-export async function fetchFreeDom(name: string): Promise<WDom | null> {
-  const r = await post<{ dom: WDom | null }>({ phase: "freedom", payload: { name } });
+export async function fetchFreeDom(name: string, doms?: string[]): Promise<WDom | null> {
+  const r = await post<{ dom: WDom | null }>({ phase: "freedom", payload: { name, doms } });
   return r?.dom ?? null;
 }
 
@@ -210,7 +210,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
           st.names = [...st.names, n];
           notify();
           // Each card's verified free domain fills in the moment we have it.
-          fetchFreeDom(n.name).then((d) => { n.dom = d; notify(); }).catch(() => {});
+          fetchFreeDom(n.name, (prefs as any)?.doms).then((d) => { n.dom = d; notify(); }).catch(() => {});
         }
         seen = Math.max(seen, objs.length);
       }
@@ -241,14 +241,14 @@ export function track(event: string, payload: Record<string, unknown> = {}): voi
 
 /* ── domains ── */
 const boardCache = new Map<string, Promise<DomainBoardData>>();
-export function fetchDomainBoard(name: string): Promise<DomainBoardData> {
-  const key = (name || "").trim().toLowerCase();
+export function fetchDomainBoard(name: string, doms?: string[]): Promise<DomainBoardData> {
+  const key = (name || "").trim().toLowerCase() + "|" + (doms || []).join(",");
   const empty: DomainBoardData = { name, tlds: [], variants: [], source: "none" };
-  if (!key) return Promise.resolve(empty);
-  if (TEST) return Promise.resolve(SAMPLE_BOARD(key));
+  if (!(name || "").trim()) return Promise.resolve(empty);
+  if (TEST) return Promise.resolve(SAMPLE_BOARD((name || "").trim().toLowerCase()));
   const hit = boardCache.get(key);
   if (hit) return hit;
-  const p = (async () => (await post<DomainBoardData>({ phase: "domainboard", payload: { name } })) || empty)();
+  const p = (async () => (await post<DomainBoardData>({ phase: "domainboard", payload: { name, doms } })) || empty)();
   boardCache.set(key, p);
   p.then((r) => { if (!r.tlds.length) boardCache.delete(key); }).catch(() => boardCache.delete(key));
   return p;

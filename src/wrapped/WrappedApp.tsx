@@ -51,8 +51,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [concept, setConcept] = useState<WConcept | null>(test ? SAMPLE.concept : null);
   const [feelOpts, setFeelOpts] = useState<string[]>(test ? [SAMPLE.concept.concept, ...(SAMPLE.concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
-  const [prefs, setPrefs] = useState<{ tone: string; style: string; length: string; langs: string[]; avoid: string[]; terr: string[] }>({
-    tone: "Balanced", style: "Any", length: "Any", langs: ["English"], avoid: [], terr: [],
+  const [prefs, setPrefs] = useState<{ tone: string; style: string; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[] }>({
+    tone: "Balanced", style: "Any", length: "Any", langs: ["English"], avoid: [], terr: [], doms: [],
   });
   const [styles, setStyles] = useState<WStyle[] | null>(test ? SAMPLE.styles : null);
   const [wtab, setWtab] = useState(0);
@@ -319,7 +319,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   useEffect(() => { // book + domain board: precharged the moment a name is picked
     if (!picked) return;
-    fetchDomainBoard(picked.name).then((b) => {
+    fetchDomainBoard(picked.name, prefs.doms).then((b) => {
       setBoard(b);
       fail("board", !b.tlds.length);
     });
@@ -464,7 +464,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       persist({ names: fin });
       if (!test && !base.length && fin[0]) {
         bookFetch(fin[0]);
-        fin.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name), i * 350));
+        fin.slice(0, 3).forEach((n, i) => setTimeout(() => fetchDomainBoard(n.name, prefs.doms), i * 350));
       }
       // "Generate six more" should feel instant: the next batch coins itself now.
       if (!test) {
@@ -892,6 +892,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
+                </div>
+                <p className="lbl">Domain</p>
+                <div className="opts">
+                  <button className={"wr-opt" + (!prefs.doms.length ? " on" : "")}
+                    onClick={() => { if (prefs.doms.length) { setPrefs({ ...prefs, doms: [] }); setNames(null); namesPre.current = null; morePre.current = null; } }}>
+                    {!prefs.doms.length ? "✓ " : ""}Any
+                  </button>
+                  {["com", "ai", ...prefs.doms.filter((d) => !["com", "ai"].includes(d))].map((d) => {
+                    const on = prefs.doms.includes(d);
+                    return (
+                      <button key={d} className={"wr-opt" + (on ? " on" : "")}
+                        onClick={() => { setPrefs({ ...prefs, doms: on ? prefs.doms.filter((x) => x !== d) : [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
+                        {on ? "✓ " : ""}.{d}
+                      </button>
+                    );
+                  })}
+                  <DomAdd onAdd={(d) => { if (!prefs.doms.includes(d)) { setPrefs({ ...prefs, doms: [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; } }} />
                 </div>
                 <p className="lbl">Avoid</p>
                 <div className="opts">
@@ -1467,6 +1484,19 @@ function AvoidAdd({ onAdd }: { onAdd: (w: string) => void }) {
     <span className="wr-opt chip">
       <input autoFocus placeholder="word"
         onBlur={(e) => { const v = e.target.value.trim(); if (v) onAdd(v); setOpen(false); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} />
+    </span>
+  );
+}
+
+/* small input for the refine page's custom domain extension */
+function DomAdd({ onAdd }: { onAdd: (d: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>＋ other</button>;
+  return (
+    <span className="wr-opt chip">.
+      <input autoFocus placeholder="io" style={{ width: "5ch" }}
+        onBlur={(e) => { const v = e.target.value.trim().toLowerCase().replace(/^\./, "").replace(/[^a-z.]/g, ""); if (v) onAdd(v); setOpen(false); }}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} />
     </span>
   );

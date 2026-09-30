@@ -100,7 +100,7 @@ export default {
     }
 
     if (phase === "domainboard") {
-      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || []), env);
+      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || [], body?.payload?.doms || []), env);
     }
 
     // What's actually on a (taken) domain, plus whether it looks like a real
@@ -239,11 +239,12 @@ export default {
       const slug = String(body?.payload?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!slug) return json({ dom: null }, env);
       const prices = await tldPrices(env);
-      const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
+      const order = domCheckOrder(body?.payload?.doms);
+      const states = await Promise.all(order.map((t) => rdap(slug, t)));
       const i = states.findIndex((s) => s === "available");
       const dom = i >= 0
-        ? { domain: `${slug}.${WRAP_DOM_TLDS[i]}`, tld: "." + WRAP_DOM_TLDS[i], price: (prices[WRAP_DOM_TLDS[i]] || BOARD_PRICE[WRAP_DOM_TLDS[i]] || ["$15"])[0], free: true }
-        : { domain: `${slug}.com`, tld: ".com", free: false }; // honest: the founder still sees the read
+        ? { domain: `${slug}.${order[i]}`, tld: "." + order[i], price: (prices[order[i]] || BOARD_PRICE[order[i]] || ["$15"])[0], free: true }
+        : { domain: `${slug}.${order[0]}`, tld: "." + order[0], free: false }; // honest: the founder still sees the read
       return json({ dom }, env);
     }
 
@@ -256,7 +257,7 @@ export default {
       let data = parseJSON(text);
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
-      if (phase === "wrapnames") data = await enrichWrapNames(env, data);
+      if (phase === "wrapnames") data = await enrichWrapNames(env, data, body?.payload?.prefs?.doms);
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
@@ -686,18 +687,27 @@ async function enrichCandidates(data: any): Promise<any> {
 // (first free of .com > .io > .app > .ai, verified via RDAP), so the card's
 // "aurova.com free" is a checked fact, not a guess.
 const WRAP_DOM_TLDS = ["com", "io", "app", "ai"];
-async function enrichWrapNames(env: Env, data: any): Promise<any> {
+// The founder's preferred extensions (from the refine page), first in every
+// availability check; only registry-verifiable TLDs join the free-check.
+function domCheckOrder(doms: unknown): string[] {
+  const prefs = (Array.isArray(doms) ? doms : [])
+    .map((d) => String(d).toLowerCase().replace(/^\./, "").trim())
+    .filter((d) => RDAP_BASE[d]);
+  return [...prefs, ...WRAP_DOM_TLDS.filter((t) => !prefs.includes(t))];
+}
+async function enrichWrapNames(env: Env, data: any, doms?: unknown): Promise<any> {
   const list = Array.isArray(data?.names) ? data.names : [];
   const prices = await tldPrices(env);
+  const order = domCheckOrder(doms);
   await Promise.all(list.map(async (n: any) => {
     const slug = (n?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     n.dom = null;
     if (!slug) return;
-    const states = await Promise.all(WRAP_DOM_TLDS.map((t) => rdap(slug, t)));
+    const states = await Promise.all(order.map((t) => rdap(slug, t)));
     const i = states.findIndex((s) => s === "available");
     n.dom = i >= 0
-      ? { domain: `${slug}.${WRAP_DOM_TLDS[i]}`, tld: "." + WRAP_DOM_TLDS[i], price: (prices[WRAP_DOM_TLDS[i]] || BOARD_PRICE[WRAP_DOM_TLDS[i]] || ["$15"])[0], free: true }
-      : { domain: `${slug}.com`, tld: ".com", free: false };
+      ? { domain: `${slug}.${order[i]}`, tld: "." + order[i], price: (prices[order[i]] || BOARD_PRICE[order[i]] || ["$15"])[0], free: true }
+      : { domain: `${slug}.${order[0]}`, tld: "." + order[0], free: false };
   }));
   data.names = list;
   return data;
@@ -1029,14 +1039,17 @@ async function godaddyPrice(env: Env, domain: string): Promise<{ price: string }
   finally { clearTimeout(timer); }
 }
 
-async function domainBoard(env: Env, name: string, geos: string[] = []): Promise<any> {
+async function domainBoard(env: Env, name: string, geos: string[] = [], doms: string[] = []): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
   const PRICES = await tldPrices(env);
   const priceOf = (t: string): [string, string] => PRICES[t] || BOARD_PRICE[t] || ["$15", "$18/yr"];
   // Build TLD list: .com first, then any ccTLDs the founder cares about, then standard ones.
   const ccTlds = (geos || []).map((g) => GEO_TLD[g]).filter(Boolean) as string[];
-  const BOARD_TLDS = ["com", ...ccTlds, ...BASE_TLDS_AFTER_COM.filter((t) => !ccTlds.includes(t))];
+  const prefTlds = (Array.isArray(doms) ? doms : [])
+    .map((d) => String(d).toLowerCase().replace(/^\./, "").trim()).filter(Boolean);
+  const lead = [...prefTlds, "com", ...ccTlds];
+  const BOARD_TLDS = [...new Set([...lead, ...BASE_TLDS_AFTER_COM])];
   const exact = BOARD_TLDS.map((t) => `${slug}.${t}`);
   const variantSlugs = [
     `try${slug}`, `get${slug}`, `use${slug}`, `join${slug}`,
