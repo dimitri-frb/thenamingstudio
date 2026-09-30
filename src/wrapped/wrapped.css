@@ -609,24 +609,31 @@
 }
 
 /* ── 06 domain ── */
-.wr-doms { display: flex; flex-direction: column; gap: 9px; width: 100%; max-width: 520px; }
+.wr-domcols { display: flex; gap: 56px; align-items: center; flex-wrap: wrap; }
+.wr-domcols .dcl { flex: 0 1 300px; min-width: 260px; }
+.wr-domcols .dcr { flex: 1 1 440px; min-width: 320px; }
+.wr-doms { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 .wr-dom {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 14px;
   width: 100%; text-align: left;
   background: var(--surface1); color: var(--text);
   border: 1px solid var(--hairline);
-  border-radius: 14px; padding: 14px 16px;
+  border-radius: 18px; padding: 18px 22px;
   cursor: pointer;
   transition: border-color 0.15s;
 }
 .wr-dom:hover { border-color: rgba(255, 255, 255, 0.3); }
 .wr-dom.sel { background: #fff; color: #000; border-color: #fff; }
-.wr-dom .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.wr-dom .rd { position: relative; flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.35); }
+.wr-dom.sel .rd { border: 2px solid #0f0d24; }
+.wr-dom.sel .rd::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #0f0d24; }
+.wr-dom .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 7px; vertical-align: middle; }
 .wr-dom .dot.sale { background: var(--sale); }
-.wr-dom .d { font-family: var(--mono); font-size: 15px; font-weight: 500; }
-.wr-dom .bp { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 980px; padding: 2.5px 8px; opacity: 0.75; }
-.wr-dom .st { margin-left: auto; font-size: 12px; color: inherit; opacity: 0.6; }
-.wr-dom .pr { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+.wr-dom .d { font-family: var(--mono); font-size: 17px; font-weight: 500; }
+.wr-dom .bp { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ok); }
+.wr-dom .st { margin-left: auto; font-size: 13px; color: inherit; opacity: 0.65; display: inline-flex; align-items: center; }
+.wr-dom .bp + .st { margin-left: 0; }
+.wr-dom .pr { font-family: var(--mono); font-size: 15px; font-weight: 600; min-width: 46px; text-align: right; }
 
 /* ── 06b logo grid ── */
 .wr-lwrap { width: 100%; max-width: 1060px; margin: 0 auto; }

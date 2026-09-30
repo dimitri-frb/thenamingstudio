@@ -1203,38 +1203,47 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "domain" && picked && (
         <>
           <div className="wr-stage center">
-            <div className="inner-nar">
-              <h1 className="wr-h" style={{ marginBottom: 6 }}>Where {picked.name} lives</h1>
-              <p className="wr-lead" style={{ marginBottom: 22 }}>Pick your address. Register your name in under a minute.</p>
-              {!board || (!board.tlds.length && fails.board) ? (
-                fails.board
-                  ? <GenFail note="We couldn't check the registries just now." onRetry={() => retry("board")} />
-                  : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
-              ) : (
-                <div className="wr-doms">
-                  {domRows.slice(0, domShow).map((d, i) => (
-                    <button key={d.domain} className={"wr-dom" + (domSel?.domain === d.domain ? " sel" : "")} onClick={() => setDomSel(d)}>
-                      <span className={"dot" + (d.status === "negotiable" ? " sale" : "")} />
-                      <span className="d">{d.domain}</span>
-                      {i === bestDomIdx && <span className="bp">Best pick</span>}
-                      <span className="st">{d.status === "negotiable" ? "for sale" : "available"}</span>
-                      <span className="pr">{d.price || d.offerPrice || ""}</span>
-                    </button>
-                  ))}
-                  {domRows.length > domShow && (
-                    <button className="wr-btn2" style={{ alignSelf: "flex-start" }} onClick={() => setDomShow((n) => n + 4)}>＋ Try another extension</button>
-                  )}
-                </div>
-              )}
+            <div className="wr-lwrap wr-domcols">
+              <div className="dcl">
+                <p className="wr-kicker" style={{ marginBottom: 12 }}>Where {picked.name} lives</p>
+                <h1 className="wr-h" style={{ fontSize: 52, lineHeight: 1.05, marginBottom: 16 }}>Pick your address.</h1>
+                <p className="wr-lead">Register your name in under a minute.</p>
+              </div>
+              <div className="dcr">
+                {!board || (!board.tlds.length && fails.board) ? (
+                  fails.board
+                    ? <GenFail note="We couldn't check the registries just now." onRetry={() => retry("board")} />
+                    : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
+                ) : (
+                  <div className="wr-doms">
+                    {domRows.slice(0, domShow).map((d, i) => {
+                      const on = domSel?.domain === d.domain;
+                      return (
+                        <button key={d.domain} className={"wr-dom" + (on ? " sel" : "")} onClick={() => setDomSel(d)}>
+                          <span className={"rd" + (on ? " on" : "")} />
+                          <span className="d">{d.domain}</span>
+                          {i === bestDomIdx && <span className="bp">Best pick</span>}
+                          <span className="st"><i className={"dot" + (d.status === "negotiable" ? " sale" : "")} />{d.status === "negotiable" ? "for sale" : "available"}</span>
+                          <span className="pr">{d.price || d.offerPrice || ""}</span>
+                        </button>
+                      );
+                    })}
+                    {domRows.length > domShow && (
+                      <button className="wr-link" style={{ alignSelf: "center", marginTop: 4 }} onClick={() => setDomShow((n) => n + 4)}>＋ Try another extension</button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="wr-foot col" style={{ gap: 8 }}>
-            <button className="wr-btn" disabled={!domSel} onClick={registerDomain}>
-              Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
-            </button>
-            {steps.domain === "done"
-              ? <button className="wr-btn2" onClick={() => toStep("brand")}>Next: Your brand →</button>
-              : <button className="wr-link" onClick={() => markStep("domain", "skipped", "brand")}>Skip for now</button>}
+          <div className="wr-foot">
+            <button className="wr-btn2" onClick={() => toStep("reveal")}>← Your name</button>
+            <span style={{ display: "inline-flex", gap: 16, alignItems: "center" }}>
+              <button className="wr-link" onClick={() => steps.domain === "done" ? toStep("brand") : markStep("domain", "skipped", "brand")}>The brand →</button>
+              <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!domSel} onClick={registerDomain}>
+                Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
+              </button>
+            </span>
           </div>
         </>
       )}
