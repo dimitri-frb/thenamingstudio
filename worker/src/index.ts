@@ -496,11 +496,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   /* ---------------- Wrapped flow (the live app) ---------------- */
   // 01 The ask: parse the sentence into 3 editable chips (industry, reach, audience).
-  wrapchips: (b) => ({ model: MODEL.fast, max: 160, prompt:
+  wrapchips: (b) => ({ model: MODEL.fast, max: 220, prompt:
     `A founder describes what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}".\n` +
-    `Extract exactly 3 short tags: (1) the industry or model (e.g. "B2B SaaS", "D2C brand", "Marketplace", "Coffee brand"), ` +
-    `(2) the reach ("Global" unless the sentence names a market, then that market), (3) the audience (e.g. "Founders", "Students", "Restaurants"). ` +
-    `1-2 words each, Title Case, in that order.\nReturn ONLY JSON {"chips":["...","...","..."]}.` }),
+    `Extract 3 to 5 short tags that mirror what the founder ACTUALLY SAID, most specific first:\n` +
+    `- the product form, in their words (e.g. "iPad POS", "Budgeting app", "Coffee brand", "AI legal tool")\n` +
+    `- the audience, in their words (e.g. "Restaurant owners", "Students", "Law firms")\n` +
+    `- the business model only when it is clear from the sentence ("B2B SaaS", "D2C", "Marketplace", "Subscription")\n` +
+    `- the market ONLY if the sentence names one (e.g. "France", "Local")\n` +
+    `- one more defining fact they stated, if there is one (e.g. "Weekly delivery", "Open source")\n` +
+    `RULES: 1-3 words each (hard cap, never join two with "and": pick the primary one), Title Case. Every tag must be grounded in the sentence; never pad with inventions or vague fillers like "Global", "Tech" or "Innovative". Precision beats coverage: 3 exact tags beat 5 loose ones.\n` +
+    `Return ONLY JSON {"chips":["...","..."]}.` }),
 
   // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
   // territories. On the fast model: this answer gates the whole flow, and the
