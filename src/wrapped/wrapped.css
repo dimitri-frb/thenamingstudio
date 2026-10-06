@@ -112,8 +112,8 @@
   .ka-land .wmrow { margin: 5vh 0 0; }
   .ka-land .wm { line-height: 0.84; }
   .ka-land .brief { position: relative; left: auto; top: auto; z-index: 5; margin-top: auto; width: 100%; max-width: none; height: auto; flex-direction: column; align-items: stretch; gap: 12px; padding: 0; border: none; background: transparent; border-radius: 0; }
-  .ka-land .brief input { height: 64px; font-size: 19px; border: 1.5px solid #000; border-radius: 980px; padding: 0 24px; background: #fff; }
-  .ka-land .brief button { height: 56px; justify-content: center; }
+  .ka-land .brief input { height: 70px; font-size: 20px; border: 2px solid #000; border-radius: 980px; padding: 0 26px; background: #fff; }
+  .ka-land .brief button { height: 64px; font-size: 16px; justify-content: center; }
   .ka-land .bbar { margin-top: 18px; justify-content: space-between; flex-wrap: nowrap; gap: 10px; }
   .ka-land .bbar .line { font-size: 11.5px; white-space: nowrap; }
   .ka-land .bbar .links { font-size: 10.5px; gap: 8px; white-space: nowrap; }
@@ -811,6 +811,10 @@
 .wr-domcols .dcl { flex: 0 1 300px; min-width: 260px; }
 .wr-domcols .dcr { flex: 1 1 440px; min-width: 320px; }
 .wr-doms { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.wr-domfil { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 2px; }
+.wr-domfil button { background: none; border: 1px solid var(--hairline2); border-radius: 980px; color: var(--text2); font-family: var(--mono); font-size: 12.5px; padding: 6px 13px; cursor: pointer; }
+.wr-domfil button.on { background: #fff; color: #000; border-color: #fff; font-weight: 600; }
+.wr-domfil button:hover:not(.on) { border-color: rgba(255, 255, 255, 0.45); }
 .wr-dom {
   display: flex; align-items: center; gap: 14px;
   width: 100%; text-align: left;
@@ -1131,7 +1135,8 @@
      (back left · secondary right, or a lone back centred) */
   .wr-foot:not(.col) { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 10px; padding: 12px 20px 30px; }
   .wr-foot.col { padding: 12px 20px 30px; }
-  .wr-foot .wr-btn { order: -1; flex: 0 0 100%; width: 100%; max-width: none !important; height: 52px; font-size: 16px; }
+  .wr-foot .wr-btn { width: 100%; max-width: none !important; height: 52px; font-size: 16px; flex: 0 0 auto; }
+  .wr-foot:not(.col) .wr-btn { order: -1; flex: 0 0 100%; }
   .wr-foot .wr-btn2,
   .wr-foot .wr-link { background: none; border: none; height: auto; padding: 2px 0; font-size: 13.5px; color: var(--text3); width: auto; }
   .wr-foot:not(.col) > :not(.wr-btn):first-child:nth-last-child(2) { flex: 1; text-align: center; }

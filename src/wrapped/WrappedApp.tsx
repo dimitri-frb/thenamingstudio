@@ -161,6 +161,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [board, setBoard] = useState<DomainBoardData | null>(null);
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [domShow, setDomShow] = useState(4);
+  const [domFilter, setDomFilter] = useState<string | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
@@ -512,6 +513,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     });
     return bi;
   }, [domRows]);
+
+  const domTlds = useMemo(() => Array.from(new Set(domRows.map((d) => d.tld || "." + d.domain.split(".").pop()))), [domRows]);
+  const domShown = useMemo(() => domRows.filter((d) => !domFilter || (d.tld || "." + d.domain.split(".").pop()) === domFilter), [domRows, domFilter]);
+  useEffect(() => { setDomFilter(null); }, [picked]);
 
   useEffect(() => { // default selection follows the best pick
     if (!domRows.length) return;
@@ -1245,20 +1250,35 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
                 ) : (
                   <div className="wr-doms">
-                    {domRows.slice(0, domShow).map((d, i) => {
+                    <div className="wr-domfil">
+                      <button className={!domFilter ? "on" : ""} onClick={() => setDomFilter(null)}>All</button>
+                      {domTlds.map((t) => (
+                        <button key={t} className={domFilter === t ? "on" : ""} onClick={() => setDomFilter(domFilter === t ? null : t)}>{t}</button>
+                      ))}
+                      <DomAdd onAdd={(d) => {
+                        const tld = d.toLowerCase().replace(/^\./, "");
+                        const doms = [...prefs.doms.filter((x) => x !== tld), tld];
+                        setPrefs({ ...prefs, doms });
+                        setBoard(null);
+                        fetchDomainBoard(picked.name, doms).then((b) => { setBoard(b); fail("board", !b.tlds.length); });
+                        setDomFilter("." + tld);
+                      }} />
+                    </div>
+                    {!domShown.length && <p className="wr-hint" style={{ padding: "10px 2px" }}>Nothing free on {domFilter} for this name. Try another extension.</p>}
+                    {domShown.slice(0, domShow).map((d, i) => {
                       const on = domSel?.domain === d.domain;
                       return (
                         <button key={d.domain} className={"wr-dom" + (on ? " sel" : "")} onClick={() => setDomSel(d)}>
                           <span className={"rd" + (on ? " on" : "")} />
                           <span className="d">{d.domain}</span>
-                          {i === bestDomIdx && <span className="bp">Best pick</span>}
+                          {!domFilter && i === bestDomIdx && <span className="bp">Best pick</span>}
                           <span className="st"><i className={"dot" + (d.status === "negotiable" ? " sale" : "")} />{d.status === "negotiable" ? "for sale" : "available"}</span>
                           <span className="pr">{d.price || d.offerPrice || ""}</span>
                         </button>
                       );
                     })}
-                    {domRows.length > domShow && (
-                      <button className="wr-link" style={{ alignSelf: "center", marginTop: 4 }} onClick={() => setDomShow((n) => n + 4)}>＋ Try another extension</button>
+                    {domShown.length > domShow && (
+                      <button className="wr-link" style={{ alignSelf: "center", marginTop: 4 }} onClick={() => setDomShow((n) => n + 4)}>＋ Show more</button>
                     )}
                   </div>
                 )}
