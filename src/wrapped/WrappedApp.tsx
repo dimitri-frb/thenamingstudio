@@ -1769,9 +1769,15 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
     const fit = () => {
       const wm = wmRef.current, f = frameRef.current;
       if (!wm || !f) return;
+      const mobile = f.clientWidth <= 760;
+      // Phones break the wordmark onto two lines and size it to "KNOWN".
+      wm.style.whiteSpace = "nowrap";
       wm.style.fontSize = "200px";
+      if (mobile) wm.textContent = "KNOWN";
       const w = wm.offsetWidth;
-      const gut = f.clientWidth <= 760 ? 40 : 64;
+      if (mobile) wm.textContent = "KNOWN AS";
+      wm.style.whiteSpace = mobile ? "normal" : "nowrap";
+      const gut = mobile ? 40 : 64;
       if (w) wm.style.fontSize = ((200 * (f.clientWidth - gut)) / w).toFixed(2) + "px";
     };
     fit();
@@ -1811,6 +1817,10 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
           </filter>
         </defs>
       </svg>
+      <div className="katop">
+        <span className="lang">EN</span>
+        <span className="m2">Menu ::</span>
+      </div>
       <div className="hero">
         <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
       </div>
