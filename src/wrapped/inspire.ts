@@ -31,6 +31,7 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Rivian", style: "invented", sector: "EVs", why: "River folded into an automotive suffix: nature inside a machine name." },
   { name: "Canva", style: "invented", sector: "Design", why: "Canvas minus a letter: the tool implied, the word ownable." },
   { name: "Xerox", style: "classical", sector: "Imaging", why: "Greek xeros, dry: lab science turned into a verb the world uses." },
+  { name: "Volvo", style: "classical", sector: "Automotive", why: "Latin for I roll: the product's motion, spoken in first person." },
   { name: "Nike", style: "myth", sector: "Sportswear", why: "The goddess of victory: two sounds carrying an infinite story." },
   { name: "Oracle", style: "myth", sector: "Enterprise", why: "Ancient authority applied to data: an audacious, confident metaphor." },
   { name: "Lego", style: "foreign", sector: "Toys", why: "Danish leg godt, play well: the company's values hidden in plain sight." },
@@ -45,12 +46,12 @@ export const INSPIRE: InspireBrand[] = [
 
 // The swipe deck (02·b): 10 brands, every card a genuinely different naming
 // style, so each swipe teaches the studio something distinct.
-//   Stripe   - a real, concrete word        Kodak        - pure invented sound
-//   Klarna   - invented from a meaning root Allbirds     - a plain-word compound
-//   Xerox    - a classical (Greek) root     Nike         - a myth
-//   Patagonia - a place                     Warby Parker - an invented person
-//   Uber     - a borrowed foreign word      Google       - a playful misspelling
+//   Stripe   - a real, concrete word        Kodak  - pure invented sound
+//   Klarna   - invented from a meaning root Airbnb - a compound with rhythm
+//   Volvo    - a classical (Latin) root     Nike   - a myth
+//   Patagonia - a place                     Tesla  - a person
+//   Uber     - a borrowed foreign word      Google - a playful misspelling
 export const SWIPE_DECK: InspireBrand[] = [
-  "Stripe", "Kodak", "Klarna", "Allbirds", "Xerox",
-  "Nike", "Patagonia", "Warby Parker", "Uber", "Google",
+  "Stripe", "Kodak", "Klarna", "Airbnb", "Volvo",
+  "Nike", "Patagonia", "Tesla", "Uber", "Google",
 ].map((n) => INSPIRE.find((b) => b.name === n)!);
