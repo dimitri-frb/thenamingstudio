@@ -65,8 +65,7 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
       {/* sidebar (desktop) */}
       <aside className="side wr-hidemob">
         <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-          <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
-          <span className="bt">the naming studio</span>
+          <span className="bt">KNOWN AS</span>
         </a>
         <nav>
           {NAV.map((n) => (
@@ -85,8 +84,7 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
         {/* mobile brand row */}
         <div className="wr-hidedesk" style={{ padding: "18px 0 0" }}>
           <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-            <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
-            <span className="bt">the naming studio</span>
+            <span className="bt">KNOWN AS</span>
           </a>
         </div>
 
@@ -288,8 +286,7 @@ function SignIn({ ready, onUser }: { ready: boolean; onUser: (u: WUser, s: Saved
       <div className="wr-glow" />
       <div className="wr-top">
         <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-          <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
-          <span className="bt">the naming studio</span>
+          <span className="bt">KNOWN AS</span>
         </a>
       </div>
       <div className="wr-stage center" style={{ textAlign: "center", alignItems: "center" }}>

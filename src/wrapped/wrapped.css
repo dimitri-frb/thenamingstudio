@@ -19,9 +19,11 @@
   --ok: #3ddc84;
   --sale: #ffb02e;
   --pillfill: #3b1a8f;
-  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --serif: 'Inter Tight', -apple-system, system-ui, sans-serif; /* the flow's display face (Known As restyle) */
+  --bookserif: 'Newsreader', Georgia, 'Times New Roman', serif;  /* the generated brand's own serif (book, logos) */
+  --sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --signal: #ff4f1a;
 }
 
 .wr {
@@ -50,8 +52,9 @@
 .ka-land .hero { position: absolute; left: 32px; top: 28px; right: 32px; z-index: 5; }
 .ka-land .tag { font-size: 30px; font-weight: 500; line-height: 1.08; letter-spacing: -0.025em; margin: 0; }
 .ka-land .brief {
+  position: absolute; left: 32px; top: 121px; z-index: 5;
   display: flex; align-items: center;
-  width: 660px; max-width: 100%; height: 64px; margin-top: 24px;
+  width: 660px; max-width: calc(100% - 64px); height: 64px;
   padding: 6px 6px 6px 26px; border-radius: 980px; border: 1.5px solid #000; background: #fff;
 }
 .ka-land .brief input {
@@ -96,14 +99,17 @@
 .ka-land .bbar .links i { font-style: normal; opacity: 0.5; }
 .ka-land .bbar .lang { display: inline-grid; place-items: center; height: 24px; padding: 0 7px; border-radius: 5px; background: #ff4f1a; color: #000; font-size: 12px; }
 @media (max-width: 760px) {
-  .ka-land .hero { left: 20px; right: 20px; top: 22px; }
+  /* phone: static column — tagline, wordmark, then the brief right under it */
+  .ka-land { display: flex; flex-direction: column; padding: 22px 20px 24px; }
+  .ka-land .hero, .ka-land .wmrow, .ka-land .bbar { position: static; }
+  .ka-land .brief { position: relative; left: auto; top: auto; z-index: 5; }
   .ka-land .tag { font-size: 24px; }
-  .ka-land .brief { width: 100%; height: auto; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px; border-radius: 22px; }
+  .ka-land .wmrow { margin: 9vh 0 22px; }
+  .ka-land .brief { width: 100%; max-width: none; height: auto; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px; border-radius: 22px; }
   .ka-land .brief input { height: 40px; }
   .ka-land .brief button { height: 48px; justify-content: center; }
-  .ka-land .wmrow { left: 20px; right: 20px; top: 40vh; }
   .ka-land .menu { display: none; }
-  .ka-land .bbar { left: 20px; right: 20px; justify-content: center; text-align: center; }
+  .ka-land .bbar { margin-top: auto; justify-content: center; text-align: center; }
   .ka-land .b { width: 180px !important; height: 180px !important; }
 }
 
@@ -148,7 +154,9 @@
 .wr-brand { display: inline-flex; align-items: center; gap: 9px; background: none; border: none; padding: 0; cursor: pointer; color: var(--text); }
 .wr-brand .bx { width: 22px; height: 22px; border-radius: 6px; background: #fff; display: grid; place-items: center; flex: 0 0 auto; }
 .wr-brand .bx svg { display: block; }
-.wr-brand .bt { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.wr-brand .bx { display: none; }
+.wr-brand .bt { font-family: 'Archivo', var(--sans); font-size: 18px; font-weight: 900; letter-spacing: -0.045em; line-height: 1; white-space: nowrap; text-transform: uppercase; }
+.wadm .wr-brand .bt { font-size: 16.5px; }
 .wr-chapter {
   position: absolute; left: 50%; transform: translateX(-50%);
   font-size: 12.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
@@ -171,7 +179,7 @@
 
 .wr-prog { display: flex; gap: 5px; padding: 12px 22px 22px; flex: 0 0 auto; }
 .wr-prog span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.26); }
-.wr-prog span.on { background: #fff; }
+.wr-prog span.on { background: var(--signal); }
 
 /* own-it tabs (06–08) */
 .wr-tabs { display: flex; gap: 7px; padding: 14px 22px 0; flex: 0 0 auto; overflow-x: auto; scrollbar-width: none; }
@@ -226,6 +234,9 @@
   margin: 0;
 }
 .wr-lead { font-size: 15.5px; line-height: 1.55; color: var(--text2); margin: 0; }
+/* Known As type pass: large display text is Inter Tight 600, tighter */
+.wr-h, .wr-bigname, .wr-wait .story h2, .wr-swipe .bn, .wr-ncard .nm,
+.wr-gate h3, .wr-sumodal h3, .wr-nmodal h3, .wr-scard .nm { font-weight: 600; letter-spacing: -0.035em; }
 .wr-hint { font-size: 12.5px; color: var(--text3); margin: 0; line-height: 1.5; }
 .wr-mono { font-family: var(--mono); }
 
@@ -305,7 +316,7 @@
 .wr-hiw h3 { font-family: var(--serif); font-weight: 500; font-size: 21px; letter-spacing: -0.01em; margin: 0 0 5px; }
 .wr-hiw .hd { font-size: 12.5px; color: var(--text3); line-height: 1.45; margin: 0; }
 .wr-hiw .minput { background: var(--surface3); border: 1px solid var(--hairline2); border-radius: 9px; padding: 9px 10px; font-size: 12px; color: var(--text2); line-height: 1.35; }
-.wr-hiw .caret { display: inline-block; width: 1.5px; height: 12px; background: #fff; margin-left: 2px; vertical-align: -2px; animation: wr-caret 1.1s step-end infinite; }
+.wr-hiw .caret { display: inline-block; width: 1.5px; height: 12px; background: var(--signal); margin-left: 2px; vertical-align: -2px; animation: wr-caret 1.1s step-end infinite; }
 .wr-hiw .mchips { display: flex; gap: 6px; }
 .wr-hiw .mchips span { font-size: 10px; font-weight: 600; color: var(--text3); border: 1px solid var(--hairline2); border-radius: 980px; padding: 3px 9px; }
 .wr-hiw .mfeel { font-size: 10.5px; color: var(--text3); margin: 0; }
@@ -330,7 +341,7 @@
 .wr-ask {
   width: 100%;
   background: none; border: none; outline: none;
-  color: #fff; caret-color: #fff;
+  color: #fff; caret-color: var(--signal);
   font-family: var(--serif);
   font-size: 27px; font-weight: 500; line-height: 1.28; letter-spacing: -0.015em;
   border-bottom: 1px solid var(--hairline2);
@@ -865,7 +876,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .bk-page.dark { background: var(--bk-night, #0f0d24); color: #fff; }
-.bk-serif { font-family: var(--serif); font-weight: 500; letter-spacing: -0.02em; }
+.bk-serif { font-family: var(--bookserif); font-weight: 500; letter-spacing: -0.02em; }
 .bk-kick { font-size: 8.5pt; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.5; }
 .bk-foot { position: absolute; left: 18mm; right: 18mm; bottom: 8mm; display: flex; justify-content: space-between; font-size: 7.5pt; opacity: 0.5; }
 

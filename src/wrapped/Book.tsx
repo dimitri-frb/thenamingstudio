@@ -40,7 +40,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   ) : null;
 
   const S = { // shared inline styles
-    h: { fontFamily: "var(--serif)", fontWeight: 500, letterSpacing: "-0.02em" } as const,
+    h: { fontFamily: "var(--bookserif)", fontWeight: 500, letterSpacing: "-0.02em" } as const,
     kick: { fontSize: "8.5pt", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase" as const, opacity: 0.5 },
     body: { fontSize: "10.5pt", lineHeight: 1.6 },
     small: { fontSize: "9pt", lineHeight: 1.55, opacity: 0.75 },
@@ -319,7 +319,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
                 <span>How it works</span><span>Pricing</span><span style={{ background: "#fff", color: "#000", borderRadius: 99, padding: "3pt 9pt", fontWeight: 700 }}>Start</span>
               </div>
             </div>
-            <div style={{ fontFamily: "var(--serif)", fontSize: "19pt", fontWeight: 500 }}>{book.tagline}</div>
+            <div style={{ fontFamily: "var(--bookserif)", fontSize: "19pt", fontWeight: 500 }}>{book.tagline}</div>
             <div style={{ fontSize: "8.5pt", marginTop: "6pt", opacity: 0.7 }}>Website header</div>
           </div>
           <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "13pt", fontSize: "9.5pt", opacity: 0.85 }}>

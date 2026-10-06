@@ -775,8 +775,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {/* shared header: logo left, chapter label centred, round ‹ › right */}
       {step !== "land" && <div className="wr-top">
         <button className="wr-brand" onClick={() => restart()}>
-          <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
-          <span className="bt">the naming studio</span>
+          <span className="bt">KNOWN AS</span>
         </button>
         {chapter && <span className="wr-chapter">{chapter.label}</span>}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -1352,7 +1351,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 18 }}>{tasteLine(taste)}</h1>
                 <div className="wr-tasteband">
                   {[tastePalette(taste).dawn, tastePalette(taste).haze, tastePalette(taste).nova, tastePalette(taste).night].map((c) => <i key={c} style={{ background: c }} />)}
-                  <span className="aa" style={{ fontFamily: tasteFont(taste) === "serif" ? "var(--serif)" : "var(--sans)" }}>Aa</span>
+                  <span className="aa" style={{ fontFamily: tasteFont(taste) === "serif" ? "var(--bookserif)" : "var(--sans)" }}>Aa</span>
                 </div>
                 <button className="wr-link" style={{ marginTop: 16, paddingLeft: 0 }} onClick={() => toStep("feel")}>↻ Swipe again</button>
               </div>
@@ -1814,14 +1813,14 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       </svg>
       <div className="hero">
         <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
-        <form className="brief" onSubmit={submit}>
-          <input ref={inputRef} type="text" placeholder="Describe what you're building…"
-            value={sentence} onChange={(e) => setSentence(e.target.value)} />
-          <button type="submit">Name it <span className="arr">→</span></button>
-        </form>
       </div>
       <span className="menu">Menu ::</span>
       <div className="wmrow"><span className="wm" ref={wmRef}>KNOWN AS</span></div>
+      <form className="brief" onSubmit={submit}>
+        <input ref={inputRef} type="text" placeholder="Describe what you're building…"
+          value={sentence} onChange={(e) => setSentence(e.target.value)} />
+        <button type="submit">Name it <span className="arr">→</span></button>
+      </form>
       <div className="ink" aria-hidden="true">
         <div className="goo">
           <span className="b a" />
@@ -1958,7 +1957,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
       return <span className="v cols">{palette.map((c) => <i key={c} style={{ background: c }} />)}</span>;
     }
     if (step === "ttype") {
-      const st = k === "Elegant serif" ? { fontFamily: "var(--serif)", fontWeight: 500 }
+      const st = k === "Elegant serif" ? { fontFamily: "var(--bookserif)", fontWeight: 500 }
         : k === "Clean sans" ? { fontWeight: 600 }
         : k === "Strong caps" ? { fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.06em", fontSize: 26 }
         : { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" as const };
@@ -1982,7 +1981,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
         </span>
       );
     }
-    const st = k === "Soft & warm" ? { fontFamily: "var(--serif)", fontStyle: "italic" as const, background: "linear-gradient(160deg, #fbe3d4, #f0b49a)", color: "#3c241a" }
+    const st = k === "Soft & warm" ? { fontFamily: "var(--bookserif)", fontStyle: "italic" as const, background: "linear-gradient(160deg, #fbe3d4, #f0b49a)", color: "#3c241a" }
       : k === "Bold & bright" ? { fontWeight: 800, textTransform: "uppercase" as const, background: "linear-gradient(160deg, #e8445a, #f5a03c)", color: "#fff" }
       : { fontWeight: 400, letterSpacing: "0.22em", background: "#f4f2ee", color: "#17151a", fontFamily: "var(--mono)" };
     return <span className="v feel" style={st}>{k === "Bold & bright" ? "BOLD" : k === "Calm & minimal" ? "calm" : "Soft"}</span>;
