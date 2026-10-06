@@ -947,7 +947,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="prow">
                 <span className="plbl">Who it's for</span>
                 <div className="opts">
-                  {["Everyone", "Founders", "Small businesses", "Big companies"].map((t) => {
+                  {["Everyone", "Founders", "Small businesses", "Big companies", ...prefs.who.filter((x) => !["Founders", "Small businesses", "Big companies"].includes(x))].map((t) => {
                     const on = t === "Everyone" ? !prefs.who.length : prefs.who.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, who: t === "Everyone" ? [] : on ? prefs.who.filter((x) => x !== t) : [...prefs.who, t] })}>{on ? "✓ " : ""}{t}</button>;
@@ -1004,31 +1004,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <em>Optional, sharpens the names</em>
             </div>
             <div className="prows">
-              <div className="prow">
-                <span className="plbl">Universes</span>
-                <div className="opts">
-                  {[...(concept?.territories || []).map((t) => t.name), ...prefs.terr.filter((x) => !(concept?.territories || []).some((t) => t.name === x))].map((name) => {
-                    const active = !prefs.terr.length || prefs.terr.includes(name);
-                    return (
-                      <button key={name} className={"wr-opt" + (active ? " on" : "")}
-                        onClick={() => {
-                          const all = (concept?.territories || []).map((x) => x.name);
-                          const cur = prefs.terr.length ? prefs.terr : all;
-                          const next = active ? cur.filter((x) => x !== name) : [...cur, name];
-                          if (!next.length) return; // keep at least one
-                          setPrefs({ ...prefs, terr: next.length === all.length && next.every((x) => all.includes(x)) ? [] : next });
-                          setStyles(null); setNames(null); namesPre.current = null; morePre.current = null;
-                        }}>{active ? "✓ " : ""}{name}</button>
-                    );
-                  })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => {
-                    const all = (concept?.territories || []).map((x) => x.name);
-                    const cur = prefs.terr.length ? prefs.terr : all;
-                    if (!cur.includes(w)) { setPrefs({ ...prefs, terr: [...cur, w] }); setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; }
-                  }} />
-                </div>
-              </div>
-              <div className="prow">
+                            <div className="prow">
                 <span className="plbl">Tone</span>
                 <div className="opts">
                   {["Balanced", "Friendly", "Serious", "Playful", ...prefs.tone.filter((x) => !["Friendly", "Serious", "Playful"].includes(x))].map((t) => {
@@ -1048,29 +1024,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <AvoidAdd label="＋ add" onAdd={(w) => setPrefs({ ...prefs, length: w })} />
                 </div>
               </div>
-              <div className="prow">
-                <span className="plbl">Space</span>
-                <div className="opts">
-                  {chips.map((c) => (
-                    <span key={c} className="wr-opt chip">{c}<button className="x" onClick={() => setChips(chips.filter((x) => x !== c))}>✕</button></span>
-                  ))}
-                  {addingChip
-                    ? <span className="wr-opt chip"><input autoFocus placeholder="add"
-                        onBlur={(e) => { const v = e.target.value.trim(); if (v) setChips([...chips, v]); setAddingChip(false); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
-                    : <button className="wr-opt add" onClick={() => setAddingChip(true)}>＋ add</button>}
-                </div>
-              </div>
-              <div className="prow">
-                <span className="plbl">Avoid</span>
-                <div className="opts">
-                  {prefs.avoid.map((w) => (
-                    <span key={w} className="wr-opt chip">“{w}”<button className="x" onClick={() => setPrefs({ ...prefs, avoid: prefs.avoid.filter((x) => x !== w) })}>✕</button></span>
-                  ))}
-                  <AvoidAdd onAdd={(w) => setPrefs({ ...prefs, avoid: [...prefs.avoid, w] })} />
-                </div>
-              </div>
-            </div>
+                                        </div>
           </div>
         </div>
       )}
