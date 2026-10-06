@@ -96,6 +96,8 @@
 .ka-land .bbar .line { font-size: 15px; letter-spacing: -0.01em; }
 .ka-land .bbar .links { display: flex; align-items: center; gap: 18px; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .ka-land .bbar .links button { background: none; border: none; padding: 0; font: inherit; color: #000; cursor: pointer; text-transform: uppercase; letter-spacing: inherit; }
+.ka-land .bbar .links button:hover { color: #ff4f1a; }
+.ka-land .brief button:hover { background: #ff6333; }
 .ka-land .bbar .links i { font-style: normal; opacity: 0.5; }
 .ka-land .bbar .lang { display: inline-grid; place-items: center; height: 24px; padding: 0 7px; border-radius: 5px; background: #ff4f1a; color: #000; font-size: 12px; }
 @media (max-width: 760px) {
