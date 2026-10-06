@@ -69,7 +69,6 @@
   cursor: pointer; flex: 0 0 auto; white-space: nowrap;
 }
 .ka-land .brief button .arr { font-size: 18px; letter-spacing: 0; }
-.ka-land .menu { position: absolute; right: 32px; top: 40px; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .ka-land .katop { display: none; }
 .ka-land .wmrow { position: absolute; left: 32px; right: 32px; top: clamp(200px, 32vh, 290px); }
 .ka-land .wm {
@@ -106,14 +105,12 @@
   .ka-land .hero, .ka-land .wmrow, .ka-land .bbar { position: static; }
   .ka-land .katop { display: flex; align-items: center; justify-content: space-between; z-index: 5; }
   .ka-land .katop .lang { display: inline-grid; place-items: center; height: 28px; padding: 0 9px; border-radius: 7px; background: #ff4f1a; color: #000; font-size: 13px; font-weight: 800; }
-  .ka-land .katop .m2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
-  .ka-land .menu { display: none; }
   .ka-land .hero { margin-top: 22px; }
   .ka-land .tag { font-size: 24px; }
   .ka-land .wmrow { margin: 5vh 0 0; }
   .ka-land .wm { line-height: 0.84; }
   .ka-land .brief { position: relative; left: auto; top: auto; z-index: 5; margin-top: auto; width: 100%; max-width: none; height: auto; flex-direction: column; align-items: stretch; gap: 12px; padding: 0; border: none; background: transparent; border-radius: 0; }
-  .ka-land .brief input { height: 56px; border: 1.5px solid #000; border-radius: 980px; padding: 0 22px; background: #fff; }
+  .ka-land .brief input { height: 64px; font-size: 19px; border: 1.5px solid #000; border-radius: 980px; padding: 0 24px; background: #fff; }
   .ka-land .brief button { height: 56px; justify-content: center; }
   .ka-land .bbar { margin-top: 18px; justify-content: space-between; flex-wrap: nowrap; gap: 10px; }
   .ka-land .bbar .line { font-size: 11.5px; white-space: nowrap; }

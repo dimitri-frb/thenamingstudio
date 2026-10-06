@@ -1819,12 +1819,10 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       </svg>
       <div className="katop">
         <span className="lang">EN</span>
-        <span className="m2">Menu ::</span>
       </div>
       <div className="hero">
         <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
       </div>
-      <span className="menu">Menu ::</span>
       <div className="wmrow"><span className="wm" ref={wmRef}>KNOWN AS</span></div>
       <form className="brief" onSubmit={submit}>
         <input ref={inputRef} type="text" placeholder="Describe what you're building…"
