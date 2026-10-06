@@ -61,7 +61,6 @@ const pathSlug = () => {
 // Entered through /test/<step>? Then every URL we push keeps the prefix.
 const TEST_PATH = /(?:^|\/)test(?:\/|$)/.test(window.location.pathname);
 
-const EXAMPLES = ["A budgeting app for students", "A calm coffee brand", "An AI tool for lawyers"];
 // The Brand chapter's taste quiz: four picks, then sliders.
 export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number } }
 const TASTE_DEFAULT: Taste = { feeling: ["Soft & warm"], colours: ["Dawn to night"], type: "Elegant serif", shape: "Round & soft", sliders: { ce: 35, wc: 28, rs: 30, ss: 28, mb: 35 } };
@@ -526,6 +525,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     pushUrl("ask");
   }
 
+  // The Known As landing submits the brief straight into the flow (02).
+  function startFromLanding() {
+    if (!test) { newProcess(); startedAt.current = Date.now(); }
+    track("search", { sentence: sentence.trim(), chips });
+    setStep("brief");
+    pushUrl("brief");
+    persist();
+  }
+
   function submitAsk() {
     if (sentence.trim().length < 4) return;
     track("search", { sentence: sentence.trim(), chips });
@@ -762,20 +770,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   return (
     <div className="wr">
-      {(step === "land" || step === "reveal" || step === "done") && <div className="wr-glow" />}
+      {(step === "reveal" || step === "done") && <div className="wr-glow" />}
 
       {/* shared header: logo left, chapter label centred, round ‹ › right */}
-      <div className="wr-top">
-        <button className="wr-brand" onClick={() => (step === "land" ? undefined : restart())}>
+      {step !== "land" && <div className="wr-top">
+        <button className="wr-brand" onClick={() => restart()}>
           <span className="bx"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
           <span className="bt">the naming studio</span>
         </button>
         {chapter && <span className="wr-chapter">{chapter.label}</span>}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          {step === "land" && <>
-            <button className="wr-link" onClick={() => toStep("how")}>How it works</button>
-            <button className="wr-signin" onClick={() => (user ? gotoAccount() : setSignupOpen(true))}>{user ? "My account" : "Sign up"}</button>
-          </>}
           {step === "how" && <span className="wr-tab on" style={{ cursor: "default" }}>How it works</span>}
           {step === "done" && <span className="wr-count">done</span>}
           {chapter && <>
@@ -785,7 +789,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               : <span className="wr-arr dim">›</span>}
           </>}
         </span>
-      </div>
+      </div>}
 
       {chapter && chapter.segs > 0 && step !== "brand" && (
         <div className="wr-prog">{Array.from({ length: chapter.segs }, (_, i) => <span key={i} className={i <= chapter.idx ? "on" : ""} />)}</div>
@@ -793,23 +797,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
       {/* ═══ 00 landing ═══ */}
       {step === "land" && (
-        <div className="wr-land">
-          <div className="hero">
-            <h1 className="wr-h rise" style={{ margin: "0 0 18px" }}>Find your name.<br />Own it.</h1>
-            <p className="wr-lead rise" style={{ maxWidth: 470, margin: "0 0 34px" }}>
-              Describe what you're building. Get a name with its domain, logo and brand book, in minutes.
-            </p>
-            <div className="wr-herobtns rise">
-              <button className="wr-btn herocta" onClick={() => startFlow(sentence)}>Start naming →</button>
-            </div>
-            <div className="wr-eg rise">
-              {EXAMPLES.map((x) => <button key={x} onClick={() => startFlow(x)}>{x}</button>)}
-            </div>
-          </div>
-          <div className="wr-youget2">
-            <span className="line">Name → Domain → Brand, in minutes.</span>
-          </div>
-        </div>
+        <LandingKA
+          sentence={sentence} setSentence={setSentence}
+          onSubmit={startFromLanding}
+          onHow={() => toStep("how")}
+          onLogin={() => (user ? gotoAccount() : setSignupOpen(true))}
+          loggedIn={!!user}
+        />
       )}
 
       {/* ═══ 00b how it works ═══ */}
@@ -936,7 +930,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot">
-            <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Check my brief →</button>
+            <button className="wr-btn mla" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Check my brief →</button>
           </div>
         </>
       )}
@@ -1757,6 +1751,94 @@ function WordsLoader({ concept }: { concept: string }) {
         ))}
       </div>
       <p className="eta">About {Math.max(2, Math.round(eta.current / 1000))} seconds · 96 words on the way</p>
+    </div>
+  );
+}
+
+/* ── The Known As landing (handoff 4b "The Wordmark"): white page, giant
+   edge-to-edge wordmark, ink blobs in difference blend, brief input up top ── */
+function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }: {
+  sentence: string; setSentence: (s: string) => void;
+  onSubmit: () => void; onHow: () => void; onLogin: () => void; loggedIn: boolean;
+}) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const wmRef = useRef<HTMLSpanElement>(null);
+  const followRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { // the wordmark spans exactly edge to edge, at every width
+    const fit = () => {
+      const wm = wmRef.current, f = frameRef.current;
+      if (!wm || !f) return;
+      wm.style.fontSize = "200px";
+      const w = wm.offsetWidth;
+      const gut = f.clientWidth <= 760 ? 40 : 64;
+      if (w) wm.style.fontSize = ((200 * (f.clientWidth - gut)) / w).toFixed(2) + "px";
+    };
+    fit();
+    const t1 = setTimeout(fit, 250), t2 = setTimeout(fit, 1200);
+    (document as any).fonts?.ready?.then(() => setTimeout(fit, 50));
+    window.addEventListener("resize", fit);
+    return () => { clearTimeout(t1); clearTimeout(t2); window.removeEventListener("resize", fit); };
+  }, []);
+
+  useEffect(() => { // the fourth blob eases toward the cursor
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+    const onMove = (e: MouseEvent) => {
+      const f = frameRef.current, b = followRef.current;
+      if (!f || !b) return;
+      const r = f.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      b.style.left = `${e.clientX - r.left - 170}px`;
+      b.style.top = `${e.clientY - r.top - 170}px`;
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sentence.trim().length < 4) { inputRef.current?.focus(); return; }
+    onSubmit();
+  };
+
+  return (
+    <div className="ka-land" ref={frameRef}>
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+        <defs>
+          <filter id="ka-goo">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="22" result="b" />
+            <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -12" />
+          </filter>
+        </defs>
+      </svg>
+      <div className="hero">
+        <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
+        <form className="brief" onSubmit={submit}>
+          <input ref={inputRef} type="text" placeholder="Describe what you're building…"
+            value={sentence} onChange={(e) => setSentence(e.target.value)} />
+          <button type="submit">Name it <span className="arr">→</span></button>
+        </form>
+      </div>
+      <span className="menu">Menu ::</span>
+      <div className="wmrow"><span className="wm" ref={wmRef}>KNOWN AS</span></div>
+      <div className="ink" aria-hidden="true">
+        <div className="goo">
+          <span className="b a" />
+          <span className="b bb" />
+          <span className="b c" />
+          <span className="b follow" ref={followRef} />
+        </div>
+      </div>
+      <div className="bbar">
+        <span className="line">Name, domain &amp; brand in minutes</span>
+        <span className="links">
+          <button onClick={onHow}>How it works</button>
+          <i>/</i>
+          <button onClick={onLogin}>{loggedIn ? "My account" : "Log in"}</button>
+          <span className="lang">EN</span>
+        </span>
+      </div>
     </div>
   );
 }
