@@ -1793,11 +1793,8 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       if (!f || !b) return;
       const r = f.getBoundingClientRect();
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-      // The blob follows the cursor but never parks on the hero or the bottom bar,
-      // so their black text is never left sitting on inverted black.
-      const y = Math.min(r.height * 0.68, Math.max(r.height * 0.22, e.clientY - r.top));
       b.style.left = `${e.clientX - r.left - 170}px`;
-      b.style.top = `${y - 170}px`;
+      b.style.top = `${e.clientY - r.top - 170}px`;
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
@@ -1831,14 +1828,6 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
           value={sentence} onChange={(e) => setSentence(e.target.value)} />
         <button type="submit">Name it <span className="arr">→</span></button>
       </form>
-      <div className="ink" aria-hidden="true">
-        <div className="goo">
-          <span className="b a" />
-          <span className="b bb" />
-          <span className="b c" />
-          <span className="b follow" ref={followRef} />
-        </div>
-      </div>
       <div className="bbar">
         <span className="line">Name, domain &amp; brand in minutes</span>
         <span className="links">
@@ -1847,6 +1836,14 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
           <button onClick={onLogin}>{loggedIn ? "My account" : "Log in"}</button>
           <span className="lang">EN</span>
         </span>
+      </div>
+      <div className="ink" aria-hidden="true">
+        <div className="goo">
+          <span className="b a" />
+          <span className="b bb" />
+          <span className="b c" />
+          <span className="b follow" ref={followRef} />
+        </div>
       </div>
     </div>
   );

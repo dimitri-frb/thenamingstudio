@@ -49,7 +49,7 @@
   font-family: 'Inter Tight', var(--sans);
   overflow: hidden;
 }
-.ka-land .hero { position: absolute; left: 32px; top: 28px; right: 32px; z-index: 5; }
+.ka-land .hero { position: absolute; left: 32px; top: 28px; right: 32px; }
 .ka-land .tag { font-size: 30px; font-weight: 500; line-height: 1.08; letter-spacing: -0.025em; margin: 0; }
 .ka-land .brief {
   position: absolute; left: 32px; top: 121px; z-index: 5;
@@ -90,7 +90,7 @@
   .ka-land .b { animation: none !important; transition: none !important; }
 }
 .ka-land .bbar {
-  position: absolute; left: 32px; right: 32px; bottom: 26px; z-index: 5;
+  position: absolute; left: 32px; right: 32px; bottom: 26px;
   display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
 }
 .ka-land .bbar .line { font-size: 15px; letter-spacing: -0.01em; }
@@ -99,13 +99,13 @@
 .ka-land .bbar .links button:hover { color: #ff4f1a; }
 .ka-land .brief button:hover { background: #ff6333; }
 .ka-land .bbar .links i { font-style: normal; opacity: 0.5; }
-.ka-land .bbar .lang { display: inline-grid; place-items: center; height: 24px; padding: 0 7px; border-radius: 5px; background: #ff4f1a; color: #000; font-size: 12px; }
+.ka-land .bbar .lang { position: relative; z-index: 6; display: inline-grid; place-items: center; height: 24px; padding: 0 7px; border-radius: 5px; background: #ff4f1a; color: #000; font-size: 12px; }
 @media (max-width: 760px) {
   /* phone (mock): EN + MENU row, tagline, two-line wordmark over the big blob,
      pill input + full-width Name it, one compact bottom row */
   .ka-land { display: flex; flex-direction: column; padding: 18px 20px 20px; }
   .ka-land .hero, .ka-land .wmrow, .ka-land .bbar { position: static; }
-  .ka-land .katop { display: flex; align-items: center; justify-content: space-between; z-index: 5; }
+  .ka-land .katop { position: relative; display: flex; align-items: center; justify-content: space-between; z-index: 5; }
   .ka-land .katop .lang { display: inline-grid; place-items: center; height: 28px; padding: 0 9px; border-radius: 7px; background: #ff4f1a; color: #000; font-size: 13px; font-weight: 800; }
   .ka-land .hero { margin-top: 22px; }
   .ka-land .tag { font-size: 24px; }
