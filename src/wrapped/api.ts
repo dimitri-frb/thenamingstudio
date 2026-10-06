@@ -319,6 +319,25 @@ export function recordEta(ms: number): void {
   } catch { /* ignore */ }
 }
 
+/* the concept read (01→02), usually precharged while typing */
+const BETA_KEY = "ns.briefEta";
+export function loadBriefEta(): number {
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(BETA_KEY) || "[]");
+    if (!arr.length) return 3000;
+    const s = [...arr].sort((a, b) => a - b);
+    return Math.min(12000, Math.max(1500, s[Math.floor(s.length / 2)]));
+  } catch { return 3000; }
+}
+export function recordBriefEta(ms: number): void {
+  if (ms < 900) return;
+  try {
+    const arr: number[] = JSON.parse(localStorage.getItem(BETA_KEY) || "[]");
+    arr.push(Math.round(ms));
+    localStorage.setItem(BETA_KEY, JSON.stringify(arr.slice(-6)));
+  } catch { /* ignore */ }
+}
+
 /* same idea for the words hunt (usually precharged, so this only shows cold) */
 const WETA_KEY = "ns.wordsEta";
 export function loadWordsEta(): number {

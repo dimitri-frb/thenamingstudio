@@ -7,7 +7,7 @@ import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
-  loadEta, loadWordsEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
+  loadBriefEta, loadEta, loadWordsEta, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
@@ -326,6 +326,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (s.length < 12) return;
     if (concept && conceptFor.current === s) return;
     const go = () => {
+      const t0 = Date.now();
       const key = s + "|" + retryTick;
       if (conceptReq.current === key) return;
       conceptReq.current = key;
@@ -338,6 +339,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             setStarred([]); setNames(null); namesPre.current = null;
           }
           conceptFor.current = s;
+          recordBriefEta(Date.now() - t0);
           setConcept(c);
           setFeelOpts([c.concept, ...(c.alts || [])].filter(Boolean).slice(0, 3));
           fail("concept", false);
@@ -908,7 +910,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               {!conceptReady ? (
                 fails.concept
                   ? <GenFail note="We couldn't read your brief just now." onRetry={() => retry("concept")} />
-                  : <div className="wr-load"><span className="wr-spin" /> Reading your brief…</div>
+                  : <BriefLoader sentence={sentence.trim()} chips={chips} />
               ) : (
                 <>
                   <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Here's what we heard</p>
@@ -1714,6 +1716,49 @@ function Grow({ value, onChange, onEnter, placeholder, boxed }: { value: string;
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onEnter(); } }}
     />
+  );
+}
+
+/* ── 01·l between brief and summary (design: Reading your brief). Shows only
+   when the concept genuinely needs time; a precharged arrival never sees it. ── */
+function BriefLoader({ sentence, chips }: { sentence: string; chips: string[] }) {
+  const [elapsed, setElapsed] = useState(0);
+  const eta = useRef(loadBriefEta());
+  useEffect(() => {
+    const t0 = Date.now();
+    const t = setInterval(() => setElapsed(Date.now() - t0), 120);
+    return () => clearInterval(t);
+  }, []);
+  if (elapsed < 700) return <div style={{ margin: "40px 0" }} />; // fast reads skip the ceremony
+  const p = Math.min(0.96, elapsed / eta.current);
+  const stage = p < 0.35 ? 0 : p < 0.85 ? 1 : 2;
+  const stages = ["Reading every word", "Finding the concept", "Writing your brief"];
+  const barLabel = stage === 0 ? "Reading every word…" : stage === 1 ? "Finding the idea behind it…" : "Writing your brief…";
+  // While "reading", a highlight sweeps through the sentence a couple of words at a time.
+  const words = sentence.split(/\s+/);
+  const hiAt = Math.floor(elapsed / 420) % Math.max(1, words.length - 1);
+  return (
+    <div className="wr-bload">
+      <p className="wr-kicker" style={{ marginBottom: 16 }}>Reading your brief</p>
+      <h1 className="quote">
+        “{words.map((w, i) => {
+          const hot = stage === 0 && (i === hiAt || i === hiAt + 1);
+          return <span key={i} className={hot ? "hot" : ""}>{w}{i < words.length - 1 ? " " : ""}</span>;
+        })}”
+      </h1>
+      {!!chips.length && <div className="chips">{chips.map((c) => <span key={c}>{c}</span>)}</div>}
+      <div className="barrow"><b>{barLabel}</b><span>{Math.round(p * 100)}%</span></div>
+      <div className="bar"><i style={{ width: `${Math.max(2, p * 100)}%` }} /></div>
+      <div className="stages">
+        {stages.map((st, i) => (
+          <span key={st} className={"st" + (i < stage ? " done" : i === stage ? " now" : "")}>
+            {i < stage ? <i className="tick">✓</i> : i === stage ? <span className="wr-spin" /> : <i className="tick idle" />}
+            {st}
+          </span>
+        ))}
+      </div>
+      <p className="eta">About {Math.max(2, Math.round(eta.current / 1000))} seconds</p>
+    </div>
   );
 }
 
