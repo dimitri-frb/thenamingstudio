@@ -42,7 +42,7 @@
 .wr *, .wr *::before, .wr *::after { box-sizing: border-box; }
 .wr button { font-family: inherit; }
 
-/* ═════════ the Known As landing (handoff 4b "The Wordmark") ═════════ */
+/* ═════════ the Name Names landing (handoff 4b "The Wordmark") ═════════ */
 .ka-land {
   position: absolute; inset: 0; z-index: 7;
   background: #fff; color: #000;
@@ -246,7 +246,7 @@
   margin: 0;
 }
 .wr-lead { font-size: 15.5px; line-height: 1.55; color: var(--text2); margin: 0; }
-/* Known As type pass: large display text is Inter Tight 600, tighter */
+/* Name Names type pass: large display text is Inter Tight 600, tighter */
 .wr-h, .wr-bigname, .wr-wait .story h2, .wr-swipe .bn, .wr-ncard .nm,
 .wr-gate h3, .wr-sumodal h3, .wr-nmodal h3, .wr-scard .nm { font-weight: 600; letter-spacing: -0.035em; }
 .wr-hint { font-size: 12.5px; color: var(--text3); margin: 0; line-height: 1.5; }

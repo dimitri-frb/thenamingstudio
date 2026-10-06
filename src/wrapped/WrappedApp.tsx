@@ -1,4 +1,4 @@
-// The Naming Studio — the "Wrapped" flow. One black stage:
+// Name Names — the "Wrapped" flow. One black stage:
 // 00 landing → 01 the ask → 02 brief wrapped → 03 the words → 04 the names
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
@@ -527,7 +527,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     pushUrl("ask");
   }
 
-  // The Known As landing submits the brief straight into the flow (02).
+  // The Name Names landing submits the brief straight into the flow (02).
   function startFromLanding() {
     if (!test) { newProcess(); startedAt.current = Date.now(); }
     track("search", { sentence: sentence.trim(), chips });
@@ -685,7 +685,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }
 
   function share() {
-    const text = `${picked?.name || "My new name"}, found with The Naming Studio`;
+    const text = `${picked?.name || "My new name"}, found with Name Names`;
     const url = "https://dimitri-frb.github.io/thenamingstudio/";
     if (navigator.share) { navigator.share({ title: picked?.name, text, url }).catch(() => {}); return; }
     navigator.clipboard?.writeText(`${text} · ${url}`).then(() => setShareMsg("Copied to clipboard"));
@@ -777,7 +777,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {/* shared header: logo left, chapter label centred, round ‹ › right */}
       {step !== "land" && <div className="wr-top">
         <button className="wr-brand" onClick={() => restart()}>
-          <span className="bt">KNOWN AS</span>
+          <span className="bt">NAME NAMES</span>
         </button>
         {chapter && <span className="wr-chapter">{chapter.label}</span>}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -1753,7 +1753,7 @@ function WordsLoader({ concept }: { concept: string }) {
   );
 }
 
-/* ── The Known As landing (handoff 4b "The Wordmark"): white page, giant
+/* ── The Name Names landing (handoff 4b "The Wordmark"): white page, giant
    edge-to-edge wordmark, ink blobs in difference blend, brief input up top ── */
 function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }: {
   sentence: string; setSentence: (s: string) => void;
@@ -1769,12 +1769,12 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       const wm = wmRef.current, f = frameRef.current;
       if (!wm || !f) return;
       const mobile = f.clientWidth <= 760;
-      // Phones break the wordmark onto two lines and size it to "KNOWN".
+      // Phones break the wordmark onto two lines and size it to "NAMES".
       wm.style.whiteSpace = "nowrap";
       wm.style.fontSize = "200px";
-      if (mobile) wm.textContent = "KNOWN";
+      if (mobile) wm.textContent = "NAMES";
       const w = wm.offsetWidth;
-      if (mobile) wm.textContent = "KNOWN AS";
+      if (mobile) wm.textContent = "NAME NAMES";
       wm.style.whiteSpace = mobile ? "normal" : "nowrap";
       const gut = mobile ? 40 : 64;
       if (w) wm.style.fontSize = ((200 * (f.clientWidth - gut)) / w).toFixed(2) + "px";
@@ -1822,7 +1822,7 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       <div className="hero">
         <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
       </div>
-      <div className="wmrow"><span className="wm" ref={wmRef}>KNOWN AS</span></div>
+      <div className="wmrow"><span className="wm" ref={wmRef}>NAME NAMES</span></div>
       <form className="brief" onSubmit={submit}>
         <input ref={inputRef} type="text" placeholder="Describe what you're building…"
           value={sentence} onChange={(e) => setSentence(e.target.value)} />
