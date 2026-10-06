@@ -1793,8 +1793,11 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       if (!f || !b) return;
       const r = f.getBoundingClientRect();
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      // The blob follows the cursor but never parks on the hero or the bottom bar,
+      // so their black text is never left sitting on inverted black.
+      const y = Math.min(r.height * 0.68, Math.max(r.height * 0.22, e.clientY - r.top));
       b.style.left = `${e.clientX - r.left - 170}px`;
-      b.style.top = `${e.clientY - r.top - 170}px`;
+      b.style.top = `${y - 170}px`;
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
