@@ -933,7 +933,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("ask")}>← Rewrite the brief</button>
             <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Check my brief →</button>
           </div>
         </>
@@ -961,11 +960,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="prow">
                 <span className="plbl">Name style</span>
                 <div className="opts">
-                  {["Any", "Invented", "Real word", "Compound"].map((t) => {
+                  {["Any", "Invented", "Real word", "Compound", ...prefs.style.filter((x) => !["Invented", "Real word", "Compound"].includes(x))].map((t) => {
                     const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.style.includes(w)) setPrefs({ ...prefs, style: [...prefs.style, w] }); }} />
                 </div>
               </div>
               <div className="prow">
@@ -973,11 +973,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <div className="opts">
                   <button className={"wr-opt" + (!prefs.langs.length ? " on" : "")}
                     onClick={() => setPrefs({ ...prefs, langs: [] })}>{!prefs.langs.length ? "✓ " : ""}Global</button>
-                  {["English", "French", "Spanish", "German"].map((t) => {
+                  {["English", "French", "Spanish", "German", ...prefs.langs.filter((x) => !["English", "French", "Spanish", "German"].includes(x))].map((t) => {
                     const on = prefs.langs.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.langs.includes(w)) setPrefs({ ...prefs, langs: [...prefs.langs, w] }); }} />
                 </div>
               </div>
               <div className="prow">
@@ -1008,38 +1009,45 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="prow">
                 <span className="plbl">Universes</span>
                 <div className="opts">
-                  {(concept?.territories || []).map((t) => {
-                    const active = !prefs.terr.length || prefs.terr.includes(t.name);
+                  {[...(concept?.territories || []).map((t) => t.name), ...prefs.terr.filter((x) => !(concept?.territories || []).some((t) => t.name === x))].map((name) => {
+                    const active = !prefs.terr.length || prefs.terr.includes(name);
                     return (
-                      <button key={t.name} className={"wr-opt" + (active ? " on" : "")}
+                      <button key={name} className={"wr-opt" + (active ? " on" : "")}
                         onClick={() => {
                           const all = (concept?.territories || []).map((x) => x.name);
                           const cur = prefs.terr.length ? prefs.terr : all;
-                          const next = active ? cur.filter((x) => x !== t.name) : [...cur, t.name];
+                          const next = active ? cur.filter((x) => x !== name) : [...cur, name];
                           if (!next.length) return; // keep at least one
-                          setPrefs({ ...prefs, terr: next.length === all.length ? [] : next });
+                          setPrefs({ ...prefs, terr: next.length === all.length && next.every((x) => all.includes(x)) ? [] : next });
                           setStyles(null); setNames(null); namesPre.current = null; morePre.current = null;
-                        }}>{active ? "✓ " : ""}{t.name}</button>
+                        }}>{active ? "✓ " : ""}{name}</button>
                     );
                   })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => {
+                    const all = (concept?.territories || []).map((x) => x.name);
+                    const cur = prefs.terr.length ? prefs.terr : all;
+                    if (!cur.includes(w)) { setPrefs({ ...prefs, terr: [...cur, w] }); setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; }
+                  }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Tone</span>
                 <div className="opts">
-                  {["Balanced", "Friendly", "Serious", "Playful"].map((t) => {
+                  {["Balanced", "Friendly", "Serious", "Playful", ...prefs.tone.filter((x) => !["Friendly", "Serious", "Playful"].includes(x))].map((t) => {
                     const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.tone.includes(w)) setPrefs({ ...prefs, tone: [...prefs.tone, w] }); }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Length</span>
                 <div className="opts">
-                  {["Short · 1–2 syllables", "Medium", "Any"].map((t) => (
+                  {["Short · 1–2 syllables", "Medium", "Any", ...(["Short · 1–2 syllables", "Medium", "Any"].includes(prefs.length) ? [] : [prefs.length])].map((t) => (
                     <button key={t} className={"wr-opt" + (prefs.length === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, length: t })}>{prefs.length === t ? "✓ " : ""}{t}</button>
                   ))}
+                  <AvoidAdd label="＋ add" onAdd={(w) => setPrefs({ ...prefs, length: w })} />
                 </div>
               </div>
               <div className="prow">
