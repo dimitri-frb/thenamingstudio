@@ -729,10 +729,10 @@
 .wr-tpick .tcard.sel { box-shadow: 0 0 0 2.5px #fff; border-color: transparent; }
 .wr-tpick .tcard .ck { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #000; font-size: 12px; font-weight: 800; display: grid; place-items: center; z-index: 1; }
 .wr-tpick .tcard .v { display: flex; align-items: center; justify-content: center; height: 200px; margin: 0; border-radius: 0; background: var(--surface2); font-size: 26px; color: #fff; overflow: hidden; }
-.wr-tpick .tcard .v.cols { gap: 8px; padding: 0 14px; }
-.wr-tpick .tcard .v.cols i { width: 22%; height: 120px; border-radius: 10px; }
+.wr-tpick .tcard .v.cols { gap: 8px; padding: 14px; }
+.wr-tpick .tcard .v.cols i { width: 22%; height: auto; align-self: stretch; border-radius: 10px; }
 .wr-tpick .tcard .v.type { font-size: 30px; }
-.wr-tpick .tcard .v.shape i { width: 88px; height: 88px; background: #fff; display: block; }
+.wr-tpick .tcard .v.shape i { width: 42%; max-width: 96px; aspect-ratio: 1; height: auto; background: #fff; display: block; }
 .wr-tpick .tcard .tx { padding: 26px 22px 28px; }
 .wr-tpick .tcard b { font-family: var(--serif); font-weight: 500; font-size: 19px; display: block; }
 .wr-tpick .tcard small { font-size: 13px; color: var(--text3); display: block; margin-top: 3px; }
@@ -1145,8 +1145,6 @@
   .wr-tpick .cards { gap: 10px; }
   .wr-tpick .tcard .v { height: 118px; font-size: 20px; }
   .wr-tpick .tcard .v.type { font-size: 21px; }
-  .wr-tpick .tcard .v.cols i { height: 70px; }
-  .wr-tpick .tcard .v.shape i { width: 56px; height: 56px; }
   .wr-tpick .tcard .tx { padding: 17px 16px 19px; }
   .wr-tpick .tcard b { font-size: 16px; }
   .wr-tpick .tcard small { font-size: 12px; }
