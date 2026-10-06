@@ -5,7 +5,7 @@
 
 export interface InspireBrand {
   name: string;
-  style: "real word" | "invented" | "compound" | "classical" | "foreign" | "place" | "person" | "myth";
+  style: "real word" | "invented" | "compound" | "classical" | "foreign" | "place" | "person" | "myth" | "initials";
   sector: string;
   why: string;
 }
@@ -42,16 +42,17 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Mailchimp", style: "compound", sector: "Marketing", why: "Serious utility plus a mascot's mischief: personality as strategy." },
   { name: "Warby Parker", style: "person", sector: "Eyewear", why: "Two invented literary characters from Kerouac's journals: fiction as heritage." },
   { name: "Tesla", style: "person", sector: "EVs", why: "The overlooked inventor as patron saint: engineering romance." },
+  { name: "LVMH", style: "initials", sector: "Luxury", why: "Three houses folded into four letters: a monogram worn like a crest." },
 ];
 
 // The swipe deck (02·b): 10 brands, every card a genuinely different naming
 // style, so each swipe teaches the studio something distinct.
-//   Stripe   - a real, concrete word        Kodak  - pure invented sound
-//   Klarna   - invented from a meaning root Airbnb - a compound with rhythm
-//   Volvo    - a classical (Latin) root     Nike   - a myth
-//   Patagonia - a place                     Tesla  - a person
-//   Uber     - a borrowed foreign word      Google - a playful misspelling
+//   Stripe - a real, concrete word   Apple  - a real word by contrast
+//   Kodak  - pure invented sound     Google - a playful misspelling
+//   Nike   - a myth                  Amazon - a place as metaphor
+//   Lego   - a foreign phrase        LVMH   - initials as a crest
+//   Tesla  - a person                Airbnb - a compound with rhythm
 export const SWIPE_DECK: InspireBrand[] = [
-  "Stripe", "Kodak", "Klarna", "Airbnb", "Volvo",
-  "Nike", "Patagonia", "Tesla", "Uber", "Google",
+  "Stripe", "Apple", "Kodak", "Google", "Nike",
+  "Amazon", "Lego", "LVMH", "Tesla", "Airbnb",
 ].map((n) => INSPIRE.find((b) => b.name === n)!);
