@@ -353,6 +353,71 @@
 .wr-opt.chip input { background: none; border: none; outline: none; color: #fff; font: inherit; width: 8ch; }
 @media (min-width: 900px) { .wr-refine .cols { grid-template-columns: 1fr 1fr; } }
 
+/* ── 02·r check your brief: label-column rows ── */
+.wr-refine .prows { margin-top: 18px; }
+.wr-refine .prow { display: flex; align-items: flex-start; gap: 14px; border-top: 1px solid #1f1f1f; padding: 14px 0; }
+.wr-refine .plbl { flex: 0 0 150px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); padding-top: 9px; }
+.wr-refine .prow .opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.wr-refine .pmore { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 10px; }
+.wr-refine .pmore span { font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text2); }
+.wr-refine .pmore em { font-style: normal; font-size: 12.5px; color: var(--text3); }
+@media (max-width: 720px) {
+  .wr-refine .prow { flex-direction: column; gap: 8px; }
+  .wr-refine .plbl { padding-top: 0; }
+}
+
+/* ── 02·b brands you like: the swipe deck ── */
+.wr-swipe { width: 100%; max-width: 980px; margin: 0 auto; display: flex; gap: 54px; align-items: center; flex-wrap: wrap; }
+.wr-swipe .left { flex: 0 1 300px; min-width: 260px; }
+.wr-swipe .right { flex: 1 1 380px; min-width: 320px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.wr-swipe .llbl { font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin: 0 0 7px; }
+.wr-swipe .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.wr-swipe .pl { font-size: 12.5px; font-weight: 600; border-radius: 980px; padding: 5px 12px; }
+.wr-swipe .pl.on { background: #fff; color: #000; }
+.wr-swipe .pl.off { border: 1px solid rgba(255, 255, 255, 0.26); color: rgba(255, 255, 255, 0.6); text-decoration: line-through; }
+.wr-swipe .none { font-size: 12.5px; color: var(--text3); }
+.wr-swipe .stack { position: relative; width: 330px; height: 340px; }
+.wr-swipe .card {
+  position: absolute; inset: 0;
+  border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(160deg, #1c1830, #0d0d0d);
+  transform: rotate(-3deg);
+}
+.wr-swipe .card.back1 { transform: rotate(2.5deg) translate(8px, 6px); opacity: 0.6; border-color: rgba(255, 255, 255, 0.18); }
+.wr-swipe .card.back2 { transform: rotate(-7deg) translate(-9px, 10px); opacity: 0.32; border-color: rgba(255, 255, 255, 0.12); }
+.wr-swipe .card.top {
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px;
+  padding: 22px; cursor: grab; touch-action: pan-y; user-select: none; z-index: 2;
+}
+.wr-swipe .card.top:active { cursor: grabbing; }
+.wr-swipe .prog { position: absolute; top: 16px; left: 18px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); }
+.wr-swipe .bn { font-family: var(--serif); font-weight: 500; font-size: 52px; letter-spacing: -0.02em; text-align: center; line-height: 1.02; }
+.wr-swipe .bd { font-size: 13px; color: var(--text2); text-align: center; max-width: 250px; line-height: 1.45; }
+.wr-swipe .tags { display: flex; gap: 7px; }
+.wr-swipe .tags i { font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); border: 1px solid var(--hairline2); border-radius: 980px; padding: 3px 10px; }
+.wr-swipe .stamp {
+  position: absolute; top: 22px; font-size: 20px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  border: 2.5px solid currentColor; border-radius: 8px; padding: 3px 12px; pointer-events: none;
+}
+.wr-swipe .stamp.like { right: 20px; color: var(--ok); transform: rotate(10deg); }
+.wr-swipe .stamp.nope { left: 20px; color: #ff6b6b; transform: rotate(-10deg); }
+.wr-swipe .acts { display: flex; align-items: center; gap: 22px; }
+.wr-swipe .act { width: 58px; height: 58px; border-radius: 50%; font-size: 21px; cursor: pointer; display: grid; place-items: center; }
+.wr-swipe .act.no { background: none; border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; }
+.wr-swipe .act.yes { background: #fff; border: none; color: #000; }
+.wr-swipe .act:hover { transform: scale(1.06); }
+.wr-swipe .hint { font-size: 12px; color: var(--text3); }
+.wr-swipe .alldone { text-align: center; padding: 60px 0; }
+@media (max-width: 720px) {
+  .wr-swipe { gap: 26px; }
+  .wr-swipe .left { flex: 1 1 100%; }
+  .wr-swipe .stack { width: 290px; height: 300px; }
+  .wr-swipe .bn { font-size: 42px; }
+}
+
+/* ── 03 words: the show-more / redefine strip under the columns ── */
+.wr-wmore { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0 8px; }
+
 /* logo page: colour + font menus */
 .wr-logoctl { display: flex; gap: 14px; margin: 14px 0 2px; flex-wrap: wrap; }
 .wr-logoctl label { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: var(--text3); }
@@ -910,16 +975,18 @@
   .wadm .kpis { grid-template-columns: repeat(4, 1fr); }
   .wr-sgrid { grid-template-columns: repeat(2, 1fr); }
 }
-@media (min-width: 1180px) {
-  .wr-sgrid { grid-template-columns: repeat(3, 1fr); }
-  .wr-bprev .thumbs { display: flex; }
-  .wr-dots { display: none; }
-  /* words: 6 columns, horizontal scroll */
+@media (min-width: 721px) {
+  /* words: 6 columns, horizontal scroll on narrower desktops */
   .wr-wtabs { display: none; }
   .wr-wcols { display: flex; gap: 34px; overflow-x: auto; flex: 1; min-height: 0; padding-bottom: 10px; }
   .wr-wcols .col { flex: 0 0 208px; }
   .wr-wcols .col h4 { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin: 0 0 8px; position: sticky; top: 0; background: var(--bg); padding: 4px 0 6px; }
   .wr-wlist.mobile { display: none; }
+}
+@media (min-width: 1180px) {
+  .wr-sgrid { grid-template-columns: repeat(3, 1fr); }
+  .wr-bprev .thumbs { display: flex; }
+  .wr-dots { display: none; }
   .wr-word { padding: 8px 2px; }
   .wr-word .w { font-size: 15px; }
   .wr-word .m { display: block; margin-left: 30px; text-align: left; flex-basis: 100%; }

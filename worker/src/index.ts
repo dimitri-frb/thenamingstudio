@@ -357,6 +357,8 @@ const prefLine = (p: any): string => {
     (Array.isArray(x) ? x : x ? [x] : []).filter((v: string) => v && !skip.includes(v));
   const tones = many(p.tone, ["Balanced"]);
   const stylesPicked = many(p.style, ["Any"]);
+  const who = many(p.who, ["Everyone"]);
+  if (who.length) lean.push(`made for: ${who.join(", ")}`);
   if (tones.length) lean.push(`tone: ${tones.join(" and ")}`);
   if (stylesPicked.length) lean.push(`name style(s): ${stylesPicked.join(", ")} — cover EACH picked style in the set`);
   if (p.length && p.length !== "Any") lean.push(`length: ${p.length}`);
@@ -365,6 +367,10 @@ const prefLine = (p: any): string => {
   let out = "";
   if (lean.length) out += `\nFOUNDER LEANINGS: make the MAJORITY of your output match these, but keep some variety beyond them: ${lean.join("; ")}.`;
   if (hard.length) out += `\nHARD CONSTRAINTS (no exceptions): ${hard.join("; ")}.`;
+  const liked = Array.isArray(p.brandsLiked) ? p.brandsLiked.filter(Boolean).slice(0, 12) : [];
+  const disliked = Array.isArray(p.brandsDisliked) ? p.brandsDisliked.filter(Boolean).slice(0, 12) : [];
+  if (liked.length) out += `\nTHE FOUNDER'S TASTE IN NAMES — existing brands they admire (match this sensibility, never copy or echo them): ${liked.join(", ")}.`;
+  if (disliked.length) out += `\nExisting brands whose naming style they REJECTED: ${disliked.join(", ")}. Stay out of that register.`;
   return out ? out + "\n" : "";
 };
 
@@ -504,7 +510,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- the business model only when it is clear from the sentence ("B2B SaaS", "D2C", "Marketplace", "Subscription")\n` +
     `- the market ONLY if the sentence names one (e.g. "France", "Local")\n` +
     `- one more defining fact they stated, if there is one (e.g. "Weekly delivery", "Open source")\n` +
-    `RULES: 1-3 words each (hard cap, never join two with "and": pick the primary one), Title Case. Every tag must be grounded in the sentence; never pad with inventions or vague fillers like "Global", "Tech" or "Innovative". Precision beats coverage: 3 exact tags beat 5 loose ones.\n` +
+    `RULES: 1-3 words each (hard cap, never join two with "and": pick the primary one), Title Case. Every tag must be grounded in the sentence; never pad with inventions or vague fillers like "Global", "Tech" or "Innovative". Precision beats coverage: 3 exact tags beat 5 loose ones. Tags describe the BUSINESS, never the description itself (nothing like "Incomplete Description", "Vague" or "Product"); if the sentence is thin, return fewer, sharper tags.\n` +
     `Return ONLY JSON {"chips":["...","..."]}.` }),
 
   // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
@@ -562,7 +568,10 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- Short: 1 to 3 syllables, ideally 4 to 8 letters. Sayable once, spellable from hearing.\n` +
     `- Original and evocative: it suggests a feeling tied to this brief, never literally describes the product.\n` +
     `- Ownable: distinctive enough to be a real trademark.\n` +
-    `- Sound: real mouthfeel and rhythm.\n\n` +
+    `- Sound: real mouthfeel and rhythm.\n` +
+    `- DEPTH: every name must work on two levels — an immediate sound and feeling, and a discoverable story underneath (an etymology, a metaphor, a reference) that rewards the founder for asking "why this word?". A name whose whole story is "it sounds nice" is a failure.\n\n` +
+    `THE BAR — real names of this calibre, and why they earn it (match this depth, never copy them):\n` +
+    `Stripe (concrete and visual, speed without saying payments) · Slack (a flaw reclaimed as a virtue) · Klarna (Swedish klar: clarity hidden in the sound) · Amazon (scale by metaphor) · Kodak (pure invented sound, sharp and unownable by language) · Nike (two sounds, an infinite myth) · Xerox (Greek xeros: lab science turned verb) · Allbirds (plain words joined into a story) · Vercel (Latin blend that sounds fast) · Toast (warm, lifted from the industry's own vocabulary).\n\n` +
     ((() => {
       const picked = (Array.isArray(b.payload?.prefs?.style) ? b.payload.prefs.style : b.payload?.prefs?.style ? [b.payload.prefs.style] : []).filter((x: string) => x && x !== "Any");
       return picked.length

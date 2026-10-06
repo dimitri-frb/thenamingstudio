@@ -12,11 +12,12 @@ import {
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { BRAND_TILES, buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { SWIPE_DECK } from "./inspire";
 import { download } from "./zip";
 import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
 
 type Step =
-  | "land" | "how" | "ask" | "brief" | "refine" | "words" | "names" | "reveal"
+  | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "words" | "names" | "reveal"
   | "domain"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "book" | "socials"
   | "done";
@@ -24,7 +25,7 @@ type Step =
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
   ask:    { label: "Chapter 1 · Name", segs: 5, idx: 0 },
   brief:  { label: "Chapter 1 · Name", segs: 5, idx: 1 },
-  refine: { label: "Chapter 1 · Name", segs: 5, idx: 1 },
+  refine: { label: "Chapter 1 · Name", segs: 5, idx: 1 }, brands: { label: "Chapter 1 · Name", segs: 5, idx: 1 },
   words:  { label: "Chapter 1 · Name", segs: 5, idx: 2 },
   names:  { label: "Chapter 1 · Name", segs: 5, idx: 3 },
   reveal: { label: "Chapter 1 · Name", segs: 5, idx: 4 },
@@ -40,12 +41,12 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
   socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
 };
-const STEPS_ALL: Step[] = ["land", "ask", "brief", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "book", "socials", "done"];
+const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "book", "socials", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", words: "3-words", names: "4-names", reveal: "5-reveal",
+  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", brands: "2-brands", words: "3-words", names: "4-names", reveal: "5-reveal",
   domain: "6-domain",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", logodone: "8-logo", book: "9-brand-book", socials: "10-socials", done: "11-done",
@@ -145,8 +146,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [concept, setConcept] = useState<WConcept | null>(test ? ACTIVE().concept : null);
   const [feelOpts, setFeelOpts] = useState<string[]>(test ? [ACTIVE().concept.concept, ...(ACTIVE().concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
-  const [prefs, setPrefs] = useState<{ tone: string[]; style: string[]; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[] }>({
-    tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [],
+  const [prefs, setPrefs] = useState<{ tone: string[]; style: string[]; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[]; who: string[]; brandsLiked: string[]; brandsDisliked: string[] }>({
+    tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [], who: [], brandsLiked: [], brandsDisliked: [],
   });
   const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
   const [wtab, setWtab] = useState(0);
@@ -399,24 +400,34 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, concept, conceptReady, styles, sentence, retryTick, prefs]);
 
-  // Page 3 infinite scroll: nearing the bottom appends 16 fresh words per style.
+  // Page 3 "Show more words": one more 16-per-column round (≈200 words total).
+  // The batch lands atomically so every column keeps the same count.
+  const [moreWordsBusy, setMoreWordsBusy] = useState(false);
+  const wordsMaxed = wordsBatches.current >= 1;
   function loadMoreWords() {
-    if (test || !styles || !concept || wordsBusyMore.current || wordsBatches.current >= 3) return;
+    if (test || !styles || !concept || wordsBusyMore.current || wordsBatches.current >= 1) return;
     wordsBusyMore.current = true;
+    setMoreWordsBusy(true);
     wordsBatches.current++;
     const key = wordsReq.current;
     const s = sentence.trim();
+    const fresh: (WWord[] | null)[] = new Array(styles.length).fill(null);
     let pending = styles.length;
     styles.forEach((st, i) => {
       wrapApi.wordStyle(s, concept.concept, concept.territories, { name: st.name, desc: "" }, i, { ...prefs, exclude: st.words.map((w) => w.w) }).then((r) => {
+        fresh[i] = r?.styles?.[0]?.words || null;
         pending--;
-        if (pending <= 0) wordsBusyMore.current = false;
-        if (wordsReq.current !== key || !r?.styles?.[0]?.words?.length) return;
-        const fresh = r.styles[0].words;
+        if (pending > 0) return;
+        wordsBusyMore.current = false;
+        setMoreWordsBusy(false);
+        if (wordsReq.current !== key) return;
+        // Even columns: append the same number of words to each (the smallest batch wins).
+        const per = Math.min(...fresh.map((f) => f?.length || 0));
+        if (per < 1) return;
         setStyles((cur) => cur?.map((c, j) => {
-          if (j !== i) return c;
           const seen = new Set(c.words.map((w) => w.w));
-          return { ...c, words: [...c.words, ...fresh.filter((w) => !seen.has(w.w))] };
+          const add = (fresh[j] || []).filter((w) => !seen.has(w.w)).slice(0, per);
+          return { ...c, words: [...c.words, ...add] };
         }) || cur);
       });
     });
@@ -525,7 +536,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const canEnter = (t: Step) => {
     const d = dataRef.current;
     if (t === "land" || t === "how" || t === "ask") return true;
-    if (t === "brief" || t === "refine" || t === "words") return !!d.sentence.trim();
+    if (t === "brief" || t === "refine" || t === "brands" || t === "words") return !!d.sentence.trim();
     if (t === "names") return !!(d.names?.length || d.starred.length);
     return !!d.picked;
   };
@@ -688,7 +699,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       if (e.key === "Enter" && !e.shiftKey) {
         if (step === "ask") { e.preventDefault(); submitAsk(); }
         else if (!typing) {
-          if (step === "brief" && concept) { e.preventDefault(); toStep("words"); }
+          if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
           else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
           else if (step === "names" && names?.length) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
           else if (step === "reveal") { e.preventDefault(); toStep("domain"); }
@@ -707,7 +718,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    ask: "land", brief: "ask", refine: "brief", words: "brief", names: "words", reveal: "names",
+    ask: "land", brief: "ask", refine: "brief", brands: "refine", words: "brands", names: "words", reveal: "names",
     domain: "reveal",
     brand: "domain", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", logodone: "logo", book: "logodone", socials: "book",
@@ -716,7 +727,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const fwdTarget = (): Step | null => {
     const t: Step | null =
       step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
-      step === "brief" || step === "refine" ? (conceptReady ? "words" : null) :
+      step === "brief" ? (conceptReady ? "refine" : null) :
+      step === "refine" ? "brands" :
+      step === "brands" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
       step === "names" ? (picked ? "reveal" : null) :
       step === "reveal" ? "domain" :
@@ -920,63 +933,80 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("refine")}>Not quite? Refine the brief</button>
-            <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("words")}>Show me the words →</button>
+            <button className="wr-link" onClick={() => toStep("ask")}>← Rewrite the brief</button>
+            <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Check my brief →</button>
           </div>
         </>
       )}
 
-      {/* ═══ 02b refine the brief ═══ */}
+      {/* ═══ 02·r check your brief (required) ═══ */}
       {step === "refine" && (
         <div className="wr-stage" style={{ paddingTop: 8 }}>
           <div className="wr-refine">
-            <p className="wr-kicker" style={{ marginBottom: 10 }}>Refine your brief</p>
-            <div className="headline">
-              <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>
-                Your name should feel like <span className="wr-cpill">{concept?.concept || "…"}</span>
-              </h1>
-              <span className="wr-hint">Updates as you change things</span>
-            </div>
-            <Grow value={sentence} onChange={setSentence} onEnter={() => conceptReady && toStep("words")} placeholder="What are you building?" boxed />
-            <div className="cols">
-              <div>
-                <p className="lbl">Feels like</p>
+            <p className="wr-kicker" style={{ marginBottom: 10 }}>Check your brief</p>
+            <h1 className="wr-h" style={{ fontSize: 34, margin: "0 0 16px" }}>Is this right? Change anything, then go.</h1>
+            <Grow value={sentence} onChange={setSentence} onEnter={() => conceptReady && toStep("brands")} placeholder="What are you building?" boxed />
+            <div className="prows">
+              <div className="prow">
+                <span className="plbl">Who it's for</span>
                 <div className="opts">
-                  {(feelOpts.length ? feelOpts : concept ? [concept.concept] : []).map((f) => (
-                    <button key={f} className={"wr-opt" + (concept?.concept === f ? " on" : "")}
-                      onClick={() => { if (!concept || concept.concept === f) return; setConcept({ ...concept, concept: f }); setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; }}>
-                      {concept?.concept === f ? "✓ " : ""}{f}
-                    </button>
-                  ))}
-                </div>
-                <p className="lbl">Tone</p>
-                <div className="opts">
-                  {["Balanced", "Friendly", "Serious", "Playful"].map((t) => {
-                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
+                  {["Everyone", "Founders", "Small businesses", "Big companies"].map((t) => {
+                    const on = t === "Everyone" ? !prefs.who.length : prefs.who.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, who: t === "Everyone" ? [] : on ? prefs.who.filter((x) => x !== t) : [...prefs.who, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
-                </div>
-                <p className="lbl">Length</p>
-                <div className="opts">
-                  {["Short · 1–2 syllables", "Medium", "Any"].map((t) => (
-                    <button key={t} className={"wr-opt" + (prefs.length === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, length: t })}>{prefs.length === t ? "✓ " : ""}{t}</button>
-                  ))}
-                </div>
-                <p className="lbl">Space</p>
-                <div className="opts">
-                  {chips.map((c) => (
-                    <span key={c} className="wr-opt chip">{c}<button className="x" onClick={() => setChips(chips.filter((x) => x !== c))}>✕</button></span>
-                  ))}
-                  {addingChip
-                    ? <span className="wr-opt chip"><input autoFocus placeholder="add"
-                        onBlur={(e) => { const v = e.target.value.trim(); if (v) setChips([...chips, v]); setAddingChip(false); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
-                    : <button className="wr-opt add" onClick={() => setAddingChip(true)}>＋ add</button>}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.who.includes(w)) setPrefs({ ...prefs, who: [...prefs.who, w] }); }} />
                 </div>
               </div>
-              <div>
-                <p className="lbl">Draw from</p>
+              <div className="prow">
+                <span className="plbl">Name style</span>
+                <div className="opts">
+                  {["Any", "Invented", "Real word", "Compound"].map((t) => {
+                    const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
+                  })}
+                </div>
+              </div>
+              <div className="prow">
+                <span className="plbl">Works in</span>
+                <div className="opts">
+                  <button className={"wr-opt" + (!prefs.langs.length ? " on" : "")}
+                    onClick={() => setPrefs({ ...prefs, langs: [] })}>{!prefs.langs.length ? "✓ " : ""}Global</button>
+                  {["English", "French", "Spanish", "German"].map((t) => {
+                    const on = prefs.langs.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
+                  })}
+                </div>
+              </div>
+              <div className="prow">
+                <span className="plbl">Domain</span>
+                <div className="opts">
+                  <button className={"wr-opt" + (!prefs.doms.length ? " on" : "")}
+                    onClick={() => { if (prefs.doms.length) { setPrefs({ ...prefs, doms: [] }); setNames(null); namesPre.current = null; morePre.current = null; } }}>
+                    {!prefs.doms.length ? "✓ " : ""}Any
+                  </button>
+                  {["com", "ai", "io", ...prefs.doms.filter((d) => !["com", "ai", "io"].includes(d))].map((d) => {
+                    const on = prefs.doms.includes(d);
+                    return (
+                      <button key={d} className={"wr-opt" + (on ? " on" : "")}
+                        onClick={() => { setPrefs({ ...prefs, doms: on ? prefs.doms.filter((x) => x !== d) : [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
+                        {on ? "✓ " : ""}.{d}
+                      </button>
+                    );
+                  })}
+                  <DomAdd onAdd={(d) => { if (!prefs.doms.includes(d)) { setPrefs({ ...prefs, doms: [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; } }} />
+                </div>
+              </div>
+            </div>
+            <div className="pmore">
+              <span>More details</span>
+              <em>Optional, sharpens the names</em>
+            </div>
+            <div className="prows">
+              <div className="prow">
+                <span className="plbl">Universes</span>
                 <div className="opts">
                   {(concept?.territories || []).map((t) => {
                     const active = !prefs.terr.length || prefs.terr.includes(t.name);
@@ -993,40 +1023,40 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     );
                   })}
                 </div>
-                <p className="lbl">Name style</p>
+              </div>
+              <div className="prow">
+                <span className="plbl">Tone</span>
                 <div className="opts">
-                  {["Any", "Invented", "Real word", "Compound"].map((t) => {
-                    const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
+                  {["Balanced", "Friendly", "Serious", "Playful"].map((t) => {
+                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
                 </div>
-                <p className="lbl">Must work in</p>
+              </div>
+              <div className="prow">
+                <span className="plbl">Length</span>
                 <div className="opts">
-                  {["English", "French", "Spanish", "German"].map((t) => {
-                    const on = prefs.langs.includes(t);
-                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
-                  })}
+                  {["Short · 1–2 syllables", "Medium", "Any"].map((t) => (
+                    <button key={t} className={"wr-opt" + (prefs.length === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, length: t })}>{prefs.length === t ? "✓ " : ""}{t}</button>
+                  ))}
                 </div>
-                <p className="lbl">Domain</p>
+              </div>
+              <div className="prow">
+                <span className="plbl">Space</span>
                 <div className="opts">
-                  <button className={"wr-opt" + (!prefs.doms.length ? " on" : "")}
-                    onClick={() => { if (prefs.doms.length) { setPrefs({ ...prefs, doms: [] }); setNames(null); namesPre.current = null; morePre.current = null; } }}>
-                    {!prefs.doms.length ? "✓ " : ""}Any
-                  </button>
-                  {["com", "ai", ...prefs.doms.filter((d) => !["com", "ai"].includes(d))].map((d) => {
-                    const on = prefs.doms.includes(d);
-                    return (
-                      <button key={d} className={"wr-opt" + (on ? " on" : "")}
-                        onClick={() => { setPrefs({ ...prefs, doms: on ? prefs.doms.filter((x) => x !== d) : [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
-                        {on ? "✓ " : ""}.{d}
-                      </button>
-                    );
-                  })}
-                  <DomAdd onAdd={(d) => { if (!prefs.doms.includes(d)) { setPrefs({ ...prefs, doms: [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; } }} />
+                  {chips.map((c) => (
+                    <span key={c} className="wr-opt chip">{c}<button className="x" onClick={() => setChips(chips.filter((x) => x !== c))}>✕</button></span>
+                  ))}
+                  {addingChip
+                    ? <span className="wr-opt chip"><input autoFocus placeholder="add"
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v) setChips([...chips, v]); setAddingChip(false); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
+                    : <button className="wr-opt add" onClick={() => setAddingChip(true)}>＋ add</button>}
                 </div>
-                <p className="lbl">Avoid</p>
+              </div>
+              <div className="prow">
+                <span className="plbl">Avoid</span>
                 <div className="opts">
                   {prefs.avoid.map((w) => (
                     <span key={w} className="wr-opt chip">“{w}”<button className="x" onClick={() => setPrefs({ ...prefs, avoid: prefs.avoid.filter((x) => x !== w) })}>✕</button></span>
@@ -1042,12 +1072,28 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <div className="wr-foot">
           <button className="wr-link" onClick={() => toStep("brief")}>← Back</button>
           <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady}
-            onClick={() => { if (wordsReq.current !== wordsKey()) { setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; } toStep("words"); }}>
-            Show me the words →
+            onClick={() => { if (wordsReq.current !== wordsKey()) { setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; } toStep("brands"); }}>
+            Looks good, next →
           </button>
         </div>
       )}
 
+      {/* ═══ 02·b brands you like (swipe) ═══ */}
+      {step === "brands" && (
+        <BrandSwipe
+          liked={prefs.brandsLiked} disliked={prefs.brandsDisliked}
+          onJudge={(name, like) => setPrefs((p) => ({
+            ...p,
+            brandsLiked: like ? [...p.brandsLiked.filter((x) => x !== name), name] : p.brandsLiked.filter((x) => x !== name),
+            brandsDisliked: !like ? [...p.brandsDisliked.filter((x) => x !== name), name] : p.brandsDisliked.filter((x) => x !== name),
+          }))}
+          onBack={() => toStep("refine")}
+          onNext={() => toStep("words")}
+        />
+      )}
+
+
+      {/* ═══ 02b refine the brief ═══ */}
       {/* ═══ 03 the words ═══ */}
       {step === "words" && (
         <>
@@ -1084,7 +1130,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     </div>
                   ))}
                 </div>
-                <MoreWordsSentinel onMore={loadMoreWords} />
+                <div className="wr-wmore">
+                  {!test && !wordsMaxed && (
+                    <button className="wr-btn2" disabled={moreWordsBusy} onClick={loadMoreWords}>
+                      {moreWordsBusy ? "Mining more words…" : "↻ Show more words"}
+                    </button>
+                  )}
+                  <button className="wr-link" onClick={() => toStep("refine")}>Not finding it? Redefine the brief</button>
+                </div>
               </>
             )}
           </div>
@@ -1697,6 +1750,100 @@ function WordsLoader({ concept }: { concept: string }) {
   );
 }
 
+/* ── 02·b Brands you like: a 12-card swipe deck that teaches the studio
+   the founder's naming taste (design handoff 02r-02b) ── */
+function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
+  liked: string[]; disliked: string[];
+  onJudge: (name: string, like: boolean) => void; onBack: () => void; onNext: () => void;
+}) {
+  const [idx, setIdx] = useState(liked.length + disliked.length < SWIPE_DECK.length ? liked.length + disliked.length : SWIPE_DECK.length);
+  const [dx, setDx] = useState(0);
+  const [fly, setFly] = useState<0 | 1 | -1>(0);
+  const drag = useRef<{ x0: number; on: boolean }>({ x0: 0, on: false });
+  const done = idx >= SWIPE_DECK.length;
+  const card = SWIPE_DECK[idx];
+
+  const judge = (like: boolean) => {
+    if (done || fly) return;
+    setFly(like ? 1 : -1);
+    const name = card.name;
+    setTimeout(() => { onJudge(name, like); setIdx((i) => i + 1); setFly(0); setDx(0); }, 240);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") { e.preventDefault(); judge(true); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); judge(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, fly]);
+
+  const px = fly ? fly * 640 : dx;
+  const rot = -3 + px / 22;
+  return (
+    <>
+      <div className="wr-stage center">
+        <div className="wr-swipe">
+          <div className="left">
+            <p className="wr-kicker" style={{ marginBottom: 10 }}>Brands you like</p>
+            <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 10 }}>Which names would you be proud of?</h1>
+            <p className="wr-lead" style={{ marginBottom: 22 }}>Swipe on real brands. Your taste shapes the words and the names.</p>
+            <div className="lists">
+              <p className="llbl">You like · {liked.length}</p>
+              <div className="pills">{liked.map((n) => <span key={n} className="pl on">{n}</span>)}{!liked.length && <span className="none">Nothing yet</span>}</div>
+              <p className="llbl" style={{ marginTop: 14 }}>Not for you · {disliked.length}</p>
+              <div className="pills">{disliked.map((n) => <span key={n} className="pl off">{n}</span>)}{!disliked.length && <span className="none">Nothing yet</span>}</div>
+            </div>
+          </div>
+          <div className="right">
+            {done ? (
+              <div className="alldone">
+                <p className="wr-kicker" style={{ marginBottom: 10 }}>That's the deck</p>
+                <p className="wr-lead">Your taste is in. On to the words.</p>
+              </div>
+            ) : (
+              <>
+                <div className="stack">
+                  {SWIPE_DECK[idx + 2] && <div className="card back2" />}
+                  {SWIPE_DECK[idx + 1] && <div className="card back1" />}
+                  <div
+                    className="card top"
+                    style={{ transform: `translateX(${px}px) rotate(${rot}deg)`, transition: fly || !drag.current.on ? "transform 0.24s ease" : "none" }}
+                    onPointerDown={(e) => { drag.current = { x0: e.clientX, on: true }; (e.target as HTMLElement).setPointerCapture(e.pointerId); }}
+                    onPointerMove={(e) => { if (drag.current.on) setDx(e.clientX - drag.current.x0); }}
+                    onPointerUp={() => {
+                      const d = dx; drag.current.on = false;
+                      if (d > 80) judge(true); else if (d < -80) judge(false); else setDx(0);
+                    }}
+                  >
+                    <span className="prog">{idx + 1} of {SWIPE_DECK.length}</span>
+                    {(px > 36) && <span className="stamp like">Like</span>}
+                    {(px < -36) && <span className="stamp nope">Nope</span>}
+                    <span className="bn">{card.name}</span>
+                    <span className="bd">{card.why}</span>
+                    <span className="tags"><i>{card.style}</i><i>{card.sector}</i></span>
+                  </div>
+                </div>
+                <div className="acts">
+                  <button className="act no" onClick={() => judge(false)} aria-label="Not for you">✕</button>
+                  <span className="hint wr-hidemob">← or → keys</span>
+                  <button className="act yes" onClick={() => judge(true)} aria-label="Like">♥</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="wr-foot">
+        <button className="wr-link" onClick={onBack}>← Back</button>
+        <button className="wr-btn2 mla" onClick={onNext}>Skip</button>
+        <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onNext}>Show me inspiring words →</button>
+      </div>
+    </>
+  );
+}
+
 /* ── the four taste pickers of the Brand chapter ── */
 function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
   step: "feel" | "tcol" | "ttype" | "tshape"; name: string; taste: Taste;
@@ -1782,9 +1929,9 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
 }
 
 /* small input for the refine page's Avoid list */
-function AvoidAdd({ onAdd }: { onAdd: (w: string) => void }) {
+function AvoidAdd({ onAdd, label }: { onAdd: (w: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
-  if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>＋ word to avoid</button>;
+  if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>{label || "＋ word to avoid"}</button>;
   return (
     <span className="wr-opt chip">
       <input autoFocus placeholder="word"
@@ -1807,18 +1954,6 @@ function DomAdd({ onAdd }: { onAdd: (d: string) => void }) {
   );
 }
 
-/* page 3 infinite scroll: fires when the founder nears the end of the field */
-function MoreWordsSentinel({ onMore }: { onMore: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) onMore(); }, { rootMargin: "300px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [onMore]);
-  return <div ref={ref} style={{ height: 1 }} />;
-}
 
 /* ── social icons (inline, official-ish glyph shapes) ── */
 function SocialIcon({ name }: { name: string }) {
