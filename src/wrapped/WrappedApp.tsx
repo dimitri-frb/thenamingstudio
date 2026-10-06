@@ -354,7 +354,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }, [test, step, sentence, chips, concept, retryTick]);
 
   const wordsPlan = (): WTerritory[] => {
-    const terrs = (concept?.territories || []).filter((t) => !prefs.terr.length || prefs.terr.includes(t.name));
+    const known = concept?.territories || [];
+    const terrs = known.filter((t) => !prefs.terr.length || prefs.terr.includes(t.name));
+    // Universes the founder typed themselves become columns of their own.
+    const custom = prefs.terr.filter((n) => !known.some((t) => t.name === n)).map((n) => ({ name: n, desc: "" }));
     const extras = [
       { name: "Motion", desc: "movement, drive, pace" },
       { name: "Clarity", desc: "clear, pure, true" },
@@ -362,7 +365,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       { name: "Craft", desc: "made with care, by hand" },
       { name: "Texture", desc: "how it feels to the touch" },
     ];
-    return [...terrs, ...extras].slice(0, 6);
+    return [...terrs, ...custom, ...extras].slice(0, 6);
   };
   const wordsKey = () =>
     (concept?.concept || "") + "|" + JSON.stringify([prefs.terr, prefs.langs, prefs.tone, prefs.style, prefs.avoid]) + "|" + retryTick;

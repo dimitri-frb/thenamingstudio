@@ -347,6 +347,25 @@ function json(data: unknown, env: Env, status = 200): Response {
   });
 }
 
+// What each swipe-deck brand says about taste (mirrors src/wrapped/inspire.ts).
+const BRAND_TRAITS: Record<string, string> = {
+  Stripe: "a real, concrete word; minimal, visual, grounded",
+  Kodak: "pure invented sound; abstract, sharp, ownable",
+  Klarna: "invented from a foreign meaning-root; layered, erudite",
+  Allbirds: "a plain-word compound; literal, warm, storytelling",
+  Xerox: "a classical Greek root; scientific, deep, intellectual",
+  Nike: "a myth; maximal depth in minimal sound",
+  Patagonia: "a place; evocative, romantic, grand",
+  "Warby Parker": "an invented person; characterful, literary, heritage",
+  Uber: "a borrowed foreign word; bold, direct, ambitious",
+  Google: "a playful misspelling of an erudite word; witty, approachable",
+  Figma: "soft invented word; friendly, modern",
+  Monzo: "bouncy invented sound; playful, international",
+  Notion: "an abstract real word; intellectual, quiet",
+  Slack: "a real word reclaimed; subversive, witty",
+  Amazon: "a place as metaphor; grand, ambitious",
+};
+
 // Founder refinements from the "refine your brief" page, folded into prompts.
 const prefLine = (p: any): string => {
   if (!p) return "";
@@ -369,8 +388,13 @@ const prefLine = (p: any): string => {
   if (hard.length) out += `\nHARD CONSTRAINTS (no exceptions): ${hard.join("; ")}.`;
   const liked = Array.isArray(p.brandsLiked) ? p.brandsLiked.filter(Boolean).slice(0, 12) : [];
   const disliked = Array.isArray(p.brandsDisliked) ? p.brandsDisliked.filter(Boolean).slice(0, 12) : [];
-  if (liked.length) out += `\nTHE FOUNDER'S TASTE IN NAMES — existing brands they admire (match this sensibility, never copy or echo them): ${liked.join(", ")}.`;
-  if (disliked.length) out += `\nExisting brands whose naming style they REJECTED: ${disliked.join(", ")}. Stay out of that register.`;
+  if (liked.length || disliked.length) {
+    const why = (n: string) => BRAND_TRAITS[n] ? ` (${BRAND_TRAITS[n]})` : "";
+    out += `\nTHE FOUNDER'S TASTE, from swiping on real brands. Read the PATTERN behind their choices — what kind of construction, depth and register they respond to — and weight the set toward it (never copy or echo the brands themselves).`;
+    if (liked.length) out += `\nThey LIKED: ${liked.map((n) => n + why(n)).join("; ")}.`;
+    if (disliked.length) out += `\nThey REJECTED: ${disliked.map((n) => n + why(n)).join("; ")}.`;
+    out += `\nIf their likes lean complex and layered (classical roots, myth, invented-with-meaning), give them erudite, layered coinages. If they lean plain and concrete (real words, literal compounds), keep it grounded. Mirror their sophistication level, not just their styles.`;
+  }
   return out ? out + "\n" : "";
 };
 

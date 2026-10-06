@@ -43,9 +43,14 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Tesla", style: "person", sector: "EVs", why: "The overlooked inventor as patron saint: engineering romance." },
 ];
 
-// The 12-card swipe deck (02·b): a deliberate mix of styles so the swipes
-// actually say something about taste.
+// The swipe deck (02·b): 10 brands, every card a genuinely different naming
+// style, so each swipe teaches the studio something distinct.
+//   Stripe   - a real, concrete word        Kodak        - pure invented sound
+//   Klarna   - invented from a meaning root Allbirds     - a plain-word compound
+//   Xerox    - a classical (Greek) root     Nike         - a myth
+//   Patagonia - a place                     Warby Parker - an invented person
+//   Uber     - a borrowed foreign word      Google       - a playful misspelling
 export const SWIPE_DECK: InspireBrand[] = [
-  "Stripe", "Figma", "Nike", "Allbirds", "Amazon", "Monzo",
-  "Notion", "Warby Parker", "Uber", "Klarna", "Patagonia", "Slack",
+  "Stripe", "Kodak", "Klarna", "Allbirds", "Xerox",
+  "Nike", "Patagonia", "Warby Parker", "Uber", "Google",
 ].map((n) => INSPIRE.find((b) => b.name === n)!);
