@@ -1313,3 +1313,117 @@
   }
   @page { size: A4 portrait; margin: 0; }
 }
+
+
+/* ═════════ the Name Name admin dashboard (white paper theme) ═════════ */
+.kadm {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+  background: #fff; color: #000;
+  font-family: 'Inter Tight', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.kadm .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.kadm .bt { font-family: 'Archivo', sans-serif; font-weight: 900; letter-spacing: -0.045em; font-size: 17px; white-space: nowrap; }
+.kadm.gate { display: grid; place-content: center; gap: 12px; text-align: center; }
+.kadm.gate a { color: #000; font-weight: 700; }
+
+.kadm .bar { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid #ececec; position: sticky; top: 0; background: #fff; z-index: 10; flex-wrap: wrap; }
+.kadm .brand { display: inline-flex; align-items: center; gap: 9px; }
+.kadm .brand em { font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: #000; color: #fff; border-radius: 6px; padding: 4px 8px; }
+.kadm .search { flex: 1; min-width: 180px; max-width: 420px; border: 1px solid #ececec; background: #fafaf8; border-radius: 980px; padding: 10px 16px; font-family: inherit; font-size: 13.5px; outline: none; }
+.kadm .search:focus { border-color: #000; }
+.kadm .ranges { display: inline-flex; background: #f2f1ee; border-radius: 980px; padding: 3px; }
+.kadm .ranges button { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border-radius: 980px; cursor: pointer; color: #6a6a6a; }
+.kadm .ranges button.on { background: #000; color: #fff; }
+.kadm .csv { border: 1px solid #ececec; background: #fff; border-radius: 980px; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 9px 16px; cursor: pointer; }
+.kadm .avwrap { position: relative; }
+.kadm .avatar { width: 36px; height: 36px; border-radius: 50%; border: none; background: #000; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
+.kadm .menu { position: absolute; right: 0; top: 44px; background: #fff; border: 1px solid #ececec; border-radius: 14px; box-shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.25); padding: 10px; width: 230px; display: flex; flex-direction: column; z-index: 20; }
+.kadm .menu .who { margin: 4px 6px 10px; display: flex; flex-direction: column; }
+.kadm .menu .who b { font-size: 14px; }
+.kadm .menu .who span { font-size: 12px; color: #6a6a6a; }
+.kadm .menu .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #6a6a6a; margin: 4px 6px; }
+.kadm .menu a, .kadm .menu button { text-align: left; border: none; background: none; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #000; padding: 8px 6px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+.kadm .menu a:hover, .kadm .menu button:hover { background: #f2f1ee; }
+.kadm .menu a.on { color: #ff4f1a; }
+
+.kadm .wrap { padding: 22px 24px 60px; max-width: 1440px; margin: 0 auto; }
+.kadm h2 { font-weight: 700; letter-spacing: -0.03em; margin: 6px 0 16px; }
+.kadm .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kadm .kpi { background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 16px 18px; }
+.kadm .kpi b { font-size: 28px; letter-spacing: -0.03em; display: block; }
+.kadm .kpi span { font-size: 12.5px; color: #6a6a6a; }
+
+.kadm .funnel { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; align-items: end; background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 18px 16px 12px; margin-top: 14px; }
+.kadm .fb { border: none; background: none; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 2px; border-radius: 10px; }
+.kadm .fb:hover { background: #f2f1ee; }
+.kadm .fb.on { background: #000; }
+.kadm .fb.on span, .kadm .fb.on b, .kadm .fb.on em { color: #fff; }
+.kadm .fb i { width: 100%; max-width: 46px; border-radius: 6px 6px 2px 2px; background: #d8d6d0; display: block; }
+.kadm .fb.on i { background: #ff4f1a; }
+.kadm .fb b { font-size: 13px; }
+.kadm .fb span { font-size: 10px; font-weight: 600; color: #6a6a6a; white-space: nowrap; }
+.kadm .fb em { font-style: normal; font-size: 9.5px; color: #ff4f1a; min-height: 12px; }
+
+.kadm .toolbar { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.kadm .tabs { display: inline-flex; gap: 4px; background: #f2f1ee; border-radius: 980px; padding: 3px; }
+.kadm .tabs button { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #6a6a6a; padding: 7px 12px; border-radius: 980px; cursor: pointer; }
+.kadm .tabs button i { font-style: normal; opacity: 0.6; }
+.kadm .tabs button.on { background: #000; color: #fff; }
+.kadm select { border: 1px solid #ececec; background: #fff; border-radius: 980px; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 12px; cursor: pointer; }
+.kadm select.on { background: #000; color: #fff; border-color: #000; }
+.kadm .clear { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #ff4f1a; cursor: pointer; }
+
+.kadm .split { display: flex; gap: 16px; margin-top: 14px; align-items: flex-start; }
+.kadm .tbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.kadm .row { display: grid; grid-template-columns: 1.3fr 1.6fr 1.2fr 1fr 0.9fr 0.9fr; gap: 12px; align-items: center; text-align: left; border: 1px solid #ececec; background: #fff; border-radius: 14px; padding: 12px 16px; font-family: inherit; cursor: pointer; }
+.kadm .row:hover { border-color: #c9c7c1; }
+.kadm .row.on { border-color: #ff4f1a; box-shadow: 0 0 0 1px #ff4f1a; }
+.kadm .row .user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.kadm .row .av { width: 30px; height: 30px; border-radius: 50%; background: #f2f1ee; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 12px; flex: 0 0 auto; }
+.kadm .row .user b { font-size: 13.5px; display: block; }
+.kadm .row .user em { font-style: normal; font-size: 11px; color: #6a6a6a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kadm .row .brief { font-size: 12.5px; color: #4a4a4a; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.kadm .row .stop b { font-size: 12.5px; display: block; }
+.kadm .row .stop b.live { color: #ff4f1a; }
+.kadm .row .stop em { font-style: normal; font-size: 10.5px; color: #6a6a6a; }
+.kadm .row .segs { display: flex; gap: 2px; margin-top: 4px; }
+.kadm .row .segs i { flex: 1; height: 3px; border-radius: 2px; background: #ececec; }
+.kadm .row .segs i.d { background: #000; }
+.kadm .row .segs i.c { background: #ff4f1a; }
+.kadm .row .nm b { font-size: 13.5px; }
+.kadm .row .nm em { font-style: normal; font-size: 11.5px; color: #9a9a9a; }
+.kadm .row .dom { font-size: 11.5px; }
+.kadm .row .act b { display: block; font-size: 11.5px; font-weight: 600; }
+.kadm .row .act em { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: #f2f1ee; border-radius: 980px; padding: 2px 7px; color: #6a6a6a; }
+
+.kadm .panel { flex: 0 0 320px; position: sticky; top: 76px; background: #fafaf8; border: 1px solid #ececec; border-radius: 16px; padding: 18px; }
+.kadm .panel .x { position: absolute; top: 12px; right: 12px; border: none; background: #fff; border: 1px solid #ececec; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; }
+.kadm .panel .pill { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 980px; padding: 5px 11px; background: #ececec; }
+.kadm .panel .pill.live { background: #ff4f1a; color: #fff; }
+.kadm .panel .pill.done { background: #000; color: #fff; }
+.kadm .panel h3 { margin: 12px 0 2px; letter-spacing: -0.02em; }
+.kadm .panel .dim { color: #6a6a6a; font-size: 12px; margin: 0; }
+.kadm .panel .meta { margin: 14px 0 4px; border-top: 1px solid #ececec; }
+.kadm .panel .meta p { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #ececec; padding: 7px 0; margin: 0; font-size: 12.5px; }
+.kadm .panel .meta em { font-style: normal; color: #6a6a6a; }
+.kadm .panel .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #6a6a6a; margin: 14px 0 4px; }
+.kadm .panel .val { margin: 0; font-size: 13px; }
+.kadm .panel .tl p { display: flex; gap: 10px; font-size: 12px; margin: 0 0 5px; }
+.kadm .panel .tl .mono { color: #6a6a6a; font-size: 11px; }
+.kadm .mailbtn { display: inline-block; margin-top: 14px; background: #000; color: #fff; border-radius: 980px; padding: 10px 18px; font-size: 13px; font-weight: 700; text-decoration: none; }
+
+.kadm .panelcard { background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; max-width: 560px; }
+.kadm .panelcard .lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #6a6a6a; margin: 0 0 8px; }
+.kadm .panelcard .invite { display: inline-block; margin-top: 8px; font-weight: 700; color: #000; }
+.kadm .panelcard .hint { font-size: 11.5px; color: #6a6a6a; margin: 8px 0 0; }
+.kadm .hint { color: #6a6a6a; font-size: 13px; }
+
+@media (max-width: 900px) {
+  .kadm .kpis { grid-template-columns: 1fr 1fr; }
+  .kadm .funnel { grid-template-columns: repeat(5, 1fr); row-gap: 14px; }
+  .kadm .row { grid-template-columns: 1fr 1fr; }
+  .kadm .row .brief { display: none; }
+  .kadm .split { flex-direction: column; }
+  .kadm .panel { position: static; flex: 1 1 auto; width: 100%; }
+}

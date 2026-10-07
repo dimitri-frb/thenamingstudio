@@ -8,7 +8,6 @@ import {
   type SavedSearch, type WUser,
 } from "./api";
 import { buildLogoPack, DEFAULT_PALETTE, logoSvg, toPalette, type Accent } from "./logos";
-import { AllNames } from "./AdminPage";
 import { download } from "./zip";
 
 const BASE = () => (import.meta as any).env.BASE_URL || "/";
@@ -115,7 +114,8 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
         {shownTab === "all" && (
           <>
             <div className="headrow"><h1 className="wr-h" style={{ margin: 0 }}>All names</h1></div>
-            <AllNames />
+            <p className="wr-lead" style={{ margin: "16px 0 18px" }}>The full admin dashboard has its own page now: every flow, where it stopped, sources and campaigns.</p>
+            <a className="wr-btn" style={{ maxWidth: 300, textDecoration: "none", display: "inline-flex" }} href={BASE() + "admin"}>Open the admin dashboard →</a>
           </>
         )}
 

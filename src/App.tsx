@@ -7,6 +7,7 @@
 import { WrappedApp } from "./wrapped/WrappedApp";
 import { SharePage } from "./wrapped/SharePage";
 import { AccountPage } from "./wrapped/AccountPage";
+import { AdminPage } from "./wrapped/AdminPage";
 import { setFixture } from "./wrapped/api";
 
 export default function App() {
@@ -20,7 +21,7 @@ export default function App() {
   const shareMatch = path.match(/(?:^|\/)s\/([a-z0-9-]{3,60})\/?$/);
   if (shareMatch) return <SharePage id={shareMatch[1]} />;
 
-  if (is("admin")) return <AccountPage initialTab="all" />;
+  if (is("admin")) return <AdminPage />;
   if (is("account")) return <AccountPage />;
 
   // /test/1-brief, /test/8-logos… run the flow on the Tiller example.
