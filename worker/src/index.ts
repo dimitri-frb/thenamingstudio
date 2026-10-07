@@ -597,7 +597,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       const excl = Array.isArray(b.payload?.prefs?.exclude) ? b.payload.prefs.exclude : [];
       return { model: MODEL.fast, max: 950, prompt:
         common + prefLine(b.payload?.prefs) +
-        `Produce exactly ONE word style named "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 16 words that mine this angle for THIS brief.\n` +
+        `Produce exactly ONE word style for the angle "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 16 words that mine this angle for THIS brief. The style's "name" in your output must be in the brief's language (translate the angle name if needed).\n` +
         (excl.length ? `Never repeat these already-shown words: ${excl.slice(-64).join(", ")}.\n` : "") +
         wordSpec +
         `Return ONLY JSON {"styles":[{"name":"${String(st.name).slice(0, 40)}","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 1 style of exactly 16 words.` };
@@ -680,7 +680,8 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
         ? `THE PALETTE IS ALREADY CHOSEN: use EXACTLY these 4 hexes in this order, verbatim (rename each with one evocative word that fits THIS brand): ${JSON.stringify(b.payload.taste.palette.map((c: any) => c.hex))}.\n` : "") +
       `Write brand book content. Match the register of a world-class studio: short, warm, confident, zero jargon. All content specific to ${b.payload?.name || "the name"}, never Aurova unless that is the name. Return ONLY JSON with EXACTLY this shape:\n`;
     const shapeA =
-      `{"tagline":"6-8 word brand tagline",` +
+      `{"lang":"two-letter code of the language you are writing in (en, fr, ...)",` +
+      `"tagline":"6-8 word brand tagline",` +
       `"story":{"headline":"5-8 word poetic line","para":"3 sentences on why this company exists and what the name holds","oneSentence":"NAME helps … (one line)","believe":"one line","wedo":"one line","whofor":"one line"},` +
       `"origin":{"headline":"4-7 words on the construction","parts":[{"part":"aurora","lang":"Latin","gloss":"Dawn","para":"2 sentences of real etymology and story"}],"carries":[{"word":"Light","note":"clarity where there was none"},{"word":"...","note":"..."},{"word":"...","note":"..."},{"word":"...","note":"..."}],"closing":"1-2 sentences on why the coinage is ownable"},` +
       `"saying":{"ipa":"/…/","plain":"aw-ROH-vuh","syllables":[{"s":"aw"},{"s":"ROH","stress":true},{"s":"vuh"}],"world":[{"language":"English","sounds":"aw-ROH-vuh","note":"reference pronunciation"},{"language":"French","sounds":"…","note":"…"},{"language":"Spanish · Italian","sounds":"…","note":"…"},{"language":"German","sounds":"…","note":"…"}],"writeYes":["Name , one word, capital N","Name's (possessive)"],"writeNever":["ALLCAPS","MidCaps","Name.","Nameh"]}}`;

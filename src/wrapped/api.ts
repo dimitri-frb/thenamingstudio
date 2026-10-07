@@ -37,6 +37,7 @@ export interface WName { name: string; roots: string; style?: string; parts: WNa
 
 export interface BookValue { name: string; note: string }
 export interface WBook {
+  lang?: string;           // language of the book's copy ("en", "fr", ...)
   tagline: string;
   story: { headline: string; para: string; oneSentence: string; believe: string; wedo: string; whofor: string };
   origin: { headline: string; parts: { part: string; lang: string; gloss: string; para: string }[]; carries: { word: string; note: string }[]; closing: string };
