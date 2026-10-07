@@ -1376,7 +1376,10 @@
 
 .kadm .split { display: flex; gap: 16px; margin-top: 14px; align-items: flex-start; }
 .kadm .tbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.kadm .row { display: grid; grid-template-columns: 1.3fr 1.6fr 1.2fr 1fr 0.9fr 0.9fr; gap: 12px; align-items: center; text-align: left; border: 1px solid #ececec; background: #fff; border-radius: 14px; padding: 12px 16px; font-family: inherit; cursor: pointer; }
+.kadm .row { display: grid; grid-template-columns: minmax(130px, 1.2fr) minmax(0, 1.6fr) minmax(120px, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(90px, 0.9fr); gap: 12px; align-items: center; text-align: left; border: 1px solid #ececec; background: #fff; border-radius: 14px; padding: 12px 16px; font-family: inherit; cursor: pointer; overflow: hidden; }
+.kadm .row > span { min-width: 0; }
+.kadm .row .nm b, .kadm .row .nm em, .kadm .row .dom { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kadm .row .act b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kadm .row:hover { border-color: #c9c7c1; }
 .kadm .row.on { border-color: #ff4f1a; box-shadow: 0 0 0 1px #ff4f1a; }
 .kadm .row .user { display: flex; align-items: center; gap: 10px; min-width: 0; }
