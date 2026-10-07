@@ -555,6 +555,30 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist();
   }
 
+  // The personalize draft starts as a faithful translation of the chosen logo.
+  const draftFromSel = () => {
+    const map: Record<string, { symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol" }> = {
+      sunrise: { symbol: "half", layout: "stacked" },
+      nightserif: { symbol: "none", layout: "side" },
+      dawnsun: { symbol: "half", layout: "stacked" },
+      appicon: { symbol: "half", layout: "symbol" },
+      sidebyside: { symbol: "half", layout: "side" },
+      hazeitalic: { symbol: "none", layout: "side" },
+      outlinesun: { symbol: "half", layout: "stacked" },
+      risingdot: { symbol: "full", layout: "side" },
+      monogram: { symbol: "none", layout: "symbol" },
+    };
+    const base = logoSel?.custom
+      ? { symbol: logoSel.custom.symbol, layout: logoSel.custom.layout }
+      : map[logoSel?.key || ""] || { symbol: "half", layout: "side" };
+    return {
+      ...base,
+      accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn,
+      font: logoSel?.font || tasteFont(taste),
+      scale: logoSel?.custom?.scale || 1,
+    };
+  };
+
   // Leaving the reveal into "Own it" asks for the account that keeps it all.
   function ownIt(target: Step) {
     if (user || test) { toStep(target); return; }
@@ -1355,20 +1379,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <span className="aa" style={{ fontFamily: tasteFont(taste) === "serif" ? "var(--bookserif)" : "var(--sans)" }}>Aa</span>
                 </div>
                 <button className="wr-link" style={{ marginTop: 16, paddingLeft: 0 }} onClick={() => toStep("feel")}>↻ Swipe again</button>
-                <p className="wr-kicker" style={{ margin: "22px 0 8px" }}>Live preview</p>
-                <div
-                  className="wr-tastelive"
-                  style={{
-                    background: `color-mix(in srgb, color-mix(in srgb, ${tastePalette(taste).dawn} ${100 - taste.sliders.wc}%, ${tastePalette(taste).nova}) ${16 + Math.round(taste.sliders.ce * 0.5)}%, #0d0d0f)`,
-                    borderRadius: `${6 + Math.round((100 - taste.sliders.rs) * 0.5)}px`,
-                  }}
-                >
-                  <b style={{
-                    fontFamily: tasteFont(taste) === "serif" ? "var(--bookserif)" : tasteFont(taste) === "light" ? "var(--mono)" : "var(--sans)",
-                    fontWeight: Math.max(300, Math.min(800, 300 + Math.round(taste.sliders.mb * 5))),
-                    fontSize: 30, color: "#fff",
-                  }}>{picked.name}</b>
-                </div>
+
               </div>
               <div>
                 <p className="wr-kicker" style={{ marginBottom: 14 }}>Drag to adjust</p>
@@ -1435,16 +1446,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="ldl">
                 <p className="wr-kicker" style={{ marginBottom: 12 }}>{logoSel.title} · primary</p>
                 <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, custom: logoSel.custom, height: 120 }) }} />
-                <button className="wr-btn2" style={{ margin: "14px 0 0", width: "100%" }} onClick={() => {
-                  setPersDraft({
-                    symbol: logoSel.custom?.symbol || "half",
-                    layout: logoSel.custom?.layout || "side",
-                    accentHex: logoSel.custom?.accentHex || lpal[logoSel.accent] || lpal.dawn,
-                    font: logoSel.font || tasteFont(taste),
-                    scale: logoSel.custom?.scale || 1,
-                  });
-                  toStep("pers");
-                }}>✎ Personalize this logo</button>
+                <button className="wr-btn2" style={{ margin: "14px 0 0", width: "100%" }} onClick={() => { setPersDraft(draftFromSel()); toStep("pers"); }}>✎ Personalize this logo</button>
                 <p className="wr-lead" style={{ margin: "18px 0 0" }}>
                   {logoSel.key === "custom"
                     ? <><b style={{ color: "#fff" }}>Yours, exactly.</b> Tuned by hand on the personalize page: your symbol, your colour, your face.</>
@@ -1507,7 +1509,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <div className="phead">
                   <p className="wr-kicker" style={{ margin: 0 }}>Live preview</p>
                   {(() => {
-                    const base = { symbol: logoSel?.custom?.symbol || "half", layout: logoSel?.custom?.layout || "side", accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn, font: logoSel?.font || tasteFont(taste), scale: logoSel?.custom?.scale || 1 };
+                    const base = draftFromSel();
                     const n = (["symbol", "layout", "accentHex", "font", "scale"] as const).filter((k) => (persDraft as any)[k] !== (base as any)[k]).length;
                     return n ? <span className="edits">Edited · {n} change{n > 1 ? "s" : ""}</span> : null;
                   })()}
@@ -1575,7 +1577,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-btn2 aslink" onClick={() => toStep("logodone")}>← Back</button>
-            <button className="wr-link mla" onClick={() => setPersDraft({ symbol: logoSel?.custom?.symbol || "half", layout: logoSel?.custom?.layout || "side", accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn, font: logoSel?.font || tasteFont(taste), scale: logoSel?.custom?.scale || 1 })}>↻ Reset to original</button>
+            <button className="wr-link mla" onClick={() => setPersDraft(draftFromSel())}>↻ Reset to original</button>
             <button className="wr-btn" style={{ maxWidth: 280 }} onClick={() => {
               setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale } });
               track("logopers", { name: picked.name, ...persDraft });
