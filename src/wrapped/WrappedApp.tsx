@@ -1812,7 +1812,7 @@ function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: ()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div className="wr-sumodal" onClick={onClose}>
+    <div className="wr-sumodal gate" onClick={onClose}>
       <div className="panel" onClick={(e) => e.stopPropagation()}>
         <span className="bt" style={{ fontFamily: "'Archivo', var(--sans)", fontWeight: 900, letterSpacing: "-0.045em", fontSize: 16, display: "block", marginBottom: 16 }}>NAME NAMES</span>
         <h3>Save your brief.<br />Then we name it.</h3>

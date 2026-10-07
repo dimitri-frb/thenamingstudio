@@ -1264,6 +1264,9 @@
   /* sign-up: bottom sheet over the blurred landing (design 00·s) */
   .wr-sumodal { place-items: end stretch; padding: 0; }
   .wr-sumodal .panel { width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding-bottom: 38px; animation: wr-rise 0.35s ease both; }
+  /* the brief gate (00·s) stays a centered pop-up on phones */
+  .wr-sumodal.gate { place-items: center; padding: 20px; }
+  .wr-sumodal.gate .panel { width: 100%; max-width: 420px; border-radius: 24px; padding-bottom: 28px; animation: wr-pop 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 }
 @media (min-width: 721px) {
   .wr-hidedesk { display: none !important; }
