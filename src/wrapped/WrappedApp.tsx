@@ -23,12 +23,13 @@ type Step =
   | "done";
 // The product is a triptych: Name → Domain → Brand.
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
-  ask:    { label: "Chapter 1 · Name", segs: 5, idx: 0 },
-  brief:  { label: "Chapter 1 · Name", segs: 5, idx: 1 },
-  refine: { label: "Chapter 1 · Name", segs: 5, idx: 1 }, brands: { label: "Chapter 1 · Name", segs: 5, idx: 1 },
-  words:  { label: "Chapter 1 · Name", segs: 5, idx: 2 },
-  names:  { label: "Chapter 1 · Name", segs: 5, idx: 3 },
-  reveal: { label: "Chapter 1 · Name", segs: 5, idx: 4 },
+  ask:    { label: "Chapter 1 · Name", segs: 7, idx: 0 },
+  brief:  { label: "Chapter 1 · Name", segs: 7, idx: 1 },
+  refine: { label: "Chapter 1 · Name", segs: 7, idx: 2 },
+  brands: { label: "Chapter 1 · Name", segs: 7, idx: 3 },
+  words:  { label: "Chapter 1 · Name", segs: 7, idx: 4 },
+  names:  { label: "Chapter 1 · Name", segs: 7, idx: 5 },
+  reveal: { label: "Chapter 1 · Name", segs: 7, idx: 6 },
   domain: { label: "Chapter 2 · Domain", segs: 0, idx: 0 },
   brand:  { label: "Chapter 3 · Brand", segs: 0, idx: 0 },
   feel:   { label: "Chapter 3 · Brand · Feeling", segs: 9, idx: 0 },
