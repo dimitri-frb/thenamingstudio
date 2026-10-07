@@ -112,8 +112,8 @@
   .ka-land .wmrow { margin: 5vh 0 0; }
   .ka-land .wm { line-height: 0.84; }
   .ka-land .brief { position: relative; left: auto; top: auto; z-index: 5; margin-top: auto; width: 100%; max-width: none; height: auto; flex-direction: column; align-items: stretch; gap: 12px; padding: 0; border: none; background: transparent; border-radius: 0; }
-  .ka-land .brief input { height: 76px; font-size: 21px; border: 2px solid #000; border-radius: 980px; padding: 0 26px; background: #fff; }
-  .ka-land .brief button { height: 68px; font-size: 16.5px; justify-content: center; }
+  .ka-land .brief input { flex: 0 0 auto; height: 64px; font-size: 19px; border: 1.5px solid #000; border-radius: 980px; padding: 0 24px; background: #fff; }
+  .ka-land .brief button { flex: 0 0 auto; height: 64px; font-size: 16px; justify-content: center; }
   .ka-land .bbar { margin-top: 18px; justify-content: space-between; flex-wrap: nowrap; gap: 10px; }
   .ka-land .bbar .line { font-size: 11.5px; white-space: nowrap; }
   .ka-land .bbar .links { font-size: 10.5px; gap: 8px; white-space: nowrap; }
