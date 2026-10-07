@@ -249,6 +249,9 @@
 /* Name Names type pass: large display text is Inter Tight 600, tighter */
 .wr-h, .wr-bigname, .wr-wait .story h2, .wr-swipe .bn, .wr-ncard .nm,
 .wr-gate h3, .wr-sumodal h3, .wr-nmodal h3, .wr-scard .nm { font-weight: 600; letter-spacing: -0.035em; }
+.wr-scard .wr-chaps { display: flex; gap: 7px; margin: 10px 0 2px; }
+.wr-scard .wr-chaps span { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; border: 1px solid var(--hairline); border-radius: 980px; padding: 4px 10px; color: var(--text3); }
+.wr-scard .wr-chaps span.on { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
 .wr-hint { font-size: 12.5px; color: var(--text3); margin: 0; line-height: 1.5; }
 .wr-mono { font-family: var(--mono); }
 
@@ -499,10 +502,12 @@
 .wr-swipe .hint { font-size: 12px; color: var(--text3); }
 .wr-swipe .alldone { text-align: center; padding: 60px 0; }
 @media (max-width: 720px) {
-  .wr-swipe { gap: 26px; }
+  .wr-swipe { gap: 22px; }
   .wr-swipe .left { flex: 1 1 100%; }
   .wr-swipe .stack { width: 290px; height: 300px; }
   .wr-swipe .bn { font-size: 42px; }
+  .wr-swipe .acts { margin-bottom: 14px; }
+  .wr-cpill { white-space: normal; }
 }
 
 /* ── 03 words: the show-more / redefine strip under the columns ── */

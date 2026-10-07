@@ -1515,8 +1515,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot col" style={{ gap: 8 }}>
-            <button className="wr-btn" onClick={() => { track("done", { name: picked.name }); markStep("socials", "done", "done"); }}>Finish →</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btn" style={{ maxWidth: 300 }} onClick={() => { track("done", { name: picked.name }); markStep("socials", "done", "done"); }}>Finish →</button>
             <button className="wr-link" onClick={() => { track("done", { name: picked.name }); markStep("socials", "skipped", "done"); }}>Skip for now</button>
           </div>
         </>
@@ -1928,12 +1928,6 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
             <p className="wr-kicker" style={{ marginBottom: 10 }}>Brands you like</p>
             <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 10 }}>Which names would you be proud of?</h1>
             <p className="wr-lead" style={{ marginBottom: 22 }}>Swipe on real brands. Your taste shapes the words and the names.</p>
-            <div className="lists">
-              <p className="llbl">You like · {liked.length}</p>
-              <div className="pills">{liked.map((n) => <span key={n} className="pl on">{n}</span>)}{!liked.length && <span className="none">Nothing yet</span>}</div>
-              <p className="llbl" style={{ marginTop: 14 }}>Not for you · {disliked.length}</p>
-              <div className="pills">{disliked.map((n) => <span key={n} className="pl off">{n}</span>)}{!disliked.length && <span className="none">Nothing yet</span>}</div>
-            </div>
           </div>
           <div className="right">
             {done ? (
