@@ -1,4 +1,4 @@
-// Name Names — the "Wrapped" flow. One black stage:
+// Name Name — the "Wrapped" flow. One black stage:
 // 00 landing → 01 the ask → 02 brief wrapped → 03 the words → 04 the names
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
@@ -546,7 +546,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     pushUrl("ask");
   }
 
-  // The Name Names landing submits the brief into the flow (02) — after the
+  // The Name Name landing submits the brief into the flow (02) — after the
   // one-tap sign-up (00·s) that keeps the brief, when signed out.
   function startFromLanding() {
     if (!user && !test) { setBriefGate(true); return; }
@@ -736,7 +736,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   function share() {
     const nm = picked?.name || "My new name";
     const base = "https://dimitri-frb.github.io/thenamingstudio/";
-    const text = `${nm}, found with Name Names`;
+    const text = `${nm}, found with Name Name`;
     let url = base;
     if (picked && !test) {
       // A public page for invitees: /s/<id> (best effort; falls back to the site).
@@ -846,7 +846,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {/* shared header: logo left, chapter label centred, round ‹ › right */}
       {step !== "land" && <div className="wr-top">
         <button className="wr-brand" onClick={() => restart()}>
-          <span className="bt">NAME NAMES</span>
+          <span className="bt">NAME NAME</span>
         </button>
         {chapter && <span className="wr-chapter">{chapter.label}</span>}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -1796,7 +1796,7 @@ function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: ()
   return (
     <div className="wr-sumodal gate" onClick={onClose}>
       <div className="panel" onClick={(e) => e.stopPropagation()}>
-        <span className="bt" style={{ fontFamily: "'Archivo', var(--sans)", fontWeight: 900, letterSpacing: "-0.045em", fontSize: 16, display: "block", marginBottom: 16 }}>NAME NAMES</span>
+        <span className="bt" style={{ fontFamily: "'Archivo', var(--sans)", fontWeight: 900, letterSpacing: "-0.045em", fontSize: 16, display: "block", marginBottom: 16 }}>NAME NAME</span>
         <h3>Save your brief.<br />Then we name it.</h3>
         {brief && (
           <p className="briefrow"><em>Brief</em><span>{brief}</span></p>
@@ -1963,7 +1963,7 @@ function WordsLoader({ concept }: { concept: string }) {
   );
 }
 
-/* ── The Name Names landing (handoff 4b "The Wordmark"): white page, giant
+/* ── The Name Name landing (handoff 4b "The Wordmark"): white page, giant
    edge-to-edge wordmark, ink blobs in difference blend, brief input up top ── */
 function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }: {
   sentence: string; setSentence: (s: string) => void;
@@ -1979,12 +1979,12 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       const wm = wmRef.current, f = frameRef.current;
       if (!wm || !f) return;
       const mobile = f.clientWidth <= 760;
-      // Phones break the wordmark onto two lines and size it to "NAMES".
+      // Phones break the wordmark onto two lines and size it to "NAME".
       wm.style.whiteSpace = "nowrap";
       wm.style.fontSize = "200px";
-      if (mobile) wm.textContent = "NAMES";
+      if (mobile) wm.textContent = "NAME";
       const w = wm.offsetWidth;
-      if (mobile) wm.textContent = "NAME NAMES";
+      if (mobile) wm.textContent = "NAME NAME";
       wm.style.whiteSpace = mobile ? "normal" : "nowrap";
       const gut = mobile ? 40 : 64;
       if (w) wm.style.fontSize = ((200 * (f.clientWidth - gut)) / w).toFixed(2) + "px";
@@ -2032,7 +2032,7 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
       <div className="hero">
         <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
       </div>
-      <div className="wmrow"><span className="wm" ref={wmRef}>NAME NAMES</span></div>
+      <div className="wmrow"><span className="wm" ref={wmRef}>NAME NAME</span></div>
       <form className="brief" onSubmit={submit}>
         <input ref={inputRef} type="text" placeholder="Describe what you're building…"
           value={sentence} onChange={(e) => setSentence(e.target.value)} />

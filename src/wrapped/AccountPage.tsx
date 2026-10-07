@@ -67,7 +67,7 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
       {/* sidebar (desktop) */}
       <aside className="side wr-hidemob">
         <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-          <span className="bt">NAME NAMES</span>
+          <span className="bt">NAME NAME</span>
         </a>
         <nav>
           {NAV.map((n) => (
@@ -86,7 +86,7 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
         {/* mobile brand row */}
         <div className="wr-hidedesk" style={{ padding: "18px 0 0" }}>
           <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-            <span className="bt">NAME NAMES</span>
+            <span className="bt">NAME NAME</span>
           </a>
         </div>
 
@@ -315,7 +315,7 @@ function SignIn({ ready, onUser }: { ready: boolean; onUser: (u: WUser, s: Saved
       <div className="wr-glow" />
       <div className="wr-top">
         <a className="wr-brand" href={BASE()} style={{ textDecoration: "none" }}>
-          <span className="bt">NAME NAMES</span>
+          <span className="bt">NAME NAME</span>
         </a>
       </div>
       <div className="wr-stage center" style={{ textAlign: "center", alignItems: "center" }}>

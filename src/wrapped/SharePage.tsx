@@ -31,7 +31,7 @@ export function SharePage({ id }: { id: string }) {
   return (
     <div className="wr wr-share">
       <div className="wr-top">
-        <span className="wr-brand"><span className="bt">NAME NAMES</span></span>
+        <span className="wr-brand"><span className="bt">NAME NAME</span></span>
         <span className="lockurl">🔒 {window.location.host}{window.location.pathname}</span>
         <span />
       </div>

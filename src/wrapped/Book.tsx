@@ -36,7 +36,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   const foot = i > 0 ? (
     <div className="bk-foot">
       <span>{name} · Brand book</span>
-      <span>Built by Name Names · {i + 1}</span>
+      <span>Built by Name Name · {i + 1}</span>
     </div>
   ) : null;
 
@@ -61,7 +61,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           {PAGE_TITLES.slice(1).map((t) => <span key={t}>{t}</span>)}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8pt", opacity: 0.55 }}>
-          <span>{ctx.domain}</span><span>Built by Name Names</span>
+          <span>{ctx.domain}</span><span>Built by Name Name</span>
         </div>
       </div>
     );
