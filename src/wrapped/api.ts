@@ -236,9 +236,47 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
 }
 
 /* ── tracking (best-effort, never in test mode) ── */
+/* ── first-touch attribution: captured once, rides every tracked event ── */
+export function attrib(): Record<string, string> {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ns.attrib") || "null");
+    if (saved) return saved;
+    const q = new URLSearchParams(window.location.search);
+    const utmS = (q.get("utm_source") || "").toLowerCase();
+    const utmM = (q.get("utm_medium") || "").toLowerCase();
+    const utmC = q.get("utm_campaign") || "";
+    const ref = document.referrer || "";
+    let refHost = "";
+    try { refHost = ref ? new URL(ref).hostname.replace(/^www\./, "") : ""; } catch { /* ignore */ }
+    let source = "Direct";
+    let campaign = utmC;
+    if (utmM === "cpc" && /google/.test(utmS)) source = "Google Ads";
+    else if (/instagram/.test(utmS)) source = "Instagram Ads";
+    else if (/facebook|meta/.test(utmS)) source = "Meta Ads";
+    else if (/linkedin/.test(utmS)) source = "LinkedIn";
+    else if (/newsletter|email/.test(utmS) || utmM === "email") source = "Newsletter";
+    else if (utmS) source = utmS.charAt(0).toUpperCase() + utmS.slice(1);
+    else if (/(^|\.)(google|bing|duckduckgo|qwant|ecosia|yahoo)\./.test(refHost + ".")) { source = "Organic search"; campaign = campaign || refHost; }
+    else if (refHost.includes("producthunt")) source = "Product Hunt";
+    else if (refHost.includes("namename.ai")) { source = "Referral"; campaign = campaign || "shared name"; }
+    else if (refHost) { source = "Referral"; campaign = campaign || refHost; }
+    const ua = navigator.userAgent;
+    const dev = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Other";
+    const br = /Edg\//.test(ua) ? "Edge" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Browser";
+    const a = { source, campaign, device: `${dev} · ${br}`, lang: (navigator.language || "en").slice(0, 5) };
+    localStorage.setItem("ns.attrib", JSON.stringify(a));
+    return a;
+  } catch { return {}; }
+}
+try { if (!TEST) attrib(); } catch { /* first touch, best effort */ }
+
 export function track(event: string, payload: Record<string, unknown> = {}): void {
   if (TEST) return;
-  try { void post({ phase: "track", event, payload }); } catch { /* best effort */ }
+  try {
+    const u = loadSession()?.user;
+    const meta = { ...attrib(), email: u?.email || "", uname: u?.name || "" };
+    void post({ phase: "track", event, payload: { ...payload, meta } });
+  } catch { /* best effort */ }
 }
 
 /* ── domains ── */
@@ -272,7 +310,7 @@ export function saveSession(s: { token: string; user: WUser } | null): void {
 
 export async function authGoogle(credential: string): Promise<{ token: string; user: WUser; searches: SavedSearch[] } | null> {
   const r = await post<{ token: string; user: WUser; searches: SavedSearch[] }>({ phase: "auth-google", credential });
-  if (r?.token) saveSession({ token: r.token, user: r.user });
+  if (r?.token) { saveSession({ token: r.token, user: r.user }); track("signup", {}); }
   return r?.token ? r : null;
 }
 

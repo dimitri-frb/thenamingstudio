@@ -548,6 +548,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   // The Name Name landing submits the brief into the flow (02) — after the
   // one-tap sign-up (00·s) that keeps the brief, when signed out.
+  useEffect(() => { // arriving at Personalize without a draft (refresh, deep link)
+    if (step === "pers" && !persDraft && picked) setPersDraft(draftFromSel());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, picked]);
+
   function startFromLanding() {
     if (!user && !test) { setBriefGate(true); return; }
     enterFlow();
@@ -561,6 +566,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }
 
   // The personalize draft starts as a faithful translation of the chosen logo.
+  // (Initialized below; also hydrated on direct entry or refresh.)
   const draftFromSel = () => {
     const map: Record<string, { symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol" }> = {
       sunrise: { symbol: "half", layout: "stacked" },
@@ -1386,6 +1392,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <div className="wr-slider" key={k}>
                     <span>{l}</span>
                     <input type="range" min={0} max={100} value={taste.sliders[k]}
+                      style={{ ["--v" as any]: `${taste.sliders[k]}%` }}
                       onChange={(e) => setTaste({ ...taste, sliders: { ...taste.sliders, [k]: Number(e.target.value) } })} />
                     <span>{r}</span>
                   </div>
@@ -2183,12 +2190,34 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
       return <span className="v type" style={faces[k] || { fontWeight: 600 }}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
     }
     if (step === "tshape") {
-      return <span className="v shape">{
-        k === "Round & soft" ? <i style={{ borderRadius: "50%" }} /> :
-        k === "Sharp & angular" ? <i style={{ borderRadius: 2, transform: "rotate(45deg) scale(.82)" }} /> :
-        k === "Organic" ? <i style={{ borderRadius: "58% 42% 55% 45% / 45% 58% 42% 55%" }} /> :
-        <i style={{ borderRadius: 8 }} />
-      }</span>;
+      const night = { background: "#141127" };
+      if (k === "Round & soft") return (
+        <span className="v shape" style={{ ...night, gap: 16 }}>
+          <i style={{ width: 74, height: 37, borderRadius: "74px 74px 0 0", background: "var(--dawn)" }} />
+          <i style={{ width: 56, height: 56, borderRadius: "50%", background: "#fff" }} />
+        </span>
+      );
+      if (k === "Sharp & angular") return (
+        <span className="v shape" style={{ ...night, gap: 16 }}>
+          <i style={{ width: 62, height: 56, clipPath: "polygon(50% 0, 100% 100%, 0 100%)", background: "var(--nova)", borderRadius: 0 }} />
+          <i style={{ width: 48, height: 48, background: "#fff", borderRadius: 4, transform: "rotate(45deg)" }} />
+        </span>
+      );
+      if (k === "Organic") return (
+        <span className="v shape" style={night}>
+          <i style={{ width: 92, height: 74, borderRadius: "58% 42% 55% 45% / 52% 58% 42% 48%", background: "var(--haze)" }} />
+        </span>
+      );
+      return (
+        <span className="v shape" style={{ ...night, flexDirection: "column", gap: 9 }}>
+          <span style={{ display: "flex", gap: 9 }}>
+            {[0, 1, 2].map((i) => <i key={i} style={{ width: 22, height: 22, background: "#fff", borderRadius: 3, display: "inline-block" }} />)}
+          </span>
+          <span style={{ display: "flex", gap: 9 }}>
+            {[0, 1, 2].map((i) => <i key={i} style={{ width: 22, height: 22, background: "var(--dawn)", borderRadius: "50%", display: "inline-block" }} />)}
+          </span>
+        </span>
+      );
     }
     // Full-bleed moodcards, matching the design frames.
     if (k === "Playful") {
