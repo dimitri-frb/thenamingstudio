@@ -417,7 +417,7 @@ const prefLine = (p: any): string => {
 };
 
 // Every generated text mirrors the founder's language (French brief -> French output).
-const LANG_LINE = `IMPORTANT: Write EVERY output text in the same language as the founder's brief sentence (French brief means French tags, concepts, meanings, taglines, book copy). Keep the JSON keys and structure in English.\n`;
+const LANG_LINE = `IMPORTANT: Write EVERY output text in the language the founder's BRIEF SENTENCE is written in - judge ONLY from that sentence, never from starred words, territories or tags (foreign loanwords in the material do not change the language). An English brief means English output; a French brief means French output. Keep the JSON keys and structure in English.\n`;
 
 // A labelled brief the model can actually reason over (beats dumping raw JSON).
 const briefV1 = (b: any) => [
@@ -625,8 +625,28 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- Ownable: distinctive enough to be a real trademark.\n` +
     `- Sound: real mouthfeel and rhythm.\n` +
     `- DEPTH: every name must work on two levels — an immediate sound and feeling, and a discoverable story underneath (an etymology, a metaphor, a reference) that rewards the founder for asking "why this word?". A name whose whole story is "it sounds nice" is a failure.\n\n` +
-    `THE BAR — real names of this calibre, and why they earn it (match this depth, never copy them):\n` +
-    `Stripe (concrete and visual, speed without saying payments) · Slack (a flaw reclaimed as a virtue) · Klarna (Swedish klar: clarity hidden in the sound) · Amazon (scale by metaphor) · Kodak (pure invented sound, sharp and unownable by language) · Nike (two sounds, an infinite myth) · Xerox (Greek xeros: lab science turned verb) · Allbirds (plain words joined into a story) · Vercel (Latin blend that sounds fast) · Toast (warm, lifted from the industry's own vocabulary).\n\n` +
+    `TWENTY GREAT NAMES, AND THE MOVE THAT FOUND EACH ONE — work exactly like this, from material to move to name (never copy or echo these):\n` +
+    `1. Stripe (payments) - a concrete object, the card's magnetic stripe, doubling as a clean line: real word repurposed.\n` +
+    `2. Spotify (music) - "spot" fused with "identify" into one smooth coinage.\n` +
+    `3. Nike (sport) - the Greek goddess of victory borrowed whole: myth as meaning.\n` +
+    `4. Kodak (cameras) - invented from pure sound, the K chosen for bite; owned by no language.\n` +
+    `5. Google (search) - googol, 10^100, misspelled: scale made playful.\n` +
+    `6. Amazon (commerce) - the world's biggest river standing in for the world's biggest store: metaphor of scale.\n` +
+    `7. Klarna (fintech) - Swedish "klar", clear, given a warm ending: the promise encoded in a foreign root.\n` +
+    `8. Vercel (dev tools) - a Latin-flavoured fusion of versatile and accelerate: invented, but readable.\n` +
+    `9. Xerox (copiers) - Greek "xeros", dry, for dry copying: the technology's own science made brandable.\n` +
+    `10. Lego (toys) - Danish "leg godt", play well, compressed to two syllables: values hidden in plain sight.\n` +
+    `11. Uber (mobility) - German "uber", above: one borrowed word carrying total ambition.\n` +
+    `12. Allbirds (footwear) - New Zealand, "all birds, no predators", folded into a plain compound.\n` +
+    `13. Airbnb (travel) - "air mattress + bed and breakfast" compressed until it had rhythm.\n` +
+    `14. Volvo (cars) - Latin "I roll": the product speaking in the first person.\n` +
+    `15. Oracle (data) - the ancient source of truth as a metaphor for databases: audacious borrowing.\n` +
+    `16. Patagonia (outdoor) - a wild place lending its whole spirit to the brand.\n` +
+    `17. Tesla (EVs) - the overlooked inventor as patron saint: a person as a promise.\n` +
+    `18. Slack (work chat) - a negative word reclaimed as a virtue (and secretly an acronym).\n` +
+    `19. Figma (design) - a soft coinage grown from "figure": friendly, two syllables, ownable.\n` +
+    `20. Asana (work) - Sanskrit for a steady posture, borrowed from yoga: calm focus imported from another world.\n` +
+    `THE METHOD: pick material from the starred words and the brief, choose ONE move (repurpose a real word, fuse two words, borrow a myth or place or person, invent from sound, compress a phrase, import a foreign or classical root), and push until the name feels inevitable. Your "roots" field is that derivation, stated plainly.\n\n` +
     ((() => {
       const picked = (Array.isArray(b.payload?.prefs?.style) ? b.payload.prefs.style : b.payload?.prefs?.style ? [b.payload.prefs.style] : []).filter((x: string) => x && x !== "Any");
       return picked.length
