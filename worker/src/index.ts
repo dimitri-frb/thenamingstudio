@@ -235,6 +235,18 @@ export default {
     }
 
     // One name's free domain + live price (fills streamed name cards in).
+    if (phase === "share-put") {
+      const sh = body?.payload?.share;
+      const id = String(body?.payload?.id || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
+      if (!env.LOG || !id || !sh?.name) return json({ ok: false }, env, 400);
+      await env.LOG.put("share:" + id, JSON.stringify({ ...sh, at: Date.now() }), { expirationTtl: 60 * 60 * 24 * 365 });
+      return json({ ok: true, id }, env);
+    }
+    if (phase === "share-get") {
+      const id = String(body?.payload?.id || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
+      const raw = env.LOG && id ? await env.LOG.get("share:" + id) : null;
+      return json(raw ? { share: JSON.parse(raw) } : { share: null }, env);
+    }
     if (phase === "freedom") {
       const slug = String(body?.payload?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!slug) return json({ dom: null }, env);
@@ -404,6 +416,9 @@ const prefLine = (p: any): string => {
   return out ? out + "\n" : "";
 };
 
+// Every generated text mirrors the founder's language (French brief -> French output).
+const LANG_LINE = `IMPORTANT: Write EVERY output text in the same language as the founder's brief sentence (French brief means French tags, concepts, meanings, taglines, book copy). Keep the JSON keys and structure in English.\n`;
+
 // A labelled brief the model can actually reason over (beats dumping raw JSON).
 const briefV1 = (b: any) => [
   `What the company does: ${b?.does || "n/a"}`,
@@ -532,8 +547,17 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   /* ---------------- Wrapped flow (the live app) ---------------- */
   // 01 The ask: parse the sentence into 3 editable chips (industry, reach, audience).
+  // Personalize page "or just ask": map an instruction onto the lockup params.
+  logotweak: (b) => ({ model: MODEL.fast, max: 220, prompt:
+    `A founder is editing their logo. Current parameters: ${JSON.stringify(b.payload?.params || {})}.\n` +
+    `Fields: symbol one of "half"|"full"|"none"; layout one of "stacked"|"side"|"symbol"; accentHex a CSS hex colour; font one of "bold"|"serif"|"light"; scale a number 0.5-1.6 (symbol size).\n` +
+    `Their instruction: "${String(b.payload?.ask || "").slice(0, 200)}".\n` +
+    `Apply the instruction to the parameters (e.g. "make the circle a little smaller" lowers scale by ~0.15; "in green" sets accentHex; "no symbol" sets symbol none). Change ONLY what the instruction asks.\n` +
+    `Return ONLY JSON {"symbol":"...","layout":"...","accentHex":"#......","font":"...","scale":1.0}.` }),
+
   wrapchips: (b) => ({ model: MODEL.fast, max: 220, prompt:
     `A founder describes what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}".\n` +
+    LANG_LINE +
     `Extract 3 to 5 short tags that mirror what the founder ACTUALLY SAID, most specific first:\n` +
     `- the product form, in their words (e.g. "iPad POS", "Budgeting app", "Coffee brand", "AI legal tool")\n` +
     `- the audience, in their words (e.g. "Restaurant owners", "Students", "Law firms")\n` +
@@ -549,7 +573,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   wrapconcept: (b) => ({ model: MODEL.fast, max: 650, prompt:
     `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
-    `Distill what their NAME should feel like.\n` +
+    LANG_LINE + `Distill what their NAME should feel like.\n` +
     `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
     `2) "para": 2 or 3 sentences (max 55 words), speaking directly to the founder as "you". Start CONCRETE: recap the specifics of THEIR idea in fresh words, name the actual product, the actual audience and what it does for them (e.g. "You're building a budgeting app that gives students their first grip on money"). Then say what the name has to carry for exactly that business. Specific nouns over abstractions; reframe, never parrot their sentence; no generic filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
@@ -562,6 +586,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // kept for clients built before the split.)
   wrapwords: (b) => {
     const common =
+      LANG_LINE +
       `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
       `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n`;
     const wordSpec =
@@ -589,7 +614,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // 04 The names: six scored names coined from the starred words. Enriched server-side
   // with a real free domain per name (RDAP), so "domains checked" is true.
   wrapnames: (b) => ({ model: MODEL.opus, max: 2200, prompt:
-    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n\n` +
+    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n` + LANG_LINE + `\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` + prefLine(b.payload?.prefs) +
     `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
@@ -627,6 +652,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // whole book lands in one Sonnet-latency, not two.
   wrapbook: (b) => {
     const intro =
+      LANG_LINE +
       `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
       `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
       (b.payload?.taste ? `THE FOUNDER'S TASTE (the brand must wear it): feeling ${JSON.stringify(b.payload.taste.feeling || [])}, colour direction ${JSON.stringify(b.payload.taste.colours || [])}, type ${b.payload.taste.type || ""}, shapes ${b.payload.taste.shape || ""}. The palette MUST follow the colour direction.\n` : "") +

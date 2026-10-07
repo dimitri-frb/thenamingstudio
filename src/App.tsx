@@ -5,6 +5,7 @@
 //   /admin         the funnel + every search (central log)
 // GitHub Pages serves 404.html → index.html, so deep paths work.
 import { WrappedApp } from "./wrapped/WrappedApp";
+import { SharePage } from "./wrapped/SharePage";
 import { AccountPage } from "./wrapped/AccountPage";
 import { setFixture } from "./wrapped/api";
 
@@ -14,6 +15,10 @@ export default function App() {
   const hash = window.location.hash.replace(/^#\/?/, "");
   const is = (name: string) =>
     new RegExp(`(?:^|/)${name}/?$`).test(path) || params.has(name) || hash === name;
+
+  // /s/<id>: the public page behind a shared link
+  const shareMatch = path.match(/(?:^|\/)s\/([a-z0-9-]{3,60})\/?$/);
+  if (shareMatch) return <SharePage id={shareMatch[1]} />;
 
   if (is("admin")) return <AccountPage initialTab="all" />;
   if (is("account")) return <AccountPage />;

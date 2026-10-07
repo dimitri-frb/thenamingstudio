@@ -37,6 +37,8 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
   const [checked, setChecked] = useState(DEMO);
   const [tab, setTab] = useState<Tab>(initialTab || "names");
   const [modal, setModal] = useState<SavedSearch | null>(null);
+  const [view, setView] = useState<"grid" | "list">(() => { try { return (localStorage.getItem("ns.acctview") as any) || "grid"; } catch { return "grid"; } });
+  const pickView = (v: "grid" | "list") => { setView(v); try { localStorage.setItem("ns.acctview", v); } catch { /* ignore */ } };
 
   useEffect(() => {
     if (DEMO) return;
@@ -95,11 +97,17 @@ export function AccountPage({ initialTab }: { initialTab?: "all" } = {}) {
                 <p className="wr-kicker">Welcome back, {cap(first)}</p>
                 <h1 className="wr-h" style={{ margin: "8px 0 0" }}>Your names</h1>
               </div>
-              <button className="wr-btn newpill" onClick={() => window.location.assign(BASE())}>＋ Name something new</button>
+              <span className="headacts">
+                <span className="wr-viewtog" role="group" aria-label="View">
+                  <button className={view === "grid" ? "on" : ""} onClick={() => pickView("grid")} aria-label="Cards">▦</button>
+                  <button className={view === "list" ? "on" : ""} onClick={() => pickView("list")} aria-label="Lines">≡</button>
+                </span>
+                <button className="wr-btn newpill" onClick={() => window.location.assign(BASE())}>＋ Name something new</button>
+              </span>
             </div>
             {!searches.length && <p className="wr-hint" style={{ marginTop: 18 }}>Nothing yet. Start your first name.</p>}
-            <div className="wr-sgrid">
-              {searches.map((s) => <SearchCard key={s.id} s={s} onOpen={() => setModal(s)} />)}
+            <div className={view === "grid" ? "wr-sgrid" : "wr-slist"}>
+              {searches.map((s) => <SearchCard key={s.id} s={s} row={view === "list"} onOpen={() => setModal(s)} />)}
             </div>
           </>
         )}
@@ -222,7 +230,7 @@ function NameModal({ s, onClose }: { s: SavedSearch; onClose: () => void }) {
   );
 }
 
-function SearchCard({ s, onOpen }: { s: SavedSearch; onOpen: () => void }) {
+function SearchCard({ s, onOpen, row }: { s: SavedSearch; onOpen: () => void; row?: boolean }) {
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const label = s.status === "claimed" ? "Claimed" : s.status === "ready" ? "Names ready" : "Exploring";
   const chap = [
@@ -234,6 +242,27 @@ function SearchCard({ s, onOpen }: { s: SavedSearch; onOpen: () => void }) {
     s.status === "claimed" ? "Everything is ready" :
     s.names?.length ? `Pick one of ${s.names.length} names` :
     s.starred?.length ? `${s.starred.length} words starred` : "Continue the brief";
+  if (row) {
+    return (
+      <button className="wr-scard wr-srow" onClick={onOpen}>
+        <span className="thumb">
+          {s.logo && s.picked
+            ? <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", s.picked.name, DEFAULT_PALETTE, { variant: "icon", accent: (s.logo.accent as any) || "dawn", seed: s.logo.seed || 0, height: 30 }) }} />
+            : null}
+        </span>
+        <span className="idcol">
+          <span className="nm" style={{ fontSize: 20 }}>{s.picked?.name || s.names?.[0]?.name || "Untitled"}</span>
+          <span className="date">{date}</span>
+        </span>
+        <span className="br">{s.sentence}</span>
+        <span className={"wr-status" + (s.status === "claimed" ? " claimed" : "")}>{label}</span>
+        <span className="wr-chaps">{chap.map((c) => (
+          <span key={c.l} className={c.on ? "on" : ""}>{c.on ? "✓ " : ""}{c.l}</span>
+        ))}</span>
+        <span className="opn pill">Open →</span>
+      </button>
+    );
+  }
   return (
     <button className="wr-scard" onClick={onOpen}>
       <span className="top">

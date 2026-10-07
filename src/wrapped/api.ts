@@ -289,6 +289,20 @@ export function putSearch(search: SavedSearch): void {
   try { void post({ phase: "search-put", token: s.token, search }); } catch { /* best effort */ }
 }
 
+/* ── personalize: "or just ask" + public share pages ── */
+export async function logoTweak(params: Record<string, unknown>, ask: string): Promise<Record<string, unknown> | null> {
+  return post<Record<string, unknown>>({ phase: "logotweak", process: processId(), payload: { params, ask } });
+}
+export interface ShareData { name: string; owner?: string; meaning?: string; tagline?: string; plain?: string; domain?: string; domainFree?: boolean; chips?: string[]; palette?: { name: string; hex: string }[]; logo?: { key: string; accent: string; seed: number; font?: string; shape?: string; custom?: unknown } }
+export async function sharePut(id: string, share: ShareData): Promise<boolean> {
+  const r = await post<{ ok: boolean }>({ phase: "share-put", process: processId(), payload: { id, share } });
+  return !!r?.ok;
+}
+export async function shareGet(id: string): Promise<ShareData | null> {
+  const r = await post<{ share: ShareData | null }>({ phase: "share-get", process: processId(), payload: { id } });
+  return r?.share || null;
+}
+
 /* ── Google Identity Services ── */
 export function loadGsi(onReady: () => void): () => void {
   const w = window as any;

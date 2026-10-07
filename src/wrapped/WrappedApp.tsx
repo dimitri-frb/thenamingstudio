@@ -7,7 +7,7 @@ import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
-  loadBriefEta, loadEta, loadWordsEta, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, track, wrapApi, type NameStream,
+  loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
@@ -19,7 +19,7 @@ import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./B
 type Step =
   | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "words" | "names" | "reveal"
   | "domain"
-  | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "book" | "socials"
+  | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
   | "done";
 // The product is a triptych: Name → Domain → Brand.
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
@@ -39,10 +39,11 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   taste:  { label: "Chapter 3 · Brand · Your taste", segs: 9, idx: 4 },
   logo:   { label: "Chapter 3 · Brand · Logos", segs: 9, idx: 5 },
   logodone: { label: "Chapter 3 · Brand · Your logo", segs: 9, idx: 6 },
+  pers:   { label: "Chapter 3 · Brand · Personalize", segs: 9, idx: 6 },
   book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
   socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
 };
-const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "book", "socials", "done"];
+const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
@@ -50,7 +51,7 @@ const STEP_SLUG: Record<Step, string> = {
   land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", brands: "2-brands", words: "3-words", names: "4-names", reveal: "5-reveal",
   domain: "6-domain",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
-  logo: "8-logos", logodone: "8-logo", book: "9-brand-book", socials: "10-socials", done: "11-done",
+  logo: "8-logos", logodone: "8-logo", pers: "8-personalize", book: "9-brand-book", socials: "10-socials", done: "11-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -80,9 +81,15 @@ const TASTE_OPTS = {
   ],
   ttype: [
     { k: "Elegant serif", d: "Literary, trusted" },
+    { k: "Modern serif", d: "Sharp, editorial" },
+    { k: "Slab serif", d: "Solid, confident" },
     { k: "Clean sans", d: "Modern, simple" },
+    { k: "Geometric sans", d: "Precise, friendly" },
+    { k: "Grotesque", d: "Raw, characterful" },
     { k: "Strong caps", d: "Bold, architectural" },
+    { k: "Rounded", d: "Soft, approachable" },
     { k: "Technical mono", d: "Precise, digital" },
+    { k: "Script", d: "Personal, handmade" },
   ],
   tshape: [
     { k: "Round & soft", d: "Curves, gentle edges" },
@@ -103,13 +110,13 @@ const seedSliders = (t: Taste): Taste["sliders"] => {
     ce: has("Bold & bright") || has("Playful") ? 72 : has("Calm & minimal") ? 22 : 35,
     wc: t.colours.includes("Citrus pop") ? 18 : t.colours.includes("Dawn to night") ? 30 : t.colours.includes("Forest & sand") ? 45 : 60,
     rs: t.shape === "Round & soft" ? 20 : t.shape === "Organic" ? 35 : t.shape === "Geometric" ? 62 : 82,
-    ss: t.type === "Elegant serif" ? 20 : t.type === "Technical mono" ? 70 : t.type === "Strong caps" ? 78 : 65,
+    ss: ["Elegant serif", "Modern serif", "Slab serif", "Script"].includes(t.type) ? 22 : t.type === "Technical mono" ? 70 : t.type === "Strong caps" ? 78 : 65,
     mb: has("Bold & bright") ? 72 : has("Calm & minimal") ? 24 : 40,
   };
 };
 const tasteFont = (t: Taste): LogoFont => {
   // The type pick decides; the serif↔sans slider can overrule at the extremes.
-  const base: LogoFont = t.type === "Elegant serif" ? "serif" : t.type === "Technical mono" ? "light" : "bold";
+  const base: LogoFont = ["Elegant serif", "Modern serif", "Slab serif", "Script"].includes(t.type) ? "serif" : t.type === "Technical mono" ? "light" : "bold";
   if (t.sliders.ss <= 35) return "serif";
   if (t.sliders.ss >= 65 && base === "serif") return t.sliders.mb >= 55 ? "bold" : "light";
   return base;
@@ -134,7 +141,7 @@ const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
   { name: "X", desc: "Updates and conversation", url: "https://x.com/i/flow/signup" },
   { name: "TikTok", desc: "Short video", url: "https://www.tiktok.com/signup" },
-  { name: "LinkedIn", desc: "Company page", url: "https://www.linkedin.com/company/setup/new/" },
+  { name: "LinkedIn", desc: "Company page", url: "https://www.linkedin.com/signup" },
 ];
 
 export function WrappedApp({ test, resume, go }: { test: boolean; resume?: string; go?: string }) {
@@ -150,7 +157,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [], who: [], brandsLiked: [], brandsDisliked: [],
   });
   const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
-  const [wtab, setWtab] = useState(0);
   const [starred, setStarred] = useState<WWord[]>(test ? [ACTIVE().styles[0].words[0], ACTIVE().styles[0].words[1], ACTIVE().styles[1].words[0], ACTIVE().styles[1].words[2]] : []);
   const [names, setNames] = useState<WName[] | null>(test ? ACTIVE().names : null);
   const [nameIdx, setNameIdx] = useState(0);
@@ -166,6 +172,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
+  const [persDraft, setPersDraft] = useState<{ symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number } | null>(null);
+  const [persBusy, setPersBusy] = useState(false);
+  const [persAsk, setPersAsk] = useState("");
   const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
@@ -392,7 +401,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       settled++;
       if (settled < 6 || wordsReq.current !== key) return;
       const got = slots.filter(Boolean) as WStyle[];
-      if (got.length) { recordWordsEta(Date.now() - t0); setStyles(got); fail("words", false); }
+      // The six calls run blind to each other: drop any word a previous column already shows.
+      const seen = new Set<string>();
+      const deduped = got.map((st) => ({ ...st, words: st.words.filter((w) => { const k = w.w.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }) }));
+      if (deduped.length) { recordWordsEta(Date.now() - t0); setStyles(deduped); fail("words", false); }
       else fail("words", true);
     };
     const run = (i: number, st: WTerritory, attempt: number) => {
@@ -693,16 +705,35 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const lp = tastePalette(taste);
     const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed,
       [{ name: "Dawn", hex: lp.dawn }, { name: "Haze", hex: lp.haze }, { name: "Nova", hex: lp.nova }, { name: "Night", hex: lp.night }],
-      logoSel.font, tasteShape(taste));
+      logoSel.font, tasteShape(taste), logoSel.custom);
     download(pack.blob, pack.filename);
     track("logopack", { name: picked.name, concept: logoSel.title });
   }
 
   function share() {
-    const text = `${picked?.name || "My new name"}, found with Name Names`;
-    const url = "https://dimitri-frb.github.io/thenamingstudio/";
-    if (navigator.share) { navigator.share({ title: picked?.name, text, url }).catch(() => {}); return; }
-    navigator.clipboard?.writeText(`${text} · ${url}`).then(() => setShareMsg("Copied to clipboard"));
+    const nm = picked?.name || "My new name";
+    const base = "https://dimitri-frb.github.io/thenamingstudio/";
+    const text = `${nm}, found with Name Names`;
+    let url = base;
+    if (picked && !test) {
+      // A public page for invitees: /s/<id> (best effort; falls back to the site).
+      const id = `${picked.name.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+      url = `${base}s/${id}`;
+      const lp = tastePalette(taste);
+      void sharePut(id, {
+        name: picked.name,
+        owner: user?.name?.split(" ")[0] || undefined,
+        meaning: picked.parts?.length ? `${picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, ${picked.parts[0].note}${picked.parts[1] ? `, fused with ${picked.parts[1].part}, ${picked.parts[1].note}.` : "."} ${picked.tagline || ""}` : picked.tagline,
+        plain: book?.saying?.plain,
+        domain: steps.domain === "done" ? (domSel?.domain || picked.dom?.domain) : picked.dom?.free !== false ? picked.dom?.domain : undefined,
+        domainFree: picked.dom?.free !== false,
+        chips,
+        palette: book?.palette || [{ name: "Dawn", hex: lp.dawn }, { name: "Haze", hex: lp.haze }, { name: "Nova", hex: lp.nova }, { name: "Night", hex: lp.night }],
+        logo: logoSel ? { key: logoSel.key, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: tasteShape(taste), custom: logoSel.custom } : undefined,
+      });
+    }
+    if (navigator.share) { navigator.share({ title: nm, text, url }).catch(() => {}); return; }
+    navigator.clipboard?.writeText(`${text} · ${url}`).then(() => setShareMsg("Link copied, send it anywhere"));
   }
 
   function restart() {
@@ -748,7 +779,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     ask: "land", brief: "ask", refine: "brief", brands: "refine", words: "brands", names: "words", reveal: "names",
     domain: "reveal",
     brand: "domain", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
-    logo: "taste", logodone: "logo", book: "logodone", socials: "book",
+    logo: "taste", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -768,6 +799,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "tshape" ? "taste" :
       step === "taste" ? "logo" :
       step === "logo" ? (logoSel ? "logodone" : "book") :
+      step === "pers" ? "book" :
       step === "logodone" ? "book" :
       step === "book" ? "socials" :
       step === "socials" ? "done" : null;
@@ -781,7 +813,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
-    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape,
+    book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape, logoCustom: logoSel?.custom,
   } : null;
 
   return (
@@ -932,14 +964,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     Your name should feel like <span className="wr-cpill">{concept!.concept}</span>
                   </h1>
                   <p className="wr-lead rise" style={{ marginBottom: 30 }}>{concept!.para}</p>
-                  <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Our inspirations</p>
-                  <div className="wr-terr">
-                    {concept!.territories.map((t, i) => (
-                      <div key={t.name} className="t" style={{ animationDelay: `${i * 0.08}s` }}>
-                        <b>{t.name}</b><span>{t.desc}</span>
-                      </div>
-                    ))}
-                  </div>
+                  
                 </>
               )}
             </div>
@@ -1084,19 +1109,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 : <WordsLoader concept={concept?.concept || "your brief"} />
             ) : (
               <>
-                {/* mobile: style tabs + list */}
-                <div className="wr-hidedesk" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-                  <div className="wr-wtabs">
-                    {styles.map((s, i) => (
-                      <button key={s.name} className={"wr-wtab" + (i === wtab ? " on" : "")} onClick={() => setWtab(i)}>{s.name}</button>
-                    ))}
-                  </div>
-                  <div className="wr-wlist mobile" style={{ overflowY: "auto", flex: 1 }}>
-                    {(styles[wtab]?.words || []).map((w) => <WordRow key={w.w} w={w} on={starred.some((x) => x.w === w.w)} onClick={() => starToggle(w)} />)}
-                  </div>
-                </div>
-                {/* desktop: 6 columns */}
-                <div className="wr-wcols wr-hidemob">
+                {/* 6 columns at every size (horizontal scroll when narrow) */}
+                <div className="wr-wcols">
                   {styles.map((s) => (
                     <div className="col" key={s.name}>
                       <h4>{s.name}</h4>
@@ -1237,7 +1251,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
-            <span />
+            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => ownIt("domain")}>
+              {picked.dom?.free !== false && picked.dom?.domain ? `Claim ${picked.dom.domain} →` : "Own it →"}
+            </button>
           </div>
         </>
       )}
@@ -1339,6 +1355,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <span className="aa" style={{ fontFamily: tasteFont(taste) === "serif" ? "var(--bookserif)" : "var(--sans)" }}>Aa</span>
                 </div>
                 <button className="wr-link" style={{ marginTop: 16, paddingLeft: 0 }} onClick={() => toStep("feel")}>↻ Swipe again</button>
+                <p className="wr-kicker" style={{ margin: "22px 0 8px" }}>Live preview</p>
+                <div
+                  className="wr-tastelive"
+                  style={{
+                    background: `color-mix(in srgb, color-mix(in srgb, ${tastePalette(taste).dawn} ${100 - taste.sliders.wc}%, ${tastePalette(taste).nova}) ${16 + Math.round(taste.sliders.ce * 0.5)}%, #0d0d0f)`,
+                    borderRadius: `${6 + Math.round((100 - taste.sliders.rs) * 0.5)}px`,
+                  }}
+                >
+                  <b style={{
+                    fontFamily: tasteFont(taste) === "serif" ? "var(--bookserif)" : tasteFont(taste) === "light" ? "var(--mono)" : "var(--sans)",
+                    fontWeight: Math.max(300, Math.min(800, 300 + Math.round(taste.sliders.mb * 5))),
+                    fontSize: 30, color: "#fff",
+                  }}>{picked.name}</b>
+                </div>
               </div>
               <div>
                 <p className="wr-kicker" style={{ marginBottom: 14 }}>Drag to adjust</p>
@@ -1404,9 +1434,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div className="wr-lwrap wr-ldet">
               <div className="ldl">
                 <p className="wr-kicker" style={{ marginBottom: 12 }}>{logoSel.title} · primary</p>
-                <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 120 }) }} />
+                <div className="wr-lhero" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: logoSel.key === "appicon" ? "icon" : "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, custom: logoSel.custom, height: 120 }) }} />
+                <button className="wr-btn2" style={{ margin: "14px 0 0", width: "100%" }} onClick={() => {
+                  setPersDraft({
+                    symbol: logoSel.custom?.symbol || "half",
+                    layout: logoSel.custom?.layout || "side",
+                    accentHex: logoSel.custom?.accentHex || lpal[logoSel.accent] || lpal.dawn,
+                    font: logoSel.font || tasteFont(taste),
+                    scale: logoSel.custom?.scale || 1,
+                  });
+                  toStep("pers");
+                }}>✎ Personalize this logo</button>
                 <p className="wr-lead" style={{ margin: "18px 0 0" }}>
-                  <b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}
+                  {logoSel.key === "custom"
+                    ? <><b style={{ color: "#fff" }}>Yours, exactly.</b> Tuned by hand on the personalize page: your symbol, your colour, your face.</>
+                    : <><b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}</>}
                 </p>
               </div>
               <div className="ldr">
@@ -1418,7 +1460,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   {([["light", "Primary · on light", "#fff"], ["night", "Reversed · on night", lpal.night], ["dawn", "On the Dawn gradient", "transparent"], ["mono", "Horizontal · one colour", "#f1efe9"]] as const).map(([v, label, bg]) => (
                     <div key={v} className="wr-lver">
                       <div className="vv" style={{ background: bg === "transparent" ? "var(--surface3)" : bg }}
-                        dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: v, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 46 }) }} />
+                        dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: v, accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, custom: logoSel.custom, height: 46 }) }} />
                       <div className="vl">{label}</div>
                     </div>
                   ))}
@@ -1452,6 +1494,93 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("logo")}>← Back to logos</button>
             <button className="wr-btn" style={{ maxWidth: 300 }} onClick={() => markStep("logo", "done", "book")}>Next: Brand book →</button>
+          </div>
+        </>
+      )}
+
+      {/* ═══ 06f·b personalize the logo ═══ */}
+      {step === "pers" && picked && persDraft && (
+        <>
+          <div className="wr-stage" style={{ paddingTop: 18 }}>
+            <div className="wr-lwrap wr-pers">
+              <div className="pl">
+                <div className="phead">
+                  <p className="wr-kicker" style={{ margin: 0 }}>Live preview</p>
+                  {(() => {
+                    const base = { symbol: logoSel?.custom?.symbol || "half", layout: logoSel?.custom?.layout || "side", accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn, font: logoSel?.font || tasteFont(taste), scale: logoSel?.custom?.scale || 1 };
+                    const n = (["symbol", "layout", "accentHex", "font", "scale"] as const).filter((k) => (persDraft as any)[k] !== (base as any)[k]).length;
+                    return n ? <span className="edits">Edited · {n} change{n > 1 ? "s" : ""}</span> : null;
+                  })()}
+                </div>
+                <div className="hero" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "light", font: persDraft.font, custom: persDraft, height: 150 }) }} />
+                <div className="minis">
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, custom: persDraft, height: 36 }) }} />
+                  <span className="m dawn" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "dawn", font: persDraft.font, custom: persDraft, height: 36 }) }} />
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, custom: { ...persDraft, layout: "symbol" }, height: 44 }) }} />
+                </div>
+                <p className="wr-hint" style={{ marginTop: 10 }}>Every version updates with your changes.</p>
+              </div>
+              <div className="pr">
+                <p className="plab">Symbol</p>
+                <div className="seg">
+                  {([["half", "Half sun"], ["full", "Full sun"], ["none", "None"]] as const).map(([v, l]) => (
+                    <button key={v} className={persDraft.symbol === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, symbol: v })}>{l}</button>
+                  ))}
+                </div>
+                <p className="plab">Colour</p>
+                <div className="sw">
+                  {([["Dawn", lpal.dawn], ["Haze", lpal.haze], ["Nova", lpal.nova], ["Mint", "#3ddc84"], ["White", "#ffffff"]] as const).map(([l, hex]) => (
+                    <button key={l} className={persDraft.accentHex === hex ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, accentHex: hex })}>
+                      <i style={{ background: hex }} /><em>{l}</em>
+                    </button>
+                  ))}
+                </div>
+                <p className="plab">Typeface</p>
+                <div className="seg">
+                  {([["bold", "Bold"], ["serif", "Serif"], ["light", "Light"]] as const).map(([v, l]) => (
+                    <button key={v} className={persDraft.font === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, font: v })}>
+                      <span style={{ fontFamily: v === "serif" ? "var(--bookserif)" : v === "light" ? "var(--mono)" : "var(--sans)", fontWeight: v === "bold" ? 800 : 500 }}>Aa</span> {l}
+                    </button>
+                  ))}
+                </div>
+                <p className="plab">Layout</p>
+                <div className="seg">
+                  {([["stacked", "Stacked"], ["side", "Side by side"], ["symbol", "Symbol only"]] as const).map(([v, l]) => (
+                    <button key={v} className={persDraft.layout === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, layout: v })}>{l}</button>
+                  ))}
+                </div>
+                <p className="plab">Or just ask</p>
+                <form className="ask" onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!persAsk.trim() || persBusy) return;
+                  setPersBusy(true);
+                  const r = await logoTweak(persDraft, persAsk.trim());
+                  setPersBusy(false);
+                  if (r && typeof r === "object") {
+                    setPersDraft({
+                      symbol: (["half", "full", "none"].includes(String(r.symbol)) ? r.symbol : persDraft.symbol) as any,
+                      layout: (["stacked", "side", "symbol"].includes(String(r.layout)) ? r.layout : persDraft.layout) as any,
+                      accentHex: /^#[0-9a-fA-F]{3,8}$/.test(String(r.accentHex)) ? String(r.accentHex) : persDraft.accentHex,
+                      font: (["bold", "serif", "light"].includes(String(r.font)) ? r.font : persDraft.font) as any,
+                      scale: Math.max(0.5, Math.min(1.6, Number(r.scale) || persDraft.scale)),
+                    });
+                    setPersAsk("");
+                  }
+                }}>
+                  <input value={persAsk} onChange={(e) => setPersAsk(e.target.value)} placeholder="Make the circle a little smaller" />
+                  <button type="submit" disabled={persBusy}>{persBusy ? "…" : "↑"}</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div className="wr-foot">
+            <button className="wr-btn2 aslink" onClick={() => toStep("logodone")}>← Back</button>
+            <button className="wr-link mla" onClick={() => setPersDraft({ symbol: logoSel?.custom?.symbol || "half", layout: logoSel?.custom?.layout || "side", accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn, font: logoSel?.font || tasteFont(taste), scale: logoSel?.custom?.scale || 1 })}>↻ Reset to original</button>
+            <button className="wr-btn" style={{ maxWidth: 280 }} onClick={() => {
+              setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale } });
+              track("logopers", { name: picked.name, ...persDraft });
+              toStep("logodone");
+            }}>Save as my logo ✓</button>
           </div>
         </>
       )}
@@ -1927,7 +2056,7 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
           <div className="left">
             <p className="wr-kicker" style={{ marginBottom: 10 }}>Brands you like</p>
             <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 10 }}>Which names would you be proud of?</h1>
-            <p className="wr-lead" style={{ marginBottom: 22 }}>Swipe on real brands. Your taste shapes the words and the names.</p>
+            <p className="wr-lead" style={{ marginBottom: 22 }}>These are famous brand names. Tap ♥ if you'd be proud of a name like that, ✕ if it's not you. Every swipe teaches the studio your taste.</p>
           </div>
           <div className="right">
             {done ? (
@@ -1998,11 +2127,19 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
       return <span className="v cols">{palette.map((c) => <i key={c} style={{ background: c }} />)}</span>;
     }
     if (step === "ttype") {
-      const st = k === "Elegant serif" ? { fontFamily: "var(--bookserif)", fontWeight: 500 }
-        : k === "Clean sans" ? { fontWeight: 600 }
-        : k === "Strong caps" ? { fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.06em", fontSize: 26 }
-        : { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" as const };
-      return <span className="v type" style={st}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
+      const faces: Record<string, React.CSSProperties> = {
+        "Elegant serif": { fontFamily: "var(--bookserif)", fontWeight: 500 },
+        "Modern serif": { fontFamily: "Didot, 'Bodoni MT', 'Playfair Display', serif", fontWeight: 500, letterSpacing: "0.01em" },
+        "Slab serif": { fontFamily: "Rockwell, 'Roboto Slab', 'Courier New', serif", fontWeight: 700 },
+        "Clean sans": { fontWeight: 600 },
+        "Geometric sans": { fontFamily: "Futura, 'Century Gothic', sans-serif", fontWeight: 500, letterSpacing: "0.02em" },
+        "Grotesque": { fontFamily: "'Helvetica Neue', Arial, sans-serif", fontWeight: 700, letterSpacing: "-0.03em" },
+        "Strong caps": { fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 26 },
+        "Rounded": { fontFamily: "'Arial Rounded MT Bold', 'Varela Round', sans-serif", fontWeight: 600 },
+        "Technical mono": { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" },
+        "Script": { fontFamily: "'Snell Roundhand', 'Savoye LET', 'Brush Script MT', cursive", fontWeight: 500, fontSize: 32 },
+      };
+      return <span className="v type" style={faces[k] || { fontWeight: 600 }}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
     }
     if (step === "tshape") {
       return <span className="v shape">{

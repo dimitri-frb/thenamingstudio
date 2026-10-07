@@ -20,7 +20,8 @@ export type LogoVariant = "light" | "night" | "dawn" | "mono" | "icon" | "tile";
 export type LogoFont = "bold" | "serif" | "light";
 export type LogoShape = "round" | "sharp" | "organic" | "geometric";
 export type Accent = "dawn" | "haze" | "nova";
-export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont; shape?: LogoShape }
+export interface CustomLogo { symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol"; accentHex?: string; scale?: number }
+export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont; shape?: LogoShape; custom?: CustomLogo }
 
 // The Brand chapter's nine concepts (built from the taste picks).
 export const BRAND_TILES: { key: string; title: string }[] = [
@@ -93,7 +94,7 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : 
 
 const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
-export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape } = {}): string {
+export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape; custom?: CustomLogo } = {}): string {
   const variant = opts.variant || "light";
   const accent = pal[opts.accent || "dawn"];
   const name = cap((rawName || "Name").trim());
@@ -139,6 +140,35 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
     : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"/>`;
   // Corner radius language follows the shape pick too.
   const rxf = shape === "sharp" ? 0.06 : shape === "geometric" ? 0.12 : shape === "organic" ? 0.30 : 0.225;
+
+  // The personalized lockup (Chapter 3 · Personalize): symbol, colour, face, layout.
+  if (opts.custom || key === "custom") {
+    const c: CustomLogo = opts.custom || { symbol: "half", layout: "side" };
+    const sc = c.scale || 1;
+    const accRaw = c.accentHex || accent;
+    const acc = variant === "mono" ? fg : accRaw;
+    const faint = acc.toLowerCase() === "#ffffff" && !isDark && variant !== "dawn";
+    const ring = faint ? ` stroke="rgba(0,0,0,.18)" stroke-width="2"` : "";
+    const sym = (cx: number, cy: number, r: number) =>
+      c.symbol === "none" ? "" :
+      c.symbol === "full" ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${acc}"${ring}/>` :
+      `<path d="M ${cx - r} ${cy + r * 0.5} A ${r} ${r} 0 0 1 ${cx + r} ${cy + r * 0.5} Z" fill="${acc}"${ring}/>`;
+    if (c.layout === "symbol") {
+      const S = 170, r = 46 * sc;
+      return wrap(S, S, sym(S / 2, S / 2, r) || `<circle cx="${S / 2}" cy="${S / 2}" r="${40 * sc}" fill="${acc}"${ring}/>`);
+    }
+    if (c.layout === "stacked") {
+      const r = 26 * sc;
+      const w = Math.max(wWord(name, fs), r * 2) + pad * 2;
+      const cx = w / 2;
+      const top = c.symbol === "none" ? "" : sym(cx, 52, r);
+      return wrap(w, 190, top + word(cx, c.symbol === "none" ? 110 : 148, fs, { ...face, anchor: "middle" }));
+    }
+    const r = 22 * sc;
+    const lead = c.symbol === "none" ? 0 : r * 2 + 18;
+    const w = lead + wWord(name, fs) + pad * 2;
+    return wrap(w, 130, (c.symbol === "none" ? "" : sym(pad + r, 66, r)) + word(pad + lead, 84, fs, { ...face }));
+  }
 
   if (key === "appicon" || variant === "icon") {
     // Square app icon: three treatments per round.
@@ -410,16 +440,16 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
 /* ── the downloadable logo pack (shared by the flow and the account page) ── */
 export async function buildLogoPack(
   name: string, key: string, accent: Accent, seed: number,
-  swatches?: { name: string; hex: string }[] | null, font?: LogoFont, shape?: LogoShape,
+  swatches?: { name: string; hex: string }[] | null, font?: LogoFont, shape?: LogoShape, custom?: CustomLogo,
 ): Promise<{ blob: Blob; filename: string }> {
   const { makeZip } = await import("./zip");
   const pal = toPalette(swatches);
   const nm = (name || "logo").toLowerCase();
   const svgs: Record<string, string> = {
-    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font, shape }),
-    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font, shape }),
-    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font, shape }),
-    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font, shape }),
+    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font, shape, custom }),
+    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font, shape, custom }),
+    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font, shape, custom }),
+    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font, shape, custom }),
     [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed, shape }),
   };
   const enc = new TextEncoder();
