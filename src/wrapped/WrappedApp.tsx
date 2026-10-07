@@ -181,7 +181,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
   const [briefGate, setBriefGate] = useState(false); // 00·s: sign up right after Name it
-  const [gateNext, setGateNext] = useState<Step | null>(null); // where to go after the reveal's sign-in gate
   const [shareMsg, setShareMsg] = useState("");
   // Which generations failed (engine unreachable / bad answer) → honest retry UI.
   const [fails, setFails] = useState<Record<string, boolean>>({});
@@ -585,12 +584,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     };
   };
 
-  // Leaving the reveal into "Own it" asks for the account that keeps it all.
-  function ownIt(target: Step) {
-    if (user || test) { toStep(target); return; }
-    setGateNext(target);
-    setSignupOpen(true);
-  }
 
   function submitAsk() {
     if (sentence.trim().length < 4) return;
@@ -790,7 +783,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
           else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
           else if (step === "names" && names?.length) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
-          else if (step === "reveal") { e.preventDefault(); ownIt("domain"); }
+          else if (step === "reveal") { e.preventDefault(); toStep("domain"); }
           else if (step === "domain" && domSel) { e.preventDefault(); registerDomain(); }
           else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
           else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
@@ -862,7 +855,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           {chapter && <>
             <button className="wr-arr" onClick={() => backTarget[step] && toStep(backTarget[step]!)} aria-label="Back">‹</button>
             {fwdTarget()
-              ? <button className="wr-arr" onClick={() => (step === "reveal" ? ownIt(fwdTarget()!) : toStep(fwdTarget()!))} aria-label="Forward">›</button>
+              ? <button className="wr-arr" onClick={() => toStep(fwdTarget()!)} aria-label="Forward">›</button>
               : <span className="wr-arr dim">›</span>}
           </>}
         </span>
@@ -1251,7 +1244,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   </span>
                   <span className="nm2">{picked.name}</span>
                 </div>
-                <button className="rrow lead" onClick={() => ownIt("domain")}>
+                <button className="rrow lead" onClick={() => toStep("domain")}>
                   <span className="i">2</span>
                   <span className="mid">
                     <span className="hl"><b>Domain</b><small className="right">Claim it now</small></span>
@@ -1262,7 +1255,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   </span>
                   <span className="ar">→</span>
                 </button>
-                <button className="rrow" onClick={() => ownIt("brand")}>
+                <button className="rrow" onClick={() => toStep("brand")}>
                   <span className="i">3</span>
                   <span className="mid">
                     <span className="hl"><b>Brand</b><small className="right">Built from your taste</small></span>
@@ -1281,7 +1274,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => ownIt("domain")}>
+            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("domain")}>
               {picked.dom?.free !== false && picked.dom?.domain ? `Claim ${picked.dom.domain} →` : "Own it →"}
             </button>
           </div>
@@ -1693,18 +1686,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           onUser={(u) => { setUser(u); setBriefGate(false); enterFlow(); }}
         />
       )}
-      {signupOpen && (
-        <SignupModal
-          note={gateNext && picked ? `One account keeps ${picked.name}, its domain and its brand together.` : undefined}
-          onClose={() => { setSignupOpen(false); setGateNext(null); }}
-          onUser={(u) => {
-            setUser(u);
-            setSignupOpen(false);
-            if (gateNext) { const t = gateNext; setGateNext(null); persist(); toStep(t); }
-            else gotoAccount();
-          }}
-        />
-      )}
+      {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
       {bookOpen && bookCtx && <BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} />}
       {bookCtx && <BookPrint ctx={bookCtx} />}
 
