@@ -180,6 +180,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  const [briefGate, setBriefGate] = useState(false); // 00·s: sign up right after Name it
   const [gateNext, setGateNext] = useState<Step | null>(null); // where to go after the reveal's sign-in gate
   const [shareMsg, setShareMsg] = useState("");
   // Which generations failed (engine unreachable / bad answer) → honest retry UI.
@@ -546,8 +547,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     pushUrl("ask");
   }
 
-  // The Name Names landing submits the brief straight into the flow (02).
+  // The Name Names landing submits the brief into the flow (02) — after the
+  // one-tap sign-up (00·s) that keeps the brief, when signed out.
   function startFromLanding() {
+    if (!user && !test) { setBriefGate(true); return; }
+    enterFlow();
+  }
+  function enterFlow() {
     if (!test) { newProcess(); startedAt.current = Date.now(); }
     track("search", { sentence: sentence.trim(), chips });
     setStep("brief");
@@ -1680,6 +1686,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* overlays */}
+      {briefGate && (
+        <BriefGateModal
+          brief={sentence.trim()}
+          onClose={() => setBriefGate(false)}
+          onUser={(u) => { setUser(u); setBriefGate(false); enterFlow(); }}
+        />
+      )}
       {signupOpen && (
         <SignupModal
           note={gateNext && picked ? `One account keeps ${picked.name}, its domain and its brand together.` : undefined}
@@ -1771,6 +1784,50 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 }
 
 /* ── sign-up pop-up over the landing (the only sign-up in the flow) ── */
+/* 00·s — after "Name it": one tap with Google, the brief is kept */
+function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: () => void; onUser: (u: WUser) => void }) {
+  const host = useRef<HTMLDivElement>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const init = () => {
+      const w = window as any;
+      if (!w.google?.accounts?.id || !host.current) return;
+      w.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (resp: any) => {
+          const r = await authGoogle(resp.credential);
+          if (r) onUser(r.user);
+          else setErr("Sign-in didn't stick, try again.");
+        },
+      });
+      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
+    };
+    return loadGsi(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className="wr-sumodal" onClick={onClose}>
+      <div className="panel" onClick={(e) => e.stopPropagation()}>
+        <span className="bt" style={{ fontFamily: "'Archivo', var(--sans)", fontWeight: 900, letterSpacing: "-0.045em", fontSize: 16, display: "block", marginBottom: 16 }}>NAME NAMES</span>
+        <h3>Save your brief.<br />Then we name it.</h3>
+        {brief && (
+          <p className="briefrow"><em>Brief</em><span>{brief}</span></p>
+        )}
+        <div className="gbtn" ref={host} />
+        {err && <p className="small" style={{ color: "#ff7a6e" }}>{err}</p>}
+        <p className="small dim">Free. No card. We only use it to save your names.</p>
+        <button className="wr-link" style={{ marginTop: 6 }} onClick={onClose}>← Edit my brief</button>
+      </div>
+    </div>
+  );
+}
+
 function SignupModal({ onClose, onUser, note }: { onClose: () => void; onUser: (u: WUser) => void; note?: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");
