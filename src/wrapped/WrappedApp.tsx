@@ -735,7 +735,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   function share() {
     const nm = picked?.name || "My new name";
-    const base = "https://dimitri-frb.github.io/thenamingstudio/";
+    const base = "https://namename.ai/";
     const text = `${nm}, found with Name Name`;
     let url = base;
     if (picked && !test) {
