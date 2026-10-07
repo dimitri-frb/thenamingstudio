@@ -21,7 +21,8 @@ export default function App() {
   const shareMatch = path.match(/(?:^|\/)s\/([a-z0-9-]{3,60})\/?$/);
   if (shareMatch) return <SharePage id={shareMatch[1]} />;
 
-  if (is("admin")) return <AdminPage />;
+  if (is("admin") || /(?:^|\/)admin\/users\/?$/.test(path)) return <AdminPage />;
+  if (is("settings")) return <AccountPage initialTab="settings" />;
   if (is("account")) return <AccountPage />;
 
   // /test/1-brief, /test/8-logos… run the flow on the Tiller example.

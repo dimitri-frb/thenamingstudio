@@ -342,6 +342,29 @@ export async function shareGet(id: string): Promise<ShareData | null> {
   return r?.share || null;
 }
 
+/* ── admin + settings calls ── */
+export async function adminRoles(): Promise<{ owners: string[]; admins: string[]; me: string } | null> {
+  return post({ phase: "admin-roles", token: loadSession()?.token || "" });
+}
+export async function roleSet(email: string, role: "admin" | "user"): Promise<boolean> {
+  const r = await post<{ ok: boolean }>({ phase: "role-set", token: loadSession()?.token || "", payload: { email, role } });
+  return !!r?.ok;
+}
+export async function profileSet(name: string): Promise<boolean> {
+  const r = await post<{ ok: boolean }>({ phase: "profile-set", token: loadSession()?.token || "", payload: { name } });
+  if (r?.ok) { const sess = loadSession(); if (sess) saveSession({ ...sess, user: { ...sess.user, name } }); }
+  return !!r?.ok;
+}
+export async function searchDel(id: string): Promise<boolean> {
+  const r = await post<{ ok: boolean }>({ phase: "search-del", token: loadSession()?.token || "", payload: { id } });
+  return !!r?.ok;
+}
+export async function accountDelete(): Promise<boolean> {
+  const r = await post<{ ok: boolean }>({ phase: "account-delete", token: loadSession()?.token || "" });
+  if (r?.ok) saveSession(null);
+  return !!r?.ok;
+}
+
 /* ── Google Identity Services ── */
 export function loadGsi(onReady: () => void): () => void {
   const w = window as any;

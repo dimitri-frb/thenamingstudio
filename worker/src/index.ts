@@ -129,19 +129,62 @@ export default {
       return json({ ok: true }, env);
     }
 
-    // The central log, for the account page's "All names" tab: session-gated,
-    // admin emails only. The old GET ?log stays but now demands ADMIN_KEY.
+    // The central log, for the admin dashboard: session-gated, admins only
+    // (ADMIN_EMAILS env + KV roles granted from the Users tab).
     if (phase === "adminlog") {
-      const u = await sessionUser(env, body?.token);
-      const allowed = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
-      if (!u || !allowed.includes(String(u.email || "").toLowerCase())) return json({ error: "not allowed" }, env, 403);
+      const u = await adminUser(env, body?.token);
+      if (!u) return json({ error: "not allowed" }, env, 403);
       return json({ items: await logItems(env, Math.min(300, Math.max(1, Number(body?.limit) || 300))) }, env);
+    }
+    if (phase === "admin-roles") {
+      const u = await adminUser(env, body?.token);
+      if (!u) return json({ error: "not allowed" }, env, 403);
+      const owner = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const extra = env.LOG ? (await env.LOG.list({ prefix: "role:" })).keys.map((k) => k.name.slice(5)) : [];
+      return json({ owners: owner, admins: extra, me: u.email }, env);
+    }
+    if (phase === "role-set") {
+      const u = await adminUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      const email = String(body?.payload?.email || "").toLowerCase().trim();
+      const owner = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+      if (!email || owner.includes(email)) return json({ error: "cannot change the owner" }, env, 400);
+      if (body?.payload?.role === "admin") await env.LOG.put("role:" + email, "admin");
+      else await env.LOG.delete("role:" + email);
+      return json({ ok: true }, env);
+    }
+    if (phase === "profile-set") {
+      const u = await sessionUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      const name = String(body?.payload?.name || "").slice(0, 80).trim();
+      if (name) {
+        const acct = await getAcct(env, u.sub);
+        acct.user = { ...(acct.user || u), name };
+        await env.LOG.put(`acct:${u.sub}`, JSON.stringify(acct));
+        if (body?.token) await env.LOG.put(`sess:${body.token}`, JSON.stringify({ ...u, name }), { expirationTtl: 60 * 60 * 24 * 90 });
+      }
+      return json({ ok: true, name }, env);
+    }
+    if (phase === "account-delete") {
+      const u = await sessionUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      await env.LOG.delete(`acct:${u.sub}`);
+      if (body?.token) await env.LOG.delete(`sess:${body.token}`);
+      return json({ ok: true }, env);
     }
 
     // ── Accounts (Google sign-in + saved searches, stored in the LOG KV) ──
     if (phase === "auth-google") return json(await authGoogle(env, body), env);
     if (phase === "me") return json(await whoAmI(env, body), env);
     if (phase === "search-put") return json(await searchPut(env, body), env);
+    if (phase === "search-del") {
+      const u = await sessionUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      const acct = await getAcct(env, u.sub);
+      acct.searches = (acct.searches || []).filter((x: any) => x?.id !== String(body?.payload?.id || ""));
+      await env.LOG.put(`acct:${u.sub}`, JSON.stringify(acct));
+      return json({ ok: true }, env);
+    }
 
     // Lead capture (sign-up at step 1, or the email gate). No Claude call, just logged.
     if (phase === "lead") {
@@ -872,6 +915,16 @@ async function authGoogle(env: Env, body: any): Promise<any> {
     await writeLog(env, "lead", body?.process, { payload }, payload);
   }
   return { token, user: u, searches: acct.searches || [] };
+}
+
+async function adminUser(env: Env, token: unknown) {
+  const u = await sessionUser(env, token);
+  if (!u) return null;
+  const email = String(u.email || "").toLowerCase();
+  const owner = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (owner.includes(email)) return u;
+  if (env.LOG && (await env.LOG.get("role:" + email))) return u;
+  return null;
 }
 
 async function whoAmI(env: Env, body: any): Promise<any> {

@@ -1430,3 +1430,86 @@
   .kadm .split { flex-direction: column; }
   .kadm .panel { position: static; flex: 1 1 auto; width: 100%; }
 }
+
+
+/* ── paper chrome: view switch, account cards, users, settings ── */
+.kadm .menu .tag { font-style: normal; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; background: #000; color: #fff; border-radius: 5px; padding: 2px 6px; margin-left: 6px; }
+.kadm .viewrow { display: flex; align-items: center; gap: 12px; padding: 12px 24px 0; max-width: 1440px; margin: 0 auto; }
+.kadm .seg { display: inline-flex; background: #f2f1ee; border-radius: 980px; padding: 3px; }
+.kadm .seg button { border: none; background: none; font-family: inherit; font-size: 13px; font-weight: 700; color: #6a6a6a; padding: 8px 18px; border-radius: 980px; cursor: pointer; }
+.kadm .seg button.on { background: #000; color: #fff; }
+.kadm .seglink { border: none; background: none; font-family: inherit; font-size: 13px; font-weight: 600; color: #6a6a6a; cursor: pointer; }
+.kadm .seglink.on { color: #000; font-weight: 800; }
+.kadm .flabel { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #6a6a6a; }
+.kadm .usearch { border: 1px solid #ececec; background: #fff; border-radius: 980px; padding: 9px 14px; font-family: inherit; font-size: 13px; outline: none; min-width: 220px; margin-left: auto; }
+
+.kadm .row.urow { grid-template-columns: minmax(150px, 1.4fr) 0.7fr 0.9fr 0.6fr 0.4fr 0.5fr 0.8fr 0.7fr; }
+.kadm .dimtxt { font-size: 12px; color: #6a6a6a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kadm .rolepill { font-size: 11px; font-weight: 700; border: 1px solid #ececec; border-radius: 980px; padding: 4px 10px; text-align: center; color: #6a6a6a; }
+.kadm .rolepill.dark { background: #000; color: #fff; border-color: #000; }
+.kadm .miniflow { background: #fff; border: 1px solid #ececec; border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; }
+.kadm .miniflow b { font-size: 12.5px; display: block; margin-bottom: 5px; }
+.kadm .miniflow .segs { display: flex; gap: 2px; }
+.kadm .miniflow .segs i { flex: 1; height: 3px; border-radius: 2px; background: #ececec; }
+.kadm .miniflow .segs i.d { background: #000; }
+.kadm .miniflow .segs i.c { background: #ff4f1a; }
+.kadm .roleswitch { display: inline-flex; background: #ececec; border-radius: 980px; padding: 3px; }
+.kadm .roleswitch button { border: none; background: none; font-family: inherit; font-size: 12px; font-weight: 700; color: #6a6a6a; padding: 6px 14px; border-radius: 980px; cursor: pointer; }
+.kadm .roleswitch button.on { background: #000; color: #fff; }
+.kadm .rolerm { border: none; background: none; color: #d93a12; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; margin-left: 8px; }
+
+/* settings pane */
+.kset h2 { margin: 6px 0 16px; }
+.kset .frow { display: flex; align-items: center; gap: 14px; border-top: 1px solid #ececec; padding: 12px 0; }
+.kset .frow:first-of-type { border-top: none; }
+.kset .frow em { font-style: normal; flex: 0 0 90px; font-size: 12px; font-weight: 700; color: #6a6a6a; }
+.kset .editrow { display: flex; gap: 8px; flex: 1; }
+.kset .editrow input { flex: 1; border: 1px solid #ececec; border-radius: 10px; padding: 9px 12px; font-family: inherit; font-size: 13.5px; outline: none; }
+.kset .editrow input:focus { border-color: #000; }
+.kset .editrow button { border: none; background: #000; color: #fff; border-radius: 980px; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 0 16px; cursor: pointer; }
+.kset .editrow button:disabled { opacity: 0.4; cursor: default; }
+.kset .dim i { font-style: normal; color: #9a9a9a; }
+.kadm .panelcard.danger { background: #fdf1ee; border-color: #f3cfc5; }
+.kadm .panelcard.danger .copy { font-size: 13px; margin: 0 0 12px; }
+.kadm .delbtn { border: 1.5px solid #d93a12; color: #d93a12; background: none; border-radius: 980px; font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 16px; cursor: pointer; }
+.kadm .delbtn.solid { background: #d93a12; color: #fff; }
+.kadm .delbtn:disabled { opacity: 0.4; }
+
+/* my names (U·d) */
+.kacc .newcta { background: #ff4f1a; color: #000; border-radius: 980px; font-size: 12.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 11px 18px; text-decoration: none; white-space: nowrap; }
+.kacc .hi { color: #6a6a6a; font-size: 14px; margin: 4px 0 2px; }
+.kacc .headrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.kacc .headrow h2 { margin: 0; font-size: 30px; letter-spacing: -0.035em; }
+.kacc .backlink { border: none; background: none; font-family: inherit; font-size: 13px; color: #6a6a6a; cursor: pointer; padding: 0 0 12px; }
+.kacc .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.kacc .fcard { background: #fff; border: 1px solid #ececec; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.kacc .fcard .top { display: flex; justify-content: space-between; align-items: center; }
+.kacc .fcard .pill { font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: #f2f1ee; color: #6a6a6a; border-radius: 980px; padding: 4px 10px; }
+.kacc .fcard .pill.dark { background: #000; color: #fff; }
+.kacc .fcard .date { font-size: 11px; color: #6a6a6a; }
+.kacc .fcard h3 { margin: 2px 0 0; font-size: 24px; letter-spacing: -0.03em; }
+.kacc .fcard .brief { margin: 0; font-size: 13px; color: #4a4a4a; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kacc .fcard .prog { display: flex; align-items: center; gap: 10px; }
+.kacc .fcard .prog .mono { font-size: 11px; color: #6a6a6a; }
+.kacc .fcard .segs { display: flex; gap: 3px; flex: 1; }
+.kacc .fcard .segs i { flex: 1; height: 4px; border-radius: 2px; background: #ececec; }
+.kacc .fcard .segs i.d { background: #000; }
+.kacc .fcard .segs i.c { background: #ff4f1a; }
+.kacc .fcard .line { margin: 0; font-size: 12px; color: #6a6a6a; }
+.kacc .fcard .acts { display: flex; gap: 8px; margin-top: 4px; }
+.kacc .btn { border-radius: 980px; font-family: inherit; font-size: 13px; font-weight: 700; padding: 10px 16px; cursor: pointer; text-decoration: none; text-align: center; border: none; }
+.kacc .btn.dark { background: #000; color: #fff; }
+.kacc .btn.orange { background: #ff4f1a; color: #000; }
+.kacc .btn.ghost { background: none; border: 1px solid #ececec; color: #6a6a6a; }
+.kacc .tabs { display: inline-flex; gap: 4px; background: #f2f1ee; border-radius: 980px; padding: 3px; }
+.kacc .tabs button { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #6a6a6a; padding: 7px 13px; border-radius: 980px; cursor: pointer; }
+.kacc .tabs button i { font-style: normal; opacity: 0.6; }
+.kacc .tabs button.on { background: #000; color: #fff; }
+.kacc .newcta.mobilefix { display: none; }
+@media (max-width: 720px) {
+  .kacc .bar .newcta { display: none; }
+  .kacc .newcta.mobilefix { display: block; position: fixed; left: 18px; right: 18px; bottom: 18px; text-align: center; padding: 15px; z-index: 20; box-shadow: 0 14px 40px -12px rgba(0, 0, 0, 0.35); }
+  .kacc .wrap { padding-bottom: 110px; }
+  .kadm .row.urow { grid-template-columns: 1fr 0.8fr; }
+  .kadm .row.urow > :nth-child(n+3):not(.rolepill) { display: none; }
+}

@@ -1,9 +1,10 @@
 // The Name Name admin dashboard (handoff: Known As Admin): every flow that
 // started, where it stopped, who the user is and where they came from.
 // White "paper" theme, session-gated server-side (adminlog needs an admin token).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./wrapped.css";
-import { ENDPOINT, loadSession, saveSession } from "./api";
+import { ENDPOINT, adminRoles, loadSession, roleSet, saveSession } from "./api";
+import { AvatarMenu, SettingsPane } from "./paper";
 import { download } from "./zip";
 
 interface LogItem { id: string; at: number; process?: string; phase: string; input?: any; output?: any }
@@ -111,9 +112,12 @@ export function AdminPage() {
   const [fName, setFName] = useState("");
   const [fDomain, setFDomain] = useState("");
   const [sel, setSel] = useState<string | null>(null);
-  const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<"flows" | "users">(window.location.pathname.includes("/admin/users") ? "users" : "flows");
+  const [roles, setRoles] = useState<{ owners: string[]; admins: string[] } | null>(null);
+  const [selUser, setSelUser] = useState<string | null>(null);
+  const [uq, setUq] = useState("");
+  const [uTab, setUTab] = useState<"all" | "new" | "named" | "admins">("all");
 
   const BASE = () => (import.meta as any).env.BASE_URL || "/";
 
@@ -130,11 +134,7 @@ export function AdminPage() {
       .catch((e) => setErr(String(e)));
   }, []);
 
-  useEffect(() => {
-    const close = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false); };
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, []);
+  useEffect(() => { if (!demo) adminRoles().then((r) => { if (r && (r as any).owners) setRoles(r as any); }); else setRoles({ owners: ["dimitri@dfginvest.fr"], admins: [] }); }, [demo]);
 
   const flows = useMemo(() => (items ? buildFlows(items) : []), [items]);
   const since = range === 0 ? 0 : Date.now() - range * 86400000;
@@ -214,40 +214,33 @@ export function AdminPage() {
           ))}
         </span>
         <button className="csv" onClick={exportCsv}>↓ CSV</button>
-        <div className="avwrap" ref={menuRef}>
-          <button className="avatar" onClick={() => setMenu((m) => !m)}>{(me.name || me.email)[0].toUpperCase()}</button>
-          {menu && (
-            <div className="menu">
-              <p className="who"><b>{me.name || "Admin"}</b><span>{me.email}</span></p>
-              <p className="lbl">Switch view</p>
-              <a href={BASE() + "account"}>My names</a>
-              <a className="on" href={BASE() + "admin"}>Admin ✓</a>
-              <button onClick={() => { setSettings((s) => !s); setMenu(false); }}>{settings ? "← Dashboard" : "Settings"}</button>
-              <button onClick={() => { saveSession(null); window.location.assign(BASE()); }}>Log out</button>
-            </div>
-          )}
-        </div>
+        <AvatarMenu me={me} isAdmin current="admin" onLogout={() => { saveSession(null); window.location.assign(BASE()); }} />
+      </div>
+      <div className="viewrow">
+        <span className="seg">
+          <button className={view === "flows" && !settings ? "on" : ""} onClick={() => { setView("flows"); setSettings(false); }}>Flows</button>
+          <button className={view === "users" && !settings ? "on" : ""} onClick={() => { setView("users"); setSettings(false); }}>Users</button>
+        </span>
+        <button className={"seglink" + (settings ? " on" : "")} onClick={() => setSettings((x) => !x)}>Settings</button>
       </div>
 
       {settings ? (
         <div className="wrap">
-          <h2>Settings</h2>
-          <div className="panelcard">
-            <p className="lbl">Profile</p>
-            <p><b>{me.name || "Admin"}</b> · <span className="mono">{me.email}</span> <em>(Google, read-only)</em></p>
-          </div>
+          <SettingsPane me={me} />
           <div className="panelcard">
             <p className="lbl">Team &amp; roles</p>
-            <p><span className="mono">dimitri@dfginvest.fr</span> — Owner</p>
-            <a className="invite" href={`mailto:?subject=Join the Name Name admin&body=Ask Dimitri to add your Google address to ADMIN_EMAILS.`}>＋ Invite by email</a>
-            <p className="hint">Admins are the addresses in the Worker's ADMIN_EMAILS variable.</p>
+            {(roles?.owners || []).map((e) => <p key={e}><span className="mono">{e}</span> — Owner</p>)}
+            {(roles?.admins || []).map((e) => <p key={e}><span className="mono">{e}</span> — Admin <button className="rolerm" onClick={async () => { if (await roleSet(e, "user")) setRoles((r) => r && { ...r, admins: r.admins.filter((x) => x !== e) }); }}>remove</button></p>)}
+            <p className="hint">Grant the admin role from the Users tab; owners come from the Worker's ADMIN_EMAILS.</p>
           </div>
         </div>
+      ) : view === "users" ? (
+        <UsersView flows={inRange} roles={roles} q={uq} setQ={setUq} tab={uTab} setTab={setUTab} sel={selUser} setSel={setSelUser} onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }} />
       ) : (
         <div className="wrap">
           {/* KPIs */}
           <div className="kpis">
-            {([["Flows started", kStarted], ["Reached a name", kNamed], ["Domain claimed", kDomain], ["Completed", kDone]] as const).map(([l, v]) => (
+            {([["Flows started", kStarted], ["Reached a name", kNamed], ["Completed", kDone], ["Domain claimed", kDomain]] as const).map(([l, v]) => (
               <div key={l} className="kpi"><b>{v}</b><span>{l}</span></div>
             ))}
           </div>
@@ -269,6 +262,7 @@ export function AdminPage() {
 
           {/* toolbar */}
           <div className="toolbar">
+            <span className="flabel">Filter</span>
             <span className="tabs">
               {([["All", "all", inRange.length], ["Live now", "live", inRange.filter((f) => f.status === "live").length], ["Stopped", "stopped", inRange.filter((f) => f.status === "stopped").length], ["Completed", "done", kDone]] as const).map(([l, v, n]) => (
                 <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v as any)}>{l} <i>{n}</i></button>
@@ -328,7 +322,7 @@ export function AdminPage() {
                 <h3>{selFlow.uname || "Anonymous"}</h3>
                 <p className="mono dim">{selFlow.email || "no account yet"}</p>
                 <div className="meta">
-                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
+                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
                     <p key={k}><em>{k}</em><span>{v}</span></p>
                   ))}
                 </div>
@@ -346,6 +340,115 @@ export function AdminPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Admin · Users: one row per account, aggregated from the flows ── */
+interface AdminUser {
+  email: string; uname: string; first: number; last: number;
+  source: string; country: string; flows: number; names: number; role: "Owner" | "Admin" | "User";
+  theirFlows: Flow[];
+}
+function UsersView({ flows, roles, q, setQ, tab, setTab, sel, setSel, onRole }: {
+  flows: Flow[]; roles: { owners: string[]; admins: string[] } | null;
+  q: string; setQ: (s: string) => void;
+  tab: "all" | "new" | "named" | "admins"; setTab: (t: any) => void;
+  sel: string | null; setSel: (s: string | null) => void;
+  onRole: (email: string, role: "admin" | "user") => void;
+}) {
+  const by = new Map<string, AdminUser>();
+  for (const f of flows) {
+    if (!f.email) continue;
+    const u = by.get(f.email) || { email: f.email, uname: f.uname, first: f.first, last: f.last, source: f.source, country: f.country, flows: 0, names: 0, role: "User" as const, theirFlows: [] };
+    u.uname = u.uname || f.uname;
+    u.first = Math.min(u.first, f.first);
+    u.last = Math.max(u.last, f.last);
+    u.source = u.source || f.source;
+    u.country = u.country || f.country;
+    u.flows += 1;
+    if (f.name) u.names += 1;
+    u.theirFlows.push(f);
+    by.set(f.email, u);
+  }
+  const users = Array.from(by.values()).map((u) => ({
+    ...u,
+    role: roles?.owners.includes(u.email.toLowerCase()) ? "Owner" as const : roles?.admins.includes(u.email.toLowerCase()) ? "Admin" as const : "User" as const,
+  })).sort((a, b) => b.last - a.last);
+  const week = Date.now() - 7 * 864e5;
+  const shown = users.filter((u) => {
+    if (tab === "new" && u.first < week) return false;
+    if (tab === "named" && !u.names) return false;
+    if (tab === "admins" && u.role === "User") return false;
+    const sq = q.trim().toLowerCase();
+    if (sq && ![u.email, u.uname].some((v) => v.toLowerCase().includes(sq))) return false;
+    return true;
+  });
+  const selU = shown.find((u) => u.email === sel) || users.find((u) => u.email === sel) || null;
+  return (
+    <div className="wrap">
+      <div className="kpis">
+        {([["Users", users.length], ["Found a name", users.filter((u) => u.names).length], ["Came back (2+)", users.filter((u) => u.flows > 1).length], ["Admins", users.filter((u) => u.role !== "User").length]] as const).map(([l, v]) => (
+          <div key={l} className="kpi"><b>{v}</b><span>{l}</span></div>
+        ))}
+      </div>
+      <div className="toolbar">
+        <span className="tabs">
+          {([["All", "all"], ["New this week", "new"], ["With a name", "named"], ["Admins", "admins"]] as const).map(([l, v]) => (
+            <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{l}</button>
+          ))}
+        </span>
+        <input className="usearch" placeholder="Search name or email…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="split">
+        <div className="tbl">
+          {!shown.length && <p className="hint">No users yet (accounts appear with their first tracked flow).</p>}
+          {shown.map((u) => (
+            <button key={u.email} className={"row urow" + (sel === u.email ? " on" : "")} onClick={() => setSel(sel === u.email ? null : u.email)}>
+              <span className="user">
+                <i className="av">{(u.uname || u.email)[0].toUpperCase()}</i>
+                <span><b>{u.uname || "—"}</b><em className="mono">{u.email}</em></span>
+              </span>
+              <span className="mono dimtxt">{new Date(u.first).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+              <span className="dimtxt">{u.source || "—"}</span>
+              <span className="dimtxt">{u.country || "—"}</span>
+              <span className="mono">{u.flows}</span>
+              <span className="mono">{u.names}</span>
+              <span className="dimtxt">{ago(u.last)}</span>
+              <span className={"rolepill" + (u.role !== "User" ? " dark" : "")}>{u.role}</span>
+            </button>
+          ))}
+        </div>
+        {selU && (
+          <aside className="panel">
+            <button className="x" onClick={() => setSel(null)}>✕</button>
+            <h3>{selU.uname || selU.email}</h3>
+            <p className="mono dim">{selU.email}</p>
+            <div className="meta">
+              {([["Signed up", new Date(selU.first).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " · Google"], ["Source", selU.source || "—"], ["Country", selU.country || "—"], ["Last active", ago(selU.last)], ["Flows", String(selU.flows)], ["Names found", String(selU.names)]] as const).map(([k, v]) => (
+                <p key={k}><em>{k}</em><span>{v}</span></p>
+              ))}
+            </div>
+            <p className="lbl">Their flows</p>
+            {selU.theirFlows.map((f) => (
+              <div key={f.id} className="miniflow">
+                <b>{f.name || f.brief.slice(0, 32) || f.id}</b>
+                <span className="segs">{STEPS.map((_, i) => <i key={i} className={i < f.step ? "d" : i === f.step ? "c" : ""} />)}</span>
+              </div>
+            ))}
+            {selU.role !== "Owner" && (
+              <>
+                <p className="lbl">Role</p>
+                <span className="roleswitch">
+                  <button className={selU.role === "User" ? "on" : ""} onClick={() => onRole(selU.email, "user")}>User</button>
+                  <button className={selU.role === "Admin" ? "on" : ""} onClick={() => onRole(selU.email, "admin")}>Admin</button>
+                </span>
+              </>
+            )}
+            <a className="mailbtn" href={`mailto:${selU.email}`}>Email user</a>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
