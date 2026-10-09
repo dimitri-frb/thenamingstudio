@@ -395,12 +395,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     wordsBatches.current = 0;
     const slots: (WStyle | null)[] = new Array(6).fill(null);
     let settled = 0;
+    let rescued = false;
     const t0 = Date.now();
     const s = sentence.trim();
+    const plan = wordsPlan();
     const finish = () => {
       settled++;
       if (settled < 6 || wordsReq.current !== key) return;
       const got = slots.filter(Boolean) as WStyle[];
+      // Never ship a thin page: under five columns, the missing ones get one
+      // more full round before we render anything.
+      if (got.length < 5 && got.length > 0 && !rescued) {
+        rescued = true;
+        const missing = plan.map((st, i) => [st, i] as const).filter(([, i]) => !slots[i]);
+        settled = 6 - missing.length;
+        missing.forEach(([st, i]) => run(i, st, 0));
+        return;
+      }
       // The six calls run blind to each other: drop any word a previous column already shows.
       const seen = new Set<string>();
       const deduped = got.map((st) => ({ ...st, words: st.words.filter((w) => { const k = w.w.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }) }));
@@ -411,11 +422,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       wrapApi.wordStyle(s, concept!.concept, concept!.territories, st, i, prefs).then((r) => {
         if (wordsReq.current !== key) return; // superseded
         if (r?.styles?.[0]?.words?.length) { slots[i] = r.styles[0]; finish(); }
-        else if (attempt < 1) run(i, st, attempt + 1); // one quiet retry so columns never just go missing
+        else if (attempt < 2) run(i, st, attempt + 1); // quiet retries so columns never just go missing
         else finish();
       });
     };
-    wordsPlan().forEach((st, i) => run(i, st, 0));
+    plan.forEach((st, i) => run(i, st, 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, concept, conceptReady, styles, sentence, retryTick, prefs]);
 

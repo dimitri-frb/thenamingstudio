@@ -220,7 +220,10 @@
   overflow-y: auto;
   animation: wr-rise 0.45s ease both;
 }
-.wr-stage.center { justify-content: center; }
+/* "safe" centering: content taller than the stage starts at the top and
+   scrolls, instead of clipping its first rows above the fold */
+.wr-stage.center > :first-child { margin-top: auto; }
+.wr-stage.center > :last-child { margin-bottom: auto; }
 .wr-stage::-webkit-scrollbar { width: 0; }
 
 .wr-foot {

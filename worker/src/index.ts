@@ -304,10 +304,19 @@ export default {
       // Primary read: the preferred extension. An unverifiable read is null,
       // never shown as "taken"; when taken, ONE verified-free alternative rides along.
       const dom = states[0] === "available" ? mk(cand[0], true) : states[0] === "taken" ? mk(cand[0], false) : null;
-      let alt = null;
+      let alt: ReturnType<typeof mk> | null = null;
       if (states[0] !== "available") {
         const j = states.findIndex((st, k) => k > 0 && st === "available");
         if (j > 0) alt = mk(cand[j], true);
+        // Every exact candidate taken? A short variant on the preferred TLD is
+        // the guarantee: get<name>, try<name>, <name>app are near-always open.
+        if (!alt) {
+          const vars = [`get${slug}`, `try${slug}`, `${slug}app`, `${slug}hq`, `use${slug}`];
+          const t = cand[0];
+          const vs = await Promise.all(vars.map((v) => rdap(v, t)));
+          const k = vs.findIndex((st) => st === "available");
+          if (k >= 0) alt = { domain: `${vars[k]}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true };
+        }
       }
       return json({ dom, alt }, env);
     }
@@ -623,7 +632,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `4) "alts": exactly 2 ALTERNATIVE "concept" candidates (same 2-4 lowercase word format, genuinely different angles).\n` +
     `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}],"alts":["...","..."]}.` }),
 
-  // 03 The words: 96 words across 6 styles, generated as SIX parallel one-style
+  // 03 The words: ~190 words across 6 styles (32 per column), generated as SIX parallel one-style
   // calls on the fast model, so the whole field lands in a few seconds and each
   // column can render the moment it arrives. (The legacy 3-style batch form is
   // kept for clients built before the split.)
@@ -638,12 +647,12 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     const st = b.payload?.style;
     if (st?.name) {
       const excl = Array.isArray(b.payload?.prefs?.exclude) ? b.payload.prefs.exclude : [];
-      return { model: MODEL.fast, max: 950, prompt:
+      return { model: MODEL.fast, max: 1900, prompt:
         common + prefLine(b.payload?.prefs) +
-        `Produce exactly ONE word style for the angle "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 16 words that mine this angle for THIS brief. The style's "name" in your output must be in the brief's language (translate the angle name if needed).\n` +
+        `Produce exactly ONE word style for the angle "${String(st.name).slice(0, 40)}"${st.desc ? ` (${String(st.desc).slice(0, 80)})` : ""}: 32 words that mine this angle for THIS brief. The style's "name" in your output must be in the brief's language (translate the angle name if needed).\n` +
         (excl.length ? `Never repeat these already-shown words: ${excl.slice(-64).join(", ")}.\n` : "") +
         wordSpec +
-        `Return ONLY JSON {"styles":[{"name":"${String(st.name).slice(0, 40)}","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 1 style of exactly 16 words.` };
+        `Return ONLY JSON {"styles":[{"name":"${String(st.name).slice(0, 40)}","words":[{"w":"...","m":"..."},{"w":"...","m":"...","lang":"IT"}]}]} with exactly 1 style of exactly 32 words.` };
     }
     return { model: MODEL.smart, max: 2600, prompt:
       common +
