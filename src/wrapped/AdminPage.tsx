@@ -78,6 +78,12 @@ function buildFlows(items: LogItem[]): Flow[] {
     // dedupe adjacent timeline steps, keep first hit of each
     const seen = new Set<string>();
     f.timeline = f.timeline.filter((t) => { if (seen.has(t.step)) return false; seen.add(t.step); return true; });
+    // the landing gate signs people up under a throwaway process id: a group
+    // that is ONLY a signup is that stray event, not a flow
+    const onlySignup = evs.every((e) => e.phase === "signup");
+    if (onlySignup) continue;
+    // a signed-in flow passed Sign up by definition
+    if (f.email && !f.timeline.some((t) => t.step === STEPS[0])) f.timeline.unshift({ at: f.first, step: STEPS[0] });
     f.status = f.step >= 9 ? "done" : Date.now() - f.last < 30 * 60000 ? "live" : "stopped";
     flows.push(f);
   }
