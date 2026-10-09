@@ -640,6 +640,31 @@
 .wr-sumodal .briefrow span { font-size: 14.5px; color: #fff; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .wr-sumodal .small.dim { color: var(--text3); font-size: 11.5px; margin-top: 8px; }
 
+/* ── 04·x / 04·i: names-page feedback ask (white card, per design) ── */
+.wr-sumodal.poll .panel { max-width: 520px; background: #fff; border: none; color: #111; text-align: left; padding: 28px 28px 22px; }
+.wr-sumodal.poll .x { background: #f0efec; color: #555; }
+.wr-sumodal.poll .kick { font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #9a988f; margin: 0 0 10px; }
+.wr-sumodal.poll h3 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.03em; font-size: 26px; color: #111; margin: 0 0 8px; }
+.wr-sumodal.poll .sub { font-size: 14px; color: #666; margin: 0 0 18px; max-width: 420px; }
+.wr-sumodal.poll .popts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+.wr-sumodal.poll .popts button { display: flex; align-items: center; gap: 10px; background: none; border: 1px solid #ddd; border-radius: 12px; padding: 12px 13px; font-family: inherit; font-size: 13px; font-weight: 600; color: #222; cursor: pointer; text-align: left; }
+.wr-sumodal.poll .popts button i { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #ccc; display: grid; place-items: center; font-style: normal; font-size: 11px; }
+.wr-sumodal.poll .popts button.on { border-color: #111; background: #faf9f6; }
+.wr-sumodal.poll .popts button.on i { background: #111; border-color: #111; color: #fff; }
+.wr-sumodal.poll textarea { width: 100%; box-sizing: border-box; border: 1.5px solid #111; border-radius: 14px; font-family: inherit; font-size: 14px; padding: 13px 14px; resize: none; outline: none; color: #111; background: #fff; }
+.wr-sumodal.poll textarea::placeholder { color: #999; }
+.wr-sumodal.poll .pacts { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.wr-sumodal.poll .pacts .note { font-family: var(--mono); font-size: 11px; color: #9a988f; margin-right: auto; }
+.wr-sumodal.poll .pbtn { border-radius: 980px; font-family: inherit; font-size: 14px; font-weight: 600; padding: 12px 20px; cursor: pointer; }
+.wr-sumodal.poll .pbtn.ghost { background: #fff; border: 1px solid #ddd; color: #111; }
+.wr-sumodal.poll .pbtn.ghost:disabled { opacity: 0.45; cursor: default; }
+.wr-sumodal.poll .pbtn.dark { background: #111; border: none; color: #fff; }
+@media (max-width: 560px) {
+  .wr-sumodal.poll .popts { grid-template-columns: 1fr; }
+  .wr-sumodal.poll .pacts { flex-wrap: wrap; }
+  .wr-sumodal.poll .pacts .note { flex-basis: 100%; margin-bottom: 4px; }
+}
+
 /* ── 05 reveal ── */
 .wr-reveal { position: relative; text-align: center; }
 .wr-bigname { font-family: var(--serif); font-weight: 500; font-size: 66px; letter-spacing: -0.03em; line-height: 1; margin: 0; }
@@ -757,6 +782,9 @@
 .wr-tasteband i { width: 34px; height: 34px; border-radius: 9px; display: inline-block; border: 1px solid rgba(255, 255, 255, 0.12); }
 .wr-tasteband .aa { font-size: 24px; font-weight: 500; margin-left: 8px; }
 .wr-slider { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+/* 07t: the recap profile is read-only — a filled track, no thumb, no dragging */
+.wr-slider.ro .bar { flex: 1 1 auto; height: 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.wr-slider.ro .bar i { display: block; height: 100%; border-radius: 4px; background: #fff; }
 .wr-slider > span { flex: 0 0 62px; font-size: 12.5px; color: var(--text2); }
 .wr-slider > span:last-child { text-align: right; }
 .wr-slider input[type="range"] {
@@ -1130,6 +1158,29 @@
 .wr-pers .minis .m svg { max-width: 90%; max-height: 80%; height: auto; width: auto; }
 .wr-pers .plab { font-size: 11.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin: 0 0 8px; }
 .wr-pers .plab:not(:first-child) { margin-top: 20px; }
+.wr-pers .plabrow { display: flex; align-items: baseline; justify-content: space-between; }
+.wr-pers .plabrow .plab { margin-bottom: 0; }
+.wr-pers .pmini { background: none; border: none; color: var(--text3); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.wr-pers .pmini:hover { color: #fff; }
+.wr-pers .symgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.wr-pers .symgrid button { background: none; border: 1px solid var(--hairline2); border-radius: 12px; color: var(--text2); font-family: inherit; font-size: 12px; font-weight: 600; padding: 10px 6px 9px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.wr-pers .symgrid button svg { display: block; }
+.wr-pers .symgrid button em { font-style: normal; white-space: nowrap; }
+.wr-pers .symgrid button.on { background: #fff; color: #000; border-color: #fff; }
+.wr-pers .swcustom { cursor: pointer; text-align: center; color: var(--text3); position: relative; }
+.wr-pers .swcustom i { display: block; width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; margin: 0 auto 5px; background: conic-gradient(#ff4f1a, #ffd166, #3ddc84, #4f8dff, #b388ff, #ff4f1a); color: #fff; font-style: normal; font-weight: 700; display: grid; place-items: center; font-size: 18px; }
+.wr-pers .swcustom.on i { border-color: #fff; box-shadow: 0 0 0 2px #000; }
+.wr-pers .swcustom em { font-style: normal; font-size: 11.5px; font-weight: 600; }
+.wr-pers .swcustom.on em { color: #fff; }
+.wr-pers .swcustom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.wr-pers .fontdd { margin-top: 8px; background: #fff; border-radius: 16px; padding: 10px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5); }
+.wr-pers .fontdd input { width: 100%; box-sizing: border-box; background: #f2f1ee; border: none; border-radius: 10px; font-family: inherit; font-size: 13.5px; padding: 11px 13px; outline: none; color: #111; }
+.wr-pers .fontdd .list { max-height: 240px; overflow: auto; margin-top: 6px; }
+.wr-pers .fontdd .list button { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; border-radius: 10px; padding: 10px 12px; cursor: pointer; color: #111; font-size: 16px; text-align: left; gap: 12px; }
+.wr-pers .fontdd .list button:hover { background: #f6f5f2; }
+.wr-pers .fontdd .list button.on { background: #f2efe9; }
+.wr-pers .fontdd .list button em { font-style: normal; font-size: 11px; font-weight: 600; color: #9a988f; font-family: var(--sans); }
+.wr-pers .fontdd .list button b { color: var(--signal); font-size: 13px; }
 .wr-pers .seg { display: flex; gap: 8px; flex-wrap: wrap; }
 .wr-pers .seg button { background: none; border: 1px solid var(--hairline2); border-radius: 12px; color: var(--text2); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 10px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
 .wr-pers .seg button.on { background: #fff; color: #000; border-color: #fff; }

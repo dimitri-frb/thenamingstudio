@@ -20,7 +20,28 @@ export type LogoVariant = "light" | "night" | "dawn" | "mono" | "icon" | "tile";
 export type LogoFont = "bold" | "serif" | "light";
 export type LogoShape = "round" | "sharp" | "organic" | "geometric";
 export type Accent = "dawn" | "haze" | "nova";
-export interface CustomLogo { symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol"; accentHex?: string; scale?: number }
+export type CustomSymbol = "half" | "full" | "ring" | "horizon" | "rays" | "arc" | "monogram" | "none";
+export interface CustomLogo {
+  symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex?: string; scale?: number;
+  family?: string;       // a Google Fonts family picked in "More fonts"
+  famWeight?: number;
+  sseed?: number;        // "↻ More": cycles subtle symbol proportions
+}
+
+/* Google Fonts, loaded on demand for the personalized wordmark. */
+const fontsLoaded = new Set<string>();
+export function ensureFonts(fonts: { family: string; weight?: number }[]): void {
+  if (typeof document === "undefined") return;
+  const need = fonts.filter((f) => f.family && !fontsLoaded.has(f.family + ":" + (f.weight || 500)));
+  if (!need.length) return;
+  need.forEach((f) => fontsLoaded.add(f.family + ":" + (f.weight || 500)));
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.href = "https://fonts.googleapis.com/css2?" +
+    need.map((f) => `family=${encodeURIComponent(f.family).replace(/%20/g, "+")}:wght@${f.weight || 500}`).join("&") +
+    "&display=swap";
+  document.head.appendChild(l);
+}
 export interface LogoConcept { key: string; title: string; accent: Accent; seed: number; font?: LogoFont; shape?: LogoShape; custom?: CustomLogo }
 
 // The Brand chapter's nine concepts (built from the taste picks).
@@ -113,8 +134,8 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
     (bg !== "none" ? `<rect width="${w}" height="${h}" fill="${bg}" rx="${variant === "dawn" ? 18 : 0}"/>` : "") +
     inner + `</svg>`;
 
-  const word = (x: number, y: number, fs: number, o: { weight?: number; spacing?: number; color?: string; text?: string; anchor?: string; serif?: boolean; italic?: boolean } = {}) =>
-    `<text x="${x}" y="${y}" font-family="${o.serif ? SERIF : FONT}" font-size="${fs}" font-weight="${o.weight ?? 800}" letter-spacing="${o.spacing ?? -fs * 0.03}" ${o.italic ? `font-style="italic"` : ""} fill="${o.color || fg}" ${o.anchor ? `text-anchor="${o.anchor}"` : ""}>${esc(o.text ?? name)}</text>`;
+  const word = (x: number, y: number, fs: number, o: { weight?: number; spacing?: number; color?: string; text?: string; anchor?: string; serif?: boolean; italic?: boolean; family?: string } = {}) =>
+    `<text x="${x}" y="${y}" font-family="${o.family ? `'${o.family}',${o.serif ? SERIF : FONT}` : o.serif ? SERIF : FONT}" font-size="${fs}" font-weight="${o.weight ?? 800}" letter-spacing="${o.spacing ?? -fs * 0.03}" ${o.italic ? `font-style="italic"` : ""} fill="${o.color || fg}" ${o.anchor ? `text-anchor="${o.anchor}"` : ""}>${esc(o.text ?? name)}</text>`;
 
   // The wordmark voice rotates with the round (heavy sans → serif → light sans),
   // unless the founder picked a font explicitly on the logo page.
@@ -144,30 +165,67 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   // The personalized lockup (Chapter 3 · Personalize): symbol, colour, face, layout.
   if (opts.custom || key === "custom") {
     const c: CustomLogo = opts.custom || { symbol: "half", layout: "side" };
+    if (c.family) ensureFonts([{ family: c.family, weight: c.famWeight }]);
     const sc = c.scale || 1;
     const accRaw = c.accentHex || accent;
     const acc = variant === "mono" ? fg : accRaw;
     const faint = acc.toLowerCase() === "#ffffff" && !isDark && variant !== "dawn";
     const ring = faint ? ` stroke="rgba(0,0,0,.18)" stroke-width="2"` : "";
-    const sym = (cx: number, cy: number, r: number) =>
-      c.symbol === "none" ? "" :
-      c.symbol === "full" ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${acc}"${ring}/>` :
-      `<path d="M ${cx - r} ${cy + r * 0.5} A ${r} ${r} 0 0 1 ${cx + r} ${cy + r * 0.5} Z" fill="${acc}"${ring}/>`;
+    const sv = ((c.sseed || 0) % 3 + 3) % 3; // "↻ More" cycles proportions
+    const letterFg = faint || acc.toLowerCase() === "#ffffff" ? pal.night : "#ffffff";
+    const sym = (cx: number, cy: number, r: number) => {
+      switch (c.symbol) {
+        case "none": return "";
+        case "full": return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${acc}"${ring}/>`;
+        case "ring": {
+          const sw = r * (sv === 1 ? 0.3 : sv === 2 ? 0.58 : 0.44);
+          return `<circle cx="${cx}" cy="${cy}" r="${r - sw / 2}" fill="none" stroke="${acc}" stroke-width="${sw}"/>`;
+        }
+        case "horizon": {
+          const d = r * 0.88;
+          return `<path d="M ${cx - d} ${cy + r * 0.32} A ${d} ${d} 0 0 1 ${cx + d} ${cy + r * 0.32} Z" fill="${acc}"${ring}/>` +
+            `<line x1="${cx - r * 1.15}" y1="${cy + r * (sv === 2 ? 0.78 : 0.58)}" x2="${cx + r * 1.15}" y2="${cy + r * (sv === 2 ? 0.78 : 0.58)}" stroke="${faint ? "rgba(0,0,0,.4)" : acc}" stroke-width="${r * 0.16}" stroke-linecap="round"/>`;
+        }
+        case "rays": {
+          const n = sv === 1 ? 7 : sv === 2 ? 11 : 9;
+          const core = r * 0.52, from = r * 0.68, to = r;
+          let out = `<circle cx="${cx}" cy="${cy}" r="${core}" fill="${acc}"${ring}/>`;
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+            out += `<line x1="${cx + Math.cos(a) * from}" y1="${cy + Math.sin(a) * from}" x2="${cx + Math.cos(a) * to}" y2="${cy + Math.sin(a) * to}" stroke="${acc}" stroke-width="${r * 0.12}" stroke-linecap="round"/>`;
+          }
+          return out;
+        }
+        case "arc": {
+          const sw = r * (sv === 2 ? 0.62 : 0.46);
+          const rr = r - sw / 2;
+          return `<path d="M ${cx - rr} ${cy + r * 0.42} A ${rr} ${rr} 0 0 1 ${cx + rr} ${cy + r * 0.42}" fill="none" stroke="${acc}" stroke-width="${sw}" stroke-linecap="round"/>`;
+        }
+        case "monogram": {
+          const rx = r * (sv === 1 ? 0.5 : sv === 2 ? 0.16 : 0.3);
+          return `<rect x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" rx="${rx}" fill="${acc}"${ring}/>` +
+            `<text x="${cx}" y="${cy + r * 0.42}" text-anchor="middle" font-family="${FONT}" font-size="${r * 1.2}" font-weight="800" fill="${letterFg}">${esc((name[0] || "A").toUpperCase())}</text>`;
+        }
+        default: return `<path d="M ${cx - r} ${cy + r * 0.5} A ${r} ${r} 0 0 1 ${cx + r} ${cy + r * 0.5} Z" fill="${acc}"${ring}/>`;
+      }
+    };
+    const cface = c.family ? { ...face, family: c.family, weight: c.famWeight || 600 } : face;
+    const cW = (t: string, f: number) => Math.max(f, t.length * f * (c.family ? 0.6 : face.wf));
     if (c.layout === "symbol") {
       const S = 170, r = 46 * sc;
       return wrap(S, S, sym(S / 2, S / 2, r) || `<circle cx="${S / 2}" cy="${S / 2}" r="${40 * sc}" fill="${acc}"${ring}/>`);
     }
     if (c.layout === "stacked") {
       const r = 26 * sc;
-      const w = Math.max(wWord(name, fs), r * 2) + pad * 2;
+      const w = Math.max(cW(name, fs), r * 2) + pad * 2;
       const cx = w / 2;
       const top = c.symbol === "none" ? "" : sym(cx, 52, r);
-      return wrap(w, 190, top + word(cx, c.symbol === "none" ? 110 : 148, fs, { ...face, anchor: "middle" }));
+      return wrap(w, 190, top + word(cx, c.symbol === "none" ? 110 : 148, fs, { ...cface, anchor: "middle" }));
     }
     const r = 22 * sc;
     const lead = c.symbol === "none" ? 0 : r * 2 + 18;
-    const w = lead + wWord(name, fs) + pad * 2;
-    return wrap(w, 130, (c.symbol === "none" ? "" : sym(pad + r, 66, r)) + word(pad + lead, 84, fs, { ...face }));
+    const w = lead + cW(name, fs) + pad * 2;
+    return wrap(w, 130, (c.symbol === "none" ? "" : sym(pad + r, 66, r)) + word(pad + lead, 84, fs, { ...cface }));
   }
 
   if (key === "appicon" || variant === "icon") {

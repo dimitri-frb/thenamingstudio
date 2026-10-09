@@ -602,7 +602,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // Personalize page "or just ask": map an instruction onto the lockup params.
   logotweak: (b) => ({ model: MODEL.fast, max: 220, prompt:
     `A founder is editing their logo. Current parameters: ${JSON.stringify(b.payload?.params || {})}.\n` +
-    `Fields: symbol one of "half"|"full"|"none"; layout one of "stacked"|"side"|"symbol"; accentHex a CSS hex colour; font one of "bold"|"serif"|"light"; scale a number 0.5-1.6 (symbol size).\n` +
+    `Fields: symbol one of "half"|"full"|"ring"|"horizon"|"rays"|"arc"|"monogram"|"none"; layout one of "stacked"|"side"|"symbol"; accentHex a CSS hex colour; font one of "bold"|"serif"|"light"; scale a number 0.5-1.6 (symbol size).\n` +
     `Their instruction: "${String(b.payload?.ask || "").slice(0, 200)}".\n` +
     `Apply the instruction to the parameters (e.g. "make the circle a little smaller" lowers scale by ~0.15; "in green" sets accentHex; "no symbol" sets symbol none). Change ONLY what the instruction asks.\n` +
     `Return ONLY JSON {"symbol":"...","layout":"...","accentHex":"#......","font":"...","scale":1.0}.` }),

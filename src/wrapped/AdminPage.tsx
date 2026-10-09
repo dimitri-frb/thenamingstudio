@@ -26,6 +26,7 @@ interface Flow {
   name: string; shortlist: string[]; words: string[];
   domain: string;
   source: string; campaign: string; device: string; lang: string; country: string;
+  feedback: string;               // the 04·x/04·i exit poll, when the user answered it
   timeline: { at: number; step: string }[];
 }
 
@@ -42,7 +43,7 @@ function buildFlows(items: LogItem[]): Flow[] {
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "",
-      source: "", campaign: "", device: "", lang: "", country: "", timeline: [],
+      source: "", campaign: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     for (const e of evs) {
       const p = e.input?.payload || {};
@@ -65,6 +66,7 @@ function buildFlows(items: LogItem[]): Flow[] {
       // from any of them, so a truncated log window still shows it.
       const sent = p.sentence || e.input?.payload?.sentence;
       if (sent && !f.brief) f.brief = sent;
+      if (e.phase === "feedback") f.feedback = [Array.isArray(p.reasons) ? p.reasons.join(" · ") : "", p.note].filter(Boolean).join(" — ");
       if (e.phase === "pick" && p.name) f.name = p.name;
       if (e.phase === "done" && p.name) f.name = f.name || p.name;
       if (e.phase === "domain" && p.domain) f.domain = p.domain;
@@ -342,6 +344,7 @@ export function AdminPage() {
                   ))}
                 </div>
                 {selFlow.brief && <><p className="lbl">Brief</p><p className="val">“{selFlow.brief}”</p></>}
+                {selFlow.feedback && <><p className="lbl">Feedback</p><p className="val">{selFlow.feedback}</p></>}
                 {(selFlow.name || selFlow.domain) && <><p className="lbl">Name &amp; domain</p><p className="val"><b>{selFlow.name || "—"}</b>{selFlow.domain && <span className="mono"> · {selFlow.domain}</span>}</p></>}
                 {!!selFlow.words.length && <><p className="lbl">Starred words</p><p className="val dim">{selFlow.words.join(" · ")}</p></>}
                 {!selFlow.name && !!selFlow.shortlist.length && <><p className="lbl">Shortlist</p><p className="val dim">{selFlow.shortlist.join(" · ")}</p></>}

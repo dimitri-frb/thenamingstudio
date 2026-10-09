@@ -11,10 +11,10 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { BRAND_TILES, buildLogoPack, logoConcepts, logoSvg, toPalette, whyItWorks, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { SWIPE_DECK } from "./inspire";
 import { download } from "./zip";
-import { BookPreview, BookPrint, printBook, ScaledPage, type BookCtx } from "./Book";
+import { BookPreview, BookPrint, exportBookWord, printBook, ScaledPage, type BookCtx } from "./Book";
 
 type Step =
   | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "words" | "names" | "reveal"
@@ -66,6 +66,37 @@ const TEST_PATH = /(?:^|\/)test(?:\/|$)/.test(window.location.pathname);
 // The Brand chapter's taste quiz: four picks, then sliders.
 export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number } }
 const TASTE_DEFAULT: Taste = { feeling: ["Soft & warm"], colours: ["Dawn to night"], type: "Elegant serif", shape: "Round & soft", sliders: { ce: 35, wc: 28, rs: 30, ss: 28, mb: 35 } };
+
+/* ── Personalize (06f·p): the symbol set and the "More fonts" catalogue ── */
+const PERS_SYMBOLS: { k: CustomSymbol; l: string }[] = [
+  { k: "half", l: "Half sun" }, { k: "full", l: "Full sun" }, { k: "ring", l: "Ring" }, { k: "horizon", l: "Horizon" },
+  { k: "rays", l: "Rays" }, { k: "arc", l: "Arc" }, { k: "monogram", l: "Monogram" }, { k: "none", l: "None" },
+];
+function SymIcon({ k }: { k: CustomSymbol }) {
+  const p: Record<CustomSymbol, React.ReactNode> = {
+    half: <path d="M3 13 A 7 7 0 0 1 17 13 Z" fill="currentColor" />,
+    full: <circle cx="10" cy="10" r="6.5" fill="currentColor" />,
+    ring: <circle cx="10" cy="10" r="5.5" fill="none" stroke="currentColor" strokeWidth="2.6" />,
+    horizon: <><path d="M4.5 11 A 5.5 5.5 0 0 1 15.5 11 Z" fill="currentColor" /><line x1="3" y1="14.5" x2="17" y2="14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></>,
+    rays: <><circle cx="10" cy="10" r="3.6" fill="currentColor" />{[0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = (i / 8) * Math.PI * 2; return <line key={i} x1={10 + Math.cos(a) * 5.4} y1={10 + Math.sin(a) * 5.4} x2={10 + Math.cos(a) * 7.4} y2={10 + Math.sin(a) * 7.4} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />; })}</>,
+    arc: <path d="M4 13 A 6 6 0 0 1 16 13" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />,
+    monogram: <><rect x="3.5" y="3.5" width="13" height="13" rx="3.4" fill="currentColor" /><text x="10" y="13.6" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="var(--night, #141127)" style={{ fontFamily: "var(--sans)" }}>A</text></>,
+    none: <><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" /><line x1="5.8" y1="14.2" x2="14.2" y2="5.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></>,
+  };
+  return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>{p[k]}</svg>;
+}
+const PERS_FONTS: { f: string; w: number; cat: string }[] = [
+  { f: "Archivo Black", w: 400, cat: "Bold" }, { f: "Anton", w: 400, cat: "Bold" }, { f: "Montserrat", w: 800, cat: "Bold" },
+  { f: "Poppins", w: 700, cat: "Bold" }, { f: "Bricolage Grotesque", w: 800, cat: "Bold" },
+  { f: "Newsreader", w: 500, cat: "Serif" }, { f: "Playfair Display", w: 600, cat: "Serif" }, { f: "Fraunces", w: 600, cat: "Serif" },
+  { f: "DM Serif Display", w: 400, cat: "Serif" }, { f: "Cormorant Garamond", w: 600, cat: "Serif" }, { f: "EB Garamond", w: 500, cat: "Serif" },
+  { f: "Lora", w: 600, cat: "Serif" }, { f: "Libre Baskerville", w: 700, cat: "Serif" }, { f: "Marcellus", w: 400, cat: "Serif" },
+  { f: "Space Grotesk", w: 600, cat: "Sans" }, { f: "Sora", w: 600, cat: "Sans" }, { f: "Manrope", w: 700, cat: "Sans" }, { f: "Outfit", w: 600, cat: "Sans" },
+  { f: "Space Mono", w: 500, cat: "Mono" }, { f: "JetBrains Mono", w: 500, cat: "Mono" }, { f: "IBM Plex Mono", w: 500, cat: "Mono" },
+  { f: "Jost", w: 300, cat: "Light" }, { f: "Raleway", w: 300, cat: "Light" }, { f: "Josefin Sans", w: 300, cat: "Light" },
+  { f: "Pacifico", w: 400, cat: "Script" }, { f: "Dancing Script", w: 600, cat: "Script" }, { f: "Caveat", w: 600, cat: "Script" },
+];
+const persFontCat = (cat: string): LogoFont => (cat === "Serif" || cat === "Script" ? "serif" : cat === "Mono" || cat === "Light" ? "light" : "bold");
 const TASTE_OPTS = {
   feel: [
     { k: "Soft & warm", d: "Calm, gentle, human" },
@@ -172,9 +203,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
-  const [persDraft, setPersDraft] = useState<{ symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number } | null>(null);
+  const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number } | null>(null);
   const [persBusy, setPersBusy] = useState(false);
   const [persAsk, setPersAsk] = useState("");
+  const [persFontsOpen, setPersFontsOpen] = useState(false);
+  const [persFontQ, setPersFontQ] = useState("");
+  const [poll, setPoll] = useState<null | "exit" | "idle">(null);
+  const pollShown = useRef(false);
   const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
@@ -463,6 +498,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     });
   }
 
+  useEffect(() => { // 04·x / 04·i: one gentle ask at the names page, never twice
+    if (step !== "names" || poll || pollShown.current) return;
+    const show = (v: "exit" | "idle") => { if (!pollShown.current) { pollShown.current = true; setPoll(v); } };
+    const q = new URLSearchParams(window.location.search);
+    if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
+    if (test) return;
+    let idle = window.setTimeout(() => show("idle"), 30000);
+    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), 30000); };
+    const out = (e: MouseEvent) => { if (e.clientY <= 0 && !e.relatedTarget) show("exit"); };
+    window.addEventListener("pointermove", reset);
+    window.addEventListener("keydown", reset);
+    window.addEventListener("scroll", reset, true);
+    document.addEventListener("mouseout", out);
+    return () => { window.clearTimeout(idle); window.removeEventListener("pointermove", reset); window.removeEventListener("keydown", reset); window.removeEventListener("scroll", reset, true); document.removeEventListener("mouseout", out); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, poll, test]);
+
   useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
     if (test || step !== "words" || names?.length || starred.length < 2) return;
     const key = starKey(starred);
@@ -579,25 +631,35 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // The personalize draft starts as a faithful translation of the chosen logo.
   // (Initialized below; also hydrated on direct entry or refresh.)
   const draftFromSel = () => {
-    const map: Record<string, { symbol: "half" | "full" | "none"; layout: "stacked" | "side" | "symbol" }> = {
-      sunrise: { symbol: "half", layout: "stacked" },
-      nightserif: { symbol: "none", layout: "side" },
-      dawnsun: { symbol: "half", layout: "stacked" },
-      appicon: { symbol: "half", layout: "symbol" },
-      sidebyside: { symbol: "half", layout: "side" },
-      hazeitalic: { symbol: "none", layout: "side" },
-      outlinesun: { symbol: "half", layout: "stacked" },
-      risingdot: { symbol: "full", layout: "side" },
-      monogram: { symbol: "none", layout: "symbol" },
+    // Each concept renders three structural variants per seed; the draft opens
+    // as the closest translation of the EXACT tile the founder picked.
+    const v = (((logoSel?.seed || 0) % 3) + 3) % 3;
+    type D = { symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; scale?: number; font?: LogoFont };
+    const M: Record<string, [D, D, D]> = { // [v0, v1, v2]
+      sunrise: [{ symbol: "horizon", layout: "stacked" }, { symbol: "half", layout: "side" }, { symbol: "half", layout: "stacked", scale: 1.5 }],
+      nightserif: [{ symbol: "none", layout: "side", font: "serif" }, { symbol: "none", layout: "side", font: "serif" }, { symbol: "none", layout: "side", font: "serif" }],
+      dawnsun: [{ symbol: "half", layout: "stacked", scale: 1.5 }, { symbol: "half", layout: "stacked" }, { symbol: "half", layout: "side", scale: 1.4 }],
+      appicon: [{ symbol: "monogram", layout: "symbol" }, { symbol: "monogram", layout: "symbol" }, { symbol: "monogram", layout: "symbol" }],
+      sidebyside: [{ symbol: "half", layout: "side" }, { symbol: "full", layout: "side", scale: 0.8 }, { symbol: "half", layout: "side" }],
+      hazeitalic: [{ symbol: "none", layout: "side", font: "serif" }, { symbol: "full", layout: "side", scale: 0.55, font: "serif" }, { symbol: "none", layout: "side", font: "serif" }],
+      outlinesun: [{ symbol: "horizon", layout: "stacked" }, { symbol: "ring", layout: "stacked" }, { symbol: "arc", layout: "stacked" }],
+      risingdot: [{ symbol: "full", layout: "side", scale: 0.55 }, { symbol: "full", layout: "side", scale: 0.55 }, { symbol: "full", layout: "stacked", scale: 0.55 }],
+      monogram: [{ symbol: "monogram", layout: "symbol" }, { symbol: "monogram", layout: "symbol" }, { symbol: "monogram", layout: "symbol" }],
     };
-    const base = logoSel?.custom
-      ? { symbol: logoSel.custom.symbol, layout: logoSel.custom.layout }
-      : map[logoSel?.key || ""] || { symbol: "half", layout: "side" };
+    const d = logoSel?.custom
+      ? { symbol: logoSel.custom.symbol, layout: logoSel.custom.layout, scale: logoSel.custom.scale }
+      : (M[logoSel?.key || ""] || [{ symbol: "half", layout: "side" }, { symbol: "half", layout: "side" }, { symbol: "half", layout: "side" }])[v];
     return {
-      ...base,
+      symbol: d.symbol,
+      layout: d.layout,
       accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn,
-      font: logoSel?.font || tasteFont(taste),
-      scale: logoSel?.custom?.scale || 1,
+      // The tile's wordmark voice rotates with the round (bold → serif → light)
+      // unless the founder picked a face; the draft mirrors that exactly.
+      font: logoSel?.font || (d as D).font || (v === 1 ? "serif" : v === 2 ? "light" : "bold"),
+      scale: logoSel?.custom?.scale || d.scale || 1,
+      family: logoSel?.custom?.family,
+      famWeight: logoSel?.custom?.famWeight,
+      sseed: logoSel?.custom?.sseed,
     };
   };
 
@@ -1398,13 +1460,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
               </div>
               <div>
-                <p className="wr-kicker" style={{ marginBottom: 14 }}>Drag to adjust</p>
+                <p className="wr-kicker" style={{ marginBottom: 14 }}>Your profile</p>
                 {([["Calm", "Energetic", "ce"], ["Warm", "Cool", "wc"], ["Round", "Sharp", "rs"], ["Serif", "Sans", "ss"], ["Minimal", "Bold", "mb"]] as const).map(([l, r, k]) => (
-                  <div className="wr-slider" key={k}>
+                  <div className="wr-slider ro" key={k}>
                     <span>{l}</span>
-                    <input type="range" min={0} max={100} value={taste.sliders[k]}
-                      style={{ ["--v" as any]: `${taste.sliders[k]}%` }}
-                      onChange={(e) => setTaste({ ...taste, sliders: { ...taste.sliders, [k]: Number(e.target.value) } })} />
+                    <span className="bar"><i style={{ width: `${Math.max(6, taste.sliders[k])}%` }} /></span>
                     <span>{r}</span>
                   </div>
                 ))}
@@ -1527,7 +1587,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   <p className="wr-kicker" style={{ margin: 0 }}>Live preview</p>
                   {(() => {
                     const base = draftFromSel();
-                    const n = (["symbol", "layout", "accentHex", "font", "scale"] as const).filter((k) => (persDraft as any)[k] !== (base as any)[k]).length;
+                    const n = (["symbol", "layout", "accentHex", "font", "scale", "family", "sseed"] as const).filter((k) => ((persDraft as any)[k] || undefined) !== ((base as any)[k] || undefined)).length;
                     return n ? <span className="edits">Edited · {n} change{n > 1 ? "s" : ""}</span> : null;
                   })()}
                 </div>
@@ -1540,10 +1600,17 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <p className="wr-hint" style={{ marginTop: 10 }}>Every version updates with your changes.</p>
               </div>
               <div className="pr">
-                <p className="plab">Symbol</p>
-                <div className="seg">
-                  {([["half", "Half sun"], ["full", "Full sun"], ["none", "None"]] as const).map(([v, l]) => (
-                    <button key={v} className={persDraft.symbol === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, symbol: v })}>{l}</button>
+                <div className="plabrow">
+                  <p className="plab">Symbol</p>
+                  {persDraft.symbol !== "none" && (
+                    <button className="pmini" onClick={() => setPersDraft({ ...persDraft, sseed: (persDraft.sseed || 0) + 1 })}>↻ More</button>
+                  )}
+                </div>
+                <div className="symgrid">
+                  {PERS_SYMBOLS.map(({ k, l }) => (
+                    <button key={k} className={persDraft.symbol === k ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, symbol: k })}>
+                      <SymIcon k={k} /><em>{l}</em>
+                    </button>
                   ))}
                 </div>
                 <p className="plab">Colour</p>
@@ -1553,15 +1620,45 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                       <i style={{ background: hex }} /><em>{l}</em>
                     </button>
                   ))}
+                  {(() => {
+                    const preset = [lpal.dawn, lpal.haze, lpal.nova, "#3ddc84", "#ffffff"];
+                    const customOn = !preset.includes(persDraft.accentHex);
+                    return (
+                      <label className={"swcustom" + (customOn ? " on" : "")}>
+                        <i style={customOn ? { background: persDraft.accentHex } : undefined}>{customOn ? "" : "+"}</i><em>Custom</em>
+                        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(persDraft.accentHex) ? persDraft.accentHex : "#ff4f1a"} onChange={(e) => setPersDraft({ ...persDraft, accentHex: e.target.value })} />
+                      </label>
+                    );
+                  })()}
                 </div>
                 <p className="plab">Typeface</p>
                 <div className="seg">
                   {([["bold", "Bold"], ["serif", "Serif"], ["light", "Light"]] as const).map(([v, l]) => (
-                    <button key={v} className={persDraft.font === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, font: v })}>
+                    <button key={v} className={persDraft.font === v && !persDraft.family ? "on" : ""} onClick={() => { setPersFontsOpen(false); setPersDraft({ ...persDraft, font: v, family: undefined, famWeight: undefined }); }}>
                       <span style={{ fontFamily: v === "serif" ? "var(--bookserif)" : v === "light" ? "var(--mono)" : "var(--sans)", fontWeight: v === "bold" ? 800 : 500 }}>Aa</span> {l}
                     </button>
                   ))}
+                  <button className={persDraft.family ? "on" : ""} onClick={() => { const nx = !persFontsOpen; setPersFontsOpen(nx); if (nx) ensureFonts(PERS_FONTS.map(({ f, w }) => ({ family: f, weight: w }))); }}>
+                    {persDraft.family || "More fonts"} <span style={{ opacity: 0.6 }}>{persFontsOpen ? "▴" : "▾"}</span>
+                  </button>
                 </div>
+                {persFontsOpen && (
+                  <div className="fontdd">
+                    <input autoFocus value={persFontQ} onChange={(e) => setPersFontQ(e.target.value)} placeholder="⌕  Search fonts" />
+                    <div className="list">
+                      {PERS_FONTS.filter(({ f, cat }) => !persFontQ.trim() || (f + " " + cat).toLowerCase().includes(persFontQ.trim().toLowerCase())).map(({ f, w, cat }) => (
+                        <button key={f} className={persDraft.family === f ? "on" : ""} onClick={() => {
+                          ensureFonts([{ family: f, weight: w }]);
+                          setPersDraft({ ...persDraft, family: f, famWeight: w, font: persFontCat(cat) });
+                          setPersFontsOpen(false); setPersFontQ("");
+                        }}>
+                          <span style={{ fontFamily: `'${f}', var(--sans)`, fontWeight: w }}>{f}</span>
+                          {persDraft.family === f ? <b>✓</b> : <em>{cat}</em>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="plab">Layout</p>
                 <div className="seg">
                   {([["stacked", "Stacked"], ["side", "Side by side"], ["symbol", "Symbol only"]] as const).map(([v, l]) => (
@@ -1577,7 +1674,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   setPersBusy(false);
                   if (r && typeof r === "object") {
                     setPersDraft({
-                      symbol: (["half", "full", "none"].includes(String(r.symbol)) ? r.symbol : persDraft.symbol) as any,
+                      ...persDraft,
+                      symbol: (["half", "full", "ring", "horizon", "rays", "arc", "monogram", "none"].includes(String(r.symbol)) ? r.symbol : persDraft.symbol) as any,
                       layout: (["stacked", "side", "symbol"].includes(String(r.layout)) ? r.layout : persDraft.layout) as any,
                       accentHex: /^#[0-9a-fA-F]{3,8}$/.test(String(r.accentHex)) ? String(r.accentHex) : persDraft.accentHex,
                       font: (["bold", "serif", "light"].includes(String(r.font)) ? r.font : persDraft.font) as any,
@@ -1596,7 +1694,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <button className="wr-btn2 aslink" onClick={() => toStep("logodone")}>← Back</button>
             <button className="wr-link mla" onClick={() => setPersDraft(draftFromSel())}>↻ Reset to original</button>
             <button className="wr-btn" style={{ maxWidth: 280 }} onClick={() => {
-              setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale } });
+              setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale, family: persDraft.family, famWeight: persDraft.famWeight, sseed: persDraft.sseed } });
               track("logopers", { name: picked.name, ...persDraft });
               toStep("logodone");
             }}>Save as my logo ✓</button>
@@ -1622,7 +1720,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     : <div className="wr-load"><span className="wr-spin" /> Writing {picked.name}'s brand book…</div>
                 ) : (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { printBook(`${picked.name} - Brand book`); track("book", { name: picked.name }); }}>↓ Download PDF</button>
+                    <button className="wr-btn" style={{ maxWidth: 200 }} onClick={() => { printBook(`${picked.name} - Brand book`); track("book", { name: picked.name }); }}>↓ PDF</button>
+                    <button className="wr-btn2" onClick={() => { if (bookCtx) void exportBookWord(bookCtx); track("book", { name: picked.name, format: "word" }); }}>↓ Word</button>
                     <button className="wr-btn2" onClick={() => { setBookOpen(true); track("bookpreview", { name: picked.name }); }}>Preview</button>
                   </div>
                 )}
@@ -1697,6 +1796,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* overlays */}
+      {poll && (
+        <NamePoll
+          variant={poll}
+          onClose={() => setPoll(null)}
+          onSend={(reasons, note) => { track("feedback", { variant: poll, reasons, note, step: "names" }); setPoll(null); }}
+        />
+      )}
       {briefGate && (
         <BriefGateModal
           brief={sentence.trim()}
@@ -1785,6 +1891,46 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 
 /* ── sign-up pop-up over the landing (the only sign-up in the flow) ── */
 /* 00·s — after "Name it": one tap with Google, the brief is kept */
+/* 04·x / 04·i: the names-page feedback ask (on exit intent, or 30 s of quiet). */
+const POLL_OPTS = [
+  "The names don't fit my brief", "It's taking too long",
+  "Not ready yet, just exploring", "The domains I want are taken",
+  "Something's confusing", "I'll come back later",
+];
+function NamePoll({ variant, onClose, onSend }: { variant: "exit" | "idle"; onClose: () => void; onSend: (reasons: string[], note: string) => void }) {
+  const [sel, setSel] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const exit = variant === "exit";
+  return (
+    <div className="wr-sumodal poll" onClick={onClose}>
+      <div className="panel" onClick={(e) => e.stopPropagation()}>
+        <button className="x" onClick={onClose} aria-label="Close">✕</button>
+        <p className="kick mono">{exit ? "Before you go" : "Still with us?"}</p>
+        <h3>{exit ? "What got in the way?" : "Stuck on something?"}</h3>
+        <p className="sub">{exit
+          ? "Tick anything that fits. It takes five seconds and helps us make Name Name better for you."
+          : "You've been quiet for a moment. If something's in the way, tell us — or pick up right where you left off."}</p>
+        <div className="popts">
+          {POLL_OPTS.map((o) => {
+            const on = sel.includes(o);
+            return (
+              <button key={o} className={on ? "on" : ""} onClick={() => setSel(on ? sel.filter((x) => x !== o) : [...sel, o])}>
+                <i>{on ? "✓" : ""}</i>{o}
+              </button>
+            );
+          })}
+        </div>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else? Tell us in your own words (optional)" rows={3} />
+        <div className="pacts">
+          <span className="mono note">{exit ? "Your names are saved" : "Nothing is lost"}</span>
+          <button className="pbtn ghost" disabled={!sel.length && !note.trim()} onClick={() => onSend(sel, note.trim())}>Send & leave</button>
+          <button className="pbtn dark" onClick={onClose}>Keep naming →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: () => void; onUser: (u: WUser) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");

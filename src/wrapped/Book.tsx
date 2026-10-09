@@ -389,6 +389,76 @@ export function BookPrint({ ctx }: { ctx: BookCtx }) {
   );
 }
 
+// "↓ Word": the whole book as a Word document (MSO-flavoured HTML in a .doc,
+// which Word, Pages and Google Docs all open), logo embedded as PNG.
+export async function exportBookWord(ctx: BookCtx): Promise<void> {
+  const { name, domain, book } = ctx;
+  const fr = (book.lang || "en").startsWith("fr");
+  const L = fr
+    ? { story: "L'histoire", nameSec: "Le nom", saying: "Le prononcer", who: "Qui nous sommes", mission: "Mission", vision: "Vision", values: "Valeurs", colour: "Couleurs", voice: "La voix", msg: "Messages", oneLiner: "En une phrase", pitch: "Le pitch", boiler: "Texte officiel", yes: "On dit", not: "On ne dit pas", write: "S'écrit", never: "Jamais", book: "Brand book" }
+    : { story: "The story", nameSec: "The name", saying: "Saying it", who: "Who we are", mission: "Mission", vision: "Vision", values: "Values", colour: "Colour", voice: "Voice", msg: "Messaging", oneLiner: "One-liner", pitch: "The pitch", boiler: "Boilerplate", yes: "We say", not: "We don't say", write: "Write it", never: "Never", book: "Brand book" };
+  const esc = (s: string) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // The chosen lockup, rasterized for Word.
+  let logoPng = "";
+  try {
+    const pal = toPalette(book.palette);
+    const svg = logoSvg(ctx.logoCustom ? "custom" : ctx.logoKey || "sunrise", name, pal, {
+      variant: "light", accent: ctx.logoAccent, seed: ctx.logoSeed, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: 140,
+    });
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+    await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error("logo")); img.src = url; });
+    const cv = document.createElement("canvas");
+    cv.width = (img.naturalWidth || 300) * 2; cv.height = (img.naturalHeight || 140) * 2;
+    const c2 = cv.getContext("2d")!;
+    c2.fillStyle = "#ffffff"; c2.fillRect(0, 0, cv.width, cv.height);
+    c2.drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    logoPng = cv.toDataURL("image/png");
+  } catch { /* the document still reads fine without the lockup */ }
+
+  const h2 = (t: string) => `<h2 style="font-size:15pt;margin:28pt 0 8pt;border-bottom:1pt solid #ddd;padding-bottom:4pt">${esc(t)}</h2>`;
+  const p = (t?: string) => (t ? `<p style="margin:0 0 8pt">${esc(t)}</p>` : "");
+  const kv = (k: string, v?: string) => (v ? `<p style="margin:0 0 6pt"><b>${esc(k)}:</b> ${esc(v)}</p>` : "");
+  const body =
+    `<div style="text-align:center;margin:30pt 0 10pt">` +
+    (logoPng ? `<img src="${logoPng}" width="300" style="max-width:300px"/><br/>` : `<h1 style="font-size:28pt;margin:0">${esc(name)}</h1>`) +
+    `<p style="font-size:12pt;color:#666;margin:10pt 0 0">${esc(book.tagline)}</p>` +
+    `<p style="font-size:10pt;color:#999;margin:4pt 0 0">${esc(domain)} · ${esc(L.book)}</p></div>` +
+    h2(L.story) + `<p style="margin:0 0 8pt"><b>${esc(book.story.headline)}</b></p>` + p(book.story.para) +
+    kv(fr ? "En une phrase" : "In one sentence", book.story.oneSentence) + kv(fr ? "Nous croyons" : "We believe", book.story.believe) +
+    kv(fr ? "Ce que nous faisons" : "What we do", book.story.wedo) + kv(fr ? "Pour qui" : "Who it's for", book.story.whofor) +
+    h2(L.nameSec) + `<p style="margin:0 0 8pt"><b>${esc(book.origin.headline)}</b></p>` +
+    book.origin.parts.map((x) => `<p style="margin:0 0 6pt"><b>${esc(x.part)}</b> <i>(${esc(x.lang)})</i> — ${esc(x.gloss)}. ${esc(x.para)}</p>`).join("") +
+    (book.origin.carries?.length ? `<p style="margin:6pt 0 2pt"><b>${fr ? "Le nom porte" : "The name carries"}:</b></p>` + book.origin.carries.map((c) => `<p style="margin:0 0 3pt">· <b>${esc(c.word)}</b> — ${esc(c.note)}</p>`).join("") : "") +
+    p(book.origin.closing) +
+    h2(L.saying) + kv("IPA", book.saying.ipa) + kv(fr ? "Se dit" : "Sounds like", book.saying.plain) +
+    kv(L.write, (book.saying.writeYes || []).join(" · ")) + kv(L.never, (book.saying.writeNever || []).join(" · ")) +
+    h2(L.who) + kv(L.mission, book.who.mission) + kv(L.vision, book.who.vision) +
+    (book.who.values || []).map((v) => `<p style="margin:0 0 6pt">· <b>${esc(v.name)}</b> — ${esc(v.note)}</p>`).join("") +
+    h2(L.colour) +
+    `<table style="border-collapse:collapse;margin:4pt 0 8pt">` +
+    (book.palette || []).map((c) => `<tr><td style="width:46pt;height:22pt;background:${esc(c.hex)};border:1pt solid #ddd"></td><td style="padding:2pt 10pt"><b>${esc(c.name)}</b></td><td style="padding:2pt 0;font-family:Consolas,monospace">${esc(c.hex)}</td></tr>`).join("") +
+    `</table>` + p(book.colourNote) +
+    h2(L.voice) + kv(fr ? "Nos mots" : "Our words", (book.voice.words || []).join(" · ")) +
+    (book.voice.lines || []).map((l) => `<p style="margin:0 0 4pt">· <b>${esc(l.word)}</b> — ${esc(l.note)}</p>`).join("") +
+    kv(L.yes, book.voice.yes) + kv(L.not, book.voice.not) +
+    h2(L.msg) + kv(L.oneLiner, book.messaging.oneLiner) + kv(L.pitch, book.messaging.pitch) + kv(L.boiler, book.messaging.boilerplate) +
+    ((book.messaging.use || []).length ? `<p style="margin:6pt 0 2pt"><b>${fr ? "À utiliser" : "Use"}:</b> ${esc((book.messaging.use || []).join(" · "))}</p>` : "") +
+    ((book.messaging.avoid || []).length ? `<p style="margin:0 0 2pt"><b>${fr ? "À éviter" : "Avoid"}:</b> ${esc((book.messaging.avoid || []).join(" · "))}</p>` : "");
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(name)} - ${esc(L.book)}</title></head>` +
+    `<body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a;max-width:460pt;margin:auto">${body}</body></html>`;
+  const blob = new Blob(["﻿" + html], { type: "application/msword" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name} - ${L.book}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+}
+
 export function printBook(title?: string): void {
   // The browser names the PDF after the page title, so the download carries
   // the found name ("Aurova - Brand book.pdf"), not the site's title.
@@ -438,7 +508,8 @@ export function BookPreview({ ctx, onClose }: { ctx: BookCtx; onClose: () => voi
         <span className="t">{ctx.name} · Brand book</span>
         <span className="pg">Page {page + 1} of 10</span>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ Export PDF</button>
+          <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
+          <button className="wr-btn2" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
         </div>
       </div>
       <div className="main">
