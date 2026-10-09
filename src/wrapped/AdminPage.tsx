@@ -61,8 +61,10 @@ function buildFlows(items: LogItem[]): Flow[] {
         if (m.lang) f.lang = m.lang;
       }
       if (e.input?.geo) f.country = e.input.geo;
-      if (e.phase === "search" && p.sentence) f.brief = p.sentence;
-      if (e.phase === "wrapconcept" && !f.brief && e.input?.payload?.sentence) f.brief = e.input.payload.sentence;
+      // The brief rides on many phases (search, concept, words, names): take it
+      // from any of them, so a truncated log window still shows it.
+      const sent = p.sentence || e.input?.payload?.sentence;
+      if (sent && !f.brief) f.brief = sent;
       if (e.phase === "pick" && p.name) f.name = p.name;
       if (e.phase === "done" && p.name) f.name = f.name || p.name;
       if (e.phase === "domain" && p.domain) f.domain = p.domain;
@@ -127,7 +129,7 @@ export function AdminPage() {
     fetch(ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 300 }),
+      body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 900 }),
     })
       .then((r) => r.json())
       .then((d) => { if (d.error) setErr(String(d.error)); else setItems(d.items || []); })

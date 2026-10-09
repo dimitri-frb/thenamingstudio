@@ -134,7 +134,7 @@ export default {
     if (phase === "adminlog") {
       const u = await adminUser(env, body?.token);
       if (!u) return json({ error: "not allowed" }, env, 403);
-      return json({ items: await logItems(env, Math.min(300, Math.max(1, Number(body?.limit) || 300))) }, env);
+      return json({ items: await logItems(env, Math.min(1000, Math.max(1, Number(body?.limit) || 900))) }, env);
     }
     if (phase === "admin-roles") {
       const u = await adminUser(env, body?.token);
