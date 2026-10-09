@@ -1,7 +1,7 @@
 // The Name Name admin dashboard (handoff: Known As Admin): every flow that
 // started, where it stopped, who the user is and where they came from.
 // White "paper" theme, session-gated server-side (adminlog needs an admin token).
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import "./wrapped.css";
 import { ENDPOINT, adminRoles, loadSession, roleSet, saveSession } from "./api";
 import { AvatarMenu, SettingsPane } from "./paper";
@@ -257,13 +257,20 @@ export function AdminPage() {
           <div className="funnel">
             {STEPS.map((st, i) => {
               const max = Math.max(1, ...reach);
+              // conversion into this step: what share of the previous step's people made it here
+              const conv = i > 0 && reach[i - 1] ? Math.round((reach[i] / reach[i - 1]) * 100) : null;
+              // drop-off as a share of the people who started THIS step
+              const stopPct = reach[i] ? Math.round((stoppedAt[i] / reach[i]) * 100) : 0;
               return (
-                <button key={st} className={"fb" + (stopAt === i ? " on" : "")} onClick={() => setStopAt(stopAt === i ? null : i)} title={`${reach[i]} reached · ${stoppedAt[i]} stopped`}>
-                  <i style={{ height: `${Math.max(4, (reach[i] / max) * 72)}px` }} />
-                  <b>{reach[i]}</b>
-                  <span>{st}</span>
-                  <em>{stoppedAt[i] ? `−${stoppedAt[i]} stopped` : " "}</em>
-                </button>
+                <Fragment key={st}>
+                  {i > 0 && <span className="fconv mono" title={`${reach[i - 1]} → ${reach[i]}`}>{conv === null ? "" : `${conv}%`}</span>}
+                  <button className={"fb" + (stopAt === i ? " on" : "")} onClick={() => setStopAt(stopAt === i ? null : i)} title={`${reach[i]} reached · ${stoppedAt[i]} stopped here`}>
+                    <i style={{ height: `${Math.max(4, (reach[i] / max) * 72)}px` }} />
+                    <b>{reach[i]}</b>
+                    <span>{st}</span>
+                    <em>{stoppedAt[i] && i < STEPS.length - 1 ? `−${stopPct}% stopped` : " "}</em>
+                  </button>
+                </Fragment>
               );
             })}
           </div>

@@ -1354,7 +1354,8 @@
 .kadm .kpi b { font-size: 28px; letter-spacing: -0.03em; display: block; }
 .kadm .kpi span { font-size: 12.5px; color: #6a6a6a; }
 
-.kadm .funnel { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; align-items: end; background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 18px 16px 12px; margin-top: 14px; }
+.kadm .funnel { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr) auto) minmax(0, 1fr); gap: 4px; align-items: end; background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 18px 16px 12px; margin-top: 14px; }
+.kadm .fconv { font-size: 9px; color: #b4b1a8; align-self: end; padding-bottom: 37px; white-space: nowrap; }
 .kadm .fb { border: none; background: none; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 2px; border-radius: 10px; }
 .kadm .fb:hover { background: #f2f1ee; }
 .kadm .fb.on { background: #000; }
@@ -1425,6 +1426,7 @@
 @media (max-width: 900px) {
   .kadm .kpis { grid-template-columns: 1fr 1fr; }
   .kadm .funnel { grid-template-columns: repeat(5, 1fr); row-gap: 14px; }
+  .kadm .fconv { display: none; }
   .kadm .row { grid-template-columns: 1fr 1fr; }
   .kadm .row .brief { display: none; }
   .kadm .split { flex-direction: column; }

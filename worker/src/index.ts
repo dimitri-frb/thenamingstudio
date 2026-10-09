@@ -125,7 +125,7 @@ export default {
     // No Claude call, just logged centrally so the admin funnel is real.
     if (phase === "track") {
       const ev = String(body?.event || "track").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "track";
-      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload, geo: String((request as any)?.cf?.country || "") }, body.payload || {}));
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload, geo: String((req as any)?.cf?.country || "") }, body.payload || {}));
       return json({ ok: true }, env);
     }
 
