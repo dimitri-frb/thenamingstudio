@@ -1026,7 +1026,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="prow">
                 <span className="plbl">Name style</span>
                 <div className="opts">
-                  {["Any", "Invented", "Real word", "Compound", ...prefs.style.filter((x) => !["Invented", "Real word", "Compound"].includes(x))].map((t) => {
+                  {(() => { const BUILT = ["Invented", "Real word", "Compound", "Classical root", "Foreign word", "Initials", "Founder name", "Myth & place"]; return ["Any", ...BUILT, ...prefs.style.filter((x) => !BUILT.includes(x))]; })().map((t) => {
                     const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
                       onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
