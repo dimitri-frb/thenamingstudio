@@ -316,7 +316,7 @@ export function AdminPage() {
                     <i className="av">{(f.uname || f.email || "?")[0].toUpperCase()}</i>
                     <span><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "—"}</em></span>
                   </span>
-                  <span className="brief">{f.brief || "—"}</span>
+                  <span className="brief">{f.feedback && <i className="fbchip" title={f.feedback}>💬 Feedback</i>}{f.brief || "—"}</span>
                   <span className="stop">
                     <b className={f.status === "live" ? "live" : ""}>{STEPS[f.step]}</b>
                     <em>{f.step + 1}/10</em>
@@ -489,6 +489,7 @@ const DEMO_ITEMS: LogItem[] = [
   mk("p2", "signup", 5 * H, meta2), mk("p2", "search", 5 * H - 60000, { sentence: "A B2B platform that automates carbon accounting", ...meta2 }),
   mk("p2", "wrapconcept", 4.9 * H), mk("p2", "wrapwords", 4.8 * H),
   mk("p2", "wrapnames", 4.5 * H, { words: [{ w: "ledger" }, { w: "north" }] }, "GB", { names: [{ name: "Carbent" }, { name: "Fathom" }, { name: "Nordica" }] }),
+  mk("p2", "feedback", 4.4 * H, { variant: "exit", reasons: ["The domains I want are taken"], note: "Fathom is great but the .com is gone", ...meta2 }, "GB"),
   mk("p3", "signup", 0.2 * H, meta3, "ES"), mk("p3", "search", 0.2 * H - 60000, { sentence: "Una marca de café de especialidad", ...meta3 }, "ES"),
   mk("p3", "wrapconcept", 0.15 * H, {}, "ES"),
   mk("p4", "signup", 50 * H, meta4, "US"), mk("p4", "search", 50 * H - 60000, { sentence: "A tool that turns podcasts into newsletters", ...meta4 }, "US"),
