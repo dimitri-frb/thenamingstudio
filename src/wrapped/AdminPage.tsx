@@ -316,7 +316,7 @@ export function AdminPage() {
                     <i className="av">{(f.uname || f.email || "?")[0].toUpperCase()}</i>
                     <span><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "—"}</em></span>
                   </span>
-                  <span className="brief">{f.feedback && <i className="fbchip" title={f.feedback}>💬 Feedback</i>}{f.brief || "—"}</span>
+                  <span className="brief">{f.brief || "—"}</span>
                   <span className="stop">
                     <b className={f.status === "live" ? "live" : ""}>{STEPS[f.step]}</b>
                     <em>{f.step + 1}/10</em>
