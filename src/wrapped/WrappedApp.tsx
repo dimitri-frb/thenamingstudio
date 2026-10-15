@@ -210,6 +210,17 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [persFontQ, setPersFontQ] = useState("");
   const [poll, setPoll] = useState<null | "exit" | "idle">(null);
   const pollShown = useRef(false);
+  // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+  const [teaserNames, setTeaserNames] = useState<string[]>([]);
+  const [v2Sel, setV2Sel] = useState<string | null>(null);  // selected name (V2 names list)
+  const v2Known = useRef<string[] | null>(null);            // names present before the last "6 more"
   const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
@@ -515,6 +526,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, poll, test]);
 
+  useEffect(() => { // V2 words teaser: the first letters of the names taking shape
+    if (step !== "words" || !isMobile) return;
+    const t = setInterval(() => {
+      const ns = (namesPre.current?.st.names || []).slice(0, 3).map((n) => n.name);
+      setTeaserNames((cur) => (ns.join() === cur.join() ? cur : ns));
+    }, 400);
+    return () => clearInterval(t);
+  }, [step, isMobile]);
+
   useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
     if (test || step !== "words" || names?.length || starred.length < 2) return;
     const key = starKey(starred);
@@ -747,25 +767,35 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     upd();
   }
 
-  function makeNames() {
+  function makeNames(words: WWord[] = starred, method: "manual" | "pick-for-me" = "manual") {
+    track("wordsdone", { count: words.length, method });
     toStep("names");
     if (names?.length || namesBusy) return;
+    v2Known.current = null; setV2Sel(null);
     setNamesBusy(true);
     setNamesProg(0);
     waitStart.current = Date.now();
     fail("names", false);
-    const key = starKey(starred);
+    const key = starKey(words);
     let entry = namesPre.current;
     if (!entry || entry.key !== key) { // the stars changed since the prefetch
       entry?.st.abort();
-      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs) };
+      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", words, [], prefs) };
       namesPre.current = entry;
     }
     attachStream(entry.st, []);
   }
+  // V2 words: "Pick for me" stars the cloud's top words up to five, then continues.
+  function continueWithWords(extra: WWord[], method: "manual" | "pick-for-me") {
+    const all = [...starred, ...extra.filter((w) => !starred.some((s) => s.w === w.w))];
+    if (extra.length) { setStarred(all); persist({ starred: all }); }
+    makeNames(all, method);
+  }
 
   function moreNames() {
     if (moreBusy || !names) return;
+    v2Known.current = names.map((n) => n.name); // V2: new batch shows on top with a NEW tag
+    track("morenames", { have: names.length });
     setMoreBusy(true);
     fail("more", false);
     const exKey = names.map((n) => n.name).join("|");
@@ -779,7 +809,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   function pickName(n: WName) {
     setPicked(n);
     setBoard(null); setDomSel(null); setDomShow(4); setLogoSel(null); setLogoSeed(0);
-    track("pick", { name: n.name, score: n.score });
+    track("pick", { name: n.name, score: n.score, rank: (names || []).findIndex((x) => x.name === n.name) + 1 });
     toStep("reveal");
     persist({ picked: n });
   }
@@ -1197,7 +1227,24 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
       {/* ═══ 02b refine the brief ═══ */}
       {/* ═══ 03 the words ═══ */}
-      {step === "words" && (
+      {step === "words" && isMobile && (
+        <div className="wr-stage wr-v2stage" style={{ paddingTop: 16 }}>
+          {!styles ? (
+            fails.words || fails.concept
+              ? <div style={{ margin: "40px 0" }}><GenFail note="We couldn't gather your words just now." onRetry={() => { retry("concept"); retry("words"); }} /></div>
+              : <WordsLoader concept={concept?.concept || "your brief"} />
+          ) : (
+            <WordsCloudV2
+              styles={styles}
+              starred={starred}
+              onToggle={starToggle}
+              onContinue={continueWithWords}
+              teaser={teaserNames}
+            />
+          )}
+        </div>
+      )}
+      {step === "words" && !isMobile && (
         <>
           <div className="wr-stage" style={{ paddingTop: 16 }}>
             {styles && <>
@@ -1237,15 +1284,43 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               {starred.map((w) => <button key={w.w} className="wr-starpill" style={{ cursor: "pointer", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.28)" }} onClick={() => starToggle(w)}>{w.w}</button>)}
               {!starred.length && <span className="wr-hint">Tap a word to star it</span>}
             </div>
-            <button className="wr-btn" disabled={!starred.length} onClick={makeNames}>
+            <button className="wr-btn" disabled={!starred.length} onClick={() => makeNames()}>
               ✦ Turn my {starred.length || ""} word{starred.length === 1 ? "" : "s"} into names
             </button>
           </div>
         </>
       )}
 
-      {/* ═══ 04 / 04b the names ═══ */}
-      {step === "names" && (
+      {/* ═══ 04 / 04b the names (V2 mobile: six compact rows, domain on each) ═══ */}
+      {step === "names" && isMobile && (
+        <>
+          <div className="wr-stage wr-v2stage" style={{ paddingTop: 18 }}>
+            {fails.names && !names?.length ? (
+              <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={() => makeNames()} /></div>
+            ) : namesBusy && !names?.length ? (
+              <NamingWait coined={namesProg} starred={starred} />
+            ) : (
+              <NamesListV2
+                names={names || []}
+                known={v2Known.current}
+                sel={v2Sel ?? names?.[0]?.name ?? null}
+                onSel={setV2Sel}
+              />
+            )}
+          </div>
+          {!!names?.length && !namesBusy && (
+            <div className="wr-foot wr-v2nbar">
+              <button className="more" disabled={moreBusy} onClick={moreNames}>
+                {moreBusy ? "↻ …" : v2Known.current ? "↻ More" : "↻ 6 more"}
+              </button>
+              <button className="go" onClick={() => { const n = (names || []).find((x) => x.name === (v2Sel ?? names?.[0]?.name)); if (n) pickName(n); }}>
+                Continue with {(v2Sel ?? names?.[0]?.name) || "…"} →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {step === "names" && !isMobile && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
             <div className="wr-nameswrap">
@@ -1893,6 +1968,146 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 
 /* ── sign-up pop-up over the landing (the only sign-up in the flow) ── */
 /* 00·s — after "Name it": one tap with Google, the brief is kept */
+/* ── V2·03 / 03b (mobile): the word cloud — tap at least 5, shuffle, pick for me ── */
+function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
+  styles: WStyle[]; starred: WWord[]; onToggle: (w: WWord) => void;
+  onContinue: (extra: WWord[], method: "manual" | "pick-for-me") => void;
+  teaser: string[];
+}) {
+  const pool = useMemo(() => { // every word, interleaved across the six angles
+    const cols = styles.map((s) => s.words);
+    const out: WWord[] = []; const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      let any = false;
+      for (const c of cols) {
+        const w = c[i];
+        if (!w) continue;
+        any = true;
+        const k = w.w.toLowerCase();
+        if (!seen.has(k)) { seen.add(k); out.push(w); }
+      }
+      if (!any) break;
+    }
+    return out;
+  }, [styles]);
+  const [cloud, setCloud] = useState<WWord[]>(() => pool.slice(0, 54));
+  const [sheet, setSheet] = useState<WWord | null>(null);
+  const pressTimer = useRef<number>(0);
+  const longFired = useRef(false);
+  const need = Math.max(0, 5 - starred.length);
+
+  const shuffle = () => { // keep the picks, swap everything else for fresh words
+    const keep = cloud.filter((w) => starred.some((s) => s.w === w.w));
+    const inCloud = new Set(cloud.map((w) => w.w));
+    const fresh = pool.filter((w) => !inCloud.has(w.w));
+    const refill = fresh.length ? fresh : pool.filter((w) => !starred.some((s) => s.w === w.w));
+    const next = [...keep];
+    for (const w of [...refill].sort(() => Math.random() - 0.5)) {
+      if (next.length >= 54) break;
+      if (!next.some((x) => x.w === w.w)) next.push(w);
+    }
+    setCloud(next.sort(() => Math.random() - 0.5));
+    track("wordshuffle", {});
+  };
+  const pickForMe = () => {
+    const extra = cloud.filter((w) => !starred.some((s) => s.w === w.w)).slice(0, need || 0);
+    onContinue(extra, "pick-for-me");
+  };
+  const down = (w: WWord) => {
+    longFired.current = false;
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => { longFired.current = true; setSheet(w); }, 450);
+  };
+  const up = () => window.clearTimeout(pressTimer.current);
+
+  return (
+    <div className="wr-v2w">
+      <h1 className="wr-h ttl">Tap at least 5 words that feel like you.</h1>
+      <div className="cloud">
+        {cloud.map((w) => {
+          const on = starred.some((s) => s.w === w.w);
+          return (
+            <button
+              key={w.w}
+              className={"chip" + (on ? " on" : "")}
+              onPointerDown={() => down(w)}
+              onPointerUp={up}
+              onPointerLeave={up}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={() => { if (longFired.current) { longFired.current = false; return; } onToggle(w); }}
+            >
+              {on && <i className="ck">✓</i>}{w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
+            </button>
+          );
+        })}
+        <p className="endnote">{cloud.length} words · hold one to see what it means</p>
+      </div>
+      <div className="dock">
+        <div className="fade"><span>↓ Scroll for more</span></div>
+        {starred.length >= 5 && (
+          <div className="wr-v2teaser rise">
+            ✦ {teaser.length ? teaser.map((n) => n.slice(0, 3) + "··").join(" · ") : "Your names are taking shape…"}
+          </div>
+        )}
+        <button className="cta" disabled={need > 0} onClick={() => onContinue([], "manual")}>
+          {need > 0 ? `${need} more to go` : "See my 6 names →"}
+        </button>
+        <div className="links">
+          <button onClick={shuffle}>↻ Shuffle words</button>
+          <span className="sep">|</span>
+          <button onClick={pickForMe}>Not sure? Pick for me</button>
+        </div>
+      </div>
+      {sheet && (
+        <div className="wr-v2sheet" onClick={() => setSheet(null)}>
+          <div className="card" onClick={(e) => e.stopPropagation()}>
+            <b>{sheet.w}</b> <i className="lg">{(sheet.lang || "EN").toUpperCase()}</i>
+            <p>{sheet.m || "A word from your brief's world."}</p>
+            <button className="ok" onClick={() => { onToggle(sheet); setSheet(null); }}>
+              {starred.some((s) => s.w === sheet.w) ? "Unselect" : "✓ Select it"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── V2·04 / 04b (mobile): six names, one screen, domain on each ── */
+const V2_SPELL: Record<number, string> = { 6: "Six", 9: "Nine", 12: "Twelve", 15: "Fifteen", 18: "Eighteen", 24: "Twenty-four" };
+function NamesListV2({ names, known, sel, onSel }: {
+  names: WName[]; known: string[] | null; sel: string | null; onSel: (n: string) => void;
+}) {
+  const fresh = known ? names.filter((n) => !known.includes(n.name)) : [];
+  const olds = known ? names.filter((n) => known.includes(n.name)) : names;
+  const display = [...fresh, ...olds];
+  const freshSet = new Set(fresh.map((n) => n.name));
+  return (
+    <div className="wr-v2n">
+      <h1 className="wr-h ttl">{known ? `${V2_SPELL[names.length] || names.length} names, and counting.` : "Six names for your brief."}</h1>
+      {known && <p className="sub">New ones on top · your pick is kept</p>}
+      <div className="rows">
+        {display.map((n) => {
+          const d = n.dom?.free ? n.dom : n.alt || null;
+          const on = n.name === sel;
+          return (
+            <button key={n.name} className={"row" + (on ? " on" : "")} onClick={() => onSel(n.name)}>
+              <span className="l1">
+                <b className="nm">{n.name}</b>
+                {freshSet.has(n.name) && <i className="new">NEW</i>}
+                {d ? <span className="dm"><i className="dot" />{d.domain}</span> : <span className="dm dim">checking…</span>}
+                <span className="fit">{n.score}%</span>
+              </span>
+              <span className="why">{n.tagline || n.roots}</span>
+              <span className={"ring" + (on ? " ck" : "")}>{on ? "✓" : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* 04·x / 04·i: the names-page feedback ask (on exit intent, or 30 s of quiet). */
 const POLL_OPTS = [
   "The names don't fit my brief", "It's taking too long",

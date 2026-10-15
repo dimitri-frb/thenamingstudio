@@ -640,6 +640,79 @@
 .wr-sumodal .briefrow span { font-size: 14.5px; color: #fff; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .wr-sumodal .small.dim { color: var(--text3); font-size: 11.5px; margin-top: 8px; }
 
+/* ── V2 (mobile handoff words-names-v2): words cloud + compact names ── */
+.wr-v2stage { display: flex; flex-direction: column; }
+.wr-v2w { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.wr-v2w .ttl { font-size: 30px; letter-spacing: -0.035em; margin: 0 0 18px; }
+.wr-v2w .cloud { display: flex; flex-wrap: wrap; gap: 9px; align-content: flex-start; padding-bottom: 8px; }
+.wr-v2w .chip {
+  display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px;
+  border-radius: 980px; border: 1px solid rgba(255, 255, 255, 0.22); background: none;
+  color: #fff; font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.wr-v2w .chip .lg { font-family: var(--mono); font-style: normal; font-size: 9px; opacity: 0.45; }
+.wr-v2w .chip .ck { font-style: normal; font-size: 13px; }
+.wr-v2w .chip.on { background: #fff; border-color: #fff; color: #000; font-weight: 800; }
+.wr-v2w .chip.on .lg { opacity: 0.5; }
+.wr-v2w .endnote { width: 100%; text-align: center; font-size: 12px; color: var(--text3); margin: 14px 0 4px; }
+.wr-v2w .dock { position: sticky; bottom: 0; margin-top: auto; padding-bottom: 12px; background: var(--bg, #000); }
+.wr-v2w .dock .fade { position: absolute; left: -20px; right: -20px; top: -90px; height: 90px; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, 0), #000); display: flex; align-items: flex-end; justify-content: center; }
+.wr-v2w .dock .fade span { font-size: 12px; color: rgba(255, 255, 255, 0.6); padding-bottom: 2px; }
+.wr-v2teaser {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border-radius: 980px;
+  margin-bottom: 10px; font-family: var(--mono); font-size: 12.5px; color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(90deg, rgba(255, 158, 122, 0.22), rgba(201, 182, 255, 0.2), rgba(124, 156, 255, 0.24));
+}
+.wr-v2w .cta {
+  width: 100%; height: 56px; border-radius: 980px; border: none; font-family: inherit;
+  font-size: 16.5px; font-weight: 700; background: #fff; color: #000; cursor: pointer;
+}
+.wr-v2w .cta:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.4); cursor: default; }
+.wr-v2w .links { display: flex; justify-content: center; gap: 14px; margin-top: 12px; }
+.wr-v2w .links button { background: none; border: none; font-family: inherit; font-size: 13.5px; font-weight: 600; color: rgba(255, 255, 255, 0.65); cursor: pointer; padding: 2px 0; }
+.wr-v2w .links .sep { color: rgba(255, 255, 255, 0.25); }
+.wr-v2sheet { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.55); display: flex; align-items: flex-end; }
+.wr-v2sheet .card { width: 100%; background: #16161a; border-radius: 22px 22px 0 0; padding: 22px 22px 26px; animation: wr-rise 0.25s ease both; }
+.wr-v2sheet .card b { font-size: 21px; letter-spacing: -0.02em; }
+.wr-v2sheet .card .lg { font-family: var(--mono); font-style: normal; font-size: 10px; opacity: 0.45; margin-left: 7px; }
+.wr-v2sheet .card p { font-size: 14.5px; color: var(--text2); margin: 8px 0 16px; }
+.wr-v2sheet .card .ok { width: 100%; height: 48px; border-radius: 980px; border: none; background: #fff; color: #000; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+.wr-v2n .ttl { font-size: 30px; letter-spacing: -0.035em; margin: 0 0 14px; }
+.wr-v2n .sub { font-size: 13px; color: var(--text3); margin: -8px 0 14px; }
+.wr-v2n .rows { display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px; }
+.wr-v2n .row {
+  position: relative; min-height: 76px; border-radius: 16px; padding: 13px 58px 12px 16px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  font-family: inherit; color: #fff; text-align: left; cursor: pointer;
+}
+.wr-v2n .row .l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wr-v2n .row .nm { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.wr-v2n .row .new { font-family: var(--mono); font-style: normal; font-size: 9px; font-weight: 700; background: #ff4f1a; color: #000; border-radius: 4px; padding: 2px 5px; }
+.wr-v2n .row .dm { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px; color: rgba(255, 255, 255, 0.75); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-v2n .row .dm .dot { width: 6px; height: 6px; border-radius: 50%; background: #3ddc84; flex: 0 0 auto; }
+.wr-v2n .row .dm.dim { color: rgba(255, 255, 255, 0.35); }
+.wr-v2n .row .fit { margin-left: auto; font-family: var(--mono); font-size: 11px; background: rgba(255, 255, 255, 0.08); border-radius: 980px; padding: 3px 8px; flex: 0 0 auto; }
+.wr-v2n .row .why { font-size: 12.5px; color: rgba(255, 255, 255, 0.65); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-v2n .row .ring { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.3); display: grid; place-items: center; font-size: 13px; }
+.wr-v2n .row.on { background: #fff; border-color: #fff; color: #000; }
+.wr-v2n .row.on .dm { color: rgba(0, 0, 0, 0.6); }
+.wr-v2n .row.on .why { color: rgba(0, 0, 0, 0.62); }
+.wr-v2n .row.on .fit { background: rgba(0, 0, 0, 0.08); }
+.wr-v2n .row.on .ring { background: #000; border-color: #000; color: #fff; }
+.wr-v2nbar { display: flex; gap: 10px; align-items: stretch; }
+.wr-v2nbar .more {
+  flex: 0 0 auto; height: 56px; padding: 0 14px; border-radius: 980px; background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3); color: #fff; font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.wr-v2nbar .go {
+  flex: 1 1 auto; min-width: 0; height: 56px; border-radius: 980px; border: none; background: #fff; color: #000;
+  font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; padding: 0 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* ── 04·x / 04·i: names-page feedback ask (white card, per design) ── */
 .wr-sumodal.poll .panel { max-width: 520px; background: #fff; border: none; color: #111; text-align: left; padding: 28px 28px 22px; }
 .wr-sumodal.poll .x { background: #f0efec; color: #555; }
