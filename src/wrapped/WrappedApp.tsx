@@ -12,12 +12,12 @@ import {
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
-import { SWIPE_DECK } from "./inspire";
+import { BRAND_AXES, SWIPE_DECK } from "./inspire";
 import { download } from "./zip";
 import { BookPreview, BookPrint, exportBookWord, printBook, ScaledPage, type BookCtx } from "./Book";
 
 type Step =
-  | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "words" | "names" | "reveal"
+  | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "reveal"
   | "domain"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
   | "done";
@@ -27,6 +27,7 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   brief:  { label: "Chapter 1 · Name", segs: 7, idx: 1 },
   refine: { label: "Chapter 1 · Name", segs: 7, idx: 2 },
   brands: { label: "Chapter 1 · Name", segs: 7, idx: 3 },
+  brandsum: { label: "Chapter 1 · Name", segs: 7, idx: 3 },
   words:  { label: "Chapter 1 · Name", segs: 7, idx: 4 },
   names:  { label: "Chapter 1 · Name", segs: 7, idx: 5 },
   reveal: { label: "Chapter 1 · Name", segs: 7, idx: 6 },
@@ -43,12 +44,12 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
   socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
 };
-const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
+const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", brands: "2-brands", words: "3-words", names: "4-names", reveal: "5-reveal",
+  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", reveal: "5-reveal",
   domain: "6-domain",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", logodone: "8-logo", pers: "8-personalize", book: "9-brand-book", socials: "10-socials", done: "11-done",
@@ -218,7 +219,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
-  const [teaserNames, setTeaserNames] = useState<string[]>([]);
   const [v2Sel, setV2Sel] = useState<string | null>(null);  // selected name (V2 names list)
   const v2Known = useRef<string[] | null>(null);            // names present before the last "6 more"
   const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
@@ -526,15 +526,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, poll, test]);
 
-  useEffect(() => { // V2 words teaser: the first letters of the names taking shape
-    if (step !== "words" || !isMobile) return;
-    const t = setInterval(() => {
-      const ns = (namesPre.current?.st.names || []).slice(0, 3).map((n) => n.name);
-      setTeaserNames((cur) => (ns.join() === cur.join() ? cur : ns));
-    }, 400);
-    return () => clearInterval(t);
-  }, [step, isMobile]);
-
   useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
     if (test || step !== "words" || names?.length || starred.length < 2) return;
     const key = starKey(starred);
@@ -698,7 +689,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const canEnter = (t: Step) => {
     const d = dataRef.current;
     if (t === "land" || t === "how" || t === "ask") return true;
-    if (t === "brief" || t === "refine" || t === "brands" || t === "words") return !!d.sentence.trim();
+    if (t === "brief" || t === "refine" || t === "brands" || t === "brandsum" || t === "words") return !!d.sentence.trim();
     if (t === "names") return !!(d.names?.length || d.starred.length);
     return !!d.picked;
   };
@@ -909,7 +900,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    ask: "land", brief: "ask", refine: "brief", brands: "refine", words: "brands", names: "words", reveal: "names",
+    ask: "land", brief: "ask", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
     domain: "reveal",
     brand: "domain", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
@@ -920,7 +911,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
       step === "brief" ? (conceptReady ? "refine" : null) :
       step === "refine" ? "brands" :
-      step === "brands" ? (conceptReady ? "words" : null) :
+      step === "brands" ? "brandsum" :
+      step === "brandsum" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
       step === "names" ? (picked ? "reveal" : null) :
       step === "reveal" ? "domain" :
@@ -1220,7 +1212,25 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             brandsDisliked: !like ? [...p.brandsDisliked.filter((x) => x !== name), name] : p.brandsDisliked.filter((x) => x !== name),
           }))}
           onBack={() => toStep("refine")}
-          onNext={() => toStep("words")}
+          onNext={() => toStep(prefs.brandsLiked.length + prefs.brandsDisliked.length ? "brandsum" : "words")}
+        />
+      )}
+
+      {/* ═══ 02·b·s your taste, summed up (after the last swipe) ═══ */}
+      {step === "brandsum" && (
+        <BrandTasteSummary
+          liked={prefs.brandsLiked}
+          disliked={prefs.brandsDisliked}
+          onToggle={(name) => setPrefs((p) => {
+            const wasLiked = p.brandsLiked.includes(name);
+            return {
+              ...p,
+              brandsLiked: wasLiked ? p.brandsLiked.filter((x) => x !== name) : [...p.brandsLiked, name],
+              brandsDisliked: wasLiked ? [...p.brandsDisliked, name] : p.brandsDisliked.filter((x) => x !== name),
+            };
+          })}
+          onWords={() => { track("brandsum", { liked: prefs.brandsLiked.length, disliked: prefs.brandsDisliked.length }); toStep("words"); }}
+          onAgain={() => { setPrefs((p) => ({ ...p, brandsLiked: [], brandsDisliked: [] })); toStep("brands"); }}
         />
       )}
 
@@ -1239,7 +1249,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               starred={starred}
               onToggle={starToggle}
               onContinue={continueWithWords}
-              teaser={teaserNames}
             />
           )}
         </div>
@@ -1733,6 +1742,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                         </button>
                       ))}
                     </div>
+                    <button className="ddclose" onClick={() => setPersFontsOpen(false)}>Done</button>
                   </div>
                 )}
                 <p className="plab">Layout</p>
@@ -1888,7 +1898,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
-      {bookOpen && bookCtx && <BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} />}
+      {bookOpen && bookCtx && <BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share} />}
       {bookCtx && <BookPrint ctx={bookCtx} />}
 
       {/* test jump bar */}
@@ -1968,11 +1978,11 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 
 /* ── sign-up pop-up over the landing (the only sign-up in the flow) ── */
 /* 00·s — after "Name it": one tap with Google, the brief is kept */
-/* ── V2·03 / 03b (mobile): the word cloud — tap at least 5, shuffle, pick for me ── */
-function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
+const LANG_FULL: Record<string, string> = { EN: "English", LA: "Latin", IT: "Italian", FR: "French", ES: "Spanish", GR: "Greek", JP: "Japanese", AR: "Arabic", DE: "German", PT: "Portuguese", SV: "Swedish", NL: "Dutch" };
+/* ── V2·03 / 03·5 (mobile): the word cloud — tap a few, shuffle, hold for meaning ── */
+function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
   styles: WStyle[]; starred: WWord[]; onToggle: (w: WWord) => void;
   onContinue: (extra: WWord[], method: "manual" | "pick-for-me") => void;
-  teaser: string[];
 }) {
   const pool = useMemo(() => { // every word, interleaved across the six angles
     const cols = styles.map((s) => s.words);
@@ -1991,10 +2001,10 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
     return out;
   }, [styles]);
   const [cloud, setCloud] = useState<WWord[]>(() => pool.slice(0, 54));
-  const [sheet, setSheet] = useState<WWord | null>(null);
+  const [sheet, setSheet] = useState<{ w: WWord; x: number; y: number } | null>(null);
   const pressTimer = useRef<number>(0);
   const longFired = useRef(false);
-  const need = Math.max(0, 5 - starred.length);
+  const need = Math.max(0, 3 - starred.length); // "a few": the button unlocks at three
 
   const shuffle = () => { // keep the picks, swap everything else for fresh words
     const keep = cloud.filter((w) => starred.some((s) => s.w === w.w));
@@ -2009,20 +2019,22 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
     setCloud(next.sort(() => Math.random() - 0.5));
     track("wordshuffle", {});
   };
-  const pickForMe = () => {
-    const extra = cloud.filter((w) => !starred.some((s) => s.w === w.w)).slice(0, need || 0);
-    onContinue(extra, "pick-for-me");
-  };
-  const down = (w: WWord) => {
+  const down = (w: WWord, e: React.PointerEvent) => {
     longFired.current = false;
     window.clearTimeout(pressTimer.current);
-    pressTimer.current = window.setTimeout(() => { longFired.current = true; setSheet(w); }, 450);
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    pressTimer.current = window.setTimeout(() => {
+      longFired.current = true;
+      const width = Math.min(315, window.innerWidth - 24);
+      setSheet({ w, x: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), y: r.bottom + 10 });
+    }, 450);
   };
   const up = () => window.clearTimeout(pressTimer.current);
 
   return (
     <div className="wr-v2w">
-      <h1 className="wr-h ttl">Tap at least 5 words that feel like you.</h1>
+      <h1 className="wr-h ttl">Tap the words that feel like you.</h1>
+      <p className="holdhint"><i /> Hold a word to see what it means</p>
       <div className="cloud">
         {cloud.map((w) => {
           const on = starred.some((s) => s.w === w.w);
@@ -2030,7 +2042,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
             <button
               key={w.w}
               className={"chip" + (on ? " on" : "")}
-              onPointerDown={() => down(w)}
+              onPointerDown={(e) => down(w, e)}
               onPointerUp={up}
               onPointerLeave={up}
               onContextMenu={(e) => e.preventDefault()}
@@ -2040,32 +2052,21 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, teaser }: {
             </button>
           );
         })}
-        <p className="endnote">{cloud.length} words · hold one to see what it means</p>
       </div>
       <div className="dock">
         <div className="fade"><span>↓ Scroll for more</span></div>
-        {starred.length >= 5 && (
-          <div className="wr-v2teaser rise">
-            ✦ {teaser.length ? teaser.map((n) => n.slice(0, 3) + "··").join(" · ") : "Your names are taking shape…"}
-          </div>
-        )}
         <button className="cta" disabled={need > 0} onClick={() => onContinue([], "manual")}>
-          {need > 0 ? `${need} more to go` : "See my 6 names →"}
+          {need > 0 ? "Pick a few words" : "See my 6 names →"}
         </button>
         <div className="links">
           <button onClick={shuffle}>↻ Shuffle words</button>
-          <span className="sep">|</span>
-          <button onClick={pickForMe}>Not sure? Pick for me</button>
         </div>
       </div>
       {sheet && (
-        <div className="wr-v2sheet" onClick={() => setSheet(null)}>
-          <div className="card" onClick={(e) => e.stopPropagation()}>
-            <b>{sheet.w}</b> <i className="lg">{(sheet.lang || "EN").toUpperCase()}</i>
-            <p>{sheet.m || "A word from your brief's world."}</p>
-            <button className="ok" onClick={() => { onToggle(sheet); setSheet(null); }}>
-              {starred.some((s) => s.w === sheet.w) ? "Unselect" : "✓ Select it"}
-            </button>
+        <div className="wr-v2tipwrap" onClick={() => setSheet(null)} onPointerDown={() => setSheet(null)}>
+          <div className="wr-v2tip" style={{ left: sheet.x, top: sheet.y }}>
+            <b>{sheet.w.w}</b> <i className="lg">{LANG_FULL[(sheet.w.lang || "EN").toUpperCase()] || (sheet.w.lang || "EN").toUpperCase()}</i>
+            <p>{sheet.w.m || "A word from your brief's world."}</p>
           </div>
         </div>
       )}
@@ -2462,7 +2463,10 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
     if (done || fly) return;
     setFly(like ? 1 : -1);
     const name = card.name;
-    setTimeout(() => { onJudge(name, like); setIdx((i) => i + 1); setFly(0); setDx(0); }, 240);
+    setTimeout(() => {
+      onJudge(name, like); setIdx((i) => i + 1); setFly(0); setDx(0);
+      if (idx + 1 >= SWIPE_DECK.length) setTimeout(onNext, 300); // last swipe opens the taste summary
+    }, 240);
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -2528,6 +2532,63 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
         <button className="wr-link" onClick={onBack}>← Back</button>
         <button className="wr-btn2 mla" onClick={onNext}>Skip</button>
         <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onNext}>Show me inspiring words →</button>
+      </div>
+    </>
+  );
+}
+
+/* ── 02·b·s: your taste, summed up — after the last swipe ── */
+const AXES_META: { k: "short" | "evoc" | "warm" | "real"; label: string; word: string; hint: string }[] = [
+  { k: "short", label: "Short", word: "short", hint: "1–2 syllables" },
+  { k: "evoc", label: "Evocative", word: "evocative", hint: "suggests a feeling" },
+  { k: "warm", label: "Warm", word: "warm", hint: "soft sounds, open vowels" },
+  { k: "real", label: "Real words", word: "made of real words", hint: "not acronyms" },
+];
+function BrandTasteSummary({ liked, disliked, onToggle, onWords, onAgain }: {
+  liked: string[]; disliked: string[]; onToggle: (name: string) => void; onWords: () => void; onAgain: () => void;
+}) {
+  const judged = liked.length + disliked.length;
+  const scores = AXES_META.map(({ k }) => {
+    if (!liked.length) return 0.6;
+    return liked.reduce((a, n) => a + (BRAND_AXES[n]?.[k] ?? 0.5), 0) / liked.length;
+  });
+  const rows = AXES_META.map((m, i) => ({ ...m, score: scores[i], segs: Math.min(5, Math.max(1, Math.round(scores[i] * 5))) }))
+    .sort((a, b) => b.score - a.score);
+  const top = rows.slice(0, 3).map((r) => r.word);
+  return (
+    <>
+      <div className="wr-stage">
+        <div className="wr-bsum">
+          <p className="wr-kicker" style={{ marginBottom: 10 }}>{judged} of {SWIPE_DECK.length} · Done</p>
+          <h1 className="wr-h ttl">
+            You like names that are <i>{top[0]}</i>, <i>{top[1]}</i> and <i>{top[2]}</i>.
+          </h1>
+          <div className="meters">
+            {rows.map((r) => (
+              <div className="m" key={r.k}>
+                <div className="t"><b>{r.label}</b><span>{r.hint}</span></div>
+                <div className="segs">{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < r.segs ? "on" : ""} />)}</div>
+              </div>
+            ))}
+          </div>
+          {!!liked.length && <>
+            <p className="grp">Loved · {liked.length}</p>
+            <div className="pills">
+              {liked.map((n) => <button key={n} className="pill on" onClick={() => onToggle(n)}>{n}</button>)}
+            </div>
+          </>}
+          {!!disliked.length && <>
+            <p className="grp">Not for you · {disliked.length}</p>
+            <div className="pills">
+              {disliked.map((n) => <button key={n} className="pill off" onClick={() => onToggle(n)}>{n}</button>)}
+            </div>
+          </>}
+          <p className="note">We'll lean your words and names this way. Tap a brand to change your mind.</p>
+        </div>
+      </div>
+      <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+        <button className="wr-btn" style={{ maxWidth: 460 }} onClick={onWords}>Show me the words →</button>
+        <button className="wr-link" onClick={onAgain}>↻ Swipe again</button>
       </div>
     </>
   );

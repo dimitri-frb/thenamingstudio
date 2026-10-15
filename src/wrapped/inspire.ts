@@ -10,6 +10,21 @@ export interface InspireBrand {
   why: string;
 }
 
+/* How each swipe-deck brand scores on the four taste axes (0-1), used by the
+   02-b-s summary to read a founder's taste from their likes. */
+export const BRAND_AXES: Record<string, { short: number; evoc: number; warm: number; real: number }> = {
+  Stripe:  { short: 1.0, evoc: 0.8, warm: 0.4, real: 1.0 },
+  Apple:   { short: 1.0, evoc: 0.9, warm: 0.8, real: 1.0 },
+  Kodak:   { short: 1.0, evoc: 0.5, warm: 0.3, real: 0.0 },
+  Google:  { short: 0.8, evoc: 0.6, warm: 0.6, real: 0.2 },
+  Nike:    { short: 1.0, evoc: 1.0, warm: 0.5, real: 0.4 },
+  Amazon:  { short: 0.6, evoc: 1.0, warm: 0.5, real: 1.0 },
+  Lego:    { short: 1.0, evoc: 0.6, warm: 0.7, real: 0.2 },
+  LVMH:    { short: 0.4, evoc: 0.1, warm: 0.1, real: 0.0 },
+  Tesla:   { short: 0.8, evoc: 0.8, warm: 0.4, real: 0.4 },
+  Airbnb:  { short: 0.5, evoc: 0.5, warm: 0.6, real: 0.2 },
+};
+
 export const INSPIRE: InspireBrand[] = [
   { name: "Apple", style: "real word", sector: "Tech", why: "An everyday word made iconic by total contrast with its category." },
   { name: "Stripe", style: "real word", sector: "Payments", why: "Concrete and visual, one syllable; speed and simplicity without saying payments." },

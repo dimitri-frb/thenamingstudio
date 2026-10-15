@@ -5,6 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
 import { logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
 
+/* The personalized accent leads the book: when the founder tuned a colour on
+   the logo, every accent slot that the logo uses follows it. */
+function bookPal(ctx: BookCtx): Palette {
+  const pal = toPalette(ctx.book.palette);
+  const hex = ctx.logoCustom?.accentHex;
+  if (hex && /^#[0-9a-fA-F]{3,8}$/.test(hex)) pal[ctx.logoAccent || "dawn"] = hex;
+  return pal;
+}
+
 export interface BookCtx {
   name: string;
   domain: string;          // e.g. aurova.com
@@ -61,7 +70,7 @@ const PAGE_TITLES_FR = [
 export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   const { book, name } = ctx;
   const T = (book.lang || "en").toLowerCase().startsWith("fr") ? BK_FR : BK_EN;
-  const pal = toPalette(book.palette);
+  const pal = bookPal(ctx);
   const grad = `linear-gradient(120deg, ${pal.dawn}, ${pal.haze} 50%, ${pal.nova})`;
   const mark = (variant: "light" | "night" | "dawn" | "mono", h = 60) =>
     ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: h }) });
@@ -336,7 +345,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", flex: 1, gridTemplateRows: "1fr auto auto", paddingBottom: "24pt" }}>
           <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "150pt" }}>
             <div style={{ textAlign: "center" }}>
-              <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, height: 92 }) }} />
+              <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, custom: ctx.logoCustom, height: 92 }) }} />
               <div style={{ ...S.kick, marginTop: "8pt" }}>{T.appIcon}</div>
             </div>
           </div>
@@ -402,7 +411,7 @@ export async function exportBookWord(ctx: BookCtx): Promise<void> {
   // The chosen lockup, rasterized for Word.
   let logoPng = "";
   try {
-    const pal = toPalette(book.palette);
+    const pal = bookPal(ctx);
     const svg = logoSvg(ctx.logoCustom ? "custom" : ctx.logoKey || "sunrise", name, pal, {
       variant: "light", accent: ctx.logoAccent, seed: ctx.logoSeed, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: 140,
     });
@@ -470,7 +479,7 @@ export function printBook(title?: string): void {
 }
 
 /* ── 07b preview overlay ── */
-export function BookPreview({ ctx, onClose }: { ctx: BookCtx; onClose: () => void }) {
+export function BookPreview({ ctx, onClose, onShare }: { ctx: BookCtx; onClose: () => void; onShare?: () => void }) {
   const [page, setPage] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(360);
@@ -505,9 +514,9 @@ export function BookPreview({ ctx, onClose }: { ctx: BookCtx; onClose: () => voi
     <div className="wr-bprev">
       <div className="bar">
         <button className="wr-back" onClick={onClose} aria-label="Close">‹</button>
-        <span className="t">{ctx.name} · Brand book</span>
-        <span className="pg">Page {page + 1} of 10</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <span className="t"><em className="bnm">{ctx.name} · </em>Brand book</span>
+        <span className="pg"><em className="pw">Page </em>{page + 1} of 10</span>
+        <div className="dacts">
           <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
           <button className="wr-btn2" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
         </div>
@@ -535,6 +544,12 @@ export function BookPreview({ ctx, onClose }: { ctx: BookCtx; onClose: () => voi
         </div>
       </div>
       <div className="wr-dots">{PAGE_TITLES.map((_, i) => <i key={i} className={i === page ? "on" : ""} />)}</div>
+      <p className="swipecap">{PAGE_TITLES[page]}{page < PAGE_TITLES.length - 1 && <> · swipe for {PAGE_TITLES[page + 1]} →</>}</p>
+      <div className="macts">
+        <button className="mpdf" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
+        <button className="mword" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
+        {onShare && <button className="mshare" onClick={onShare} aria-label="Share">↗</button>}
+      </div>
       <div className="wr-khint" style={{ justifyContent: "center", padding: "0 0 14px" }}>
         <span className="wr-key">↑</span><span className="wr-key">↓</span> to turn pages · <span className="wr-key">esc</span> to close
       </div>

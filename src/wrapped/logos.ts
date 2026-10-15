@@ -163,7 +163,9 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   const rxf = shape === "sharp" ? 0.06 : shape === "geometric" ? 0.12 : shape === "organic" ? 0.30 : 0.225;
 
   // The personalized lockup (Chapter 3 · Personalize): symbol, colour, face, layout.
-  if (opts.custom || key === "custom") {
+  // App icons fall through: they keep their own square treatment and borrow
+  // the custom accent and typeface below.
+  if ((opts.custom || key === "custom") && key !== "appicon" && variant !== "icon") {
     const c: CustomLogo = opts.custom || { symbol: "half", layout: "side" };
     if (c.family) ensureFonts([{ family: c.family, weight: c.famWeight }]);
     const sc = c.scale || 1;
@@ -229,17 +231,20 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   }
 
   if (key === "appicon" || variant === "icon") {
-    // Square app icon: three treatments per round.
+    // Square app icon: three treatments per round. A personalized lockup's
+    // accent and typeface carry through, so the favicon matches the logo.
     const S = 220;
     const letter = (name[0] || "A");
+    const cAcc = opts.custom?.accentHex && variant !== "mono" ? opts.custom.accentHex : accent;
+    const cFont = opts.custom?.family ? `'${opts.custom.family}',${FONT}` : FONT;
     const tileBg = variant === "dawn" || v === 1 ? "url(#dg)" : v === 2 ? "#ffffff" : pal.night;
     const letterFg = v === 1 ? pal.night : v === 2 ? pal.night : "#ffffff";
     const inner =
       v === 2
-        ? `<circle cx="${S / 2}" cy="${S / 2}" r="${S * 0.36}" fill="none" stroke="${accent}" stroke-width="9"/>` +
-          `<text x="${S / 2}" y="${S * 0.635}" text-anchor="middle" font-family="${FONT}" font-size="${S * 0.38}" font-weight="800" fill="${letterFg}">${esc(letter)}</text>`
-        : sun(S / 2, S * 0.72, S * 0.20, v === 1 ? pal.night : accent) +
-          `<text x="${S / 2}" y="${S * 0.60}" text-anchor="middle" font-family="${v === 1 ? SERIF : FONT}" font-size="${S * 0.42}" font-weight="${v === 1 ? 500 : 800}" fill="${letterFg}">${esc(letter)}</text>`;
+        ? `<circle cx="${S / 2}" cy="${S / 2}" r="${S * 0.36}" fill="none" stroke="${cAcc}" stroke-width="9"/>` +
+          `<text x="${S / 2}" y="${S * 0.635}" text-anchor="middle" font-family="${cFont}" font-size="${S * 0.38}" font-weight="800" fill="${letterFg}">${esc(letter)}</text>`
+        : sun(S / 2, S * 0.72, S * 0.20, v === 1 ? pal.night : cAcc) +
+          `<text x="${S / 2}" y="${S * 0.60}" text-anchor="middle" font-family="${v === 1 ? SERIF : cFont}" font-size="${S * 0.42}" font-weight="${v === 1 ? 500 : 800}" fill="${letterFg}">${esc(letter)}</text>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${H}" height="${H}">${defs}` +
       `<rect width="${S}" height="${S}" rx="${S * rxf}" fill="${tileBg}" ${v === 2 ? `stroke="rgba(0,0,0,.12)" stroke-width="2"` : ""}/>` + inner + `</svg>`;
   }
@@ -508,7 +513,7 @@ export async function buildLogoPack(
     [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font, shape, custom }),
     [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font, shape, custom }),
     [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font, shape, custom }),
-    [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed, shape }),
+    [`${nm}-appicon.svg`]: logoSvg("appicon", name, pal, { variant: "icon", accent, seed, shape, custom }),
   };
   const enc = new TextEncoder();
   const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([n, svg]) => ({ name: n, data: enc.encode(svg) }));
