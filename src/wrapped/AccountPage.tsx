@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import "./wrapped.css";
 import {
   GOOGLE_CLIENT_ID, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, saveSession,
-  searchDel, type SavedSearch, type WUser,
+  searchDel, track, type SavedSearch, type WUser,
 } from "./api";
 import { AvatarMenu, BASE, SettingsPane } from "./paper";
 import { STEPS } from "./AdminPage";
@@ -145,7 +145,7 @@ function SignIn({ onUser, loading }: { onUser: (u: WUser, s: SavedSearch[]) => v
         client_id: GOOGLE_CLIENT_ID,
         callback: async (resp: any) => {
           const r = await authGoogle(resp.credential);
-          if (r) onUser(r.user, r.searches);
+          if (r) { track("signup", {}); onUser(r.user, r.searches); }
         },
       });
       w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });

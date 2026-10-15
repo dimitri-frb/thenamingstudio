@@ -27,6 +27,7 @@ interface Flow {
   domain: string;
   source: string; campaign: string; device: string; lang: string; country: string;
   feedback: string;               // the 04·x/04·i exit poll, when the user answered it
+  gateOnly?: boolean;             // the landing gate's stray sign-up group (folds into the real flow)
   timeline: { at: number; step: string }[];
 }
 
@@ -80,16 +81,21 @@ function buildFlows(items: LogItem[]): Flow[] {
     // dedupe adjacent timeline steps, keep first hit of each
     const seen = new Set<string>();
     f.timeline = f.timeline.filter((t) => { if (seen.has(t.step)) return false; seen.add(t.step); return true; });
-    // the landing gate signs people up under a throwaway process id: a group
-    // that is ONLY a signup is that stray event, not a flow
-    const onlySignup = evs.every((e) => e.phase === "signup");
-    if (onlySignup) continue;
+    // The landing gate signs people up under a throwaway process id (sometimes
+    // with the brief's chips call along for the ride). A group that never got
+    // further than Sign up is that stray event, not a flow of its own.
+    const stepped = evs.filter((e) => PHASE_STEP[e.phase] !== undefined);
+    f.gateOnly = stepped.length === 0 || stepped.every((e) => e.phase === "signup");
+    if (f.gateOnly && !f.email) continue; // anonymous stray: nothing to merge, drop it
     // a signed-in flow passed Sign up by definition
     if (f.email && !f.timeline.some((t) => t.step === STEPS[0])) f.timeline.unshift({ at: f.first, step: STEPS[0] });
     f.status = f.step >= 9 ? "done" : Date.now() - f.last < 30 * 60000 ? "live" : "stopped";
     flows.push(f);
   }
-  return flows.sort((a, b) => b.last - a.last);
+  // A signed-in gate row folds into that user's real flow; it survives only
+  // when the person signed up and never started (a flow worth seeing).
+  const merged = flows.filter((f) => !(f.gateOnly && flows.some((o) => o !== f && !o.gateOnly && o.email === f.email)));
+  return merged.sort((a, b) => b.last - a.last);
 }
 
 const ago = (t: number) => {

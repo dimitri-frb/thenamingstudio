@@ -620,8 +620,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (!user && !test) { setBriefGate(true); return; }
     enterFlow();
   }
-  function enterFlow() {
+  function enterFlow(justSignedUp = false) {
     if (!test) { newProcess(); startedAt.current = Date.now(); }
+    if (justSignedUp) track("signup", {}); // same process as the search below: one row per user in the admin
     track("search", { sentence: sentence.trim(), chips });
     setStep("brief");
     pushUrl("brief");
@@ -1807,7 +1808,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <BriefGateModal
           brief={sentence.trim()}
           onClose={() => setBriefGate(false)}
-          onUser={(u) => { setUser(u); setBriefGate(false); enterFlow(); }}
+          onUser={(u) => { setUser(u); setBriefGate(false); enterFlow(true); }}
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}

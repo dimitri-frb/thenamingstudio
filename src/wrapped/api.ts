@@ -310,7 +310,9 @@ export function saveSession(s: { token: string; user: WUser } | null): void {
 
 export async function authGoogle(credential: string): Promise<{ token: string; user: WUser; searches: SavedSearch[] } | null> {
   const r = await post<{ token: string; user: WUser; searches: SavedSearch[] }>({ phase: "auth-google", credential });
-  if (r?.token) { saveSession({ token: r.token, user: r.user }); track("signup", {}); }
+  // No track("signup") here: the flow fires it AFTER newProcess(), so the
+  // sign-up lands in the same process group as the search it belongs to.
+  if (r?.token) saveSession({ token: r.token, user: r.user });
   return r?.token ? r : null;
 }
 
