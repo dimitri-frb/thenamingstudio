@@ -709,8 +709,9 @@
 .wr-v2w .links button { background: none; border: none; font-family: inherit; font-size: 13.5px; font-weight: 600; color: rgba(255, 255, 255, 0.65); cursor: pointer; padding: 2px 0; }
 .wr-v2w .links .sep { color: rgba(255, 255, 255, 0.25); }
 .wr-v2w .holdhint { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: rgba(255, 255, 255, 0.6); margin: -6px 0 16px; }
-.wr-v2w .holdhint i { width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); display: inline-block; position: relative; }
+.wr-v2w .holdhint i { width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); display: inline-block; position: relative; animation: wr-holdpulse 2s ease infinite; }
 .wr-v2w .holdhint i::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: rgba(255, 255, 255, 0.65); }
+@keyframes wr-holdpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.22); } 50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); } }
 .wr-v2tipwrap { position: fixed; inset: 0; z-index: 85; }
 .wr-v2tip {
   position: fixed; width: min(315px, calc(100vw - 24px));
@@ -769,17 +770,22 @@
 .wr-sumodal.poll .popts button.on i { background: #111; border-color: #111; color: #fff; }
 .wr-sumodal.poll textarea { width: 100%; box-sizing: border-box; border: 1.5px solid #111; border-radius: 14px; font-family: inherit; font-size: 14px; padding: 13px 14px; resize: none; outline: none; color: #111; background: #fff; }
 .wr-sumodal.poll textarea::placeholder { color: #999; }
-.wr-sumodal.poll .pacts { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
-.wr-sumodal.poll .pacts .note { font-family: var(--mono); font-size: 11px; color: #9a988f; margin-right: auto; }
-.wr-sumodal.poll .pbtn { border-radius: 980px; font-family: inherit; font-size: 14px; font-weight: 600; padding: 12px 20px; cursor: pointer; }
-.wr-sumodal.poll .pbtn.ghost { background: #fff; border: 1px solid #ddd; color: #111; }
-.wr-sumodal.poll .pbtn.ghost:disabled { opacity: 0.45; cursor: default; }
+.wr-sumodal.poll .pacts { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 16px; }
+.wr-sumodal.poll .pbtn { border-radius: 980px; font-family: inherit; font-size: 15px; font-weight: 700; padding: 14px 20px; cursor: pointer; }
 .wr-sumodal.poll .pbtn.dark { background: #111; border: none; color: #fff; }
+.wr-sumodal.poll .pbtn.aslink { background: none; border: none; color: #8a887f; font-size: 13px; font-weight: 600; padding: 6px; }
+.wr-sumodal.poll .pbtn.aslink:disabled { opacity: 0.45; cursor: default; }
+.wr-sumodal.poll .grab { display: none; }
+/* On phones the ask is a bottom sheet (04·x), not a centred modal. */
 @media (max-width: 560px) {
-  .wr-sumodal.poll .popts { grid-template-columns: 1fr; }
-  .wr-sumodal.poll .pacts { flex-wrap: wrap; }
-  .wr-sumodal.poll .pacts .note { flex-basis: 100%; margin-bottom: 4px; }
+  .wr-sumodal.poll { align-items: flex-end; padding: 0; }
+  .wr-sumodal.poll .panel { max-width: none; width: 100%; border-radius: 24px 24px 0 0; padding: 14px 22px calc(18px + env(safe-area-inset-bottom)); animation: wr-sheetup 0.28s ease both; }
+  .wr-sumodal.poll .grab { display: block; width: 40px; height: 4px; border-radius: 4px; background: #ddd; margin: 0 auto 14px; }
+  .wr-sumodal.poll .x { display: none; }
+  .wr-sumodal.poll .popts { grid-template-columns: 1fr 1fr; }
+  .wr-sumodal.poll .popts button { padding: 11px 11px; font-size: 12.5px; }
 }
+@keyframes wr-sheetup { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ── 05 reveal ── */
 .wr-reveal { position: relative; text-align: center; }
@@ -1710,3 +1716,155 @@
   .kadm .row.urow { grid-template-columns: 1fr 0.8fr; }
   .kadm .row.urow > :nth-child(n+3):not(.rolepill) { display: none; }
 }
+
+/* ═══ Flow pass (handoff 10): 02 territories, 04 grid, 05 claim + sheets, 09, 10·h ═══ */
+
+/* 02 — the three territories follow the paragraph directly, no label */
+.wr-terrs { display: flex; flex-direction: column; }
+.wr-terrs .terr { display: flex; flex-direction: column; gap: 3px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.wr-terrs .terr b { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.wr-terrs .terr span { font-size: 13.5px; color: var(--text3); }
+
+.wr .mla { margin-left: auto; }
+.wr .kbd { font-style: normal; font-family: var(--mono); font-size: 11px; border: 1px solid currentColor; border-radius: 5px; padding: 1px 5px; opacity: 0.7; margin-left: 4px; }
+
+/* 04 desktop — six cards, two columns, one pick */
+.wr-ngrid .ttl { font-size: 32px; letter-spacing: -0.035em; margin: 0 0 16px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.wr-ngrid .tsub { font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--text3); }
+.wr-ngrid .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-bottom: 10px; }
+.wr-ngrid .card {
+  min-width: 0; position: relative; display: flex; gap: 14px; align-items: center; text-align: left;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px;
+  padding: 15px 52px 14px 18px; font-family: inherit; color: #fff; cursor: pointer;
+}
+.wr-ngrid .card .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wr-ngrid .card .hd { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.wr-ngrid .card .nm { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+.wr-ngrid .card .new { font-family: var(--mono); font-style: normal; font-size: 9px; font-weight: 700; background: #ff4f1a; color: #000; border-radius: 4px; padding: 2px 5px; }
+.wr-ngrid .card .rt { font-size: 11px; color: rgba(255, 255, 255, 0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-ngrid .card .why { font-size: 13px; font-style: italic; color: rgba(255, 255, 255, 0.65); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-ngrid .card .dm { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255, 255, 255, 0.75); }
+.wr-ngrid .card .dm .dot { width: 6px; height: 6px; border-radius: 50%; background: #3ddc84; }
+.wr-ngrid .card .sc { flex: 0 0 76px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.wr-ngrid .card .sc .n { font-size: 19px; font-weight: 700; }
+.wr-ngrid .card .sc .n small { font-size: 11px; opacity: 0.55; }
+.wr-ngrid .card .sc .l { font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); }
+.wr-ngrid .card .sc .bar { width: 64px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.wr-ngrid .card .sc .bar i { display: block; height: 100%; background: #fff; border-radius: 3px; }
+.wr-ngrid .card .ring { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.3); display: grid; place-items: center; font-size: 13px; }
+.wr-ngrid .card.on { background: #fff; border-color: #fff; color: #000; }
+.wr-ngrid .card.on .rt { color: rgba(0, 0, 0, 0.45); }
+.wr-ngrid .card.on .why { color: rgba(0, 0, 0, 0.6); }
+.wr-ngrid .card.on .dm { color: rgba(0, 0, 0, 0.65); }
+.wr-ngrid .card.on .sc .l { color: rgba(0, 0, 0, 0.4); }
+.wr-ngrid .card.on .sc .bar { background: rgba(0, 0, 0, 0.12); }
+.wr-ngrid .card.on .sc .bar i { background: #000; }
+.wr-ngrid .card.on .ring { background: #000; border-color: #000; color: #fff; }
+
+/* 05 Claim — the name on a dawn glow, the domain card, the orange keep */
+.wr-claimstage { position: relative; }
+.wr-claimstage::before {
+  content: ""; position: absolute; left: -22px; right: -22px; top: -60px; height: 420px; pointer-events: none;
+  background: radial-gradient(90% 100% at 30% 0%, rgba(255, 158, 122, 0.22), rgba(124, 92, 255, 0.12) 55%, transparent 100%);
+}
+.wr-claim { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; padding-top: 26px; }
+.wr-claim .cl .wr-kicker { letter-spacing: 0.22em; }
+.wr-claim .cname { font-weight: 700; letter-spacing: -0.04em; font-size: 64px; line-height: 1; margin: 0 0 12px; }
+.wr-claim .pron { font-size: 11.5px; color: rgba(255, 255, 255, 0.65); letter-spacing: 0.06em; margin: 0 0 14px; }
+.wr-claim .story { font-size: 15.5px; line-height: 1.55; color: var(--text2); max-width: 480px; margin: 0 0 10px; }
+.wr-claim .fold { padding-left: 0; font-weight: 600; }
+.wr-claim .sgrid { display: flex; flex-direction: column; gap: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px 18px; margin: 6px 0 6px; max-width: 560px; }
+.wr-claim .sgrid i { display: block; font-style: normal; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); margin-bottom: 5px; }
+.wr-claim .sgrid p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text2); }
+.wr-claim .cr { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 18px 0 6px; }
+.wr-claim .dcard { position: relative; background: #fff; color: #111; border-radius: 18px; padding: 15px 16px 13px; }
+.wr-claim .dcard .k { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #9a988f; margin: 0 0 9px; display: none; }
+.wr-claim .dcard .drow { display: flex; align-items: center; gap: 9px; }
+.wr-claim .dcard .drow .dot { width: 8px; height: 8px; border-radius: 50%; background: #12b981; flex: 0 0 auto; }
+.wr-claim .dcard .drow .d { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-claim .dcard .drow .pr { margin-left: auto; font-size: 15px; font-weight: 600; }
+.wr-claim .dcard .drow .pr em { font-style: normal; font-size: 10.5px; color: #9a988f; }
+.wr-claim .dcard .drow2 { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 11px; border-top: 1px solid #efeeea; }
+.wr-claim .dcard .was { font-size: 11.5px; font-weight: 600; color: #12b981; }
+.wr-claim .dcard .tldpill { margin-left: auto; background: #111; color: #fff; border: none; border-radius: 980px; font-size: 10.5px; padding: 7px 11px; cursor: pointer; white-space: nowrap; }
+.wr-claim .dcard .tldpill.prs { box-shadow: 0 0 0 2.5px #ff4f1a; }
+.wr-btnor {
+  font-size: 16.5px; font-weight: 700; font-family: inherit;
+  background: #ff4f1a; color: #fff; border: none; border-radius: 980px;
+  height: 56px; padding: 0 24px; cursor: pointer; width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 70ms ease;
+}
+.wr-btnor:active { transform: scale(0.98); }
+.wr-claim .golink { align-self: center; color: var(--text2); font-weight: 600; }
+.wr-claimdone .okball { width: 74px; height: 74px; border-radius: 50%; background: #3ddc84; color: #06220f; font-size: 30px; font-weight: 800; display: grid; place-items: center; margin: 0 auto 22px; }
+@media (min-width: 721px) {
+  .wr-claim { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: center; max-width: 980px; width: 100%; margin: 0 auto; padding-top: 40px; }
+  .wr-claim .cname { font-size: 108px; letter-spacing: -0.045em; }
+  .wr-claim .sgrid { flex-direction: row; }
+  .wr-claim .sgrid > div { flex: 1; min-width: 0; }
+  .wr-claim .cr { margin-top: 0; align-self: start; }
+  .wr-claim.open .cr { align-self: start; }
+  .wr-claim .dcard .k { display: block; }
+}
+@media (max-width: 720px) {
+  .wr-claim .cname { font-size: 56px; }
+  .wr-claimstage { padding-top: 10px; }
+  .claimfoot .khint { display: none; }
+}
+
+/* 05·d / 05·r — bottom sheets on phones; popover / centred modal on desktop */
+.wr-dsheetwrap { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, 0.55); display: flex; align-items: flex-end; justify-content: center; }
+.wr-dsheet { background: #fff; color: #111; border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); animation: wr-sheetup 0.28s ease both; max-height: 80vh; overflow-y: auto; }
+.wr-dsheet .grab { display: block; width: 40px; height: 4px; border-radius: 4px; background: #ddd; margin: 0 auto 14px; }
+.wr-dsheet .hd { font-size: 15px; font-weight: 700; margin: 0 0 3px; }
+.wr-dsheet .sub { font-size: 12.5px; color: #8a887f; margin: 0 0 12px; }
+.wr-dsheet .rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.wr-dsheet .row { display: flex; align-items: center; gap: 10px; background: #f6f5f2; border: 1.5px solid transparent; border-radius: 13px; padding: 12px 13px; font-family: inherit; font-size: 13px; cursor: pointer; color: #111; }
+.wr-dsheet .row .dot { width: 7px; height: 7px; border-radius: 50%; background: #12b981; flex: 0 0 auto; }
+.wr-dsheet .row .dot.sale { background: #f5a623; }
+.wr-dsheet .row .d { font-weight: 600; }
+.wr-dsheet .row .st { font-size: 11px; color: #8a887f; margin-left: 2px; }
+.wr-dsheet .row .pr { margin-left: auto; font-weight: 600; }
+.wr-dsheet .row .ck { font-style: normal; font-size: 13px; }
+.wr-dsheet .row.on { border-color: #111; background: #fff; }
+.wr-dsheet .use { width: 100%; background: #111; color: #fff; border: none; border-radius: 980px; height: 50px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.wr-dsheet.go .k { font-size: 10px; letter-spacing: 0.14em; color: #9a988f; margin: 0 0 8px; }
+.wr-dsheet.go h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 6px; }
+.wr-dsheet.go .sub { margin-bottom: 14px; }
+.wr-dsheet.go .gsteps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.wr-dsheet.go .gstep { display: flex; gap: 12px; align-items: flex-start; }
+.wr-dsheet.go .gstep i { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #111; color: #fff; font-style: normal; font-size: 11.5px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.wr-dsheet.go .gstep b { display: block; font-size: 13.5px; }
+.wr-dsheet.go .gstep em { display: block; font-style: normal; font-size: 12px; color: #8a887f; margin-top: 1px; }
+.wr-dsheet.go .wr-btnor { height: 50px; font-size: 15px; }
+.wr-dsheet.go .later { width: 100%; margin-top: 8px; color: #111; border-color: #ddd; }
+.wr-dsheet.go .fn { text-align: center; font-size: 11px; color: #9a988f; margin: 12px 0 0; }
+@media (min-width: 721px) {
+  .wr-dsheetwrap { align-items: flex-start; justify-content: flex-end; padding: 170px 40px 0 0; }
+  .wr-dsheet { border-radius: 18px; max-width: 360px; animation: wr-fadein 0.18s ease both; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35); }
+  .wr-dsheet .grab { display: none; }
+  .wr-dsheetwrap:has(.go) { align-items: center; justify-content: center; padding: 0; }
+  .wr-dsheet.go { max-width: 440px; border-radius: 22px; }
+}
+
+/* 09 — the domain is the open last step, on GoDaddy */
+.wr-trip .pill.last { background: #fff; color: #111; border-color: #fff; display: inline-flex; align-items: center; gap: 8px; }
+.wr-trip .pill.last .ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #ff4f1a; display: inline-block; flex: 0 0 auto; }
+.wr-trip .pill.last b { font-weight: 600; font-size: 11px; color: #555; }
+.wr-trip .pill.last .gd { background: #ff4f1a; color: #fff; border: none; border-radius: 980px; font-family: inherit; font-size: 11.5px; font-weight: 700; padding: 7px 12px; cursor: pointer; margin-left: 2px; }
+@media (max-width: 720px) {
+  .wr-trip { flex-direction: column; align-items: center; gap: 8px; }
+  .wr-trip .joins { transform: none; }
+  .wr-trip .pill { width: 100%; max-width: 340px; justify-content: center; flex-wrap: wrap; }
+}
+
+/* 10·h — the account card when the domain isn't bought yet */
+.kadm .fcard.domcard .pill.orange { background: #ff4f1a; color: #fff; border: none; }
+.kadm .fcard.domcard .domrow { display: flex; align-items: center; gap: 9px; background: #f6f5f2; border-radius: 12px; padding: 12px 14px; margin: 10px 0 12px; font-size: 14px; }
+.kadm .fcard.domcard .domrow .dot { width: 7px; height: 7px; border-radius: 50%; background: #12b981; }
+.kadm .fcard.domcard .domrow .pr { margin-left: auto; font-weight: 600; }
+.kadm .fcard.domcard .btn.orange { display: block; text-align: center; background: #ff4f1a; color: #fff; border-radius: 980px; padding: 13px 16px; font-weight: 700; text-decoration: none; }
+.kadm .fcard.domcard .markdone { text-align: center; font-size: 12px; color: #8a887f; margin: 10px 0 2px; }
+.kadm .fcard.domcard .markdone button { background: none; border: none; font-family: inherit; font-size: 12px; color: #111; text-decoration: underline; cursor: pointer; padding: 0; }
+.kadm .fcard.domcard .acts { margin-top: 10px; }

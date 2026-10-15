@@ -15,13 +15,13 @@ export const STEPS = ["Sign up", "Brief", "Concept", "Words", "Names", "Domain",
 // a step: steps come from the client's own events ("page" + explicit actions).
 const ACTION_STEP: Record<string, number> = {
   signup: 0, search: 1, brandsum: 2, wordsdone: 3, wordshuffle: 3,
-  morenames: 4, pick: 4, domain: 5, taste: 6, logo: 6, logopers: 6, logopack: 6,
+  morenames: 4, pick: 4, domain: 5, godaddy: 5, taste: 6, logo: 6, logopers: 6, logopack: 6,
   book: 7, bookpreview: 7, social: 8, done: 9,
 };
 // Flows from before the "page" event existed fall back to generation phases.
 const LEGACY_STEP: Record<string, number> = { wrapchips: 1, wrapconcept: 2, wrapwords: 3, wrapnames: 4 };
 const PAGE_STEP: Record<string, number> = {
-  ask: 1, brief: 1, refine: 2, brands: 2, brandsum: 2, words: 3, names: 4, reveal: 4,
+  ask: 1, brief: 1, refine: 2, brands: 2, brandsum: 2, words: 3, names: 4, claim: 5, reveal: 5,
   domain: 5, taste: 6, logo: 6, logodone: 6, pers: 6, book: 7, socials: 8, done: 9,
 };
 

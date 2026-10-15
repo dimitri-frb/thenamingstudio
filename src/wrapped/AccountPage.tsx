@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./wrapped.css";
 import {
-  GOOGLE_CLIENT_ID, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, saveSession,
+  GOOGLE_CLIENT_ID, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, putSearch, registrarUrl, saveSession,
   searchDel, track, type SavedSearch, type WUser,
 } from "./api";
 import { AvatarMenu, BASE, SettingsPane } from "./paper";
@@ -52,9 +52,12 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
 
   if (!user) return <SignIn onUser={(u, s) => { setUser(u); setSearches(s); }} loading={loading} />;
 
-  const prog = searches.filter((s) => stepOf(s) < 9);
-  const done = searches.filter((s) => stepOf(s) >= 9);
-  const shown = tab === "progress" ? prog : tab === "done" ? done : searches;
+  // A claimed-but-unbought domain is unfinished business: that card goes first.
+  const pendingDom = (s: SavedSearch) => !!(s.domain && s.steps?.domain === "done" && !s.bought);
+  const ordered = [...searches].sort((a, b) => Number(pendingDom(b)) - Number(pendingDom(a)));
+  const prog = ordered.filter((s) => stepOf(s) < 9);
+  const done = ordered.filter((s) => stepOf(s) >= 9);
+  const shown = tab === "progress" ? prog : tab === "done" ? done : ordered;
 
   return (
     <div className="kadm kacc">
@@ -84,7 +87,17 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
             </div>
             {!loading && !searches.length && <p className="hint" style={{ marginTop: 18 }}>Nothing yet. Name something.</p>}
             <div className="cards">
-              {shown.map((s) => <FlowCard key={s.id} s={s} demo={demo} onDeleted={() => setSearches((xs) => xs.filter((x) => x.id !== s.id))} />)}
+              {shown.map((s) => (
+                <FlowCard
+                  key={s.id} s={s} demo={demo}
+                  onDeleted={() => setSearches((xs) => xs.filter((x) => x.id !== s.id))}
+                  onBought={() => {
+                    const next = { ...s, bought: true, updated: Date.now() };
+                    setSearches((xs) => xs.map((x) => (x.id === s.id ? next : x)));
+                    if (!demo) void putSearch(next);
+                  }}
+                />
+              ))}
             </div>
           </>
         )}
@@ -94,7 +107,7 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
   );
 }
 
-function FlowCard({ s, demo, onDeleted }: { s: SavedSearch; demo: boolean; onDeleted: () => void }) {
+function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: boolean; onDeleted: () => void; onBought: () => void }) {
   const st = stepOf(s);
   const completed = st >= 9;
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -104,6 +117,32 @@ function FlowCard({ s, demo, onDeleted }: { s: SavedSearch; demo: boolean; onDel
     : s.names?.length ? `${s.names.length} names shortlisted`
     : s.starred?.length ? `${s.starred.length} words starred`
     : "Just started";
+  // 10·h: the domain is claimed in the studio but not bought yet — the card
+  // leads with the GoDaddy link, and ONLY the user can mark it done.
+  if (s.domain && s.steps?.domain === "done" && !s.bought) {
+    return (
+      <div className="fcard domcard">
+        <div className="top">
+          <span className="pill orange">⏱ Domain not bought yet</span>
+          <span className="date mono">{date}</span>
+        </div>
+        <h3>{s.picked?.name || s.names?.[0]?.name || s.domain}</h3>
+        <div className="domrow">
+          <i className="dot" />
+          <span className="mono">{s.domain}</span>
+          {s.domPrice && <span className="pr mono">{s.domPrice}</span>}
+        </div>
+        <a
+          className="btn orange" href={registrarUrl(s.domain)} target="_blank" rel="noopener noreferrer"
+          onClick={() => track("godaddy", { domain: s.domain, from: "account" })}
+        >Buy {s.domain} on GoDaddy ↗</a>
+        <p className="markdone">Already bought it? <button onClick={onBought}>Mark as done</button></p>
+        <div className="acts">
+          <a className="btn ghost" href={resume(completed ? "book" : undefined)}>{completed ? "Open brand book" : "Continue →"}</a>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={"fcard" + (completed ? " donecard" : "")}>
       <div className="top">

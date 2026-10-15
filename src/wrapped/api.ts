@@ -65,7 +65,9 @@ export interface SavedSearch {
   starred?: WWord[];
   names?: WName[];
   picked?: WName | null;
-  domain?: string;          // the registered/chosen domain
+  domain?: string;          // the chosen domain
+  domPrice?: string;        // its price when we checked ("$32/yr" shows on the account card)
+  bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
   logo?: { key: string; title: string; seed: number; accent?: string } | null;
   taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
@@ -304,10 +306,10 @@ export function fetchDomainBoard(name: string, doms?: string[]): Promise<DomainB
   return p;
 }
 
-// Register at the registrar whose live prices we display (Porkbun), so the
-// number a founder sees is the number at checkout.
+// GoDaddy is only a link out: their domain search, pre-filled with the exact
+// domain. No cart pre-fill, no affiliate checkout, no purchase verification.
 export const registrarUrl = (domain: string) =>
-  `https://porkbun.com/checkout/search?q=${encodeURIComponent(domain)}`;
+  `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
 
 /* ── accounts ── */
 const SESS_KEY = "ns.session";
@@ -485,7 +487,7 @@ const W = (w: string, m: string, lang?: string): WWord => (lang ? { w, m, lang }
 export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; moreNames: WName[] } = {
   concept: {
     concept: "a new beginning",
-    para: "Founders come to you at the start of something. The name has to carry that, clear, bright, and its own.",
+    para: "Founders come to you at the very first moment, when there is only an idea and the nerve to start. Your name has to hold that moment: the light before the day, the spark before the fire. It should feel clear on the first read and warm on the hundredth. Easy to say in any room, and impossible to confuse with anyone else.",
     alts: ["quiet confidence", "a sharp mind"],
     territories: [
       { name: "Light", desc: "first light, dawn, clarity" },

@@ -622,12 +622,12 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
   // territories. On the fast model: this answer gates the whole flow, and the
   // page should feel instant.
-  wrapconcept: (b) => ({ model: MODEL.fast, max: 650, prompt:
+  wrapconcept: (b) => ({ model: MODEL.fast, max: 800, prompt:
     `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     LANG_LINE + `Distill what their NAME should feel like.\n` +
     `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
-    `2) "para": 2 or 3 sentences (max 55 words), speaking directly to the founder as "you". Start CONCRETE: recap the specifics of THEIR idea in fresh words, name the actual product, the actual audience and what it does for them (e.g. "You're building a budgeting app that gives students their first grip on money"). Then say what the name has to carry for exactly that business. Specific nouns over abstractions; reframe, never parrot their sentence; no generic filler like "your brand" or "your vision".\n` +
+    `2) "para": exactly 4 sentences (60 to 85 words), speaking directly to the founder as "you". Start CONCRETE: recap the specifics of THEIR idea in fresh words, name the actual product, the actual audience and what it does for them (e.g. "Founders come to you at the very first moment, when there is only an idea and the nerve to start"). Then say what the name has to hold for exactly that business, with one vivid image. Close on how it should feel: clear on the first read, warm on the hundredth, easy to say in any room. Specific nouns over abstractions; reframe, never parrot their sentence; no generic filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
     `4) "alts": exactly 2 ALTERNATIVE "concept" candidates (same 2-4 lowercase word format, genuinely different angles).\n` +
     `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}],"alts":["...","..."]}.` }),

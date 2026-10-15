@@ -2,7 +2,7 @@
 // 00 landing → 01 the ask → 02 brief wrapped → 03 the words → 04 the names
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
@@ -23,21 +23,20 @@ const BookPrint = lazy(() => import("./Book").then((m) => ({ default: m.BookPrin
 const ScaledPage = lazy(() => import("./Book").then((m) => ({ default: m.ScaledPage })));
 
 type Step =
-  | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "reveal"
-  | "domain"
+  | "land" | "how" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "claim" | "reveal"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
   | "done";
-// The product is a triptych: Name → Domain → Brand.
+// The product is a triptych: Name → Domain → Brand. The domain is claimed
+// right inside chapter 1 now (05 Claim), so there's no Domain chapter left.
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
-  ask:    { label: "Chapter 1 · Name", segs: 7, idx: 0 },
-  brief:  { label: "Chapter 1 · Name", segs: 7, idx: 1 },
-  refine: { label: "Chapter 1 · Name", segs: 7, idx: 2 },
-  brands: { label: "Chapter 1 · Name", segs: 7, idx: 3 },
-  brandsum: { label: "Chapter 1 · Name", segs: 7, idx: 3 },
-  words:  { label: "Chapter 1 · Name", segs: 7, idx: 4 },
-  names:  { label: "Chapter 1 · Name", segs: 7, idx: 5 },
-  reveal: { label: "Chapter 1 · Name", segs: 7, idx: 6 },
-  domain: { label: "Chapter 2 · Domain", segs: 0, idx: 0 },
+  brief:  { label: "Chapter 1 · Name", segs: 6, idx: 0 },
+  refine: { label: "Chapter 1 · Name", segs: 6, idx: 1 },
+  brands: { label: "Chapter 1 · Name", segs: 6, idx: 2 },
+  brandsum: { label: "Chapter 1 · Name", segs: 6, idx: 2 },
+  words:  { label: "Chapter 1 · Name", segs: 6, idx: 3 },
+  names:  { label: "Chapter 1 · Name", segs: 6, idx: 4 },
+  claim:  { label: "Claim your name", segs: 6, idx: 5 },
+  reveal: { label: "Chapter 1 · Name", segs: 6, idx: 5 },
   brand:  { label: "Chapter 3 · Brand", segs: 0, idx: 0 },
   feel:   { label: "Chapter 3 · Brand · Feeling", segs: 9, idx: 0 },
   tcol:   { label: "Chapter 3 · Brand · Colours", segs: 9, idx: 1 },
@@ -50,19 +49,24 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
   socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
 };
-const STEPS_ALL: Step[] = ["land", "ask", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "domain", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "claim", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", how: "how-it-works", ask: "1-brief", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", reveal: "5-reveal",
-  domain: "6-domain",
+  land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "5-claim", reveal: "5-reveal",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", logodone: "8-logo", pers: "8-personalize", book: "9-brand-book", socials: "10-socials", done: "11-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
 ) as Record<string, Step>;
+// Old links and old snapshots keep working: the ask page folded into the
+// landing, and the separate Domain step folded into 05 Claim.
+SLUG_STEP["1-brief"] = "land";
+SLUG_STEP["6-domain"] = "claim";
+const LEGACY_STEP: Record<string, Step> = { ask: "land", domain: "claim" };
+const liveStep = (s: string): Step => (LEGACY_STEP[s] || s) as Step;
 const pathSlug = () => {
   const base = ((import.meta as any).env.BASE_URL || "/").replace(/\/$/, "");
   return window.location.pathname.replace(base, "").replace(/^\/+|\/+$/g, "").replace(/^test\/?/, "");
@@ -186,8 +190,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [step, setStep] = useState<Step>(test ? "land" : "land");
   const [sentence, setSentence] = useState(test ? ACTIVE_BRIEF().sentence : "");
   const [chips, setChips] = useState<string[]>(test ? ACTIVE_BRIEF().chips : []);
-  const [chipsBusy, setChipsBusy] = useState(false);
-  const [addingChip, setAddingChip] = useState(false);
   const [concept, setConcept] = useState<WConcept | null>(test ? ACTIVE().concept : null);
   const [feelOpts, setFeelOpts] = useState<string[]>(test ? [ACTIVE().concept.concept, ...(ACTIVE().concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
@@ -197,7 +199,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
   const [starred, setStarred] = useState<WWord[]>(test ? [ACTIVE().styles[0].words[0], ACTIVE().styles[0].words[1], ACTIVE().styles[1].words[0], ACTIVE().styles[1].words[2]] : []);
   const [names, setNames] = useState<WName[] | null>(test ? ACTIVE().names : null);
-  const [nameIdx, setNameIdx] = useState(0);
   const [namesBusy, setNamesBusy] = useState(false);
   const [namesProg, setNamesProg] = useState(0);      // names coined so far (drives the wait screen)
   const waitStart = useRef(0);
@@ -205,8 +206,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [picked, setPicked] = useState<WName | null>(test ? ACTIVE().names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
-  const [domShow, setDomShow] = useState(4);
-  const [domFilter, setDomFilter] = useState<string | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
@@ -217,6 +216,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [persFontQ, setPersFontQ] = useState("");
   const [poll, setPoll] = useState<null | "exit" | "idle">(null);
   const pollShown = useRef(false);
+  // ── 05 Claim: the story fold, the endings sheet, the GoDaddy sheet, 05·✓ ──
+  const [claimStory, setClaimStory] = useState(false);
+  const [claimSheet, setClaimSheet] = useState<null | "tld" | "go">(null);
+  const [claimDone, setClaimDone] = useState(false); // 05·✓, after Open GoDaddy
+  const [domBought, setDomBought] = useState(false); // user-set only ("Mark as done")
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
   useEffect(() => {
@@ -310,19 +314,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.prefs) setPrefs(snap.prefs);
         if (snap.feelOpts) setFeelOpts(snap.feelOpts);
         if (snap.taste) setTaste(snap.taste);
+        if (snap.bought) setDomBought(true);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
-          slugStep === "ask" ||
           (["brief", "words"].includes(slugStep) && snap.sentence) ||
           (slugStep === "names" && (snap.names?.length || snap.starred?.length)) ||
-          (!["ask", "brief", "words", "names"].includes(slugStep) && snap.picked)
+          (!["land", "brief", "words", "names"].includes(slugStep) && snap.picked)
         );
-        const target: Step = okSlug ? slugStep : snap.step;
+        const target: Step = okSlug ? slugStep : liveStep(snap.step);
         setStep(target);
         pushUrl(target, true);
       } else {
         const slugStep = SLUG_STEP[pathSlug()];
-        if (slugStep === "ask" || slugStep === "how") { setStep(slugStep); pushUrl(slugStep, true); }
+        if (slugStep === "how") { setStep(slugStep); pushUrl(slugStep, true); }
         else if (slugStep) pushUrl("land", true); // a deep link with no run behind it
       }
     })();
@@ -340,11 +344,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setNames(s.names || null);
     setPicked(s.picked || null);
     setSteps(s.steps || {});
+    setDomBought(!!s.bought);
     if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0, font: (s.logo as any).font });
     const target: Step =
-      s.picked && go && ["domain", "book", "socials"].includes(go) ? (go as Step) :
+      s.picked && go === "domain" ? "claim" :
+      s.picked && go && ["book", "socials"].includes(go) ? (go as Step) :
       s.picked && go === "logo" ? (s.logo ? "logodone" : "logo") :
-      s.picked ? "reveal" :
+      s.picked ? (s.steps?.domain ? "reveal" : "claim") :
       s.names?.length ? "names" :
       s.concept ? "words" : "brief";
     setStep(target);
@@ -354,8 +360,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
-    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste });
-  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste]);
+    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, bought: domBought });
+  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, domBought]);
 
   function persist(over: Partial<SavedSearch> = {}) {
     if (test || !sentence.trim()) return;
@@ -363,7 +369,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     putSearch({
       id: processId(), at: startedAt.current, updated: Date.now(),
       sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
-      picked, steps, status,
+      picked, steps, status, bought: domBought,
       logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font } : null,
       taste,
       ...over,
@@ -371,14 +377,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }
 
   /* ── generation chain (each step precharges the next) ── */
-  useEffect(() => { // 01 → chips, as the founder pauses typing
-    if (test || step !== "ask") return;
+  useEffect(() => { // chips, as the founder pauses typing on the landing
+    if (test || step !== "land") return;
     const s = sentence.trim();
     if (s.length < 12) return;
     const t = setTimeout(async () => {
-      setChipsBusy(true);
       const r = await wrapApi.chips(s);
-      setChipsBusy(false);
       setChips((prev) => (prev.length ? prev : (r.chips || []).slice(0, 4)));
     }, 600);
     return () => clearTimeout(t);
@@ -409,11 +413,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           fail("concept", false);
         } else {
           conceptReq.current = "";
-          if (stepRef.current !== "ask") fail("concept", true); // silent while still typing
+          if (stepRef.current !== "land") fail("concept", true); // silent while still typing
         }
       });
     };
-    if (step === "ask" || step === "land") { const t = setTimeout(go, 800); return () => clearTimeout(t); }
+    if (step === "land") { const t = setTimeout(go, 800); return () => clearTimeout(t); }
     if (step === "refine") { const t = setTimeout(go, 1000); return () => clearTimeout(t); } // typing in the refine brief box
     if (["brief", "words", "names"].includes(step)) go();
   }, [test, step, sentence, chips, concept, retryTick]);
@@ -521,17 +525,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const q = new URLSearchParams(window.location.search);
     if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
     if (test) return;
-    // Touch devices never fire mouse exit-intent, so on phones the quiet
-    // threshold is shorter (the back gesture is handled in the popstate hook).
-    const quiet = window.matchMedia("(hover: none)").matches ? 20000 : 30000;
-    let idle = window.setTimeout(() => show("idle"), quiet);
-    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), quiet); };
-    const out = (e: MouseEvent) => { if (e.clientY <= 0 && !e.relatedTarget) show("exit"); };
+    // 04·x fires when the founder actually leaves — the tab or app is closed or
+    // backgrounded (visibilitychange covers both; there's no mouse exit-intent
+    // on phones). The ask shows the moment they come back. 04·i is the
+    // 30-second quiet version.
+    let idle = window.setTimeout(() => show("idle"), 30000);
+    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), 30000); };
+    let away = false;
+    const vis = () => {
+      if (document.visibilityState === "hidden") { away = true; return; }
+      if (away) show("exit");
+    };
     window.addEventListener("pointermove", reset);
     window.addEventListener("keydown", reset);
     window.addEventListener("scroll", reset, true);
-    document.addEventListener("mouseout", out);
-    return () => { window.clearTimeout(idle); window.removeEventListener("pointermove", reset); window.removeEventListener("keydown", reset); window.removeEventListener("scroll", reset, true); document.removeEventListener("mouseout", out); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { window.clearTimeout(idle); window.removeEventListener("pointermove", reset); window.removeEventListener("keydown", reset); window.removeEventListener("scroll", reset, true); document.removeEventListener("visibilitychange", vis); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, poll, test]);
 
@@ -612,9 +621,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return bi;
   }, [domRows]);
 
-  const domTlds = useMemo(() => Array.from(new Set(domRows.map((d) => d.tld || "." + d.domain.split(".").pop()))), [domRows]);
-  const domShown = useMemo(() => domRows.filter((d) => !domFilter || (d.tld || "." + d.domain.split(".").pop()) === domFilter), [domRows, domFilter]);
-  useEffect(() => { setDomFilter(null); }, [picked]);
 
   useEffect(() => { // default selection follows the best pick
     if (!domRows.length) return;
@@ -622,16 +628,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }, [domRows, bestDomIdx]);
 
   /* ── actions ── */
-  function startFlow(from: string) {
-    if (!test) { newProcess(); startedAt.current = Date.now(); }
-    conceptReq.current = ""; wordsReq.current = "";
-    if (from.trim()) setSentence(from);
-    setStep("ask");
-    pushUrl("ask");
-  }
-
   // The Name Name landing submits the brief into the flow (02) — after the
-  // one-tap sign-up (00·s) that keeps the brief, when signed out.
+  // one-tap sign-up (00·s) that keeps the brief, when signed out. There is no
+  // separate ask page any more: the brief is typed on the landing itself.
   useEffect(() => { // arriving at Personalize without a draft (refresh, deep link)
     if (step === "pers" && !persDraft && picked) setPersDraft(draftFromSel());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -693,19 +692,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
 
 
-  function submitAsk() {
-    if (sentence.trim().length < 4) return;
-    track("search", { sentence: sentence.trim(), chips });
-    setStep("brief");
-    pushUrl("brief");
-    persist();
-  }
-
   const dataRef = useRef({ sentence, starred, names, picked });
   dataRef.current = { sentence, starred, names, picked };
   const canEnter = (t: Step) => {
     const d = dataRef.current;
-    if (t === "land" || t === "how" || t === "ask") return true;
+    if (t === "land" || t === "how") return true;
     if (t === "brief" || t === "refine" || t === "brands" || t === "brandsum" || t === "words") return !!d.sentence.trim();
     if (t === "names") return !!(d.names?.length || d.starred.length);
     return !!d.picked;
@@ -729,16 +720,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   useEffect(() => { // browser back/forward walks the flow
     const onPop = (e: PopStateEvent) => {
-      // On words/names, the FIRST back gesture asks why before leaving (04·x) —
-      // phones have no mouse exit-intent. The page is pushed back, so the next
-      // back works normally.
-      if (!test && !pollShown.current && (stepRef.current === "words" || stepRef.current === "names")) {
-        pollShown.current = true;
-        setPoll("exit");
-        pushUrl(stepRef.current);
-        return;
-      }
-      const t = ((e.state?.step as Step) || SLUG_STEP[pathSlug()] || "land");
+      const t = liveStep((e.state?.step as string) || SLUG_STEP[pathSlug()] || "land");
       if (canEnter(t)) { setStep(t); window.scrollTo(0, 0); }
       else pushUrl(stepRef.current, true);
     };
@@ -827,11 +809,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   function pickName(n: WName) {
     setPicked(n);
-    setBoard(null); setDomSel(null); setDomShow(4); setLogoSel(null); setLogoSeed(0);
+    setBoard(null); setDomSel(null); setLogoSel(null); setLogoSeed(0);
+    setClaimStory(false); setClaimSheet(null); setClaimDone(false); setDomBought(false);
     track("pick", { name: n.name, score: n.score, rank: (names || []).findIndex((x) => x.name === n.name) + 1 });
-    toStep("reveal");
+    toStep("claim");
     persist({ picked: n });
   }
+
+  // The names list shows the latest batch on top (orange NEW tags): the same
+  // display order feeds the mobile rows, the desktop grid and the ↑↓ keys.
+  const displayNames = (): WName[] => {
+    const all = names || [];
+    const known = v2Known.current;
+    if (!known) return all;
+    return [...all.filter((n) => !known.includes(n.name)), ...all.filter((n) => known.includes(n.name))];
+  };
+  const selName = v2Sel ?? names?.[0]?.name ?? null;
+  const continueWithSel = () => { const n = (names || []).find((x) => x.name === selName); if (n) pickName(n); };
 
   function markStep(k: keyof SavedSearch["steps"], v: "done" | "skipped", next: Step) {
     const ns = { ...steps, [k]: v };
@@ -840,16 +834,37 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ steps: ns });
   }
 
-  function registerDomain() {
-    if (!domSel) return;
-    // A for-sale domain opens its actual marketplace listing when we have it.
-    // The registrar opens in a NEW tab and the flow stays right here on the
-    // domain step; "Next: Logo" appears for when the founder is ready.
-    window.open(domSel.offerUrl || registrarUrl(domSel.domain), "_blank", "noopener");
-    track("domain", { domain: domSel.domain, price: domSel.price || domSel.offerPrice || "" });
+  // 05 Claim: the domain on the card — the board's selection once it loads,
+  // else the verified-free domain the names list already showed.
+  const claimDom: DomainCard | null =
+    domSel ||
+    (picked?.dom?.free ? { domain: picked.dom.domain, status: "available" as const, price: picked.dom.price } :
+     picked?.alt ? { domain: picked.alt.domain, status: "available" as const, price: picked.alt.price } : null);
+
+  // "Keep {Name}" claims the name + domain in the studio (no purchase): the
+  // choice is saved, the funnel logs it, and the brand chapter opens.
+  function keepName(to: Step = "reveal") {
+    const d = claimDom;
+    if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "" });
     const ns = { ...steps, domain: "done" as const };
     setSteps(ns);
-    persist({ steps: ns, domain: domSel.domain });
+    persist({ steps: ns, domain: d?.domain, domPrice: d?.price || d?.offerPrice || "" });
+    setClaimSheet(null);
+    toStep(to);
+  }
+
+  // 05·r → GoDaddy: just a link out, in a new tab. No cart, no verification.
+  // This tab switches to 05·✓ so the founder lands back on "it's yours".
+  function openGoDaddy() {
+    const d = claimDom;
+    if (!d) return;
+    window.open(d.offerUrl || registrarUrl(d.domain), "_blank", "noopener");
+    track("godaddy", { domain: d.domain, price: d.price || d.offerPrice || "" });
+    const ns = { ...steps, domain: "done" as const };
+    setSteps(ns);
+    persist({ steps: ns, domain: d.domain, domPrice: d.price || d.offerPrice || "" });
+    setClaimSheet(null);
+    setClaimDone(true);
   }
 
   async function downloadLogoPack() {
@@ -903,21 +918,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       const typing = tag === "INPUT" || tag === "TEXTAREA";
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && step === "names" && !typing && names?.length) {
         e.preventDefault();
-        setNameIdx((i) => Math.min(names.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1))));
+        const list = displayNames();
+        const cur = Math.max(0, list.findIndex((n) => n.name === selName));
+        const next = Math.min(list.length - 1, Math.max(0, cur + (e.key === "ArrowDown" ? 1 : -1)));
+        setV2Sel(list[next].name);
         return;
       }
-      if (e.key === "Enter" && !e.shiftKey) {
-        if (step === "ask") { e.preventDefault(); submitAsk(); }
-        else if (!typing) {
-          if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
-          else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
-          else if (step === "names" && names?.length) { e.preventDefault(); pickName(names[Math.min(nameIdx, names.length - 1)]); }
-          else if (step === "reveal") { e.preventDefault(); toStep("domain"); }
-          else if (step === "domain" && domSel) { e.preventDefault(); registerDomain(); }
-          else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
-          else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
-          else if (step === "socials") { e.preventDefault(); markStep("socials", "done", "done"); track("done", { name: picked?.name }); }
-        }
+      if (e.key === "Enter" && !e.shiftKey && !typing) {
+        if (step === "brief" && concept) { e.preventDefault(); toStep("brands"); }
+        else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
+        else if (step === "names" && names?.length) { e.preventDefault(); continueWithSel(); }
+        else if (step === "claim" && !claimSheet && !claimDone) { e.preventDefault(); keepName(); }
+        else if (step === "reveal") { e.preventDefault(); toStep("brand"); }
+        else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
+        else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
+        else if (step === "socials") { e.preventDefault(); markStep("socials", "done", "done"); track("done", { name: picked?.name }); }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -928,23 +943,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    ask: "land", brief: "ask", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
-    domain: "reveal",
-    brand: "domain", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
+    brief: "land", refine: "brief", brands: "brief", brandsum: "brands", words: "brandsum", names: "words", claim: "names", reveal: "claim",
+    brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
     const t: Step | null =
-      step === "ask" ? (sentence.trim().length >= 4 ? "brief" : null) :
-      step === "brief" ? (conceptReady ? "refine" : null) :
+      step === "brief" ? (conceptReady ? "brands" : null) :
       step === "refine" ? "brands" :
       step === "brands" ? "brandsum" :
       step === "brandsum" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
-      step === "names" ? (picked ? "reveal" : null) :
-      step === "reveal" ? "domain" :
-      step === "domain" ? "brand" :
+      step === "names" ? (picked ? "claim" : null) :
+      step === "claim" ? (steps.domain ? "reveal" : null) :
+      step === "reveal" ? "brand" :
       step === "brand" ? "feel" :
       step === "feel" ? "tcol" :
       step === "tcol" ? "ttype" :
@@ -1062,46 +1075,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center", margin: "36px 0 30px" }}>
-              <button className="wr-btn" style={{ maxWidth: 240, height: 54, borderRadius: 980 }} onClick={() => startFlow("")}>Start naming →</button>
+              <button className="wr-btn" style={{ maxWidth: 240, height: 54, borderRadius: 980 }} onClick={() => toStep("land")}>Start naming →</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ═══ 01 the ask ═══ */}
-      {step === "ask" && (
-        <>
-          <div className="wr-stage center">
-            <div className="inner-nar">
-              <p className="wr-kicker" style={{ marginBottom: 14 }}>Start here</p>
-              <h1 className="wr-h" style={{ marginBottom: 26 }}>What are you building?</h1>
-              <Grow value={sentence} onChange={setSentence} onEnter={submitAsk} placeholder="One sentence is enough" />
-              <div style={{ marginTop: 22 }}>
-                <p className="wr-kicker" style={{ fontSize: 11, marginBottom: 10 }}>
-                  What we're hearing {chipsBusy && <span className="wr-spin" style={{ display: "inline-block", verticalAlign: "-3px", marginLeft: 6 }} />}
-                </p>
-                <div className="wr-chips">
-                  {chips.map((c) => (
-                    <span key={c} className="wr-chip">{c}
-                      <button className="x" onClick={() => setChips(chips.filter((x) => x !== c))}>✕</button>
-                    </span>
-                  ))}
-                  {addingChip
-                    ? <span className="wr-chip"><input autoFocus placeholder="add a tag"
-                        onBlur={(e) => { const v = e.target.value.trim(); if (v) setChips([...chips, v]); setAddingChip(false); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} /></span>
-                    : <button className="wr-chipadd" onClick={() => setAddingChip(true)}>＋ add</button>}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="wr-foot" style={{ justifyContent: "flex-end" }}>
-            <button className="wr-btn" style={{ maxWidth: 420 }} disabled={sentence.trim().length < 4} onClick={submitAsk}>Continue</button>
-          </div>
-        </>
-      )}
-
-      {/* ═══ 02 brief wrapped ═══ */}
+      {/* ═══ 02 brief wrapped (01·l while it loads) ═══ */}
       {step === "brief" && (
         <>
           <div className="wr-stage center">
@@ -1112,18 +1092,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   : <BriefLoader sentence={sentence.trim()} chips={chips} />
               ) : (
                 <>
-                  <p className="wr-kicker rise" style={{ marginBottom: 14 }}>Here's what we heard</p>
                   <h1 className="wr-h rise" style={{ marginBottom: 18 }}>
                     Your name should feel like <span className="wr-cpill">{concept!.concept}</span>
                   </h1>
-                  <p className="wr-lead rise" style={{ marginBottom: 30 }}>{concept!.para}</p>
-                  
+                  <p className="wr-lead rise" style={{ marginBottom: 26 }}>{concept!.para}</p>
+                  {/* the three territories follow the paragraph directly, no label */}
+                  <div className="wr-terrs rise">
+                    {(concept!.territories || []).slice(0, 3).map((t) => (
+                      <div key={t.name} className="terr"><b>{t.name}</b><span>{t.desc}</span></div>
+                    ))}
+                  </div>
                 </>
               )}
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-btn mla" style={{ maxWidth: 300 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Check my brief →</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!conceptReady} onClick={() => toStep("brands")}>Show me the words →</button>
+            <button className="wr-link" onClick={() => toStep("refine")}>Not quite? Rewrite the brief</button>
           </div>
         </>
       )}
@@ -1350,8 +1335,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <button className="more" disabled={moreBusy} onClick={moreNames}>
                 {moreBusy ? "↻ …" : v2Known.current ? "↻ More" : "↻ 6 more"}
               </button>
-              <button className="go" onClick={() => { const n = (names || []).find((x) => x.name === (v2Sel ?? names?.[0]?.name)); if (n) pickName(n); }}>
-                Continue with {(v2Sel ?? names?.[0]?.name) || "…"} →
+              <button className="go" onClick={continueWithSel}>
+                Continue with {selName || "…"} →
               </button>
             </div>
           )}
@@ -1361,60 +1346,139 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
             <div className="wr-nameswrap">
-              {!(namesBusy && !names?.length) && <>
-                <h1 className="wr-h" style={{ marginBottom: 6 }}>Six names from your {starred.length} word{starred.length === 1 ? "" : "s"}.</h1>
-                <p className="wr-hint" style={{ marginBottom: 18 }}>Scored against the brief · domains checked</p>
-              </>}
               {fails.names && !names?.length ? (
                 <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={makeNames} /></div>
               ) : namesBusy && !names?.length ? (
                 <NamingWait coined={namesProg} starred={starred} />
               ) : (
-                <div className="wr-names">
-                  {(names || []).map((n, i) => (
-                    <button
-                      key={n.name}
-                      className={"wr-ncard" + (i === 0 ? " top" : "") + (i === nameIdx ? " sel" : "")}
-                      style={{ animationDelay: `${Math.min(i, 6) * 0.07}s` }}
-                      onClick={() => pickName(n)}
-                      onMouseEnter={() => setNameIdx(i)}
-                    >
-                      <span className="main">
-                        <span className="hd">
-                          <span className="nm">{n.name}</span>
-                          <span className="rt">{n.roots}</span>
-                          {n.style && <span className="sty">{n.style}</span>}
-                        </span>
-                        {n.tagline && <span className="tg">{n.tagline}</span>}
-                        {n.dom && <span className="dm"><i className={"dot" + (n.dom.free === false ? " off" : "")} />{n.dom.domain} {n.dom.free === false ? "taken" : "free"}</span>}
-                        {n.alt && n.dom?.free !== true && <span className="dm"><i className="dot" />{n.alt.domain} free</span>}
-                      </span>
-                      <span className="sc">
-                        <span className="n">{n.score}<small>/100</small></span>
-                        <span className="bar"><i style={{ width: `${Math.min(100, Math.max(4, n.score))}%` }} /></span>
-                        <span className="l">Brief fit</span>
-                      </span>
-                      <span className="go">→</span>
-                    </button>
-                  ))}
-                  {!!names?.length && !namesBusy && (
-                    <button className="wr-morecard" disabled={moreBusy} onClick={moreNames}>
-                      {moreBusy
-                        ? <span className="wr-load"><span className="wr-spin" /> Coining six more…</span>
-                        : <span>↻ {fails.more ? "Didn't reach the studio, try again" : "Generate six more"}</span>}
-                    </button>
-                  )}
-                </div>
+                <NamesGridV2
+                  names={names || []}
+                  known={v2Known.current}
+                  sel={selName}
+                  onSel={setV2Sel}
+                />
               )}
             </div>
           </div>
-          <div className="wr-foot">
-            <span className="wr-hint">Pick one, it opens straight into the reveal</span>
-          </div>
+          {!!names?.length && !namesBusy && (
+            <div className="wr-foot">
+              <span className="wr-hint">↑ ↓ to browse · Continue opens the claim</span>
+              <span className="mla" style={{ display: "inline-flex", gap: 10 }}>
+                <button className="wr-btn2" disabled={moreBusy} onClick={moreNames}>{moreBusy ? "↻ …" : "↻ More"}</button>
+                <button className="wr-btn" style={{ maxWidth: 340 }} onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
+              </span>
+            </div>
+          )}
         </>
       )}
 
-      {/* ═══ 05 the reveal (two columns, per the design) ═══ */}
+      {/* ═══ 05 Claim — keep the name, buy the domain at the end (ex reveal + domain) ═══ */}
+      {step === "claim" && picked && claimDone && (
+        <>
+          <div className="wr-stage center wr-claimdone" style={{ textAlign: "center", alignItems: "center" }}>
+            <span className="okball pop">✓</span>
+            <h1 className="wr-h pop" style={{ fontSize: 42, marginBottom: 8 }}>{picked.name} is yours.</h1>
+            <p className="mono" style={{ color: "var(--text3)", letterSpacing: "0.04em" }}>{claimDom?.domain}</p>
+            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase directly on GoDaddy once you are done.</p>
+          </div>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btn" style={{ maxWidth: 320 }} onClick={() => toStep("reveal")}>Now, your brand →</button>
+            <p className="wr-hint">Logo · colours · type · brand book</p>
+          </div>
+        </>
+      )}
+      {step === "claim" && picked && !claimDone && (
+        <>
+          <div className="wr-stage wr-claimstage">
+            <div className="wr-claim">
+              <div className="cl rise">
+                <p className="wr-kicker" style={{ marginBottom: 10 }}>Your name</p>
+                <h1 className="cname pop">{picked.name}</h1>
+                <p className="pron mono">
+                  {book?.saying?.syllables?.length ? book.saying.syllables.map((s) => (s.stress ? s.s.toUpperCase() : s.s.toLowerCase())).join(" · ") + "  ·  " : ""}
+                  {picked.score}% fit with your brief
+                </p>
+                <p className="story">
+                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
+                  {" "}{picked.tagline}
+                </p>
+                {!claimStory ? (
+                  <button className="wr-link fold" onClick={() => setClaimStory(true)}>Read the story ↓</button>
+                ) : (
+                  <>
+                    <div className="sgrid rise">
+                      <div>
+                        <i className="mono">Roots</i>
+                        <p>{(picked.parts || []).map((p, i) => <Fragment key={p.part}>{i > 0 && " "}<b>{p.part[0].toUpperCase() + p.part.slice(1)}</b>{`: ${p.note}.`}</Fragment>)}</p>
+                      </div>
+                      <div>
+                        <i className="mono">Why it fits</i>
+                        <p>Your brief is about {concept?.concept || "what you're building"}. {picked.name} says it in {book?.saying?.syllables?.length || picked.name.split(/[^a-z]/i).length || "a few"} soft syllables.</p>
+                      </div>
+                      {!!book?.saying?.world?.length && (
+                        <div>
+                          <i className="mono">Travels well</i>
+                          <p>Easy to say in {book.saying.world.slice(0, 4).map((w) => w.language).join(", ")}. No unwanted meanings found.</p>
+                        </div>
+                      )}
+                    </div>
+                    <button className="wr-link fold" onClick={() => setClaimStory(false)}>Show less ↑</button>
+                  </>
+                )}
+              </div>
+              <div className="cr rise">
+                <div className="dcard">
+                  <p className="k mono">Its domain</p>
+                  <div className="drow">
+                    <i className="dot" />
+                    <span className="d mono">{claimDom?.domain || "checking…"}</span>
+                    {(claimDom?.price || claimDom?.offerPrice) && <span className="pr mono">{claimDom.price || claimDom.offerPrice}<em>/yr</em></span>}
+                  </div>
+                  <div className="drow2">
+                    <span className="was">Was free when we searched</span>
+                    {(() => {
+                      const others = domRows.filter((d) => d.domain !== claimDom?.domain).map((d) => d.tld || "." + d.domain.split(".").pop());
+                      const uniq = Array.from(new Set(others)).slice(0, 3);
+                      return uniq.length ? (
+                        <button className={"tldpill mono" + (claimSheet === "tld" ? " prs" : "")} onClick={() => setClaimSheet(claimSheet === "tld" ? null : "tld")}>
+                          Or {uniq.join(" ")} ›
+                        </button>
+                      ) : null;
+                    })()}
+                  </div>
+                  {claimSheet === "tld" && (
+                    <DomEndingsSheet
+                      name={picked.name}
+                      rows={domRows.slice(0, 5)}
+                      current={claimDom?.domain || ""}
+                      bestIdx={bestDomIdx}
+                      onUse={(d) => { setDomSel(d); setClaimSheet(null); }}
+                      onClose={() => setClaimSheet(null)}
+                    />
+                  )}
+                </div>
+                <button className="wr-btnor" onClick={() => keepName()}>Keep {picked.name}, build the brand →</button>
+                <button className="wr-link golink" onClick={() => setClaimSheet("go")}>Buy {claimDom?.domain || "it"} now on GoDaddy ↗</button>
+              </div>
+            </div>
+          </div>
+          <div className="wr-foot claimfoot">
+            <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
+            <span className="wr-hint mla khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
+          </div>
+          {claimSheet === "go" && claimDom && (
+            <GoDaddySheet
+              domain={claimDom.domain}
+              price={claimDom.price || claimDom.offerPrice || ""}
+              onOpen={openGoDaddy}
+              onLater={() => keepName()}
+              onClose={() => setClaimSheet(null)}
+            />
+          )}
+        </>
+      )}
+
+      {/* ═══ 05·v the reveal — name and domain claimed, brand next ═══ */}
       {step === "reveal" && picked && (
         <>
           <div className="wr-stage center">
@@ -1424,30 +1488,21 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <h1 className="wr-bigname pop" style={{ textAlign: "left" }}>{picked.name}</h1>
                 <p className="meaning">
                   {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
-                  {" "}{picked.tagline}
                 </p>
               </div>
               <div className="right rise">
-                <p className="tri">One name down. <i>Two steps to make it real.</i></p>
+                <p className="tri">Name and domain, done. <i>Now the brand.</i></p>
                 <div className="rrow one">
                   <span className="i ok">✓</span>
-                  <span className="mid">
-                    <span className="hl"><b>Name</b><small>You've got it. Congrats!</small></span>
-                  </span>
+                  <span className="mid"><span className="hl"><b>Name</b><small>You've got it. Congrats!</small></span></span>
                   <span className="nm2">{picked.name}</span>
                 </div>
-                <button className="rrow lead" onClick={() => toStep("domain")}>
-                  <span className="i">2</span>
-                  <span className="mid">
-                    <span className="hl"><b>Domain</b><small className="right">Claim it now</small></span>
-                    {(domRows.filter((d) => d.status === "available").slice(0, 2)).map((d) => (
-                      <span key={d.domain} className="dl"><i />{d.domain} · {d.price}</span>
-                    ))}
-                    {!domRows.some((d) => d.status === "available") && <span className="dl dim">{picked.dom?.domain || "checking…"}</span>}
-                  </span>
-                  <span className="ar">→</span>
-                </button>
-                <button className="rrow" onClick={() => toStep("brand")}>
+                <div className="rrow one">
+                  <span className="i ok">✓</span>
+                  <span className="mid"><span className="hl"><b>Domain</b><small>Claimed. It's yours.</small></span></span>
+                  <span className="nm2 mono">{domSel?.domain || picked.dom?.domain}</span>
+                </div>
+                <button className="rrow lead" onClick={() => toStep("brand")}>
                   <span className="i">3</span>
                   <span className="mid">
                     <span className="hl"><b>Brand</b><small className="right">Built from your taste</small></span>
@@ -1466,71 +1521,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot">
             <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("domain")}>
-              {picked.dom?.free !== false && picked.dom?.domain ? `Claim ${picked.dom.domain} →` : "Own it →"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* ═══ 06 domain ═══ */}
-      {step === "domain" && picked && (
-        <>
-          <div className="wr-stage center">
-            <div className="wr-lwrap wr-domcols">
-              <div className="dcl">
-                <p className="wr-kicker" style={{ marginBottom: 12 }}>Where {picked.name} lives</p>
-                <h1 className="wr-h" style={{ fontSize: 52, lineHeight: 1.05, marginBottom: 16 }}>Pick your favorite domain.</h1>
-                <p className="wr-lead">Register your name in under a minute.</p>
-              </div>
-              <div className="dcr">
-                {!board || (!board.tlds.length && fails.board) ? (
-                  fails.board
-                    ? <GenFail note="We couldn't check the registries just now." onRetry={() => retry("board")} />
-                    : <div className="wr-load"><span className="wr-spin" /> Checking every extension…</div>
-                ) : (
-                  <div className="wr-doms">
-                    <div className="wr-domfil">
-                      <button className={!domFilter ? "on" : ""} onClick={() => setDomFilter(null)}>All</button>
-                      {domTlds.map((t) => (
-                        <button key={t} className={domFilter === t ? "on" : ""} onClick={() => setDomFilter(domFilter === t ? null : t)}>{t}</button>
-                      ))}
-                      <DomAdd onAdd={(d) => {
-                        const tld = d.toLowerCase().replace(/^\./, "");
-                        const doms = [...prefs.doms.filter((x) => x !== tld), tld];
-                        setPrefs({ ...prefs, doms });
-                        setBoard(null);
-                        fetchDomainBoard(picked.name, doms).then((b) => { setBoard(b); fail("board", !b.tlds.length); });
-                        setDomFilter("." + tld);
-                      }} />
-                    </div>
-                    {!domShown.length && <p className="wr-hint" style={{ padding: "10px 2px" }}>Nothing free on {domFilter} for this name. Try another extension.</p>}
-                    {domShown.slice(0, domShow).map((d, i) => {
-                      const on = domSel?.domain === d.domain;
-                      return (
-                        <button key={d.domain} className={"wr-dom" + (on ? " sel" : "")} onClick={() => setDomSel(d)}>
-                          <span className={"rd" + (on ? " on" : "")} />
-                          <span className="d">{d.domain}</span>
-                          {!domFilter && i === bestDomIdx && <span className="bp">Best pick</span>}
-                          <span className="st"><i className={"dot" + (d.status === "negotiable" ? " sale" : "")} />{d.status === "negotiable" ? "for sale" : "available"}</span>
-                          <span className="pr">{d.price || d.offerPrice || ""}</span>
-                        </button>
-                      );
-                    })}
-                    {domShown.length > domShow && (
-                      <button className="wr-link" style={{ alignSelf: "center", marginTop: 4 }} onClick={() => setDomShow((n) => n + 4)}>＋ Show more</button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="wr-foot">
-            <button className="wr-btn2 aslink" onClick={() => toStep("reveal")}>← Your name</button>
-            <button className="wr-link mla" onClick={() => steps.domain === "done" ? toStep("brand") : markStep("domain", "skipped", "brand")}>Skip, create your brand →</button>
-            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!domSel} onClick={registerDomain}>
-              Register {domSel?.domain || ""}{domSel?.price || domSel?.offerPrice ? ` · ${domSel.price || domSel.offerPrice}` : ""} →
-            </button>
+            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Build my brand →</button>
           </div>
         </>
       )}
@@ -1890,21 +1881,34 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div style={{ position: "relative", zIndex: 2 }}>
               <p className="wr-kicker rise" style={{ marginBottom: 16 }}>It's yours</p>
               <h1 className="wr-bigname pop" style={{ marginBottom: 26 }}>{picked.name}</h1>
-              <div className="wr-trip rise">
-                <span className="pill"><i className="ok">✓</i> Name <b>{picked.name}</b></span>
-                <span className="joins">→</span>
-                <span className="pill"><i className={steps.domain === "done" ? "ok" : "no"}>{steps.domain === "done" ? "✓" : "·"}</i> Domain <b>{steps.domain === "done" ? (domSel?.domain || picked.dom?.domain) : "later"}</b></span>
-                <span className="joins">→</span>
-                <span className="pill"><i className={logoSel || steps.book === "done" || steps.socials === "done" ? "ok" : "no"}>{logoSel || steps.book === "done" || steps.socials === "done" ? "✓" : "·"}</i> Brand <b>logo · book · socials</b></span>
-              </div>
+              {(() => {
+                const dm = domSel?.domain || picked.dom?.domain || "";
+                const namePill = <span className="pill" key="n"><i className="ok">✓</i> Name <b>{picked.name}</b></span>;
+                const brandPill = <span className="pill" key="b"><i className={logoSel || steps.book === "done" || steps.socials === "done" ? "ok" : "no"}>{logoSel || steps.book === "done" || steps.socials === "done" ? "✓" : "·"}</i> Brand <b>logo · book · socials</b></span>;
+                // The domain is the one OPEN step until the founder buys it on
+                // GoDaddy (and tells us so — we never verify).
+                const domPill = domBought || !dm ? (
+                  <span className="pill" key="d"><i className={steps.domain === "done" ? "ok" : "no"}>{steps.domain === "done" ? "✓" : "·"}</i> Domain <b>{dm || "later"}</b></span>
+                ) : (
+                  <span className="pill last" key="d">
+                    <i className="ring" /> Domain · last step <b className="mono">{dm} · not bought yet</b>
+                    <button className="gd" onClick={() => { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: "done" }); }}>GoDaddy ↗</button>
+                  </span>
+                );
+                const order = isMobile ? [namePill, domPill, brandPill] : [namePill, brandPill, domPill];
+                return (
+                  <div className="wr-trip rise">
+                    {order.map((p, i) => <Fragment key={i}>{i > 0 && <span className="joins">{isMobile ? "↓" : "→"}</span>}{p}</Fragment>)}
+                  </div>
+                );
+              })()}
               {shareMsg && <p className="wr-hint rise" style={{ marginTop: 12 }}>{shareMsg}</p>}
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 340 }} onClick={share}>Share the news</button>
-            <button className="wr-btn2" onClick={gotoAccount}>Go to my account →</button>
-            <button className="wr-link" onClick={restart}>Name something else</button>
-            <p className="wr-hint">Everything is saved to your account</p>
+            <button className="wr-btn2" onClick={restart}>Name something else</button>
+            <button className="wr-link" onClick={gotoAccount}>Everything is saved to your account</button>
           </div>
         </>
       )}
@@ -2034,6 +2038,26 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
   const longFired = useRef(false);
   const need = Math.max(0, 3 - starred.length); // "a few": the button unlocks at three
 
+  // First visit only: the meaning bubble opens by itself on one word, until the
+  // first tap — so "hold to see" explains itself (user.seenHoldHint).
+  const HOLD_KEY = "ns.holdhint";
+  const seenHold = () => { try { localStorage.setItem(HOLD_KEY, "1"); } catch { /* ignore */ } };
+  useEffect(() => {
+    if (!cloud.length) return;
+    try { if (localStorage.getItem(HOLD_KEY)) return; } catch { return; }
+    const t = setTimeout(() => {
+      const w = cloud.slice(4, 10).find((x) => x.m) || cloud.find((x) => x.m);
+      if (!w) return;
+      const el = document.querySelector(`.wr-v2w .cloud .chip[data-w="${CSS.escape(w.w)}"]`) as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const width = Math.min(315, window.innerWidth - 24);
+      setSheet({ w, x: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), y: r.bottom + 10 });
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloud]);
+
   const shuffle = () => { // keep the picks, swap everything else for fresh words
     const keep = cloud.filter((w) => starred.some((s) => s.w === w.w));
     const inCloud = new Set(cloud.map((w) => w.w));
@@ -2048,6 +2072,8 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
     track("wordshuffle", {});
   };
   const down = (w: WWord, e: React.PointerEvent) => {
+    seenHold(); // the demo bubble has done its job after the first touch
+    setSheet(null);
     longFired.current = false;
     window.clearTimeout(pressTimer.current);
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -2069,6 +2095,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
           return (
             <button
               key={w.w}
+              data-w={w.w}
               className={"chip" + (on ? " on" : "")}
               onPointerDown={(e) => down(w, e)}
               onPointerUp={up}
@@ -2091,7 +2118,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
         </div>
       </div>
       {sheet && (
-        <div className="wr-v2tipwrap" onClick={() => setSheet(null)} onPointerDown={() => setSheet(null)}>
+        <div className="wr-v2tipwrap" onClick={() => { seenHold(); setSheet(null); }} onPointerDown={() => { seenHold(); setSheet(null); }}>
           <div className="wr-v2tip" style={{ left: sheet.x, top: sheet.y }}>
             <b>{sheet.w.w}</b> <i className="lg">{LANG_FULL[(sheet.w.lang || "EN").toUpperCase()] || (sheet.w.lang || "EN").toUpperCase()}</i>
             <p>{sheet.w.m || "A word from your brief's world."}</p>
@@ -2137,15 +2164,119 @@ function NamesListV2({ names, known, sel, onSel }: {
   );
 }
 
-/* 04·x / 04·i: the names-page feedback ask (on exit intent, or 30 s of quiet). */
+/* ── 04 desktop: six cards in two columns, one pick, ⏎ continues ── */
+function NamesGridV2({ names, known, sel, onSel }: {
+  names: WName[]; known: string[] | null; sel: string | null; onSel: (n: string) => void;
+}) {
+  const fresh = known ? names.filter((n) => !known.includes(n.name)) : [];
+  const olds = known ? names.filter((n) => known.includes(n.name)) : names;
+  const display = [...fresh, ...olds];
+  const freshSet = new Set(fresh.map((n) => n.name));
+  return (
+    <div className="wr-ngrid">
+      <h1 className="wr-h ttl">
+        {known ? `${V2_SPELL[fresh.length] || fresh.length} more for your brief.` : "Six names for your brief."}
+        <span className="tsub">{known ? "New ones on top · your pick is kept" : "Pick the one · every domain is free"}</span>
+      </h1>
+      <div className="grid">
+        {display.map((n) => {
+          const d = n.dom?.free ? n.dom : n.alt || null;
+          const on = n.name === sel;
+          return (
+            <button key={n.name} className={"card" + (on ? " on" : "")} onClick={() => onSel(n.name)}>
+              <span className="main">
+                <span className="hd">
+                  <b className="nm">{n.name}</b>
+                  {freshSet.has(n.name) && <i className="new">NEW</i>}
+                  <span className="rt mono">{n.roots}</span>
+                </span>
+                <span className="why">{n.tagline || n.roots}</span>
+                <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : "checking…"}</span>
+              </span>
+              <span className="sc">
+                <span className="n">{n.score}<small>%</small></span>
+                <span className="l mono">Brief fit</span>
+                <span className="bar"><i style={{ width: `${Math.min(100, Math.max(4, n.score))}%` }} /></span>
+              </span>
+              <span className={"ring" + (on ? " ck" : "")}>{on ? "✓" : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── 05·d: the other endings — a bottom sheet on phones, a popover on desktop ── */
+function DomEndingsSheet({ name, rows, current, bestIdx, onUse, onClose }: {
+  name: string; rows: DomainCard[]; current: string; bestIdx: number;
+  onUse: (d: DomainCard) => void; onClose: () => void;
+}) {
+  const [pend, setPend] = useState<DomainCard | null>(rows.find((r) => r.domain === current) || rows[0] || null);
+  return (
+    <div className="wr-dsheetwrap" onClick={onClose}>
+      <div className="wr-dsheet" onClick={(e) => e.stopPropagation()}>
+        <span className="grab" />
+        <p className="hd">Other endings for {name}</p>
+        <p className="sub">All checked a second ago. Tap one to switch.</p>
+        <div className="rows">
+          {rows.map((d, i) => {
+            const on = pend?.domain === d.domain;
+            return (
+              <button key={d.domain} className={"row" + (on ? " on" : "")} onClick={() => setPend(d)}>
+                <i className={"dot" + (d.status === "negotiable" ? " sale" : "")} />
+                <span className="d mono">{d.domain}</span>
+                <span className="st">{i === bestIdx ? "Best pick" : d.status === "negotiable" ? "For sale" : "Available"}</span>
+                <span className="pr mono">{d.price || d.offerPrice || ""}</span>
+                {on && <i className="ck">✓</i>}
+              </button>
+            );
+          })}
+        </div>
+        <button className="use" disabled={!pend} onClick={() => pend && onUse(pend)}>Use {pend?.domain || "…"}</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── 05·r: the GoDaddy hand-off — three honest steps, then just a link out ── */
+function GoDaddySheet({ domain, price, onOpen, onLater, onClose }: {
+  domain: string; price: string; onOpen: () => void; onLater: () => void; onClose: () => void;
+}) {
+  const steps: [string, string][] = [
+    [`GoDaddy opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
+    ["Pay on GoDaddy", "Log in or sign up there. Skip any “get the app” prompt."],
+    ["Come back to this tab", "Your brand is waiting right where you left it."],
+  ];
+  return (
+    <div className="wr-dsheetwrap" onClick={onClose}>
+      <div className="wr-dsheet go" onClick={(e) => e.stopPropagation()}>
+        <span className="grab" />
+        <p className="k mono">{domain.toUpperCase()}{price ? ` · ${price.toUpperCase()}/YR` : ""}</p>
+        <h3>You'll buy it on GoDaddy.</h3>
+        <p className="sub">It opens in a new tab. We can't see what happens there, so:</p>
+        <div className="gsteps">
+          {steps.map(([h, s], i) => (
+            <div key={h} className="gstep"><i>{i + 1}</i><span><b>{h}</b><em>{s}</em></span></div>
+          ))}
+        </div>
+        <button className="wr-btnor" onClick={onOpen}>Open GoDaddy ↗</button>
+        <button className="wr-btn2 later" onClick={onLater}>Later — keep building my brand</button>
+        <p className="fn">We'll remind you at the end, and it stays in your account.</p>
+      </div>
+    </div>
+  );
+}
+
+/* 04·x / 04·i: the feedback ask — on coming back after leaving, or 30 s of quiet. */
 const POLL_OPTS = [
-  "The names don't fit my brief", "It's taking too long",
-  "Not ready yet, just exploring", "The domains I want are taken",
+  "Names don't fit my brief", "Taking too long",
+  "Just exploring", "Domains are taken",
   "Something's confusing", "I'll come back later",
 ];
 const POLL_OPTS_WORDS = [
-  "The words don't inspire me", "It's taking too long",
-  "Not ready yet, just exploring", "I don't get what to do here",
+  "Words don't inspire me", "Taking too long",
+  "Just exploring", "I don't get what to do",
   "Something's confusing", "I'll come back later",
 ];
 function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit" | "idle"; page?: "words" | "names"; onClose: () => void; onSend: (reasons: string[], note: string) => void }) {
@@ -2155,11 +2286,12 @@ function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit
   return (
     <div className="wr-sumodal poll" onClick={onClose}>
       <div className="panel" onClick={(e) => e.stopPropagation()}>
+        <span className="grab" />
         <button className="x" onClick={onClose} aria-label="Close">✕</button>
         <p className="kick mono">{exit ? "Before you go" : "Still with us?"}</p>
         <h3>{exit ? "What got in the way?" : "Stuck on something?"}</h3>
         <p className="sub">{exit
-          ? "Tick anything that fits. It takes five seconds and helps us make Name Name better for you."
+          ? "Tick anything that fits. Five seconds, and it really helps."
           : "You've been quiet for a moment. If something's in the way, tell us — or pick up right where you left off."}</p>
         <div className="popts">
           {(page === "words" ? POLL_OPTS_WORDS : POLL_OPTS).map((o) => {
@@ -2173,9 +2305,10 @@ function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit
         </div>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else? Tell us in your own words (optional)" rows={3} />
         <div className="pacts">
-          <span className="mono note">{exit ? (page === "words" ? "Your progress is saved" : "Your names are saved") : "Nothing is lost"}</span>
-          <button className="pbtn ghost" disabled={!sel.length && !note.trim()} onClick={() => onSend(sel, note.trim())}>Send & leave</button>
-          <button className="pbtn dark" onClick={onClose}>Keep naming →</button>
+          <button className="pbtn dark" onClick={onClose}>{page === "words" ? "Keep going →" : "Keep naming →"}</button>
+          <button className="pbtn aslink" disabled={!sel.length && !note.trim()} onClick={() => onSend(sel, note.trim())}>
+            Send & leave · {page === "words" ? "progress" : "names"} saved
+          </button>
         </div>
       </div>
     </div>
