@@ -1547,6 +1547,7 @@
 .kadm .fb b { font-size: 13px; }
 .kadm .fb span { font-size: 10px; font-weight: 600; color: #6a6a6a; white-space: nowrap; }
 .kadm .fb em { font-style: normal; font-size: 9.5px; color: #ff4f1a; min-height: 12px; }
+.kadm .gatenote { font-size: 10px; color: #b4b1a8; margin: 6px 2px 0; }
 
 .kadm .toolbar { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 .kadm .tabs { display: inline-flex; gap: 4px; background: #f2f1ee; border-radius: 980px; padding: 3px; }

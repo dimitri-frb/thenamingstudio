@@ -74,12 +74,22 @@ export interface SavedSearch {
 }
 
 /* ── low-level call ── */
+// Every call carries who is behind it (once signed in) and the first-touch
+// attribution, so a flow stays attributable in the admin even when its
+// sign-up event sits in another process group or outside the log window.
+function who(): Record<string, string> {
+  try {
+    const u = loadSession()?.user;
+    return { ...attrib(), email: u?.email || "", uname: u?.name || "" };
+  } catch { return {}; }
+}
+
 async function post<T>(body: Record<string, unknown>): Promise<T | null> {
   try {
     const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...body, process: PROCESS, test: TEST }),
+      body: JSON.stringify({ ...body, who: who(), process: PROCESS, test: TEST }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -195,7 +205,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
       const res = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phase: "wrapstream", payload, process: PROCESS, test: TEST }),
+        body: JSON.stringify({ phase: "wrapstream", payload, who: who(), process: PROCESS, test: TEST }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) throw new Error("stream unavailable");

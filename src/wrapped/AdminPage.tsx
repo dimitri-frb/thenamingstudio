@@ -10,10 +10,19 @@ import { download } from "./zip";
 interface LogItem { id: string; at: number; process?: string; phase: string; input?: any; output?: any }
 
 export const STEPS = ["Sign up", "Brief", "Concept", "Words", "Names", "Domain", "Logo", "Brand book", "Socials", "Completed"] as const;
-const PHASE_STEP: Record<string, number> = {
-  signup: 0, search: 1, wrapchips: 1, wrapconcept: 2, wrapwords: 3,
-  wrapnames: 4, pick: 4, domain: 5, taste: 6, logo: 6, logopers: 6, logopack: 6,
+// The landing PRE-CHARGES the concept and the words while a visitor is still
+// typing — before the gate. A wrap* phase therefore no longer proves anyone SAW
+// a step: steps come from the client's own events ("page" + explicit actions).
+const ACTION_STEP: Record<string, number> = {
+  signup: 0, search: 1, brandsum: 2, wordsdone: 3, wordshuffle: 3,
+  morenames: 4, pick: 4, domain: 5, taste: 6, logo: 6, logopers: 6, logopack: 6,
   book: 7, bookpreview: 7, social: 8, done: 9,
+};
+// Flows from before the "page" event existed fall back to generation phases.
+const LEGACY_STEP: Record<string, number> = { wrapchips: 1, wrapconcept: 2, wrapwords: 3, wrapnames: 4 };
+const PAGE_STEP: Record<string, number> = {
+  ask: 1, brief: 1, refine: 2, brands: 2, brandsum: 2, words: 3, names: 4, reveal: 4,
+  domain: 5, taste: 6, logo: 6, logodone: 6, pers: 6, book: 7, socials: 8, done: 9,
 };
 
 interface Flow {
@@ -31,7 +40,7 @@ interface Flow {
   timeline: { at: number; step: string }[];
 }
 
-function buildFlows(items: LogItem[]): Flow[] {
+function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
   const by = new Map<string, LogItem[]>();
   for (const it of items) {
     if (!it.process) continue;
@@ -39,6 +48,7 @@ function buildFlows(items: LogItem[]): Flow[] {
     by.get(it.process)!.push(it);
   }
   const flows: Flow[] = [];
+  const gated: number[] = []; // visitors who typed a brief at the gate and left (last-seen times)
   for (const [id, evs] of by) {
     evs.sort((a, b) => a.at - b.at);
     const f: Flow = {
@@ -46,23 +56,21 @@ function buildFlows(items: LogItem[]): Flow[] {
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "",
       source: "", campaign: "", content: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
+    // pass 1: identity + content (the email can arrive on any event)
     for (const e of evs) {
       const p = e.input?.payload || {};
-      const st = PHASE_STEP[e.phase];
-      if (st !== undefined) {
-        if (st > f.step) f.step = st;
-        f.timeline.push({ at: e.at, step: STEPS[st] });
-      }
-      const m = p.meta;
+      const m = p.meta || e.input?.who; // track() puts it in the payload; every other call carries `who`
       if (m) {
-        if (m.email) f.email = m.email;
-        if (m.uname) f.uname = m.uname;
+        if (m.email && !f.email) f.email = m.email;
+        if (m.uname && !f.uname) f.uname = m.uname;
         if (m.source) f.source = m.source;
         if (m.campaign) f.campaign = m.campaign;
         if (m.content) f.content = m.content;
         if (m.device) f.device = m.device;
         if (m.lang) f.lang = m.lang;
       }
+      // the sign-up lead (worker-logged) names the pre-charge group
+      if (e.phase === "lead" && p.email && !f.email) { f.email = String(p.email); if (p.fromName && !f.uname) f.uname = String(p.fromName); }
       if (e.input?.geo) f.country = e.input.geo;
       // The brief rides on many phases (search, concept, words, names): take it
       // from any of them, so a truncated log window still shows it.
@@ -79,24 +87,71 @@ function buildFlows(items: LogItem[]): Flow[] {
         if (w.length) f.words = w.slice(0, 10);
       }
     }
-    // dedupe adjacent timeline steps, keep first hit of each
+    // pass 2: steps. "page" + action events are the truth; wrap* generation
+    // phases count only for legacy signed-in flows (pre-charge made them
+    // meaningless for anyone else — they fire before the gate).
+    const hasPages = evs.some((e) => e.phase === "page");
+    let anyStep = false;
+    for (const e of evs) {
+      const p = e.input?.payload || {};
+      const st = e.phase === "page" ? PAGE_STEP[String(p.to || "")] :
+        ACTION_STEP[e.phase] !== undefined ? ACTION_STEP[e.phase] :
+        !hasPages && f.email ? LEGACY_STEP[e.phase] : undefined;
+      if (st === undefined) continue;
+      anyStep = true;
+      if (st > f.step) f.step = st;
+      f.timeline.push({ at: e.at, step: STEPS[st] });
+    }
+    // dedupe timeline steps, keep first hit of each
     const seen = new Set<string>();
     f.timeline = f.timeline.filter((t) => { if (seen.has(t.step)) return false; seen.add(t.step); return true; });
-    // The landing gate signs people up under a throwaway process id (sometimes
-    // with the brief's chips call along for the ride). A group that never got
-    // further than Sign up is that stray event, not a flow of its own.
-    const stepped = evs.filter((e) => PHASE_STEP[e.phase] !== undefined);
-    f.gateOnly = stepped.length === 0 || stepped.every((e) => e.phase === "signup");
-    if (f.gateOnly && !f.email) continue; // anonymous stray: nothing to merge, drop it
+    // A group with no real step is either the gate's stray sign-up (folds into
+    // the user's flow below) or an anonymous visitor who typed a brief into the
+    // landing and left at the gate — counted, not listed.
+    const stepped = evs.filter((e) => ACTION_STEP[e.phase] !== undefined || e.phase === "page");
+    f.gateOnly = !anyStep || stepped.every((e) => e.phase === "signup");
+    if (f.gateOnly && !f.email) { if (f.brief) gated.push(f.last); continue; }
     // a signed-in flow passed Sign up by definition
     if (f.email && !f.timeline.some((t) => t.step === STEPS[0])) f.timeline.unshift({ at: f.first, step: STEPS[0] });
     f.status = f.step >= 9 ? "done" : Date.now() - f.last < 30 * 60000 ? "live" : "stopped";
     flows.push(f);
   }
-  // A signed-in gate row folds into that user's real flow; it survives only
-  // when the person signed up and never started (a flow worth seeing).
-  const merged = flows.filter((f) => !(f.gateOnly && flows.some((o) => o !== f && !o.gateOnly && o.email === f.email)));
-  return merged.sort((a, b) => b.last - a.last);
+  // ONE PERSON = ONE ROW: everything logged under the same email folds into the
+  // furthest flow — the pre-charge twin, the gate's sign-up group, and splits
+  // from stale cached bundles or a mid-flow restart.
+  const byEmail = new Map<string, Flow[]>();
+  for (const f of flows) {
+    if (!f.email) continue;
+    const k = f.email.toLowerCase();
+    if (!byEmail.has(k)) byEmail.set(k, []);
+    byEmail.get(k)!.push(f);
+  }
+  const absorbed = new Set<Flow>();
+  for (const group of byEmail.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => (b.step - a.step) || (b.last - a.last));
+    const main = group[0];
+    for (const o of group.slice(1)) {
+      absorbed.add(o);
+      main.first = Math.min(main.first, o.first);
+      main.last = Math.max(main.last, o.last);
+      if (o.brief.length > main.brief.length) main.brief = o.brief;
+      main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain;
+      main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content;
+      main.device ||= o.device; main.lang ||= o.lang; main.country ||= o.country;
+      main.feedback ||= o.feedback;
+      if (!main.words.length) main.words = o.words;
+      if (!main.shortlist.length) main.shortlist = o.shortlist;
+      main.timeline = main.timeline.concat(o.timeline);
+    }
+    main.timeline.sort((a, b) => a.at - b.at);
+    const seen = new Set<string>();
+    main.timeline = main.timeline.filter((t) => { if (seen.has(t.step)) return false; seen.add(t.step); return true; });
+    main.gateOnly = false;
+    main.status = main.step >= 9 ? "done" : Date.now() - main.last < 30 * 60000 ? "live" : "stopped";
+  }
+  const merged = flows.filter((f) => !absorbed.has(f));
+  return { flows: merged.sort((a, b) => b.last - a.last), gated };
 }
 
 const ago = (t: number) => {
@@ -153,9 +208,11 @@ export function AdminPage() {
 
   useEffect(() => { if (!demo) adminRoles().then((r) => { if (r && (r as any).owners) setRoles(r as any); }); else setRoles({ owners: ["dimitri@dfginvest.fr"], admins: [] }); }, [demo]);
 
-  const flows = useMemo(() => (items ? buildFlows(items) : []), [items]);
+  const built = useMemo(() => (items ? buildFlows(items) : { flows: [], gated: [] }), [items]);
+  const flows = built.flows;
   const since = range === 0 ? 0 : Date.now() - range * 86400000;
   const inRange = flows.filter((f) => f.last >= since);
+  const gatedN = built.gated.filter((t) => t >= since).length;
 
   const kStarted = inRange.length;
   const kNamed = inRange.filter((f) => f.name).length;
@@ -283,6 +340,7 @@ export function AdminPage() {
               );
             })}
           </div>
+          {gatedN > 0 && <p className="gatenote mono">+ {gatedN} typed a brief and left at the sign-up gate</p>}
 
           {/* toolbar */}
           <div className="toolbar">

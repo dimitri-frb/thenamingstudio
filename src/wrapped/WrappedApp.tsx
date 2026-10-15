@@ -632,9 +632,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     enterFlow();
   }
   function enterFlow(justSignedUp = false) {
-    if (!test) { newProcess(); startedAt.current = Date.now(); }
+    // The landing pre-charges the concept (and the words) under the page's
+    // process id while the founder is still typing. Entering the flow KEEPS
+    // that id, so the pre-charge, the gate's sign-up and the run itself land
+    // as ONE row in the admin — not an anonymous twin plus a real flow.
+    const s = sentence.trim();
+    const precharged = conceptFor.current === s || conceptReq.current.startsWith(s + "|");
+    if (!test && !precharged) newProcess();
+    if (!test) startedAt.current = Date.now();
     if (justSignedUp) track("signup", {}); // same process as the search below: one row per user in the admin
-    track("search", { sentence: sentence.trim(), chips });
+    track("search", { sentence: s, chips });
     setStep("brief");
     pushUrl("brief");
     persist();
@@ -706,7 +713,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       else window.history.pushState({ step: t }, "", u);
     } catch { /* older browsers */ }
   };
-  function toStep(s: Step) { setStep(s); pushUrl(s); window.scrollTo(0, 0); }
+  // Each page entry is tracked: generation now pre-charges ahead of the gate,
+  // so only these events prove the founder actually SAW a step.
+  function toStep(s: Step) { if (s !== step) track("page", { to: s }); setStep(s); pushUrl(s); window.scrollTo(0, 0); }
 
   useEffect(() => { // browser back/forward walks the flow
     const onPop = (e: PopStateEvent) => {

@@ -125,7 +125,7 @@ export default {
     // No Claude call, just logged centrally so the admin funnel is real.
     if (phase === "track") {
       const ev = String(body?.event || "track").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "track";
-      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload, geo: String((req as any)?.cf?.country || "") }, body.payload || {}));
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload, who: body.who, geo: String((req as any)?.cf?.country || "") }, body.payload || {}));
       return json({ ok: true }, env);
     }
 
@@ -188,7 +188,7 @@ export default {
 
     // Lead capture (sign-up at step 1, or the email gate). No Claude call, just logged.
     if (phase === "lead") {
-      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload }, body.payload || {}));
+      if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, "lead", body.process, { brief: body.brief, payload: body.payload, who: body.who }, body.payload || {}));
       return json({ ok: true }, env);
     }
 
@@ -270,7 +270,7 @@ export default {
         flush() { logDone(); },
       });
       if (env.LOG && !skipLog) {
-        ctx.waitUntil(finished.then(() => writeLog(env, "wrapnames", body.process, { payload: body.payload }, parseJSON(acc) || { raw: acc.slice(0, 2000) })));
+        ctx.waitUntil(finished.then(() => writeLog(env, "wrapnames", body.process, { payload: body.payload, who: body.who }, parseJSON(acc) || { raw: acc.slice(0, 2000) })));
       }
       return new Response(upstream.body.pipeThrough(ts), {
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...cors(env) },
@@ -335,7 +335,7 @@ export default {
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
       // and not the high-volume exploration phase which would flood the log).
-      if (env.LOG && !skipLog && phase !== "relate") ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload }, data));
+      if (env.LOG && !skipLog && phase !== "relate") ctx.waitUntil(writeLog(env, phase, body.process, { brief: body.brief, payload: body.payload, who: body.who }, data));
       return json(data, env);
     } catch (e: any) {
       return json({ error: String(e?.message || e) }, env, 502);
@@ -921,7 +921,7 @@ async function authGoogle(env: Env, body: any): Promise<any> {
   // A brand-new account is a signup lead in the funnel (same shape the admin reads).
   if (isNew && !body?.test) {
     const payload = { email: u.email, fromName: u.name, kind: "signup" };
-    await writeLog(env, "lead", body?.process, { payload }, payload);
+    await writeLog(env, "lead", body?.process, { payload, who: body?.who }, payload);
   }
   return { token, user: u, searches: acct.searches || [] };
 }
