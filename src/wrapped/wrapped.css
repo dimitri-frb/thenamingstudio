@@ -29,6 +29,12 @@
 .wr {
   position: fixed;
   inset: 0;
+  /* Pin to the SMALL viewport height: when the mobile browser's toolbar
+     collapses mid-scroll, the app no longer resizes and reflows. The strip
+     that opens up below is the body's own black, so nothing visibly moves. */
+  bottom: auto;
+  height: 100vh;
+  height: 100svh;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -293,6 +299,12 @@
 .wr-btn2:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 .wr-link { background: none; border: none; color: var(--text3); font-size: 13.5px; font-weight: 500; cursor: pointer; padding: 8px 6px; }
 .wr-link:hover { color: #fff; }
+
+/* Touch feel: everything tappable gives a soft press under the finger —
+   hover states are for mice, this is the thumb's version of the same signal. */
+.wr-btn2, .wr-tab, .wr-chip, .wr-word, .wr-v2w .chip, .wr-v2n .row, .wr-link { transition: transform 70ms ease; }
+.wr-btn:active:not(:disabled), .wr-btn2:active, .wr-tab:active, .wr-chip:active,
+.wr-word:active, .wr-v2w .chip:active, .wr-v2n .row:active, .wr-link:active { transform: scale(0.97); }
 .wr-khint { display: none; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text3); }
 .wr-key { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.22); color: var(--text2); font-size: 11.5px; font-family: var(--mono); }
 

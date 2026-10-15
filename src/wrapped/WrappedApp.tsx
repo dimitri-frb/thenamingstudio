@@ -2,7 +2,7 @@
 // 00 landing → 01 the ask → 02 brief wrapped → 03 the words → 04 the names
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
@@ -14,7 +14,13 @@ import {
 import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_DECK } from "./inspire";
 import { download } from "./zip";
-import { BookPreview, BookPrint, exportBookWord, printBook, ScaledPage, type BookCtx } from "./Book";
+import type { BookCtx } from "./Book";
+
+// The brand book (pages, print CSS, the Word export) is its own chunk: it only
+// loads once a founder has picked a name, never on the ad click's first paint.
+const BookPreview = lazy(() => import("./Book").then((m) => ({ default: m.BookPreview })));
+const BookPrint = lazy(() => import("./Book").then((m) => ({ default: m.BookPrint })));
+const ScaledPage = lazy(() => import("./Book").then((m) => ({ default: m.ScaledPage })));
 
 type Step =
   | "land" | "how" | "ask" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "reveal"
@@ -515,8 +521,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const q = new URLSearchParams(window.location.search);
     if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
     if (test) return;
-    let idle = window.setTimeout(() => show("idle"), 30000);
-    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), 30000); };
+    // Touch devices never fire mouse exit-intent, so on phones the quiet
+    // threshold is shorter (the back gesture is handled in the popstate hook).
+    const quiet = window.matchMedia("(hover: none)").matches ? 20000 : 30000;
+    let idle = window.setTimeout(() => show("idle"), quiet);
+    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), quiet); };
     const out = (e: MouseEvent) => { if (e.clientY <= 0 && !e.relatedTarget) show("exit"); };
     window.addEventListener("pointermove", reset);
     window.addEventListener("keydown", reset);
@@ -540,6 +549,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   useEffect(() => { // book + domain board: precharged the moment a name is picked
     if (!picked) return;
+    void import("./Book"); // warm the lazy book chunk alongside its content
     fetchDomainBoard(picked.name, prefs.doms).then((b) => {
       setBoard(b);
       fail("board", !b.tlds.length);
@@ -719,6 +729,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   useEffect(() => { // browser back/forward walks the flow
     const onPop = (e: PopStateEvent) => {
+      // On words/names, the FIRST back gesture asks why before leaving (04·x) —
+      // phones have no mouse exit-intent. The page is pushed back, so the next
+      // back works normally.
+      if (!test && !pollShown.current && (stepRef.current === "words" || stepRef.current === "names")) {
+        pollShown.current = true;
+        setPoll("exit");
+        pushUrl(stepRef.current);
+        return;
+      }
       const t = ((e.state?.step as Step) || SLUG_STEP[pathSlug()] || "land");
       if (canEnter(t)) { setStep(t); window.scrollTo(0, 0); }
       else pushUrl(stepRef.current, true);
@@ -1815,16 +1834,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     : <div className="wr-load"><span className="wr-spin" /> Writing {picked.name}'s brand book…</div>
                 ) : (
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button className="wr-btn" style={{ maxWidth: 200 }} onClick={() => { printBook(`${picked.name} - Brand book`); track("book", { name: picked.name }); }}>↓ PDF</button>
-                    <button className="wr-btn2" onClick={() => { if (bookCtx) void exportBookWord(bookCtx); track("book", { name: picked.name, format: "word" }); }}>↓ Word</button>
+                    <button className="wr-btn" style={{ maxWidth: 200 }} onClick={() => { void import("./Book").then((m) => m.printBook(`${picked.name} - Brand book`)); track("book", { name: picked.name }); }}>↓ PDF</button>
+                    <button className="wr-btn2" onClick={() => { if (bookCtx) void import("./Book").then((m) => m.exportBookWord(bookCtx)); track("book", { name: picked.name, format: "word" }); }}>↓ Word</button>
                     <button className="wr-btn2" onClick={() => { setBookOpen(true); track("bookpreview", { name: picked.name }); }}>Preview</button>
                   </div>
                 )}
               </div>
               {bookCtx && (
                 <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 18 }}>
-                  <div onClick={() => setBookOpen(true)} style={{ cursor: "pointer" }}><ScaledPage i={0} ctx={bookCtx} width={150} /></div>
-                  <div onClick={() => setBookOpen(true)} style={{ cursor: "pointer", transform: "translateY(16px)" }}><ScaledPage i={6} ctx={bookCtx} width={150} /></div>
+                  <div onClick={() => setBookOpen(true)} style={{ cursor: "pointer" }}><Suspense fallback={null}><ScaledPage i={0} ctx={bookCtx} width={150} /></Suspense></div>
+                  <div onClick={() => setBookOpen(true)} style={{ cursor: "pointer", transform: "translateY(16px)" }}><Suspense fallback={null}><ScaledPage i={6} ctx={bookCtx} width={150} /></Suspense></div>
                 </div>
               )}
             </div>
@@ -1907,8 +1926,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
-      {bookOpen && bookCtx && <BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share} />}
-      {bookCtx && <BookPrint ctx={bookCtx} />}
+      {bookOpen && bookCtx && <Suspense fallback={null}><BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share} /></Suspense>}
+      {bookCtx && <Suspense fallback={null}><BookPrint ctx={bookCtx} /></Suspense>}
 
       {/* test jump bar */}
       {test && (

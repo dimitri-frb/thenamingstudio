@@ -4,11 +4,15 @@
 //   /account       every name you've started (Google account)
 //   /admin         the funnel + every search (central log)
 // GitHub Pages serves 404.html → index.html, so deep paths work.
+import { lazy, Suspense } from "react";
 import { WrappedApp } from "./wrapped/WrappedApp";
-import { SharePage } from "./wrapped/SharePage";
-import { AccountPage } from "./wrapped/AccountPage";
-import { AdminPage } from "./wrapped/AdminPage";
 import { setFixture } from "./wrapped/api";
+
+// Every ad click downloads the flow; the admin, account and share pages ride
+// in their own chunks so they never weigh on a founder's first paint.
+const SharePage = lazy(() => import("./wrapped/SharePage").then((m) => ({ default: m.SharePage })));
+const AccountPage = lazy(() => import("./wrapped/AccountPage").then((m) => ({ default: m.AccountPage })));
+const AdminPage = lazy(() => import("./wrapped/AdminPage").then((m) => ({ default: m.AdminPage })));
 
 export default function App() {
   const path = window.location.pathname;
@@ -19,11 +23,11 @@ export default function App() {
 
   // /s/<id>: the public page behind a shared link
   const shareMatch = path.match(/(?:^|\/)s\/([a-z0-9-]{3,60})\/?$/);
-  if (shareMatch) return <SharePage id={shareMatch[1]} />;
+  if (shareMatch) return <Suspense fallback={null}><SharePage id={shareMatch[1]} /></Suspense>;
 
-  if (is("admin") || /(?:^|\/)admin\/users\/?$/.test(path)) return <AdminPage />;
-  if (is("settings")) return <AccountPage initialTab="settings" />;
-  if (is("account")) return <AccountPage />;
+  if (is("admin") || /(?:^|\/)admin\/users\/?$/.test(path)) return <Suspense fallback={null}><AdminPage /></Suspense>;
+  if (is("settings")) return <Suspense fallback={null}><AccountPage initialTab="settings" /></Suspense>;
+  if (is("account")) return <Suspense fallback={null}><AccountPage /></Suspense>;
 
   // /test/1-brief, /test/8-logos… run the flow on the Tiller example.
   const testPath = /(?:^|\/)test(?:\/|$)/.test(path);
