@@ -263,7 +263,7 @@ export function attrib(): Record<string, string> {
     const ua = navigator.userAgent;
     const dev = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Other";
     const br = /Edg\//.test(ua) ? "Edge" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Browser";
-    const a = { source, campaign, device: `${dev} · ${br}`, lang: (navigator.language || "en").slice(0, 5) };
+    const a = { source, campaign, content: q.get("utm_content") || "", device: `${dev} · ${br}`, lang: (navigator.language || "en").slice(0, 5) };
     localStorage.setItem("ns.attrib", JSON.stringify(a));
     return a;
   } catch { return {}; }

@@ -25,7 +25,7 @@ interface Flow {
   brief: string;
   name: string; shortlist: string[]; words: string[];
   domain: string;
-  source: string; campaign: string; device: string; lang: string; country: string;
+  source: string; campaign: string; content: string; device: string; lang: string; country: string;
   feedback: string;               // the 04·x/04·i exit poll, when the user answered it
   gateOnly?: boolean;             // the landing gate's stray sign-up group (folds into the real flow)
   timeline: { at: number; step: string }[];
@@ -44,7 +44,7 @@ function buildFlows(items: LogItem[]): Flow[] {
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "",
-      source: "", campaign: "", device: "", lang: "", country: "", feedback: "", timeline: [],
+      source: "", campaign: "", content: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     for (const e of evs) {
       const p = e.input?.payload || {};
@@ -59,6 +59,7 @@ function buildFlows(items: LogItem[]): Flow[] {
         if (m.uname) f.uname = m.uname;
         if (m.source) f.source = m.source;
         if (m.campaign) f.campaign = m.campaign;
+        if (m.content) f.content = m.content;
         if (m.device) f.device = m.device;
         if (m.lang) f.lang = m.lang;
       }
@@ -190,10 +191,10 @@ export function AdminPage() {
 
   function exportCsv() {
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
-    const head = "user,email,brief,step,status,name,domain,source,campaign,country,device,lang,started,last_active,time_spent";
+    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,country,device,lang,started,last_active,time_spent";
     const lines = shown.map((f) => [
       esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/9)`), f.status,
-      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), f.country, esc(f.device), f.lang,
+      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), f.country, esc(f.device), f.lang,
       new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
     ].join(","));
     download(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }), `namename-flows-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -345,7 +346,7 @@ export function AdminPage() {
                 <h3>{selFlow.uname || "Anonymous"}</h3>
                 <p className="mono dim">{selFlow.email || "no account yet"}</p>
                 <div className="meta">
-                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
+                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Ad group", selFlow.content || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
                     <p key={k}><em>{k}</em><span>{v}</span></p>
                   ))}
                 </div>

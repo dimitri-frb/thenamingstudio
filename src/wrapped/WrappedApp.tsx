@@ -498,8 +498,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     });
   }
 
-  useEffect(() => { // 04·x / 04·i: one gentle ask at the names page, never twice
-    if (step !== "names" || poll || pollShown.current) return;
+  useEffect(() => { // 04·x / 04·i: one gentle ask at the words or names page, never twice
+    if ((step !== "names" && step !== "words") || poll || pollShown.current) return;
     const show = (v: "exit" | "idle") => { if (!pollShown.current) { pollShown.current = true; setPoll(v); } };
     const q = new URLSearchParams(window.location.search);
     if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
@@ -1800,8 +1800,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {poll && (
         <NamePoll
           variant={poll}
+          page={step === "words" ? "words" : "names"}
           onClose={() => setPoll(null)}
-          onSend={(reasons, note) => { track("feedback", { variant: poll, reasons, note, step: "names" }); setPoll(null); }}
+          onSend={(reasons, note) => { track("feedback", { variant: poll, reasons, note, step }); setPoll(null); }}
         />
       )}
       {briefGate && (
@@ -1898,7 +1899,12 @@ const POLL_OPTS = [
   "Not ready yet, just exploring", "The domains I want are taken",
   "Something's confusing", "I'll come back later",
 ];
-function NamePoll({ variant, onClose, onSend }: { variant: "exit" | "idle"; onClose: () => void; onSend: (reasons: string[], note: string) => void }) {
+const POLL_OPTS_WORDS = [
+  "The words don't inspire me", "It's taking too long",
+  "Not ready yet, just exploring", "I don't get what to do here",
+  "Something's confusing", "I'll come back later",
+];
+function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit" | "idle"; page?: "words" | "names"; onClose: () => void; onSend: (reasons: string[], note: string) => void }) {
   const [sel, setSel] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const exit = variant === "exit";
@@ -1912,7 +1918,7 @@ function NamePoll({ variant, onClose, onSend }: { variant: "exit" | "idle"; onCl
           ? "Tick anything that fits. It takes five seconds and helps us make Name Name better for you."
           : "You've been quiet for a moment. If something's in the way, tell us — or pick up right where you left off."}</p>
         <div className="popts">
-          {POLL_OPTS.map((o) => {
+          {(page === "words" ? POLL_OPTS_WORDS : POLL_OPTS).map((o) => {
             const on = sel.includes(o);
             return (
               <button key={o} className={on ? "on" : ""} onClick={() => setSel(on ? sel.filter((x) => x !== o) : [...sel, o])}>
@@ -1923,7 +1929,7 @@ function NamePoll({ variant, onClose, onSend }: { variant: "exit" | "idle"; onCl
         </div>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else? Tell us in your own words (optional)" rows={3} />
         <div className="pacts">
-          <span className="mono note">{exit ? "Your names are saved" : "Nothing is lost"}</span>
+          <span className="mono note">{exit ? (page === "words" ? "Your progress is saved" : "Your names are saved") : "Nothing is lost"}</span>
           <button className="pbtn ghost" disabled={!sel.length && !note.trim()} onClick={() => onSend(sel, note.trim())}>Send & leave</button>
           <button className="pbtn dark" onClick={onClose}>Keep naming →</button>
         </div>
