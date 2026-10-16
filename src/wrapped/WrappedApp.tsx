@@ -756,6 +756,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       // real-time wait screen.
       if (!st.done) { if (!base.length) setNamesProg(st.names.length); return; }
       st.listeners.delete(upd);
+      // Domain checks land AFTER the stream finishes: the lookups mutate the
+      // name objects in place, so each late answer needs a repaint — without
+      // this, rows said "checking…" forever (and "More" looked broken).
+      st.listeners.add(() => setNames((cur) => (cur ? [...cur] : cur)));
       if (!base.length && waitStart.current) { recordEta(Date.now() - waitStart.current); waitStart.current = 0; }
       if (st.error || !st.names.length) {
         setNamesBusy(false); setMoreBusy(false);
@@ -814,9 +818,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setMoreBusy(true);
     fail("more", false);
     const exKey = names.map((n) => n.name).join("|");
-    const st = morePre.current?.key === exKey
-      ? morePre.current.st
-      : coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs);
+    // A pre-charged batch that silently failed in the background is no batch:
+    // fall through to a fresh stream instead of consuming the error.
+    const pre = morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
+    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs);
     morePre.current = null;
     attachStream(st, names);
   }
@@ -1347,7 +1352,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           {!!names?.length && !namesBusy && (
             <div className="wr-foot wr-v2nbar">
               <button className="more" disabled={moreBusy} onClick={moreNames}>
-                {moreBusy ? "↻ …" : v2Known.current ? "↻ More" : "↻ 6 more"}
+                {moreBusy ? "↻ …" : fails.more ? "↻ Try again" : v2Known.current ? "↻ More" : "↻ 6 more"}
               </button>
               <button className="go" onClick={continueWithSel}>
                 Continue with {selName || "…"} →
@@ -1378,7 +1383,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div className="wr-foot">
               <span className="wr-hint">↑ ↓ to browse · Continue opens the claim</span>
               <span className="mla" style={{ display: "inline-flex", gap: 10 }}>
-                <button className="wr-btn2" disabled={moreBusy} onClick={moreNames}>{moreBusy ? "↻ …" : "↻ More"}</button>
+                <button className="wr-btn2" disabled={moreBusy} onClick={moreNames}>{moreBusy ? "↻ …" : fails.more ? "↻ Try again" : "↻ More"}</button>
                 <button className="wr-btn" style={{ maxWidth: 340 }} onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
               </span>
             </div>
@@ -2179,7 +2184,9 @@ function NamesListV2({ names, known, sel, onSel }: {
               <span className="l1">
                 <b className="nm">{n.name}</b>
                 {freshSet.has(n.name) && <i className="new">NEW</i>}
-                {d ? <span className="dm"><i className="dot" />{d.domain}</span> : <span className="dm dim">checking…</span>}
+                {d ? <span className="dm"><i className="dot" />{d.domain}</span>
+                  : (n as any).domd ? <span className="dm dim">{n.dom?.domain || "domain"} taken</span>
+                  : <span className="dm dim">checking…</span>}
                 <span className="fit">{n.score}%</span>
               </span>
               <span className="why">{n.tagline || n.roots}</span>
@@ -2219,7 +2226,7 @@ function NamesGridV2({ names, known, sel, onSel }: {
                   <span className="rt mono">{n.roots}</span>
                 </span>
                 <span className="why">{n.tagline || n.roots}</span>
-                <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : "checking…"}</span>
+                <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : (n as any).domd ? `${n.dom?.domain || "domain"} taken` : "checking…"}</span>
               </span>
               <span className="sc">
                 <span className="n">{n.score}<small>%</small></span>

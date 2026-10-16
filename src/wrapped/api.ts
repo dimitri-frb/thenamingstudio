@@ -225,7 +225,20 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
           st.names = [...st.names, n];
           notify();
           // Each card's verified free domain fills in the moment we have it.
-          fetchFreeDom(n.name, (prefs as any)?.doms).then((d) => { n.dom = d.dom; n.alt = d.alt; notify(); }).catch(() => {});
+          // A null/null answer is almost always a transient network miss (the
+          // worker's variant fallback near-guarantees a free line), so it gets
+          // ONE retry before the row admits "checked, nothing free".
+          const lookup = (attempt: number) => {
+            fetchFreeDom(n.name, (prefs as any)?.doms)
+              .then((d) => {
+                if (!d.dom && !d.alt && attempt === 0) { setTimeout(() => lookup(1), 900); return; }
+                n.dom = d.dom; n.alt = d.alt;
+                (n as any).domd = true; // checked — the row can stop saying "checking…"
+                notify();
+              })
+              .catch(() => { if (attempt === 0) setTimeout(() => lookup(1), 900); else { (n as any).domd = true; notify(); } });
+          };
+          lookup(0);
         }
         seen = Math.max(seen, objs.length);
       }
@@ -238,6 +251,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
       const r = await wrapApi.namesRaw(payload);
       if (r?.names?.length) {
         st.names = r.names.map(cleanName);
+        st.names.forEach((n) => { (n as any).domd = true; }); // server-enriched: domains already checked
         st.done = true; notify();
         return st.names;
       }
