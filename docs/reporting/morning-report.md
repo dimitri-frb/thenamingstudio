@@ -16,19 +16,17 @@ when they aren't obvious.
 
 *FUNNEL*
 {clicks} clicks                 €{cpc}
-→ {n} typed a brief  {%} ({avg}%) · €{cum}
-→ {n} signed up      {%} ({avg}%) · €{cum}
+→ {n} typed a brief  {%} ({avg}%🔻) · €{cum}
+→ {n} signed up      {%} ({avg}%🟢) · €{cum}
 → {n} brief          {%} ({avg}%) · €{cum}
-→ {n} words          {%} ({avg}%) · €{cum} 🔻
-→ {n} names          {%} ({avg}%) · €{cum}
-→ {n} domain         {%} ({avg}%) · €{cum} 🟢
+→ {n} words          {%} ({avg}%🔻) · €{cum}
+→ {n} names          {%} ({avg}%🔻) · €{cum}
+→ {n} domain         {%} ({avg}%🟢) · €{cum}
 → {n} completed      {%}
 
-A line ends with 🔻 when the day's step conversion sits well under the 7-day
-average, and with 🟢 when it sits well over it. Same threshold both ways:
-at least 20% away from the average relatively AND at least 5 points absolute
-(e.g. 60% vs an 80% average → 🔻; 38% vs 20% → 🟢). It marks real movement,
-not noise — most lines carry no emoji at all.
+Inside each bracket, right after the average: 🟢 when the day's step
+conversion is better than the 7-day average, 🔻 when it's worse, nothing
+when they're equal. No threshold — it's a simple direction marker.
 
 *KPIs* (vs 7d avg)
 Click → domain    {x}% ({avg}%) · €{x} (€{avg}) per domain
