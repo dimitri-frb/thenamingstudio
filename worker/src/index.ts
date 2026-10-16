@@ -714,6 +714,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- No empty luxury syllables: a coinage that is only smooth sound with no idea inside (the Aluvia / Sorelia / Veliora family) is filler, however pretty. If an invented name's "roots" line can't name a real source, cut it.\n` +
     `- Never output a starred word verbatim or trivially capitalised: every name is a NEW coinage built FROM the material.\n` +
     `- Nothing unpronounceable, nothing a famous company already owns.\n` +
+    `- CHECK THE FIRST ASSOCIATION: no country, region or city names as-is (Moldova is a nation, not a brand), and nothing whose primary meaning is grim, punitive or medical (a pillory is a shaming device) — unless the brief explicitly wants that edge.\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
       ? `- Already proposed, the founder wants DIFFERENT ones: ${b.payload.exclude.slice(-30).join(", ")}. Do not repeat or lightly vary them — and OPEN THE SEARCH WIDER: avoid their first letters and endings, draw on different starred words and different techniques, change the register (if they were soft, go bolder; if latinate, go anglo; if abstract, go concrete). The new six should feel like a different studio round, not the same idea again.\n` : ``) +
     `\nFor each name give:\n` +
