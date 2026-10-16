@@ -12,7 +12,7 @@ import {
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
-import { BRAND_AXES, SWIPE_DECK } from "./inspire";
+import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
 
@@ -193,9 +193,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [concept, setConcept] = useState<WConcept | null>(test ? ACTIVE().concept : null);
   const [feelOpts, setFeelOpts] = useState<string[]>(test ? [ACTIVE().concept.concept, ...(ACTIVE().concept.alts || [])] : []);
   // The refine page's founder preferences, folded into every later generation.
-  const [prefs, setPrefs] = useState<{ tone: string[]; style: string[]; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[]; who: string[]; brandsLiked: string[]; brandsDisliked: string[] }>({
-    tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [], who: [], brandsLiked: [], brandsDisliked: [],
+  const [prefs, setPrefs] = useState<{ tone: string[]; style: string[]; length: string; langs: string[]; avoid: string[]; terr: string[]; doms: string[]; who: string[]; brandsLiked: string[]; brandsDisliked: string[]; axes: TasteAxes | null }>({
+    tone: [], style: [], length: "Any", langs: ["English"], avoid: [], terr: [], doms: [], who: [], brandsLiked: [], brandsDisliked: [], axes: null,
   });
+  const [deck, setDeck] = useState<InspireBrand[]>(() => drawDeck()); // 8 cards drawn from the 30-brand pool
   const [styles, setStyles] = useState<WStyle[] | null>(test ? ACTIVE().styles : null);
   const [starred, setStarred] = useState<WWord[]>(test ? [ACTIVE().styles[0].words[0], ACTIVE().styles[0].words[1], ACTIVE().styles[1].words[0], ACTIVE().styles[1].words[2]] : []);
   const [names, setNames] = useState<WName[] | null>(test ? ACTIVE().names : null);
@@ -1237,6 +1238,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {/* ═══ 02·b brands you like (swipe) ═══ */}
       {step === "brands" && (
         <BrandSwipe
+          deck={deck}
           liked={prefs.brandsLiked} disliked={prefs.brandsDisliked}
           onJudge={(name, like) => setPrefs((p) => ({
             ...p,
@@ -1253,16 +1255,17 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <BrandTasteSummary
           liked={prefs.brandsLiked}
           disliked={prefs.brandsDisliked}
-          onToggle={(name) => setPrefs((p) => {
-            const wasLiked = p.brandsLiked.includes(name);
-            return {
-              ...p,
-              brandsLiked: wasLiked ? p.brandsLiked.filter((x) => x !== name) : [...p.brandsLiked, name],
-              brandsDisliked: wasLiked ? [...p.brandsDisliked, name] : p.brandsDisliked.filter((x) => x !== name),
-            };
-          })}
-          onWords={() => { track("brandsum", { liked: prefs.brandsLiked.length, disliked: prefs.brandsDisliked.length }); toStep("words"); }}
-          onAgain={() => { setPrefs((p) => ({ ...p, brandsLiked: [], brandsDisliked: [] })); toStep("brands"); }}
+          axes={prefs.axes}
+          onAxes={(a) => setPrefs((p) => ({ ...p, axes: a }))}
+          onRemoveLiked={(name) => setPrefs((p) => ({ ...p, brandsLiked: p.brandsLiked.filter((x) => x !== name) }))}
+          onRemoveDisliked={(name) => setPrefs((p) => ({ ...p, brandsDisliked: p.brandsDisliked.filter((x) => x !== name) }))}
+          onAdd={(name) => setPrefs((p) => ({
+            ...p,
+            brandsLiked: [...p.brandsLiked.filter((x) => x.toLowerCase() !== name.toLowerCase()), name],
+            brandsDisliked: p.brandsDisliked.filter((x) => x.toLowerCase() !== name.toLowerCase()),
+          }))}
+          onWords={() => { track("brandsum", { liked: prefs.brandsLiked.length, disliked: prefs.brandsDisliked.length, axes: prefs.axes || undefined }); toStep("words"); }}
+          onAgain={() => { setDeck(drawDeck()); toStep("brands"); }}
         />
       )}
 
@@ -2653,16 +2656,18 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
 
 /* ── 02·b Brands you like: a 12-card swipe deck that teaches the studio
    the founder's naming taste (design handoff 02r-02b) ── */
-function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
-  liked: string[]; disliked: string[];
+function BrandSwipe({ deck, liked, disliked, onJudge, onBack, onNext }: {
+  deck: InspireBrand[]; liked: string[]; disliked: string[];
   onJudge: (name: string, like: boolean) => void; onBack: () => void; onNext: () => void;
 }) {
-  const [idx, setIdx] = useState(liked.length + disliked.length < SWIPE_DECK.length ? liked.length + disliked.length : SWIPE_DECK.length);
+  // Already-judged cards (a resumed run, or a re-drawn hand) don't come back.
+  const cards = useMemo(() => deck.filter((b) => !liked.includes(b.name) && !disliked.includes(b.name)), [deck]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [idx, setIdx] = useState(0);
   const [dx, setDx] = useState(0);
   const [fly, setFly] = useState<0 | 1 | -1>(0);
   const drag = useRef<{ x0: number; on: boolean }>({ x0: 0, on: false });
-  const done = idx >= SWIPE_DECK.length;
-  const card = SWIPE_DECK[idx];
+  const done = idx >= cards.length;
+  const card = cards[idx];
 
   const judge = (like: boolean) => {
     if (done || fly) return;
@@ -2670,7 +2675,7 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
     const name = card.name;
     setTimeout(() => {
       onJudge(name, like); setIdx((i) => i + 1); setFly(0); setDx(0);
-      if (idx + 1 >= SWIPE_DECK.length) setTimeout(onNext, 300); // last swipe opens the taste summary
+      if (idx + 1 >= cards.length) setTimeout(onNext, 300); // last swipe opens the taste summary
     }, 240);
   };
   useEffect(() => {
@@ -2703,8 +2708,8 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
             ) : (
               <>
                 <div className="stack">
-                  {SWIPE_DECK[idx + 2] && <div className="card back2" />}
-                  {SWIPE_DECK[idx + 1] && <div className="card back1" />}
+                  {cards[idx + 2] && <div className="card back2" />}
+                  {cards[idx + 1] && <div className="card back1" />}
                   <div
                     className="card top"
                     style={{ transform: `translateX(${px}px) rotate(${rot}deg)`, transition: fly || !drag.current.on ? "transform 0.24s ease" : "none" }}
@@ -2715,9 +2720,16 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
                       if (d > 80) judge(true); else if (d < -80) judge(false); else setDx(0);
                     }}
                   >
-                    <span className="prog">{idx + 1} of {SWIPE_DECK.length}</span>
+                    <span className="prog">{Math.min(idx + 1, cards.length)} of {cards.length}</span>
                     {(px > 36) && <span className="stamp like">Like</span>}
                     {(px < -36) && <span className="stamp nope">Nope</span>}
+                    {card.domain && (
+                      <img
+                        className="blogo" alt="" draggable={false}
+                        src={brandLogo(card.domain)}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
                     <span className="bn">{card.name}</span>
                     <span className="bd">{card.why}</span>
                     <span className="tags"><i>{card.style}</i><i>{card.sector}</i></span>
@@ -2743,52 +2755,82 @@ function BrandSwipe({ liked, disliked, onJudge, onBack, onNext }: {
 }
 
 /* ── 02·b·s: your taste, summed up — after the last swipe ── */
-const AXES_META: { k: "short" | "evoc" | "warm" | "real"; label: string; word: string; hint: string }[] = [
-  { k: "short", label: "Short", word: "short", hint: "1–2 syllables" },
-  { k: "evoc", label: "Evocative", word: "evocative", hint: "suggests a feeling" },
-  { k: "warm", label: "Warm", word: "warm", hint: "soft sounds, open vowels" },
-  { k: "real", label: "Real words", word: "made of real words", hint: "not acronyms" },
+export type TasteAxes = { short: number; evoc: number; warm: number; real: number };
+const AXES_META: { k: keyof TasteAxes; label: string; opp: string; word: string }[] = [
+  { k: "short", label: "Short", opp: "Long", word: "short" },
+  { k: "warm", label: "Warm", opp: "Cool", word: "warm" },
+  { k: "evoc", label: "Evocative", opp: "Descriptive", word: "evocative" },
+  { k: "real", label: "Real word", opp: "Invented", word: "made of real words" },
 ];
-function BrandTasteSummary({ liked, disliked, onToggle, onWords, onAgain }: {
-  liked: string[]; disliked: string[]; onToggle: (name: string) => void; onWords: () => void; onAgain: () => void;
+function BrandTasteSummary({ liked, disliked, axes, onAxes, onRemoveLiked, onRemoveDisliked, onAdd, onWords, onAgain }: {
+  liked: string[]; disliked: string[];
+  axes: TasteAxes | null; onAxes: (a: TasteAxes) => void;
+  onRemoveLiked: (name: string) => void; onRemoveDisliked: (name: string) => void; onAdd: (name: string) => void;
+  onWords: () => void; onAgain: () => void;
 }) {
-  const judged = liked.length + disliked.length;
-  const scores = AXES_META.map(({ k }) => {
-    if (!liked.length) return 0.6;
-    return liked.reduce((a, n) => a + (BRAND_AXES[n]?.[k] ?? 0.5), 0) / liked.length;
-  });
-  const rows = AXES_META.map((m, i) => ({ ...m, score: scores[i], segs: Math.min(5, Math.max(1, Math.round(scores[i] * 5))) }))
-    .sort((a, b) => b.score - a.score);
-  const top = rows.slice(0, 3).map((r) => r.word);
+  const [adding, setAdding] = useState(false);
+  // The dials start where the swipes put them; a drag overrides and sticks.
+  const derived = Object.fromEntries(AXES_META.map(({ k }) => [k,
+    liked.length ? liked.reduce((a, n) => a + (BRAND_AXES[n]?.[k] ?? 0.5), 0) / liked.length : 0.6,
+  ])) as TasteAxes;
+  const cur: TasteAxes = axes || derived;
+  const top = [...AXES_META].sort((a, b) => cur[b.k] - cur[a.k]).slice(0, 3).map((r) => r.word);
   return (
     <>
       <div className="wr-stage">
         <div className="wr-bsum">
-          <p className="wr-kicker" style={{ marginBottom: 10 }}>{judged} of {SWIPE_DECK.length} · Done</p>
           <h1 className="wr-h ttl">
             You like names that are <i>{top[0]}</i>, <i>{top[1]}</i> and <i>{top[2]}</i>.
           </h1>
-          <div className="meters">
-            {rows.map((r) => (
-              <div className="m" key={r.k}>
-                <div className="t"><b>{r.label}</b><span>{r.hint}</span></div>
-                <div className="segs">{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < r.segs ? "on" : ""} />)}</div>
-              </div>
-            ))}
+          <p className="tsub">Updates as you change things</p>
+          <div className="axes">
+            <div className="hdr"><span className="k mono">Your taste</span><span className="d mono">drag to adjust</span></div>
+            {AXES_META.map((r) => {
+              const pos = Math.round((1 - cur[r.k]) * 100); // knob left = the first pole
+              return (
+                <div className="ax" key={r.k}>
+                  <div className="t"><b>{r.label}</b><span>{r.opp}</span></div>
+                  <div className="sl" style={{ ["--p" as any]: pos + "%" }}>
+                    <i className="tick" />
+                    <input
+                      type="range" min={0} max={100} value={pos}
+                      aria-label={`${r.label} to ${r.opp}`}
+                      onChange={(e) => onAxes({ ...cur, [r.k]: 1 - Number(e.target.value) / 100 })}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {!!liked.length && <>
+          {(!!liked.length || true) && <>
             <p className="grp">Loved · {liked.length}</p>
             <div className="pills">
-              {liked.map((n) => <button key={n} className="pill on" onClick={() => onToggle(n)}>{n}</button>)}
+              {liked.map((n) => {
+                const dom = SWIPE_POOL.find((b) => b.name === n)?.domain;
+                return (
+                  <button key={n} className="pill on" onClick={() => onRemoveLiked(n)}>
+                    {dom && <img className="pf" alt="" src={brandLogo(dom, 64)} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+                    {n} <i>✕</i>
+                  </button>
+                );
+              })}
+              {adding ? (
+                <span className="pill add"><input
+                  autoFocus placeholder="a brand you love"
+                  onBlur={(e) => { const v = e.target.value.trim(); if (v) onAdd(v); setAdding(false); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } if (e.key === "Escape") setAdding(false); }}
+                /></span>
+              ) : (
+                <button className="pill add" onClick={() => setAdding(true)}>＋ Add a brand</button>
+              )}
             </div>
           </>}
           {!!disliked.length && <>
             <p className="grp">Not for you · {disliked.length}</p>
             <div className="pills">
-              {disliked.map((n) => <button key={n} className="pill off" onClick={() => onToggle(n)}>{n}</button>)}
+              {disliked.map((n) => <button key={n} className="pill off" onClick={() => onRemoveDisliked(n)}>{n}</button>)}
             </div>
           </>}
-          <p className="note">We'll lean your words and names this way. Tap a brand to change your mind.</p>
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>

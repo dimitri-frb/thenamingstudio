@@ -8,7 +8,13 @@ export interface InspireBrand {
   style: "real word" | "invented" | "compound" | "classical" | "foreign" | "place" | "person" | "myth" | "initials";
   sector: string;
   why: string;
+  domain?: string; // the brand's site, for its logo on the swipe card
 }
+
+// A brand's logo, by domain (Google's favicon service: no key, no asset
+// redistribution on our side, and a graceful 404 when a logo is missing).
+export const brandLogo = (domain?: string, size = 128): string =>
+  domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}` : "";
 
 /* How each swipe-deck brand scores on the four taste axes (0-1), used by the
    02-b-s summary to read a founder's taste from their likes. Old deck members
@@ -33,6 +39,23 @@ export const BRAND_AXES: Record<string, { short: number; evoc: number; warm: num
   Mistral: { short: 0.8, evoc: 0.9, warm: 0.5, real: 0.8 },
   "Teenage Engineering": { short: 0.0, evoc: 0.7, warm: 0.7, real: 1.0 },
   Patagonia: { short: 0.3, evoc: 0.9, warm: 0.6, real: 0.8 },
+  Slack:   { short: 1.0, evoc: 0.6, warm: 0.5, real: 1.0 },
+  Arc:     { short: 1.0, evoc: 0.7, warm: 0.4, real: 1.0 },
+  Calm:    { short: 1.0, evoc: 0.7, warm: 1.0, real: 1.0 },
+  Superhuman: { short: 0.2, evoc: 0.8, warm: 0.4, real: 1.0 },
+  Nothing: { short: 0.7, evoc: 0.8, warm: 0.3, real: 1.0 },
+  Toast:   { short: 1.0, evoc: 0.6, warm: 0.9, real: 1.0 },
+  Innocent: { short: 0.6, evoc: 0.6, warm: 0.9, real: 1.0 },
+  Allbirds: { short: 0.6, evoc: 0.6, warm: 0.8, real: 0.8 },
+  "Back Market": { short: 0.4, evoc: 0.7, warm: 0.4, real: 1.0 },
+  Headspace: { short: 0.5, evoc: 0.7, warm: 0.8, real: 1.0 },
+  Monzo:   { short: 0.9, evoc: 0.3, warm: 0.6, real: 0.1 },
+  "Häagen-Dazs": { short: 0.3, evoc: 0.5, warm: 0.5, real: 0.0 },
+  Glossier: { short: 0.6, evoc: 0.6, warm: 0.7, real: 0.3 },
+  Klarna:  { short: 0.8, evoc: 0.4, warm: 0.5, real: 0.2 },
+  Asana:   { short: 0.8, evoc: 0.7, warm: 0.8, real: 0.8 },
+  Muji:    { short: 1.0, evoc: 0.6, warm: 0.7, real: 0.4 },
+  Starbucks: { short: 0.5, evoc: 0.7, warm: 0.6, real: 0.6 },
 };
 
 export const INSPIRE: InspireBrand[] = [
@@ -74,17 +97,56 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Oatly", style: "compound", sector: "Food", why: "The ingredient wearing a wink: personality where the category sells purity." },
   { name: "Mistral", style: "foreign", sector: "AI", why: "A named wind from the south of France: speed, force and geography in two syllables." },
   { name: "Teenage Engineering", style: "compound", sector: "Audio hardware", why: "Two familiar words whose collision creates mischief, subculture and total ownability." },
+  { name: "Superhuman", style: "real word", sector: "Email", why: "The customer's transformation as the name: an aspiration, not a feature." },
+  { name: "Nothing", style: "real word", sector: "Phones", why: "A counterintuitive ordinary word with enormous tonal confidence." },
+  { name: "Innocent", style: "real word", sector: "Drinks", why: "A virtue word with a wink: purity claimed with a smile, not a lab coat." },
+  { name: "Back Market", style: "compound", sector: "Refurbished tech", why: "The grey market renamed with a smirk: the shady made proudly official." },
+  { name: "Häagen-Dazs", style: "invented", sector: "Ice cream", why: "Completely fake Danish: invented foreignness as premium theatre." },
+  { name: "Glossier", style: "invented", sector: "Beauty", why: "Gloss bent through French: an accent as the whole brand attitude." },
+  { name: "Asana", style: "foreign", sector: "Productivity", why: "Sanskrit for a steady posture: calm imported whole from yoga." },
+  { name: "Muji", style: "foreign", sector: "Retail", why: "No-brand quality goods, compressed: anti-branding worn as a brand." },
+  { name: "Starbucks", style: "person", sector: "Coffee", why: "Moby-Dick's first mate: literature hiding in a coffee cup." },
 ];
 
-// The swipe deck (02·b): 10 brands, every card a genuinely different naming
-// move — tilted toward the modern and the daring, so a swipe says something
-// about taste, not about brand recognition.
-//   Stripe       - a concrete real word     Notion     - an abstract real word
-//   Liquid Death - two words at war         Figma      - a soft coinage
-//   Perplexity   - an intellectual word     Anduril    - literary myth
-//   Oatly        - an ingredient with wink  Mistral    - a named force of nature
-//   Teenage Engineering - a two-word character   Patagonia - a place as worldview
-export const SWIPE_DECK: InspireBrand[] = [
-  "Stripe", "Notion", "Liquid Death", "Figma", "Perplexity",
-  "Anduril", "Oatly", "Mistral", "Teenage Engineering", "Patagonia",
-].map((n) => INSPIRE.find((b) => b.name === n)!);
+// The swipe pool (02·b): 30 brands spanning every naming move, tilted toward
+// the modern and the daring. Each run DRAWS 8 — returning founders see fresh
+// cards, and every round teaches the taste axes something new.
+const POOL_DOMAINS: Record<string, string> = {
+  Stripe: "stripe.com", Notion: "notion.so", Slack: "slack.com", Arc: "arc.net", Calm: "calm.com",
+  Superhuman: "superhuman.com", Perplexity: "perplexity.ai", Nothing: "nothing.tech", Toast: "toasttab.com",
+  Innocent: "innocentdrinks.co.uk", "Liquid Death": "liquiddeath.com", Oatly: "oatly.com",
+  "Teenage Engineering": "teenage.engineering", Airbnb: "airbnb.com", Allbirds: "allbirds.com",
+  "Back Market": "backmarket.com", Headspace: "headspace.com", Figma: "figma.com", Google: "google.com",
+  Monzo: "monzo.com", "Häagen-Dazs": "haagen-dazs.com", Glossier: "glossier.com", Klarna: "klarna.com",
+  Mistral: "mistral.ai", Lego: "lego.com", Asana: "asana.com", Muji: "muji.com",
+  Anduril: "anduril.com", Patagonia: "patagonia.com", Starbucks: "starbucks.com",
+};
+export const SWIPE_POOL: InspireBrand[] = [
+  // ordinary words claimed whole
+  "Stripe", "Notion", "Slack", "Arc", "Calm", "Superhuman", "Perplexity", "Nothing", "Toast", "Innocent",
+  // two words with attitude
+  "Liquid Death", "Oatly", "Teenage Engineering", "Airbnb", "Allbirds", "Back Market", "Headspace",
+  // coinages with a shape
+  "Figma", "Google", "Monzo", "Häagen-Dazs", "Glossier", "Klarna",
+  // borrowed worlds
+  "Mistral", "Lego", "Asana", "Muji",
+  // myth, story, place
+  "Anduril", "Patagonia", "Starbucks",
+].map((n) => ({ ...INSPIRE.find((b) => b.name === n)!, domain: POOL_DOMAINS[n] }));
+
+export const DECK_SIZE = 8;
+// A fresh hand: shuffled, but never more than two cards of the same style,
+// so every round still spans genuinely different naming moves.
+export function drawDeck(n: number = DECK_SIZE): InspireBrand[] {
+  const pool = [...SWIPE_POOL].sort(() => Math.random() - 0.5);
+  const perStyle: Record<string, number> = {};
+  const out: InspireBrand[] = [];
+  for (const b of pool) {
+    if (out.length >= n) break;
+    if ((perStyle[b.style] || 0) >= 2) continue;
+    perStyle[b.style] = (perStyle[b.style] || 0) + 1;
+    out.push(b);
+  }
+  for (const b of pool) { if (out.length >= n) break; if (!out.includes(b)) out.push(b); }
+  return out;
+}

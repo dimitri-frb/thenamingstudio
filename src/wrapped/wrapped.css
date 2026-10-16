@@ -1872,3 +1872,33 @@
 .kadm .fcard.domcard .markdone { text-align: center; font-size: 12px; color: #8a887f; margin: 10px 0 2px; }
 .kadm .fcard.domcard .markdone button { background: none; border: none; font-family: inherit; font-size: 12px; color: #111; text-decoration: underline; cursor: pointer; padding: 0; }
 .kadm .fcard.domcard .acts { margin-top: 10px; }
+
+/* ═══ 02·b·s v2: draggable taste dials, editable brand pills, logos ═══ */
+.wr-bsum .tsub { font-size: 13.5px; color: var(--text3); margin: -12px 0 18px; }
+.wr-bsum .axes { background: linear-gradient(135deg, rgba(255, 158, 122, 0.10), rgba(201, 182, 255, 0.08) 45%, rgba(124, 156, 255, 0.10)); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 18px 22px 20px; margin-bottom: 24px; }
+.wr-bsum .axes .hdr { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.wr-bsum .axes .hdr .k { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.wr-bsum .axes .hdr .d { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); }
+.wr-bsum .ax { margin-bottom: 14px; }
+.wr-bsum .ax:last-child { margin-bottom: 2px; }
+.wr-bsum .ax .t { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.wr-bsum .ax .t b { font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+.wr-bsum .ax .t span { font-size: 13.5px; color: rgba(255, 255, 255, 0.45); }
+.wr-bsum .ax .sl { position: relative; height: 30px; }
+.wr-bsum .ax .sl .tick { position: absolute; left: 50%; top: 50%; width: 1.5px; height: 10px; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.28); pointer-events: none; }
+.wr-bsum .ax input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; margin: 0; background: none; cursor: pointer; }
+.wr-bsum .ax input[type="range"]:focus { outline: none; }
+.wr-bsum .ax input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #ff9e7a, #c9b6ff var(--p, 50%), rgba(255, 255, 255, 0.16) var(--p, 50%)); }
+.wr-bsum .ax input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; margin-top: -10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
+.wr-bsum .ax input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255, 79, 26, 0.6); }
+.wr-bsum .ax input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #ff9e7a, #c9b6ff var(--p, 50%), rgba(255, 255, 255, 0.16) var(--p, 50%)); }
+.wr-bsum .ax input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
+.wr-bsum .pill { display: inline-flex; align-items: center; gap: 7px; }
+.wr-bsum .pill.on i { font-style: normal; font-size: 11px; opacity: 0.45; }
+.wr-bsum .pill .pf { width: 16px; height: 16px; border-radius: 4px; object-fit: contain; }
+.wr-bsum .pill.add { background: none; border: 1.5px dashed rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.65); }
+.wr-bsum .pill.add input { background: none; border: none; outline: none; color: #fff; font-family: inherit; font-size: 14px; width: 130px; }
+.wr-bsum .pill.add input::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+/* the swipe card wears the brand's real logo above the name */
+.wr-swipe .card .blogo { width: 46px; height: 46px; border-radius: 11px; object-fit: contain; background: #fff; padding: 4px; box-sizing: border-box; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }

@@ -434,6 +434,25 @@ const BRAND_TRAITS: Record<string, string> = {
   Notion: "an abstract real word; intellectual, quiet",
   Slack: "a real word reclaimed; subversive, witty",
   Amazon: "a place as metaphor; grand, ambitious",
+  Arc: "a tiny real word implying trajectory; minimal, geometric",
+  Calm: "the promise as the name; serene, direct",
+  Superhuman: "the customer's transformation; aspirational, bold",
+  Perplexity: "an intellectual state claimed whole; curious, authoritative",
+  Nothing: "a contrarian ordinary word; deadpan, supremely confident",
+  Toast: "the industry's own warm word; human, convivial",
+  Innocent: "a virtue word with a wink; warm, playful honesty",
+  "Liquid Death": "two ordinary words at war; provocative, unforgettable",
+  Oatly: "ingredient plus a wink; friendly, irreverent",
+  "Teenage Engineering": "two familiar words colliding; mischievous, subcultural",
+  "Back Market": "the grey market renamed with a smirk; cheeky, confident",
+  Headspace: "two plain words naming a territory; calm, literal-poetic",
+  "Häagen-Dazs": "invented fake-foreign sound; premium theatre",
+  Glossier: "a word bent through French; chic, modern",
+  Mistral: "a named wind; fast, forceful, geographic",
+  Asana: "Sanskrit steady posture; calm imported from another world",
+  Muji: "an anti-brand phrase compressed; restrained, principled",
+  Anduril: "literary myth; forceful, storied, epic",
+  Starbucks: "a literary character; narrative hiding in plain sight",
 };
 
 // Founder refinements from the "refine your brief" page, folded into prompts.
@@ -464,6 +483,16 @@ const prefLine = (p: any): string => {
     if (liked.length) out += `\nThey LIKED: ${liked.map((n) => n + why(n)).join("; ")}.`;
     if (disliked.length) out += `\nThey REJECTED: ${disliked.map((n) => n + why(n)).join("; ")}.`;
     out += `\nIf their likes lean complex and layered (classical roots, myth, invented-with-meaning), give them erudite, layered coinages. If they lean plain and concrete (real words, literal compounds), keep it grounded. Mirror their sophistication level, not just their styles.`;
+  }
+  // The taste dials (02·b·s): 1.0 = fully the first pole, 0.0 = fully the second.
+  const ax = p.axes;
+  if (ax && typeof ax === "object") {
+    const side = (v: any, a: string, b: string) => {
+      const n = Number(v);
+      return !isFinite(n) ? "" : n >= 0.66 ? `clearly ${a}` : n <= 0.34 ? `clearly ${b}` : `balanced ${a}/${b}`;
+    };
+    const dials = [side(ax.short, "SHORT", "LONGER"), side(ax.warm, "WARM", "COOL"), side(ax.evoc, "EVOCATIVE", "DESCRIPTIVE"), side(ax.real, "REAL-WORD", "INVENTED")].filter(Boolean);
+    if (dials.length) out += `\nTASTE DIALS the founder set by hand — weight the set toward them: ${dials.join("; ")}.`;
   }
   return out ? out + "\n" : "";
 };
