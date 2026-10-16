@@ -56,6 +56,8 @@ export const BRAND_AXES: Record<string, { short: number; evoc: number; warm: num
   Asana:   { short: 0.8, evoc: 0.7, warm: 0.8, real: 0.8 },
   Muji:    { short: 1.0, evoc: 0.6, warm: 0.7, real: 0.4 },
   Starbucks: { short: 0.5, evoc: 0.7, warm: 0.6, real: 0.6 },
+  Runway:  { short: 0.7, evoc: 0.9, warm: 0.5, real: 1.0 },
+  "Red Bull": { short: 0.7, evoc: 0.9, warm: 0.3, real: 1.0 },
 };
 
 export const INSPIRE: InspireBrand[] = [
@@ -106,6 +108,8 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Asana", style: "foreign", sector: "Productivity", why: "Sanskrit for a steady posture: calm imported whole from yoga." },
   { name: "Muji", style: "foreign", sector: "Retail", why: "No-brand quality goods, compressed: anti-branding worn as a brand." },
   { name: "Starbucks", style: "person", sector: "Coffee", why: "Moby-Dick's first mate: literature hiding in a coffee cup." },
+  { name: "Runway", style: "real word", sector: "AI video", why: "A place where things take off: preparation, speed and show in one picture." },
+  { name: "Red Bull", style: "compound", sector: "Energy drinks", why: "Two blunt words fused into pure energy imagery: an animal as a promise." },
 ];
 
 // The swipe pool (02·b): 30 brands spanning every naming move, tilted toward
@@ -113,9 +117,9 @@ export const INSPIRE: InspireBrand[] = [
 // cards, and every round teaches the taste axes something new.
 const POOL_DOMAINS: Record<string, string> = {
   Stripe: "stripe.com", Notion: "notion.so", Slack: "slack.com", Arc: "arc.net", Calm: "calm.com",
-  Superhuman: "superhuman.com", Perplexity: "perplexity.ai", Nothing: "nothing.tech", Toast: "toasttab.com",
+  Superhuman: "superhuman.com", Perplexity: "perplexity.ai", Nothing: "nothing.tech", Runway: "runwayml.com",
   Innocent: "innocentdrinks.co.uk", "Liquid Death": "liquiddeath.com", Oatly: "oatly.com",
-  "Teenage Engineering": "teenage.engineering", Airbnb: "airbnb.com", Allbirds: "allbirds.com",
+  "Red Bull": "redbull.com", Airbnb: "airbnb.com", Allbirds: "allbirds.com",
   "Back Market": "backmarket.com", Headspace: "headspace.com", Figma: "figma.com", Google: "google.com",
   Monzo: "monzo.com", "Häagen-Dazs": "haagen-dazs.com", Glossier: "glossier.com", Klarna: "klarna.com",
   Mistral: "mistral.ai", Lego: "lego.com", Asana: "asana.com", Muji: "muji.com",
@@ -123,9 +127,9 @@ const POOL_DOMAINS: Record<string, string> = {
 };
 export const SWIPE_POOL: InspireBrand[] = [
   // ordinary words claimed whole
-  "Stripe", "Notion", "Slack", "Arc", "Calm", "Superhuman", "Perplexity", "Nothing", "Toast", "Innocent",
+  "Stripe", "Notion", "Slack", "Arc", "Calm", "Superhuman", "Perplexity", "Nothing", "Runway", "Innocent",
   // two words with attitude
-  "Liquid Death", "Oatly", "Teenage Engineering", "Airbnb", "Allbirds", "Back Market", "Headspace",
+  "Liquid Death", "Oatly", "Red Bull", "Airbnb", "Allbirds", "Back Market", "Headspace",
   // coinages with a shape
   "Figma", "Google", "Monzo", "Häagen-Dazs", "Glossier", "Klarna",
   // borrowed worlds

@@ -453,6 +453,8 @@ const BRAND_TRAITS: Record<string, string> = {
   Muji: "an anti-brand phrase compressed; restrained, principled",
   Anduril: "literary myth; forceful, storied, epic",
   Starbucks: "a literary character; narrative hiding in plain sight",
+  Runway: "a visual metaphor for takeoff; dynamic, cinematic",
+  "Red Bull": "two blunt words fused into energy; primal, direct",
 };
 
 // Founder refinements from the "refine your brief" page, folded into prompts.
