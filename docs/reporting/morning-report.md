@@ -17,14 +17,14 @@ when they aren't obvious.
 *FUNNEL*
 {clicks} clicks                 €{cpc}
 → {n} typed a brief  {%} ({avg}%🔻) · €{cum}
-→ {n} signed up      {%} ({avg}%🟢) · €{cum}
+→ {n} signed up      {%} ({avg}%🔼) · €{cum}
 → {n} brief          {%} ({avg}%) · €{cum}
 → {n} words          {%} ({avg}%🔻) · €{cum}
 → {n} names          {%} ({avg}%🔻) · €{cum}
-→ {n} domain         {%} ({avg}%🟢) · €{cum}
+→ {n} domain         {%} ({avg}%🔼) · €{cum}
 → {n} completed      {%}
 
-Inside each bracket, right after the average: 🟢 when the day's step
+Inside each bracket, right after the average: 🔼 when the day's step
 conversion is better than the 7-day average, 🔻 when it's worse, nothing
 when they're equal. No threshold — it's a simple direction marker.
 
