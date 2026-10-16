@@ -19,10 +19,15 @@ when they aren't obvious.
 → {n} typed a brief  {%} ({avg}%) · €{cum}
 → {n} signed up      {%} ({avg}%) · €{cum}
 → {n} brief          {%} ({avg}%) · €{cum}
-→ {n} words          {%} ({avg}%) · €{cum}
+→ {n} words          {%} ({avg}%) · €{cum} 🔻
 → {n} names          {%} ({avg}%) · €{cum}
 → {n} domain         {%} ({avg}%) · €{cum}
 → {n} completed      {%}
+
+A line ends with 🔻 when the day's step conversion sits well under the 7-day
+average: at least 20% below it relatively AND at least 5 points absolute
+(e.g. 60% against an average of 80%). It marks a real drop, not noise —
+most days have no 🔻 at all.
 
 *KPIs* (vs 7d avg)
 Click → domain    {x}% ({avg}%) · €{x} (€{avg}) per domain
