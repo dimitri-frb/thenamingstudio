@@ -18,7 +18,6 @@ when they aren't obvious.
 {clicks} clicks                 €{cpc}
 → {n} typed a brief  {%} ({avg}%🔴) · €{cum}
 → {n} signed up      {%} ({avg}%🟢) · €{cum}
-→ {n} brief          {%} ({avg}%) · €{cum}
 → {n} words          {%} ({avg}%🔴) · €{cum}
 → {n} names          {%} ({avg}%🔴) · €{cum}
 → {n} domain         {%} ({avg}%🟢) · €{cum}
@@ -47,7 +46,7 @@ Rules the format settled on:
   is cumulative spend divided by the people who reached that stage.
 - No per-ad-group click breakdown; no HEARD/BEST/DO sections.
 - "typed a brief" includes gate abandoners (visible since the Oct 15
-  tracking fix); "signed up" is accounts.
+  tracking fix); "signed up" is accounts — it lands straight on the brief page, so there is no separate brief line (it was always 100%).
 - A day is a calendar day in Europe/Paris (UTC+2): KV window
   `Date.UTC(y,m,d-1,22) → Date.UTC(y,m,d,22)`.
 
