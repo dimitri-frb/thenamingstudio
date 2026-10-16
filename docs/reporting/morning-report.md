@@ -16,12 +16,12 @@ when they aren't obvious.
 
 *FUNNEL*
 {clicks} clicks                 €{cpc}
-→ {n} typed a brief  {%} · €{cum}
-→ {n} signed up      {%} · €{cum}
-→ {n} brief          {%} · €{cum}
-→ {n} words          {%} · €{cum}
-→ {n} names          {%} · €{cum}
-→ {n} domain         {%} · €{cum}
+→ {n} typed a brief  {%} ({avg}%) · €{cum}
+→ {n} signed up      {%} ({avg}%) · €{cum}
+→ {n} brief          {%} ({avg}%) · €{cum}
+→ {n} words          {%} ({avg}%) · €{cum}
+→ {n} names          {%} ({avg}%) · €{cum}
+→ {n} domain         {%} ({avg}%) · €{cum}
 → {n} completed      {%}
 
 *KPIs* (vs 7d avg)
