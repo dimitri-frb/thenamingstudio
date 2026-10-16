@@ -168,7 +168,9 @@ const spent = (f: Flow) => {
 };
 const fdate = (t: number) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-type Range = 1 | 7 | 30 | 0;
+// "today"/"yday" are calendar days in the admin's own timezone; a string is a
+// picked date ("YYYY-MM-DD"); numbers are rolling windows; 0 is everything.
+type Range = "today" | "yday" | 7 | 30 | 0 | string;
 
 export function AdminPage() {
   const me = loadSession()?.user || (new URLSearchParams(window.location.search).has("demo") ? { name: "Dimitri Farber", email: "dimitri@dfginvest.fr" } as any : null);
@@ -210,9 +212,20 @@ export function AdminPage() {
 
   const built = useMemo(() => (items ? buildFlows(items) : { flows: [], gated: [] }), [items]);
   const flows = built.flows;
-  const since = range === 0 ? 0 : Date.now() - range * 86400000;
-  const inRange = flows.filter((f) => f.last >= since);
-  const gatedN = built.gated.filter((t) => t >= since).length;
+  const [from, to] = ((): [number, number] => {
+    const now = Date.now();
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    const t0 = d0.getTime();
+    if (range === "today") return [t0, now];
+    if (range === "yday") return [t0 - 86400000, t0];
+    if (range === 0) return [0, now];
+    if (typeof range === "number") return [now - range * 86400000, now];
+    const d = new Date(range + "T00:00:00"); // a picked calendar day
+    const s = isNaN(d.getTime()) ? t0 : d.getTime();
+    return [s, s + 86400000];
+  })();
+  const inRange = flows.filter((f) => f.last >= from && f.last < to);
+  const gatedN = built.gated.filter((t) => t >= from && t < to).length;
 
   const kStarted = inRange.length;
   const kNamed = inRange.filter((f) => f.name).length;
@@ -283,9 +296,16 @@ export function AdminPage() {
         <span className="brand"><span className="bt">NAME NAME</span><em>Admin</em></span>
         <input className="search" placeholder="Search email, name, brief, final name…" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="ranges">
-          {([["Today", 1], ["7d", 7], ["30d", 30], ["All", 0]] as const).map(([l, v]) => (
+          {([["Today", "today"], ["Yesterday", "yday"], ["7d", 7], ["30d", 30], ["All", 0]] as const).map(([l, v]) => (
             <button key={l} className={range === v ? "on" : ""} onClick={() => setRange(v as Range)}>{l}</button>
           ))}
+          <input
+            type="date" className={"day" + (typeof range === "string" && range !== "today" && range !== "yday" ? " on" : "")}
+            value={typeof range === "string" && range !== "today" && range !== "yday" ? range : ""}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => e.target.value && setRange(e.target.value)}
+            title="Pick a day"
+          />
         </span>
         <button className="csv" onClick={exportCsv}>↓ CSV</button>
         <AvatarMenu me={me} isAdmin current="admin" onLogout={() => { saveSession(null); window.location.assign(BASE()); }} />

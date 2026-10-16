@@ -671,12 +671,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` + prefLine(b.payload?.prefs) +
     `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
     `Coin exactly 6 brand names built from and around that material. Every one must be a name you would stake the studio's reputation on: no filler, no near-duplicates, nothing generic.\n\n` +
+    `THE SECOND LEVEL — before coining, state privately what this founder SELLS versus what people GET (they sell organization but create clarity; sell tools but create agency; sell a service but create belonging). Name the second level, never the mechanism.\n\n` +
     `WHAT GREAT LOOKS LIKE:\n` +
-    `- Short: 1 to 3 syllables, ideally 4 to 8 letters. Sayable once, spellable from hearing.\n` +
-    `- Original and evocative: it suggests a feeling tied to this brief, never literally describes the product.\n` +
+    `- Short: usually 1 to 3 syllables, 4 to 9 letters, sayable once and spellable from hearing. ONE of the six may be longer — a confident real word or a two-word phrase — when it carries a bigger idea.\n` +
+    `- Original and evocative: it suggests the transformation this brief promises, never literally describes the product.\n` +
+    `- A point of view: the name hints at what this brand believes or refuses — presence, not just pleasantness.\n` +
     `- Ownable: distinctive enough to be a real trademark.\n` +
     `- Sound: real mouthfeel and rhythm.\n` +
-    `- DEPTH: every name must work on two levels — an immediate sound and feeling, and a discoverable story underneath (an etymology, a metaphor, a reference) that rewards the founder for asking "why this word?". A name whose whole story is "it sounds nice" is a failure.\n\n` +
+    `- COVER TEST: imagine the word alone on a magazine cover or a shop sign, in plain black type, with no category label beside it. If it needs the explainer, keep searching.\n` +
+    `- DEPTH: every name must work on two levels — an immediate sound and feeling, and a discoverable story underneath (an etymology, a metaphor, a reference) that rewards the founder for asking "why this word?". The story ENRICHES the name; it never rescues it. A name whose whole story is "it sounds nice" is a failure.\n` +
+    `- TEMPERATURE: match the register to the category. Trust-sensitive businesses (money, health, law, kids) want steady conviction, not bravado; challenger consumer brands can carry real attitude. Don't force one register on every brief.\n\n` +
     `TWENTY GREAT NAMES, AND THE MOVE THAT FOUND EACH ONE — work exactly like this, from material to move to name (never copy or echo these):\n` +
     `1. Stripe (payments) - a concrete object, the card's magnetic stripe, doubling as a clean line: real word repurposed.\n` +
     `2. Spotify (music) - "spot" fused with "identify" into one smooth coinage.\n` +
@@ -703,10 +707,11 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       const picked = (Array.isArray(b.payload?.prefs?.style) ? b.payload.prefs.style : b.payload?.prefs?.style ? [b.payload.prefs.style] : []).filter((x: string) => x && x !== "Any");
       return picked.length
         ? `TECHNIQUES — the founder asked for: ${picked.join(", ")}. Make MOST of the six match those (cover each picked style at least once), and include one or two from other styles for range.\n\n`
-        : `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least one REAL WORD repurposed, one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style.\n\n`;
+        : `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least TWO REAL WORDS repurposed (a familiar word in a surprising context is the strongest move — Stripe, Oracle, Slack — and the most underused), one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style. A concrete OBJECT or SYMBOL that embodies the mission (the Monocle move) counts as a real word and often beats an abstraction.\n\n`;
     })()) +
     `HARD RULES:\n` +
     `- No tired startup tells: no -ly / -ify / -io / -ai / -hub / -fy endings, no dropped-vowel tricks.\n` +
+    `- No empty luxury syllables: a coinage that is only smooth sound with no idea inside (the Aluvia / Sorelia / Veliora family) is filler, however pretty. If an invented name's "roots" line can't name a real source, cut it.\n` +
     `- Never output a starred word verbatim or trivially capitalised: every name is a NEW coinage built FROM the material.\n` +
     `- Nothing unpronounceable, nothing a famous company already owns.\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
