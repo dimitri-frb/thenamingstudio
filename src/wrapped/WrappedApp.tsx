@@ -5,7 +5,7 @@
 import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
@@ -216,10 +216,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [persFontQ, setPersFontQ] = useState("");
   const [poll, setPoll] = useState<null | "exit" | "idle">(null);
   const pollShown = useRef(false);
-  // ── 05 Claim: the story fold, the endings sheet, the GoDaddy sheet, 05·✓ ──
+  // ── 05 Claim: the story fold, the endings sheet, the registrar sheet, 05·✓ ──
   const [claimStory, setClaimStory] = useState(false);
   const [claimSheet, setClaimSheet] = useState<null | "tld" | "go">(null);
-  const [claimDone, setClaimDone] = useState(false); // 05·✓, after Open GoDaddy
+  const [claimDone, setClaimDone] = useState(false); // 05·✓, after the buy-now jump
   const [domBought, setDomBought] = useState(false); // user-set only ("Mark as done")
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
@@ -636,11 +636,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, picked]);
 
+  // The gate moved AFTER the wow: everyone sees their brief wrapped (02)
+  // first — it's pre-charged while they type, so it costs nothing — and the
+  // one-tap sign-up only appears when they ask for the words.
   function startFromLanding() {
-    if (!user && !test) { setBriefGate(true); return; }
     enterFlow();
   }
-  function enterFlow(justSignedUp = false) {
+  function enterFlow() {
     // The landing pre-charges the concept (and the words) under the page's
     // process id while the founder is still typing. Entering the flow KEEPS
     // that id, so the pre-charge, the gate's sign-up and the run itself land
@@ -649,11 +651,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const precharged = conceptFor.current === s || conceptReq.current.startsWith(s + "|");
     if (!test && !precharged) newProcess();
     if (!test) startedAt.current = Date.now();
-    if (justSignedUp) track("signup", {}); // same process as the search below: one row per user in the admin
     track("search", { sentence: s, chips });
     setStep("brief");
     pushUrl("brief");
-    persist();
+    if (user) persist(); // anonymous runs save to the account once they sign up
   }
 
   // The personalize draft starts as a faithful translation of the chosen logo.
@@ -716,7 +717,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
   // Each page entry is tracked: generation now pre-charges ahead of the gate,
   // so only these events prove the founder actually SAW a step.
-  function toStep(s: Step) { if (s !== step) track("page", { to: s }); setStep(s); pushUrl(s); window.scrollTo(0, 0); }
+  const afterGate = useRef<Step | null>(null);
+  function toStep(s: Step) {
+    // The sign-up gate (00·s) sits between the wrapped brief and the words:
+    // an anonymous founder asking for brands/words signs up first, then lands
+    // exactly where they were heading. loadSession() is the synchronous truth
+    // (the React user state lags one render behind the Google callback).
+    if (!test && !loadSession()?.user && ["brands", "brandsum", "words", "names"].includes(s)) {
+      afterGate.current = s;
+      setBriefGate(true);
+      return;
+    }
+    if (s !== step) track("page", { to: s });
+    setStep(s); pushUrl(s); window.scrollTo(0, 0);
+  }
 
   useEffect(() => { // browser back/forward walks the flow
     const onPop = (e: PopStateEvent) => {
@@ -853,9 +867,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     toStep(to);
   }
 
-  // 05·r → GoDaddy: just a link out, in a new tab. No cart, no verification.
+  // 05·r → the registrar: just a link out, in a new tab. No cart, no verification.
   // This tab switches to 05·✓ so the founder lands back on "it's yours".
-  function openGoDaddy() {
+  function openRegistrar() {
     const d = claimDom;
     if (!d) return;
     window.open(d.offerUrl || registrarUrl(d.domain), "_blank", "noopener");
@@ -1379,7 +1393,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <span className="okball pop">✓</span>
             <h1 className="wr-h pop" style={{ fontSize: 42, marginBottom: 8 }}>{picked.name} is yours.</h1>
             <p className="mono" style={{ color: "var(--text3)", letterSpacing: "0.04em" }}>{claimDom?.domain}</p>
-            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase directly on GoDaddy once you are done.</p>
+            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase at the registrar whenever you're ready.</p>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 320 }} onClick={() => toStep("reveal")}>Now, your brand →</button>
@@ -1458,7 +1472,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   )}
                 </div>
                 <button className="wr-btnor" onClick={() => keepName()}>Keep {picked.name}, build the brand →</button>
-                <button className="wr-link golink" onClick={() => setClaimSheet("go")}>Buy {claimDom?.domain || "it"} now on GoDaddy ↗</button>
+                <button className="wr-link golink" onClick={() => setClaimSheet("go")}>Buy {claimDom?.domain || "it"} now ↗</button>
               </div>
             </div>
           </div>
@@ -1467,10 +1481,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <span className="wr-hint mla khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
           </div>
           {claimSheet === "go" && claimDom && (
-            <GoDaddySheet
+            <RegistrarSheet
               domain={claimDom.domain}
               price={claimDom.price || claimDom.offerPrice || ""}
-              onOpen={openGoDaddy}
+              onOpen={openRegistrar}
               onLater={() => keepName()}
               onClose={() => setClaimSheet(null)}
             />
@@ -1886,13 +1900,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 const namePill = <span className="pill" key="n"><i className="ok">✓</i> Name <b>{picked.name}</b></span>;
                 const brandPill = <span className="pill" key="b"><i className={logoSel || steps.book === "done" || steps.socials === "done" ? "ok" : "no"}>{logoSel || steps.book === "done" || steps.socials === "done" ? "✓" : "·"}</i> Brand <b>logo · book · socials</b></span>;
                 // The domain is the one OPEN step until the founder buys it on
-                // GoDaddy (and tells us so — we never verify).
+                // the registrar (and tells us so — we never verify).
                 const domPill = domBought || !dm ? (
                   <span className="pill" key="d"><i className={steps.domain === "done" ? "ok" : "no"}>{steps.domain === "done" ? "✓" : "·"}</i> Domain <b>{dm || "later"}</b></span>
                 ) : (
                   <span className="pill last" key="d">
                     <i className="ring" /> Domain · last step <b className="mono">{dm} · not bought yet</b>
-                    <button className="gd" onClick={() => { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: "done" }); }}>GoDaddy ↗</button>
+                    <button className="gd" onClick={() => { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: "done" }); }}>Buy ↗</button>
                   </span>
                 );
                 const order = isMobile ? [namePill, domPill, brandPill] : [namePill, brandPill, domPill];
@@ -1926,7 +1940,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <BriefGateModal
           brief={sentence.trim()}
           onClose={() => setBriefGate(false)}
-          onUser={(u) => { setUser(u); setBriefGate(false); enterFlow(true); }}
+          onUser={(u) => {
+            setUser(u);
+            setBriefGate(false);
+            track("signup", {}); // same process as the run: one row per user in the admin
+            persist();
+            const t = afterGate.current || "brands";
+            afterGate.current = null;
+            toStep(t);
+          }}
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
@@ -2115,6 +2137,12 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
         </button>
         <div className="links">
           <button onClick={shuffle}>↻ Shuffle words</button>
+          <button onClick={() => {
+            // The lazy path is the mobile path: top up to five with the cloud's
+            // strongest words (pool order interleaves the six angles) and go.
+            const picks = cloud.filter((w) => !starred.some((s) => s.w === w.w)).slice(0, Math.max(0, 5 - starred.length));
+            onContinue(picks, "pick-for-me");
+          }}>Not sure? Pick for me</button>
         </div>
       </div>
       {sheet && (
@@ -2239,13 +2267,13 @@ function DomEndingsSheet({ name, rows, current, bestIdx, onUse, onClose }: {
   );
 }
 
-/* ── 05·r: the GoDaddy hand-off — three honest steps, then just a link out ── */
-function GoDaddySheet({ domain, price, onOpen, onLater, onClose }: {
+/* ── 05·r: the registrar hand-off — three honest steps, then just a link out ── */
+function RegistrarSheet({ domain, price, onOpen, onLater, onClose }: {
   domain: string; price: string; onOpen: () => void; onLater: () => void; onClose: () => void;
 }) {
   const steps: [string, string][] = [
-    [`GoDaddy opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
-    ["Pay on GoDaddy", "Log in or sign up there. Skip any “get the app” prompt."],
+    [`The registrar opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
+    ["Pay there", "Log in or sign up on their site. It takes a minute."],
     ["Come back to this tab", "Your brand is waiting right where you left it."],
   ];
   return (
@@ -2253,14 +2281,14 @@ function GoDaddySheet({ domain, price, onOpen, onLater, onClose }: {
       <div className="wr-dsheet go" onClick={(e) => e.stopPropagation()}>
         <span className="grab" />
         <p className="k mono">{domain.toUpperCase()}{price ? ` · ${price.toUpperCase()}/YR` : ""}</p>
-        <h3>You'll buy it on GoDaddy.</h3>
+        <h3>You'll buy it on the registrar's site.</h3>
         <p className="sub">It opens in a new tab. We can't see what happens there, so:</p>
         <div className="gsteps">
           {steps.map(([h, s], i) => (
             <div key={h} className="gstep"><i>{i + 1}</i><span><b>{h}</b><em>{s}</em></span></div>
           ))}
         </div>
-        <button className="wr-btnor" onClick={onOpen}>Open GoDaddy ↗</button>
+        <button className="wr-btnor" onClick={onOpen}>Buy {domain} ↗</button>
         <button className="wr-btn2 later" onClick={onLater}>Later — keep building my brand</button>
         <p className="fn">We'll remind you at the end, and it stays in your account.</p>
       </div>
@@ -2564,6 +2592,15 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
     onSubmit();
   };
 
+  // Message match: the headline mirrors the ad group that brought them here
+  // (utm_content, kept by first-touch attribution).
+  const TAGS: Record<string, [string, string]> = {
+    "business-name": ["Name your business in minutes.", "With a domain you can actually own."],
+    "brand-startup": ["A startup name that sticks.", "Real naming craft, not mashups."],
+    "name-domain": ["Every name comes with its domain.", "Checked live, before you fall in love."],
+  };
+  const tag = TAGS[attrib().content] || ["Not a generator, a perspective.", "The name you'll be known as."];
+
   return (
     <div className="ka-land" ref={frameRef}>
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
@@ -2578,7 +2615,7 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
         <span className="lang">EN</span>
       </div>
       <div className="hero">
-        <p className="tag">Not a generator, a perspective.<br />The name you'll be known as.</p>
+        <p className="tag">{tag[0]}<br />{tag[1]}</p>
       </div>
       <div className="wmrow"><span className="wm" ref={wmRef}>NAME NAME</span></div>
       <form className="brief" onSubmit={submit}>

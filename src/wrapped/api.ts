@@ -1,6 +1,7 @@
 // The Wrapped flow's API layer: talks to the Cloudflare Worker (generation,
 // domains, accounts, tracking), with graceful local fallbacks so the flow never
 // hard-breaks, and a full sample dataset for ?test mode.
+import { convClaim, convSignup } from "./gtag";
 
 // The account's workers.dev subdomain is "kairosfund" (renamed from
 // "dimitri-4dd" in Sept 2026; the old host is NXDOMAIN).
@@ -288,6 +289,10 @@ export function track(event: string, payload: Record<string, unknown> = {}): voi
     const u = loadSession()?.user;
     const meta = { ...attrib(), email: u?.email || "", uname: u?.name || "" };
     void post({ phase: "track", event, payload: { ...payload, meta } });
+    // Google Ads conversions ride the same two moments (no-ops until the
+    // AW ids are configured in gtag.ts).
+    if (event === "signup") convSignup();
+    if (event === "domain") convClaim();
   } catch { /* best effort */ }
 }
 
@@ -306,10 +311,12 @@ export function fetchDomainBoard(name: string, doms?: string[]): Promise<DomainB
   return p;
 }
 
-// GoDaddy is only a link out: their domain search, pre-filled with the exact
+// The registrar is only a link out: its search, pre-filled with the exact
 // domain. No cart pre-fill, no affiliate checkout, no purchase verification.
+// We link the registrar whose live prices we display (Porkbun), so the number
+// a founder sees is the number at checkout — and we never NAME it in the UI.
 export const registrarUrl = (domain: string) =>
-  `https://www.godaddy.com/domainsearch/find?domainToCheck=${encodeURIComponent(domain)}`;
+  `https://porkbun.com/checkout/search?q=${encodeURIComponent(domain)}`;
 
 /* ── accounts ── */
 const SESS_KEY = "ns.session";

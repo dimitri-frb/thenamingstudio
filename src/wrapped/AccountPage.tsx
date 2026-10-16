@@ -118,7 +118,7 @@ function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: bool
     : s.starred?.length ? `${s.starred.length} words starred`
     : "Just started";
   // 10·h: the domain is claimed in the studio but not bought yet — the card
-  // leads with the GoDaddy link, and ONLY the user can mark it done.
+  // leads with the buy link, and ONLY the user can mark it done.
   if (s.domain && s.steps?.domain === "done" && !s.bought) {
     return (
       <div className="fcard domcard">
@@ -135,7 +135,7 @@ function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: bool
         <a
           className="btn orange" href={registrarUrl(s.domain)} target="_blank" rel="noopener noreferrer"
           onClick={() => track("godaddy", { domain: s.domain, from: "account" })}
-        >Buy {s.domain} on GoDaddy ↗</a>
+        >Buy {s.domain} ↗</a>
         <p className="markdone">Already bought it? <button onClick={onBought}>Mark as done</button></p>
         <div className="acts">
           <a className="btn ghost" href={resume(completed ? "book" : undefined)}>{completed ? "Open brand book" : "Continue →"}</a>
