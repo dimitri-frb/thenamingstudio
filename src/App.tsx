@@ -25,7 +25,7 @@ export default function App() {
   const shareMatch = path.match(/(?:^|\/)s\/([a-z0-9-]{3,60})\/?$/);
   if (shareMatch) return <Suspense fallback={null}><SharePage id={shareMatch[1]} /></Suspense>;
 
-  if (is("admin") || /(?:^|\/)admin\/users\/?$/.test(path)) return <Suspense fallback={null}><AdminPage /></Suspense>;
+  if (is("admin") || /(?:^|\/)admin\/(users|analysis|feedback)\/?$/.test(path)) return <Suspense fallback={null}><AdminPage /></Suspense>;
   if (is("settings")) return <Suspense fallback={null}><AccountPage initialTab="settings" /></Suspense>;
   if (is("account")) return <Suspense fallback={null}><AccountPage /></Suspense>;
 

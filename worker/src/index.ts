@@ -32,6 +32,7 @@ export interface Env {
   GODADDY_KEY?: string;    // optional: GoDaddy API key (buy-now prices for for-sale domains)
   GODADDY_SECRET?: string; // optional: GoDaddy API secret (paired with GODADDY_KEY)
   GOOGLE_CLIENT_ID?: string; // optional: Google OAuth Web client id (verifies sign-in tokens)
+  ADS_KEY?: string;        // optional: shared secret the Google Ads Script sends with daily spend
 }
 
 const MODEL = {
@@ -134,7 +135,48 @@ export default {
     if (phase === "adminlog") {
       const u = await adminUser(env, body?.token);
       if (!u) return json({ error: "not allowed" }, env, 403);
-      return json({ items: await logItems(env, Math.min(1000, Math.max(1, Number(body?.limit) || 900))) }, env);
+      // One Worker request may touch at most ~1000 KV keys, but the log now
+      // keeps the whole history: the page returns a cursor and the admin
+      // keeps calling until it has everything.
+      const r = await logItems(env, Math.min(900, Math.max(1, Number(body?.limit) || 900)), typeof body?.cursor === "string" ? body.cursor : undefined);
+      return json(r, env);
+    }
+
+    // Daily ad spend, pushed by the Google Ads Script (docs/ads/ads-script.js)
+    // with a shared secret. One KV entry per day, rows merged by channel +
+    // campaign so re-sends of the same window just refresh the numbers.
+    if (phase === "adspush") {
+      if (!env.LOG || !env.ADS_KEY || String(body?.key || "") !== env.ADS_KEY) return json({ error: "not allowed" }, env, 403);
+      const days = Array.isArray(body?.payload?.days) ? body.payload.days.slice(0, 120) : [];
+      let saved = 0;
+      for (const d of days) {
+        const date = String(d?.date || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        const row = {
+          channel: String(d?.channel || "Google Ads").slice(0, 40),
+          campaign: String(d?.campaign || "").slice(0, 80),
+          cost: Math.max(0, Number(d?.cost) || 0),
+          clicks: Math.max(0, Math.round(Number(d?.clicks) || 0)),
+          impressions: Math.max(0, Math.round(Number(d?.impressions) || 0)),
+        };
+        const key = `ads:${date}`;
+        let rows: any[] = [];
+        try { rows = JSON.parse((await env.LOG.get(key)) || "[]"); } catch { rows = []; }
+        rows = rows.filter((r) => !(r?.channel === row.channel && r?.campaign === row.campaign));
+        rows.push(row);
+        await env.LOG.put(key, JSON.stringify(rows)); // no TTL: spend history is forever
+        saved++;
+      }
+      return json({ ok: true, saved }, env);
+    }
+    if (phase === "adminads") {
+      const u = await adminUser(env, body?.token);
+      if (!u) return json({ error: "not allowed" }, env, 403);
+      const list = await env.LOG!.list({ prefix: "ads:", limit: 1000 });
+      const days = (await Promise.all(list.keys.map(async (k) => {
+        try { return { date: k.name.slice(4), rows: JSON.parse((await env.LOG!.get(k.name)) || "[]") }; } catch { return null; }
+      }))).filter(Boolean);
+      return json({ days }, env);
     }
     if (phase === "admin-roles") {
       const u = await adminUser(env, body?.token);
@@ -382,18 +424,20 @@ async function writeLog(env: Env, phase: string, process: unknown, input: unknow
     const rev = (1e15 - at).toString().padStart(16, "0");
     const key = `log:${rev}:${Math.random().toString(36).slice(2, 8)}`;
     const proc = typeof process === "string" ? process : "";
-    await env.LOG.put(key, JSON.stringify({ at, process: proc, phase, source: "live", input, output }), { expirationTtl: 60 * 60 * 24 * 60 });
+    // No TTL: the log is the company's history — analysis reads it forever.
+    await env.LOG.put(key, JSON.stringify({ at, process: proc, phase, source: "live", input, output }));
   } catch { /* logging is best-effort */ }
 }
 
-async function logItems(env: Env, limit: number): Promise<unknown[]> {
-  if (!env.LOG) return [];
-  const list = await env.LOG.list({ prefix: "log:", limit });
-  return (await Promise.all(list.keys.map(async (k) => {
+async function logItems(env: Env, limit: number, cursor?: string): Promise<{ items: unknown[]; cursor: string | null }> {
+  if (!env.LOG) return { items: [], cursor: null };
+  const page = await env.LOG.list({ prefix: "log:", limit, cursor });
+  const items = (await Promise.all(page.keys.map(async (k) => {
     const v = await env.LOG!.get(k.name);
     if (!v) return null;
     try { return { id: k.name, ...JSON.parse(v) }; } catch { return null; }
   }))).filter(Boolean);
+  return { items, cursor: page.list_complete ? null : page.cursor };
 }
 
 async function readLog(env: Env, url: URL): Promise<Response> {
@@ -401,7 +445,7 @@ async function readLog(env: Env, url: URL): Promise<Response> {
   // The funnel is personal data (emails, briefs): the raw GET endpoint is only
   // ever open with an explicit ADMIN_KEY; the app itself uses "adminlog".
   if (!env.ADMIN_KEY || url.searchParams.get("key") !== env.ADMIN_KEY) return json({ error: "unauthorized" }, env, 401);
-  return json({ items: await logItems(env, Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150))) }, env);
+  return json({ items: (await logItems(env, Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150)))).items }, env);
 }
 
 function json(data: unknown, env: Env, status = 200): Response {

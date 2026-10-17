@@ -523,7 +523,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   useEffect(() => { // 04·x / 04·i: one gentle ask at the words or names page, never twice
     if ((step !== "names" && step !== "words") || poll || pollShown.current) return;
-    const show = (v: "exit" | "idle") => { if (!pollShown.current) { pollShown.current = true; setPoll(v); } };
+    // "poll" logs every ask, answered or not: the Feedback tab's shown /
+    // answered / stayed split needs the asks that got ignored too.
+    const show = (v: "exit" | "idle") => { if (!pollShown.current) { pollShown.current = true; setPoll(v); track("poll", { variant: v, step }); } };
     const q = new URLSearchParams(window.location.search);
     if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
     if (test) return;

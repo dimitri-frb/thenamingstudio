@@ -8,6 +8,8 @@ import { AvatarMenu, SettingsPane } from "./paper";
 import { download } from "./zip";
 
 interface LogItem { id: string; at: number; process?: string; phase: string; input?: any; output?: any }
+// One day of ad spend, pushed by the Google Ads Script (phase "adspush").
+interface AdsDay { date: string; rows: { channel: string; campaign: string; cost: number; clicks: number; impressions: number }[] }
 
 export const STEPS = ["Sign up", "Brief", "Concept", "Words", "Names", "Domain", "Logo", "Brand book", "Socials", "Completed"] as const;
 // The landing PRE-CHARGES the concept and the words while a visitor is still
@@ -34,6 +36,7 @@ interface Flow {
   brief: string;
   name: string; shortlist: string[]; words: string[];
   domain: string;
+  buy: boolean;                   // clicked out to buy the domain
   source: string; campaign: string; content: string; device: string; lang: string; country: string;
   feedback: string;               // the 04·x/04·i exit poll, when the user answered it
   gateOnly?: boolean;             // the landing gate's stray sign-up group (folds into the real flow)
@@ -53,7 +56,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     evs.sort((a, b) => a.at - b.at);
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
-      email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "",
+      email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "", buy: false,
       source: "", campaign: "", content: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     // pass 1: identity + content (the email can arrive on any event)
@@ -80,6 +83,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "pick" && p.name) f.name = p.name;
       if (e.phase === "done" && p.name) f.name = f.name || p.name;
       if (e.phase === "domain" && p.domain) f.domain = p.domain;
+      if (e.phase === "godaddy") f.buy = true; // historic event name for the buy click
       if (e.phase === "wrapnames") {
         const names = (e.output?.names || []).map((n: any) => n?.name).filter(Boolean);
         if (names.length) f.shortlist = names.slice(0, 3);
@@ -136,7 +140,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       main.first = Math.min(main.first, o.first);
       main.last = Math.max(main.last, o.last);
       if (o.brief.length > main.brief.length) main.brief = o.brief;
-      main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain;
+      main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain; main.buy ||= o.buy;
       main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content;
       main.device ||= o.device; main.lang ||= o.lang; main.country ||= o.country;
       main.feedback ||= o.feedback;
@@ -187,7 +191,11 @@ export function AdminPage() {
   const [fDomain, setFDomain] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
-  const [view, setView] = useState<"flows" | "users">(window.location.pathname.includes("/admin/users") ? "users" : "flows");
+  const [view, setView] = useState<"flows" | "users" | "analysis" | "feedback">(
+    window.location.pathname.includes("/admin/users") ? "users" :
+    window.location.pathname.includes("/admin/analysis") ? "analysis" :
+    window.location.pathname.includes("/admin/feedback") ? "feedback" : "flows");
+  const [ads, setAds] = useState<AdsDay[] | null>(null);
   const [roles, setRoles] = useState<{ owners: string[]; admins: string[] } | null>(null);
   const [selUser, setSelUser] = useState<string | null>(null);
   const [uq, setUq] = useState("");
@@ -197,15 +205,33 @@ export function AdminPage() {
 
   const demo = new URLSearchParams(window.location.search).has("demo");
   useEffect(() => {
-    if (demo) { setItems(DEMO_ITEMS); return; }
+    if (demo) { setItems(DEMO_ITEMS); setAds(DEMO_ADS); return; }
+    // The log keeps the whole history and one call may only touch ~900 keys:
+    // page through with the cursor, painting as the pages land (newest first).
+    let dead = false;
+    (async () => {
+      const all: LogItem[] = [];
+      let cursor: string | undefined;
+      for (let i = 0; i < 30 && !dead; i++) {
+        const d = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 900, cursor }),
+        }).then((r) => r.json());
+        if (dead) return;
+        if (d.error) { setErr(String(d.error)); return; }
+        all.push(...(d.items || []));
+        setItems([...all]);
+        if (!d.cursor) break;
+        cursor = d.cursor;
+      }
+    })().catch((e) => { if (!dead) setErr(String(e)); });
     fetch(ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 900 }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.error) setErr(String(d.error)); else setItems(d.items || []); })
-      .catch((e) => setErr(String(e)));
+      body: JSON.stringify({ phase: "adminads", token: loadSession()?.token || "" }),
+    }).then((r) => r.json()).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => a.date < b.date ? 1 : -1)); }).catch(() => {});
+    return () => { dead = true; };
   }, []);
 
   useEffect(() => { if (!demo) adminRoles().then((r) => { if (r && (r as any).owners) setRoles(r as any); }); else setRoles({ owners: ["dimitri@dfginvest.fr"], admins: [] }); }, [demo]);
@@ -312,8 +338,9 @@ export function AdminPage() {
       </div>
       <div className="viewrow">
         <span className="seg">
-          <button className={view === "flows" && !settings ? "on" : ""} onClick={() => { setView("flows"); setSettings(false); }}>Flows</button>
-          <button className={view === "users" && !settings ? "on" : ""} onClick={() => { setView("users"); setSettings(false); }}>Users</button>
+          {(["flows", "users", "analysis", "feedback"] as const).map((v) => (
+            <button key={v} className={view === v && !settings ? "on" : ""} onClick={() => { setView(v); setSettings(false); }}>{v[0].toUpperCase() + v.slice(1)}</button>
+          ))}
         </span>
         <button className={"seglink" + (settings ? " on" : "")} onClick={() => setSettings((x) => !x)}>Settings</button>
       </div>
@@ -330,6 +357,11 @@ export function AdminPage() {
         </div>
       ) : view === "users" ? (
         <UsersView flows={inRange} roles={roles} q={uq} setQ={setUq} tab={uTab} setTab={setUTab} sel={selUser} setSel={setSelUser} onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }} />
+      ) : view === "analysis" ? (
+        <AnalysisView flows={flows} ads={ads} loading={!items} />
+      ) : view === "feedback" ? (
+        <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items}
+          onOpenFlow={(id) => { setRange(0); setSel(id); setView("flows"); }} />
       ) : (
         <div className="wrap">
           {/* KPIs */}
@@ -556,6 +588,281 @@ function UsersView({ flows, roles, q, setQ, tab, setTab, sel, setSel, onRole }: 
   );
 }
 
+/* ── Admin · Analysis: one channel, every step, week by week (A·a·2 / A·m·a2) ── */
+const CHANNELS: [string, string][] = [
+  ["All channels", "#000"], ["Google Ads", "#4285F4"], ["Meta Ads", "#0866FF"], ["LinkedIn Ads", "#0A66C2"],
+  ["Organic search", "#12A36B"], ["Referral", "#F59E0B"], ["Product Hunt", "#DA552F"], ["Newsletter", "#8B5CF6"], ["Direct", "#6A6A6A"],
+];
+const PAID = new Set(["Google Ads", "Meta Ads", "LinkedIn Ads"]);
+type WeekMet = { spend: number; clicks: number; started: number; signed: number; brief: number; words: number; name: number; brand: number; buy: number };
+const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean }[] = [
+  { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
+  { k: "started", t: "Started", s: "Started", d: "typed a brief, pressed “Name it”" },
+  { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in with Google" },
+  { k: "brief", t: "Brief confirmed", s: "Brief", d: "continued past the brief" },
+  { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
+  { k: "name", t: "Name chosen", s: "Name chosen", d: "continued with a name", main: true },
+  { k: "brand", t: "Brand done", s: "Brand done", d: "logo + brand book" },
+  { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain" },
+];
+const WMS = 7 * 864e5;
+const mondayOf = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
+const isoWeek = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const y0 = new Date(d.getFullYear(), 0, 4); return 1 + Math.round(((d.getTime() - y0.getTime()) / 864e5 - 3 + ((y0.getDay() + 6) % 7)) / 7); };
+const weekLabel = (t: number) => {
+  const a = new Date(t), b = new Date(t + 6 * 864e5);
+  const m = (x: Date) => x.toLocaleDateString("en-GB", { month: "short" });
+  return a.getMonth() === b.getMonth() ? `${a.getDate()}–${b.getDate()} ${m(b)}` : `${a.getDate()} ${m(a)}–${b.getDate()} ${m(b)}`;
+};
+const eur = (v: number) => "€" + (v >= 1000 ? Math.round(v).toLocaleString("en-US") : v >= 100 ? v.toFixed(0) : v.toFixed(2));
+
+function Delta({ cur, was, costly }: { cur: number; was: number; costly?: boolean }) {
+  if (!was || !isFinite(cur) || !isFinite(was)) return <em className="dlt flat">—</em>;
+  const pct = Math.round(((cur - was) / was) * 100);
+  const good = costly ? pct <= 0 : pct >= 0;
+  return <em className={"dlt " + (good ? "up" : "down")}>{pct >= 0 ? "▲" : "▼"} {Math.abs(pct)}%</em>;
+}
+
+function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean }) {
+  const [chan, setChan] = useState("Google Ads");
+  const [wk, setWk] = useState(0);
+  const paid = chan === "All channels" || PAID.has(chan);
+  const w0 = mondayOf(Date.now());
+  const weeks = useMemo(() => Array.from({ length: 10 }, (_, i) => w0 - i * WMS), [w0]);
+  const met: WeekMet[] = useMemo(() => weeks.map((t) => {
+    let spend = 0, adClicks = 0;
+    for (const d of ads || []) {
+      const dt = new Date(d.date + "T00:00:00").getTime();
+      if (dt < t || dt >= t + WMS) continue;
+      for (const r of d.rows || []) if (chan === "All channels" || r.channel === chan) { spend += r.cost || 0; adClicks += r.clicks || 0; }
+    }
+    const fl = flows.filter((f) => f.first >= t && f.first < t + WMS && (chan === "All channels" || f.source === chan));
+    const freeVisits = chan === "All channels" ? fl.filter((f) => !PAID.has(f.source)).length : PAID.has(chan) ? 0 : fl.length;
+    return {
+      spend, clicks: adClicks + freeVisits,
+      started: fl.filter((f) => f.step >= 1 || f.brief).length,
+      signed: fl.filter((f) => f.email).length,
+      brief: fl.filter((f) => f.step >= 2).length,
+      words: fl.filter((f) => f.step >= 4).length,
+      name: fl.filter((f) => f.step >= 5).length,
+      brand: fl.filter((f) => f.step >= 7).length,
+      buy: fl.filter((f) => f.buy).length,
+    };
+  }), [weeks, flows, ads, chan]);
+  const sum = (a: WeekMet[], k: keyof WeekMet) => a.reduce((s, m) => s + m[k], 0);
+  const l5 = met.slice(0, 5), p5 = met.slice(5, 10);
+  const spend5 = sum(l5, "spend"), spendP = sum(p5, "spend");
+  const sign5 = sum(l5, "signed"), signP = sum(p5, "signed");
+  const name5 = sum(l5, "name"), nameP = sum(p5, "name");
+  const cps = sign5 ? spend5 / sign5 : 0, cpsP = signP ? spendP / signP : 0;
+  const cpn = name5 ? spend5 / name5 : 0, cpnP = nameP ? spendP / nameP : 0;
+  const lastAdDay = (ads || [])[0]?.date;
+  const cell = (m: WeekMet, prevM: WeekMet | undefined, ri: number, hid: boolean) => {
+    const r = AROWS[ri];
+    const v = m[r.k];
+    const h = hid ? " wkhid" : "";
+    const stepBase = ri === 0 ? 0 : m[AROWS[ri - 1].k];
+    const tot = m.clicks ? (v / m.clicks) * 100 : 0;
+    const totPrev = prevM && prevM.clicks ? (prevM[r.k] / prevM.clicks) * 100 : null;
+    const pts = totPrev === null ? null : tot - totPrev;
+    return (
+      <Fragment>
+        <td className={"mono n" + h}>{v.toLocaleString("en-US")}</td>
+        <td className={"mono dim" + h}>{paid && m.spend && v ? eur(m.spend / v) : "—"}</td>
+        <td className={"mono" + h}>{ri === 0 ? "—" : stepBase ? Math.round((v / stepBase) * 100) + "%" : "—"}</td>
+        <td className={"mono tot" + h}>
+          {ri === 0 ? (m.clicks ? "100%" : "—") : m.clicks ? (tot >= 10 ? Math.round(tot) : tot.toFixed(1)) + "%" : "—"}
+          {ri > 0 && pts !== null && m.clicks ? <i className={pts >= 0 ? "up" : "down"}>{pts >= 0 ? "▲" : "▼"} {Math.abs(pts).toFixed(1)}</i> : <i className="ghost">{" "}</i>}
+        </td>
+      </Fragment>
+    );
+  };
+  return (
+    <div className="wrap ana">
+      <div className="anahead">
+        <h2>Channel performance</h2>
+        <span className="mono sub">{chan} · last 5 weeks vs the 5 before</span>
+        {lastAdDay
+          ? <span className="sync"><i /> Ads synced · through {lastAdDay}</span>
+          : <span className="sync none">No spend data yet — paste docs/ads/ads-script.js into Google Ads → Scripts</span>}
+      </div>
+      <div className="anakpis">
+        <div className="akpi"><span>Spend</span><b className="mono">{eur(spend5)}</b><Delta cur={spend5} was={spendP} /><em className="was mono">was {eur(spendP)}</em></div>
+        <div className="akpi"><span>Sign-ups</span><b className="mono">{sign5.toLocaleString("en-US")}</b><Delta cur={sign5} was={signP} /><em className="was mono">was {signP}</em></div>
+        <div className="akpi"><span>Names chosen</span><b className="mono">{name5.toLocaleString("en-US")}</b><Delta cur={name5} was={nameP} /><em className="was mono">was {nameP}</em></div>
+        <div className="akpi"><span>Cost per sign-up</span><b className="mono">{sign5 && paid ? eur(cps) : "—"}</b><Delta cur={cps} was={cpsP} costly /><em className="was mono">was {signP && paid ? eur(cpsP) : "—"}</em></div>
+        <div className="akpi main"><span>Cost per name <i className="maintag">MAIN</i></span><b className="mono">{name5 && paid ? eur(cpn) : "—"}</b><Delta cur={cpn} was={cpnP} costly /><em className="was mono">was {nameP && paid ? eur(cpnP) : "—"}</em></div>
+      </div>
+      <div className="chips">
+        {CHANNELS.map(([c, dot]) => (
+          <button key={c} className={"chip" + (chan === c ? " on" : "")} onClick={() => setChan(c)}>
+            {c !== "All channels" && <i style={{ background: dot }} />}{c}
+          </button>
+        ))}
+      </div>
+
+      {/* mobile: one week at a time */}
+      <div className="wksel">
+        {weeks.slice(0, 5).map((t, i) => (
+          <button key={t} className={wk === i ? "on" : ""} onClick={() => setWk(i)}>
+            <b>W{isoWeek(t)}</b><span>{i === 0 ? "so far" : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="anascroll">
+        <table className="anatbl">
+          <thead>
+            <tr className="wks">
+              <th className="stp" />
+              {weeks.slice(0, 5).map((t, i) => (
+                <th key={t} colSpan={4} className={"wkh" + (i === wk ? " sel" : "")}>
+                  <b>W{isoWeek(t)}</b> <span>{weekLabel(t)}{i === 0 ? " · so far" : ""}</span>
+                  {paid && <em className="mono">{eur(met[i].spend)}</em>}
+                </th>
+              ))}
+            </tr>
+            <tr className="subs">
+              <th className="stp">STEP<u className="sm"> · W{isoWeek(weeks[wk])}</u></th>
+              {weeks.slice(0, 5).map((t, i) => {
+                const h = i === wk ? "" : " wkhid";
+                return <Fragment key={t}><th className={"h" + h}>#</th><th className={"h" + h}>{paid ? "€ / #" : ""}</th><th className={"h" + h}>Step</th><th className={"h" + h}>Total</th></Fragment>;
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {AROWS.map((r, ri) => (
+              <tr key={r.k} className={r.main ? "mainrow" : ""}>
+                <td className="stp"><b><u className="lg">{r.t}</u><u className="sm">{r.s}</u>{r.main ? <i className="maintag">MAIN</i> : null}</b><span>{r.d}</span></td>
+                {met.slice(0, 5).map((m, wi) => <Fragment key={wi}>{cell(m, met[wi + 1], ri, wi !== wk)}</Fragment>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="ananote mono">{loading ? "Loading the log…" : "# people who reached the step · €/# that week’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the week before"}</p>
+    </div>
+  );
+}
+
+/* ── Admin · Feedback: the "before you go" pop-up, read back (A·f / A·m·f) ── */
+const FB_STEPS = ["Brief", "Concept", "Words", "Names", "Domain", "Logo", "Brand book", "Socials"] as const;
+const STEP_LAB: Record<string, string> = {
+  ask: "Brief", brief: "Brief", refine: "Concept", brands: "Concept", brandsum: "Concept", words: "Words",
+  names: "Names", claim: "Domain", reveal: "Domain", domain: "Domain", taste: "Logo", logo: "Logo",
+  logodone: "Logo", pers: "Logo", book: "Brand book", socials: "Socials", done: "Socials",
+};
+// The pop-up's historic option strings, folded onto the canonical reasons.
+const CANON: Record<string, string> = {
+  "Names don't fit my brief": "The names don't fit my brief",
+  "Words don't inspire me": "The words don't inspire me",
+  "Taking too long": "It's taking too long",
+  "Just exploring": "Not ready yet, just exploring",
+  "Domains are taken": "The domains I want are taken",
+  "I don't get what to do": "Something's confusing",
+};
+const canonR = (r: string) => CANON[r] || r;
+const TRIG: Record<string, string> = { exit: "Closed the tab", idle: "Inactive 30 s" };
+
+function FeedbackView({ items, flows, from, to, loading, onOpenFlow }: {
+  items: LogItem[]; flows: Flow[]; from: number; to: number; loading: boolean; onOpenFlow: (id: string) => void;
+}) {
+  const [rsel, setRsel] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const polls = useMemo(() => items.filter((it) => it.phase === "poll" && it.at >= from && it.at < to), [items, from, to]);
+  const answers = useMemo(() => items.filter((it) => it.phase === "feedback" && it.at >= from && it.at < to).sort((a, b) => b.at - a.at), [items, from, to]);
+  const reasonsOf = (a: LogItem): string[] => {
+    const pl = a.input?.payload || {};
+    const rs = Array.isArray(pl.reasons) && pl.reasons.length ? pl.reasons.map(canonR) : ["Other"];
+    return Array.from(new Set(rs)) as string[];
+  };
+  // stayed: anything else happened in that flow after the ask (45 s of grace)
+  const lastAt = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of items) if (it.process) m.set(it.process, Math.max(m.get(it.process) || 0, it.at));
+    return m;
+  }, [items]);
+  const stayed = polls.filter((p) => p.process && (lastAt.get(p.process) || 0) > p.at + 45000).length;
+  const rc = new Map<string, number>();
+  for (const a of answers) for (const r of reasonsOf(a)) rc.set(r, (rc.get(r) || 0) + 1);
+  const bars = Array.from(rc.entries()).sort((a, b) => b[1] - a[1]);
+  const whereBase = polls.length ? polls : answers;
+  const where = FB_STEPS.map((s) => whereBase.filter((it) => STEP_LAB[String(it.input?.payload?.step || "")] === s).length);
+  const wMax = Math.max(1, ...where);
+  const cards = answers.filter((a) => !rsel || reasonsOf(a).includes(rsel));
+  const shownCards = showAll ? cards : cards.slice(0, 8);
+  const flowFor = (a: LogItem): Flow | null => {
+    const byId = flows.find((f) => f.id === a.process);
+    if (byId) return byId;
+    const em = String(a.input?.payload?.meta?.email || "").toLowerCase();
+    return (em && flows.find((f) => f.email.toLowerCase() === em)) || null;
+  };
+  const nameOf = (a: LogItem) => {
+    const m = a.input?.payload?.meta || {};
+    return m.uname || (m.email ? String(m.email).split("@")[0] : "") || "Anonymous";
+  };
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) + "%" : "—");
+  return (
+    <div className="wrap fbview">
+      <div className="fbcols">
+        <div className="fbmain">
+          <div className="fbkpis">
+            <div className="akpi"><span>Pop-up shown</span><b className="mono">{polls.length || "—"}</b><em className="was">people about to leave</em></div>
+            <div className="akpi"><span>Answered</span><b className="mono">{pct(answers.length, polls.length)}</b><em className="was">{answers.length} answers</em></div>
+            <div className="akpi"><span>Stayed after it</span><b className="mono">{pct(stayed, polls.length)}</b><em className="was">{stayed} kept naming</em></div>
+          </div>
+          {!polls.length && answers.length > 0 && <p className="fbnote mono">Asks weren’t logged before 17 Oct — only the answers above exist for this range.</p>}
+          <div className="fbcard-box">
+            <h3>Why people leave</h3>
+            {!bars.length && <p className="hint">{loading ? "Loading…" : "No answers in this range yet."}</p>}
+            {bars.map(([r, n], i) => (
+              <div key={r} className="fbbar">
+                <span className="t">{r}</span>
+                <span className="track"><i className={i === 0 ? "top" : ""} style={{ width: `${Math.round((n / Math.max(1, answers.length)) * 100)}%` }} /></span>
+                <span className="mono v">{pct(n, answers.length)}</span>
+              </div>
+            ))}
+            {bars.length > 0 && <p className="fbhint">several can be ticked, so they don’t sum to 100%</p>}
+          </div>
+          <div className="fbcard-box">
+            <h3>Where they leave</h3>
+            <div className="fbsteps">
+              {FB_STEPS.map((s, i) => (
+                <div key={s} className="col">
+                  <span className="mono p">{whereBase.length ? Math.round((where[i] / whereBase.length) * 100) + "%" : "–"}</span>
+                  <i className={where[i] === wMax && where[i] > 0 ? "top" : ""} style={{ height: `${Math.max(4, (where[i] / wMax) * 64)}px` }} />
+                  <span className="l">{s}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <aside className="fbrail">
+          <div className="fbrailhead">
+            <h3>Latest comments <em className="mono">{cards.length}</em></h3>
+            <select value={rsel} onChange={(e) => setRsel(e.target.value)}>
+              <option value="">All reasons</option>
+              {bars.map(([r]) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          {!cards.length && <p className="hint">{loading ? "Loading…" : "Nothing yet."}</p>}
+          {shownCards.map((a) => {
+            const pl = a.input?.payload || {};
+            const fl = flowFor(a);
+            return (
+              <button key={a.id} className="fbc" onClick={() => fl && onOpenFlow(fl.id)} title={fl ? "Open this flow" : undefined}>
+                <span className="head"><b>{nameOf(a)}</b><em>at {STEP_LAB[String(pl.step || "")] || "—"} · {TRIG[String(pl.variant)] || "—"}</em><i className="mono">{ago(a.at)}</i></span>
+                <span className="chipsrow">{reasonsOf(a).map((r) => <i key={r}>{r}</i>)}</span>
+                {pl.note ? <span className="note">“{pl.note}”</span> : null}
+              </button>
+            );
+          })}
+          {cards.length > shownCards.length && <button className="fbmore" onClick={() => setShowAll(true)}>See all {cards.length} →</button>}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 /* ?demo: a believable day of traffic for styling and previews */
 const H = 3600000;
 const now = Date.now();
@@ -574,11 +881,19 @@ const DEMO_ITEMS: LogItem[] = [
   mk("p2", "signup", 5 * H, meta2), mk("p2", "search", 5 * H - 60000, { sentence: "A B2B platform that automates carbon accounting", ...meta2 }),
   mk("p2", "wrapconcept", 4.9 * H), mk("p2", "wrapwords", 4.8 * H),
   mk("p2", "wrapnames", 4.5 * H, { words: [{ w: "ledger" }, { w: "north" }] }, "GB", { names: [{ name: "Carbent" }, { name: "Fathom" }, { name: "Nordica" }] }),
-  mk("p2", "feedback", 4.4 * H, { variant: "exit", reasons: ["The domains I want are taken"], note: "Fathom is great but the .com is gone", ...meta2 }, "GB"),
+  mk("p2", "feedback", 4.4 * H, { variant: "exit", step: "names", reasons: ["The domains I want are taken"], note: "Fathom is great but the .com is gone", ...meta2 }, "GB"),
   mk("p3", "signup", 0.2 * H, meta3, "ES"), mk("p3", "search", 0.2 * H - 60000, { sentence: "Una marca de café de especialidad", ...meta3 }, "ES"),
   mk("p3", "wrapconcept", 0.15 * H, {}, "ES"),
   mk("p4", "signup", 50 * H, meta4, "US"), mk("p4", "search", 50 * H - 60000, { sentence: "A tool that turns podcasts into newsletters", ...meta4 }, "US"),
   mk("p4", "wrapconcept", 49.9 * H, {}, "US"), mk("p4", "wrapwords", 49.8 * H, {}, "US"),
   mk("p4", "wrapnames", 49.5 * H, { words: [{ w: "echo" }, { w: "letter" }] }, "US", { names: [{ name: "Echolet" }, { name: "Castnote" }] }),
   mk("p4", "pick", 49.4 * H, { name: "Echolet", ...meta4 }, "US"),
+  mk("p2", "poll", 4.45 * H, { variant: "exit", step: "names", ...meta2 }, "GB"),
+  mk("p3", "poll", 0.1 * H, { variant: "idle", step: "brief", ...meta3 }, "ES"),
+  mk("p4", "poll", 49.45 * H, { variant: "idle", step: "words", ...meta4 }, "US"),
 ];
+const dday = (i: number) => new Date(now - i * 864e5).toISOString().slice(0, 10);
+const DEMO_ADS: AdsDay[] = Array.from({ length: 40 }, (_, i) => ({
+  date: dday(i),
+  rows: [{ channel: "Google Ads", campaign: "Search — Naming EN", cost: 18 + ((i * 7) % 15), clicks: 30 + ((i * 11) % 25), impressions: 400 + ((i * 37) % 220) }],
+}));

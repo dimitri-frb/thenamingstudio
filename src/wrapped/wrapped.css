@@ -1968,3 +1968,131 @@
   .ka-land input, .wr-sumodal input, .wr-sumodal textarea,
   .wr-pers .fontdd input, .wr-dsheet input { font-size: 16px !important; }
 }
+
+/* ── Admin · Analysis (A·a·2 / A·m·a2) ── */
+.kadm .anahead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.kadm .anahead h2 { margin: 0; }
+.kadm .anahead .sub { font-size: 11.5px; color: #6a6a6a; }
+.kadm .anahead .sync { margin-left: auto; font-size: 11.5px; font-weight: 600; color: #6a6a6a; display: inline-flex; align-items: center; gap: 6px; }
+.kadm .anahead .sync i { width: 7px; height: 7px; border-radius: 50%; background: #12a36b; }
+.kadm .anahead .sync.none { color: #e0461a; }
+.kadm .anakpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.kadm .akpi { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kadm .akpi span { font-size: 11.5px; font-weight: 600; color: #6a6a6a; display: flex; align-items: center; gap: 6px; }
+.kadm .akpi b { font-size: 24px; letter-spacing: -0.03em; }
+.kadm .akpi .dlt { font-style: normal; font-size: 11.5px; font-weight: 700; }
+.kadm .akpi .dlt.up { color: #12a36b; }
+.kadm .akpi .dlt.down { color: #e0461a; }
+.kadm .akpi .dlt.flat { color: #b4b1a8; }
+.kadm .akpi .was { font-style: normal; font-size: 10.5px; color: #b4b1a8; }
+.kadm .akpi.main { border-color: #ff4f1a; background: #fff5f0; }
+.kadm .maintag { font-style: normal; font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em; background: #ff4f1a; color: #fff; border-radius: 5px; padding: 2px 5px; vertical-align: 2px; margin-left: 6px; }
+.kadm .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.kadm .chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ececec; background: #fff; border-radius: 980px; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 14px; cursor: pointer; color: #000; }
+.kadm .chip i { width: 7px; height: 7px; border-radius: 50%; }
+.kadm .chip.on { background: #000; color: #fff; border-color: #000; }
+.kadm .wksel { display: none; }
+.kadm .anascroll { overflow-x: auto; border: 1px solid #ececec; border-radius: 14px; background: #fff; }
+.kadm .anatbl { border-collapse: collapse; width: 100%; min-width: 1080px; font-size: 12px; }
+.kadm .anatbl th, .kadm .anatbl td { padding: 8px 8px; text-align: right; white-space: nowrap; }
+.kadm .anatbl .stp { text-align: left; position: sticky; left: 0; background: #fff; min-width: 170px; max-width: 220px; white-space: normal; z-index: 2; }
+.kadm .anatbl thead .wks th { border-bottom: 1px solid #ececec; border-left: 1px solid #ececec; text-align: left; padding-top: 12px; }
+.kadm .anatbl thead .wks th.stp { border-left: none; }
+.kadm .anatbl thead .wks b { font-size: 13px; }
+.kadm .anatbl thead .wks span { color: #6a6a6a; font-weight: 500; font-size: 11px; }
+.kadm .anatbl thead .wks em { font-style: normal; float: right; color: #6a6a6a; font-size: 11px; }
+.kadm .anatbl thead .subs th { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #b4b1a8; border-bottom: 1px solid #ececec; padding-bottom: 6px; }
+.kadm .anatbl thead .subs th.stp { text-align: left; }
+.kadm .anatbl thead .subs th.stp u { text-decoration: none; display: none; }
+.kadm .anatbl tbody td { border-bottom: 1px solid #f4f3f0; }
+.kadm .anatbl tbody tr:last-child td { border-bottom: none; }
+.kadm .anatbl tbody td:nth-child(4n+2) { border-left: 1px solid #ececec; }
+.kadm .anatbl .stp b { display: block; font-size: 12.5px; }
+.kadm .anatbl .stp u { text-decoration: none; }
+.kadm .anatbl .stp u.sm { display: none; }
+.kadm .anatbl .stp span { color: #b4b1a8; font-size: 10.5px; }
+.kadm .anatbl .n { font-weight: 700; }
+.kadm .anatbl .dim { color: #6a6a6a; }
+.kadm .anatbl .tot { min-width: 56px; }
+.kadm .anatbl .tot i { display: block; font-style: normal; font-size: 9.5px; font-weight: 700; }
+.kadm .anatbl .tot i.up { color: #12a36b; }
+.kadm .anatbl .tot i.down { color: #e0461a; }
+.kadm .anatbl .tot i.ghost { visibility: hidden; }
+.kadm .anatbl .mainrow td { background: #fff5f0; }
+.kadm .anatbl .mainrow .stp { background: #fff5f0; box-shadow: inset 2px 0 0 #ff4f1a; }
+.kadm .ananote { font-size: 10px; color: #b4b1a8; margin: 10px 2px 0; }
+
+/* ── Admin · Feedback (A·f / A·m·f) ── */
+.kadm .fbcols { display: flex; gap: 16px; align-items: flex-start; }
+.kadm .fbmain { flex: 1.6; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.kadm .fbrail { flex: 1; min-width: 300px; background: #fafaf8; border: 1px solid #ececec; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.kadm .fbkpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kadm .fbnote { font-size: 10.5px; color: #b4b1a8; margin: -4px 2px 0; }
+.kadm .fbcard-box { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 18px; }
+.kadm .fbcard-box h3 { margin: 0 0 14px; font-size: 15px; letter-spacing: -0.02em; }
+.kadm .fbbar { display: grid; grid-template-columns: minmax(150px, 0.8fr) 2fr 44px; gap: 12px; align-items: center; padding: 5px 0; }
+.kadm .fbbar .t { font-size: 12.5px; font-weight: 600; }
+.kadm .fbbar .track { background: #f2f1ee; border-radius: 980px; height: 8px; overflow: hidden; }
+.kadm .fbbar .track i { display: block; height: 100%; border-radius: 980px; background: #000; min-width: 3px; }
+.kadm .fbbar .track i.top { background: #ff4f1a; }
+.kadm .fbbar .v { font-size: 11.5px; text-align: right; color: #6a6a6a; }
+.kadm .fbhint { font-size: 10px; color: #b4b1a8; margin: 8px 0 0; }
+.kadm .fbsteps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; align-items: end; }
+.kadm .fbsteps .col { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.kadm .fbsteps .col .p { font-size: 10px; color: #6a6a6a; }
+.kadm .fbsteps .col i { width: 100%; max-width: 56px; border-radius: 6px 6px 2px 2px; background: #000; }
+.kadm .fbsteps .col i.top { background: #ff4f1a; }
+.kadm .fbsteps .col .l { font-size: 10px; font-weight: 600; color: #6a6a6a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kadm .fbrailhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kadm .fbrailhead h3 { margin: 0; font-size: 15px; }
+.kadm .fbrailhead h3 em { font-style: normal; color: #b4b1a8; font-size: 12px; margin-left: 4px; }
+.kadm .fbc { text-align: left; border: 1px solid #ececec; background: #fff; border-radius: 14px; padding: 13px 14px; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.kadm .fbc:hover { border-color: #000; }
+.kadm .fbc .head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.kadm .fbc .head b { font-size: 13px; }
+.kadm .fbc .head em { font-style: normal; font-size: 11px; color: #6a6a6a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kadm .fbc .head i { font-style: normal; font-size: 10px; color: #b4b1a8; white-space: nowrap; }
+.kadm .fbc .chipsrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.kadm .fbc .chipsrow i { font-style: normal; font-size: 10.5px; font-weight: 600; border: 1px solid #ececec; border-radius: 980px; padding: 3px 9px; }
+.kadm .fbc .note { font-style: italic; font-size: 12.5px; color: #333; }
+.kadm .fbmore { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 6px; }
+
+@media (max-width: 720px) {
+  /* 3 small KPI cards on the first row, the two € cards wider on the second */
+  .kadm .anakpis { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .kadm .anakpis .akpi { padding: 10px 12px; }
+  .kadm .anakpis .akpi b { font-size: 18px; }
+  .kadm .anakpis .akpi:nth-child(1), .kadm .anakpis .akpi:nth-child(2), .kadm .anakpis .akpi:nth-child(3) { grid-column: span 2; }
+  .kadm .anakpis .akpi:nth-child(4), .kadm .anakpis .akpi:nth-child(5) { grid-column: span 3; }
+  .kadm .chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; margin: 12px -18px; padding-left: 18px; padding-right: 18px; }
+  .kadm .chip { flex: 0 0 auto; }
+  .kadm .wksel { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+  .kadm .wksel button { border: 1px solid #ececec; background: #fff; border-radius: 10px; font-family: inherit; padding: 7px 2px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; position: relative; overflow: hidden; }
+  .kadm .wksel button b { font-size: 12px; }
+  .kadm .wksel button span { font-size: 9px; color: #6a6a6a; white-space: nowrap; }
+  .kadm .wksel button.on { border-color: #000; }
+  .kadm .wksel button.on::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #ff4f1a; }
+  /* one week at a time: the wksel buttons pick it, the other 4 groups hide */
+  .kadm .anatbl { min-width: 0; width: 100%; table-layout: fixed; font-size: 11px; }
+  .kadm .anatbl .stp { min-width: 0; max-width: none; position: static; }
+  .kadm .anatbl .stp span { display: none; }
+  .kadm .anatbl .stp u.lg { display: none; }
+  .kadm .anatbl .stp u.sm { display: inline; }
+  .kadm .anatbl thead .subs th.stp u { display: inline; }
+  .kadm .anatbl thead .wks { display: none; }
+  .kadm .anatbl th.wkhid, .kadm .anatbl td.wkhid { display: none; }
+  .kadm .anatbl th, .kadm .anatbl td { padding: 8px 4px; }
+  .kadm .anatbl tbody td:nth-child(4n+2) { border-left: none; }
+  .kadm .ananote { font-size: 9px; }
+  .kadm .fbcols { flex-direction: column; }
+  .kadm .fbrail { min-width: 0; width: 100%; box-sizing: border-box; }
+  .kadm .fbkpis { gap: 8px; }
+  .kadm .fbkpis .akpi { padding: 10px 10px; }
+  .kadm .fbkpis .akpi b { font-size: 18px; }
+  .kadm .fbbar { grid-template-columns: 1fr 44px; grid-template-areas: "t v" "track track"; }
+  .kadm .fbbar .t { grid-area: t; }
+  .kadm .fbbar .track { grid-area: track; }
+  .kadm .fbbar .v { grid-area: v; }
+  .kadm .fbsteps { gap: 4px; }
+  .kadm .fbsteps .col .l { font-size: 8px; }
+}
