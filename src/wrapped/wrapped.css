@@ -500,7 +500,9 @@
 .wr-swipe .card.back2 { transform: rotate(-7deg) translate(-9px, 10px); opacity: 0.32; border-color: rgba(255, 255, 255, 0.12); }
 .wr-swipe .card.top {
   display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px;
-  padding: 22px; cursor: grab; touch-action: pan-y; user-select: none; z-index: 2;
+  /* touch-action none: the card owns the gesture entirely — with pan-y the
+     browser could reclaim a drag as a scroll (pointercancel) and freeze it */
+  padding: 22px; cursor: grab; touch-action: none; user-select: none; z-index: 2;
 }
 .wr-swipe .card.top:active { cursor: grabbing; }
 .wr-swipe .prog { position: absolute; top: 16px; left: 18px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); }
@@ -522,12 +524,23 @@
 .wr-swipe .hint { font-size: 12px; color: var(--text3); }
 .wr-swipe .alldone { text-align: center; padding: 60px 0; }
 @media (max-width: 720px) {
-  .wr-swipe { gap: 22px; }
+  /* Everything — logo, card, ✕ and ♥, the you-like tray — must sit ABOVE the
+     footer with no scroll: the card clamps to the height that's left. */
+  .wr-swipe { gap: 12px; }
   .wr-swipe .left { flex: 1 1 100%; }
-  .wr-swipe .stack { width: 290px; height: 300px; }
-  .wr-swipe .bn { font-size: 42px; }
-  .wr-swipe .acts { margin-bottom: 14px; }
+  .wr-swipe .left .wr-h { font-size: 26px !important; margin-bottom: 6px !important; }
+  .wr-swipe .left .wr-lead { font-size: 13.5px; margin-bottom: 8px !important; }
+  .wr-swipe .right { gap: 14px; min-width: 0; }
+  .wr-swipe .stack { width: min(290px, 78vw); height: clamp(220px, 100svh - 500px, 300px); }
+  .wr-swipe .bn { font-size: 38px; }
+  .wr-swipe .acts { margin-bottom: 0; }
   .wr-cpill { white-space: normal; }
+}
+@media (max-width: 720px) and (max-height: 740px) {
+  .wr-swipe .card .blogo { width: 44px; height: 44px; margin: 10px 0 8px; }
+  .wr-swipe .bn { font-size: 31px; }
+  .wr-swipe .card .bd { font-size: 12px; }
+  .wr-swipe .act { width: 50px; height: 50px; font-size: 18px; }
 }
 
 /* ── 03 words: the show-more / redefine strip under the columns ── */
@@ -1936,3 +1949,7 @@
 .wr-bsum .ax input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
 .wr-bsum .ax input[type="range"]:active::-moz-range-thumb { box-shadow: 0 0 0 5px rgba(255, 79, 26, 0.5); }
 .wr-bsum .ax:has(input:active) { background: rgba(255, 255, 255, 0.04); border-radius: 12px; }
+
+/* the word tooltip never blocks a scroll or a tap — it's a label, not a modal */
+.wr-v2tipwrap, .wr-v2tipwrap * { pointer-events: none; }
+@media (max-width: 720px) { .claimfoot { display: none; } }

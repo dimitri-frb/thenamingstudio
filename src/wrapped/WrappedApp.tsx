@@ -1482,8 +1482,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
+          {/* no footer links here: the top bar's ‹ goes back, the space is the
+              claim's (desktop keeps the ⏎ hint) */}
           <div className="wr-foot col claimfoot" style={{ gap: 4, alignItems: "center" }}>
-            <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
             <span className="wr-hint khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
           </div>
           {claimSheet === "go" && claimDom && (
@@ -2065,7 +2066,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
     return out;
   }, [styles]);
   const [cloud, setCloud] = useState<WWord[]>(() => pool.slice(0, 54));
-  const [sheet, setSheet] = useState<{ w: WWord; x: number; y: number } | null>(null);
+  const [sheet, setSheet] = useState<{ w: WWord; x: number; y: number; demo?: boolean } | null>(null);
   const pressTimer = useRef<number>(0);
   const longFired = useRef(false);
   const need = Math.max(0, 3 - starred.length); // "a few": the button unlocks at three
@@ -2084,7 +2085,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
       if (!el) return;
       const r = el.getBoundingClientRect();
       const width = Math.min(315, window.innerWidth - 24);
-      setSheet({ w, x: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), y: r.bottom + 10 });
+      setSheet({ w, x: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), y: r.bottom + 10, demo: true });
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2115,7 +2116,17 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
       setSheet({ w, x: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)), y: r.bottom + 10 });
     }, 450);
   };
-  const up = () => window.clearTimeout(pressTimer.current);
+  const up = () => {
+    window.clearTimeout(pressTimer.current);
+    if (longFired.current) setSheet(null); // release to close (04/03 spec)
+  };
+  useEffect(() => { // the demo bubble closes on the first touch or scroll — it must NEVER block them
+    if (!sheet?.demo) return;
+    const close = () => { seenHold(); setSheet(null); };
+    document.addEventListener("pointerdown", close, true);
+    document.addEventListener("scroll", close, true);
+    return () => { document.removeEventListener("pointerdown", close, true); document.removeEventListener("scroll", close, true); };
+  }, [sheet]);
 
   return (
     <div className="wr-v2w">
@@ -2135,7 +2146,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
               onContextMenu={(e) => e.preventDefault()}
               onClick={() => { if (longFired.current) { longFired.current = false; return; } onToggle(w); }}
             >
-              {on && <i className="ck">✓</i>}{w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
+              {w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
             </button>
           );
         })}
@@ -2156,7 +2167,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
         </div>
       </div>
       {sheet && (
-        <div className="wr-v2tipwrap" onClick={() => { seenHold(); setSheet(null); }} onPointerDown={() => { seenHold(); setSheet(null); }}>
+        <div className="wr-v2tipwrap">
           <div className="wr-v2tip" style={{ left: sheet.x, top: sheet.y }}>
             <b>{sheet.w.w}</b> <i className="lg">{LANG_FULL[(sheet.w.lang || "EN").toUpperCase()] || (sheet.w.lang || "EN").toUpperCase()}</i>
             <p>{sheet.w.m || "A word from your brief's world."}</p>
@@ -2190,8 +2201,7 @@ function NamesListV2({ names, known, sel, onSel }: {
                 <b className="nm">{n.name}</b>
                 {freshSet.has(n.name) && <i className="new">NEW</i>}
                 {d ? <span className="dm"><i className="dot" />{d.domain}</span>
-                  : (n as any).domd ? <span className="dm dim">{n.dom?.domain || "domain"} taken</span>
-                  : <span className="dm dim">checking…</span>}
+                  : !(n as any).domd ? <span className="dm dim">checking…</span> : null}
                 <span className="fit">{n.score}%</span>
               </span>
               <span className="why">{n.tagline || n.roots}</span>
@@ -2231,7 +2241,7 @@ function NamesGridV2({ names, known, sel, onSel }: {
                   <span className="rt mono">{n.roots}</span>
                 </span>
                 <span className="why">{n.tagline || n.roots}</span>
-                <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : (n as any).domd ? `${n.dom?.domain || "domain"} taken` : "checking…"}</span>
+                {(d || !(n as any).domd) && <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : "checking…"}</span>}
               </span>
               <span className="sc">
                 <span className="n">{n.score}<small>%</small></span>
@@ -2714,12 +2724,16 @@ function BrandSwipe({ deck, liked, disliked, onJudge, onSkip, onNext }: {
                   <div
                     className="card top"
                     style={{ transform: `translateX(${px}px) rotate(${rot}deg)`, transition: fly || !drag.current.on ? "transform 0.24s ease" : "none" }}
-                    onPointerDown={(e) => { drag.current = { x0: e.clientX, on: true }; (e.target as HTMLElement).setPointerCapture(e.pointerId); }}
+                    onPointerDown={(e) => { drag.current = { x0: e.clientX, on: true }; e.currentTarget.setPointerCapture(e.pointerId); }}
                     onPointerMove={(e) => { if (drag.current.on) setDx(e.clientX - drag.current.x0); }}
                     onPointerUp={() => {
                       const d = dx; drag.current.on = false;
                       if (d > 80) judge(true); else if (d < -80) judge(false); else setDx(0);
                     }}
+                    // The browser can reclaim the gesture mid-drag (scroll,
+                    // back-swipe): without this reset the card froze tilted.
+                    onPointerCancel={() => { drag.current.on = false; setDx(0); }}
+                    onLostPointerCapture={() => { if (drag.current.on) { drag.current.on = false; setDx(0); } }}
                   >
                     <span className="prog">{Math.min(idx + 1, cards.length)} OF {cards.length}</span>
                     {(px > 36) && <span className="stamp like">LIKE</span>}

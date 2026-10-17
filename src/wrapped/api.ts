@@ -231,12 +231,13 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
           const lookup = (attempt: number) => {
             fetchFreeDom(n.name, (prefs as any)?.doms)
               .then((d) => {
-                if (!d.dom && !d.alt && attempt === 0) { setTimeout(() => lookup(1), 900); return; }
+                const free = d.dom?.free ? d.dom : d.alt;
+                if (!free && attempt < 2) { setTimeout(() => lookup(attempt + 1), 900 * (attempt + 1)); return; }
                 n.dom = d.dom; n.alt = d.alt;
                 (n as any).domd = true; // checked — the row can stop saying "checking…"
                 notify();
               })
-              .catch(() => { if (attempt === 0) setTimeout(() => lookup(1), 900); else { (n as any).domd = true; notify(); } });
+              .catch(() => { if (attempt < 2) setTimeout(() => lookup(attempt + 1), 900 * (attempt + 1)); else { (n as any).domd = true; notify(); } });
           };
           lookup(0);
         }
