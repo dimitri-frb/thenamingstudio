@@ -508,7 +508,7 @@ const W = (w: string, m: string, lang?: string): WWord => (lang ? { w, m, lang }
 export const SAMPLE: { concept: WConcept; styles: WStyle[]; names: WName[]; moreNames: WName[] } = {
   concept: {
     concept: "a new beginning",
-    para: "Founders come to you at the very first moment, when there is only an idea and the nerve to start. Your name has to hold that moment: the light before the day, the spark before the fire. It should feel clear on the first read and warm on the hundredth. Easy to say in any room, and impossible to confuse with anyone else.",
+    para: "Founders come to you with only an idea. Your name should feel clear, warm and unmistakably yours.",
     alts: ["quiet confidence", "a sharp mind"],
     territories: [
       { name: "Light", desc: "first light, dawn, clarity" },

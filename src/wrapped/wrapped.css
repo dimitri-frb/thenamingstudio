@@ -1902,3 +1902,7 @@
 
 /* the swipe card wears the brand's real logo above the name */
 .wr-swipe .card .blogo { width: 46px; height: 46px; border-radius: 11px; object-fit: contain; background: #fff; padding: 4px; box-sizing: border-box; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
+
+/* 02 simplified: the concept wears the dawn gradient; an orange rule below */
+.wr-cgrad { font-style: italic; background: linear-gradient(90deg, #ff9e7a, #c9b6ff 55%, #7c9cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wr-brule { display: block; width: 54px; height: 3.5px; border-radius: 3px; background: #ff4f1a; margin: 20px 0 22px; }

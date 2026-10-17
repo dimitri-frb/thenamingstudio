@@ -1004,7 +1004,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   return (
     <div className="wr">
-      {(step === "reveal" || step === "done") && <div className="wr-glow" />}
+      {(step === "brief" || step === "reveal" || step === "done") && <div className="wr-glow" />}
 
       {/* shared header: logo left, chapter label centred, round ‹ › right */}
       {step !== "land" && <div className="wr-top">
@@ -1112,16 +1112,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   : <BriefLoader sentence={sentence.trim()} chips={chips} />
               ) : (
                 <>
-                  <h1 className="wr-h rise" style={{ marginBottom: 18 }}>
-                    Your name should feel like <span className="wr-cpill">{concept!.concept}</span>
+                  {/* 02, simplified: the concept in gradient italics, an orange
+                      rule, and a two-line summary. Nothing else on the page. */}
+                  <h1 className="wr-h rise" style={{ marginBottom: 0 }}>
+                    Your name should feel like <i className="wr-cgrad">{concept!.concept}</i>.
                   </h1>
-                  <p className="wr-lead rise" style={{ marginBottom: 26 }}>{concept!.para}</p>
-                  {/* the three territories follow the paragraph directly, no label */}
-                  <div className="wr-terrs rise">
-                    {(concept!.territories || []).slice(0, 3).map((t) => (
-                      <div key={t.name} className="terr"><b>{t.name}</b><span>{t.desc}</span></div>
-                    ))}
-                  </div>
+                  <span className="wr-brule rise" />
+                  <p className="wr-lead rise">{concept!.para}</p>
                 </>
               )}
             </div>
