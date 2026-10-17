@@ -12,7 +12,7 @@ import {
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
-import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, type InspireBrand } from "./inspire";
+import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
 
@@ -1114,6 +1114,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <>
                   {/* 02, simplified: the concept in gradient italics, an orange
                       rule, and a two-line summary. Nothing else on the page. */}
+                  <p className="wr-kicker rise" style={{ marginBottom: 14 }}>The idea we heard</p>
                   <h1 className="wr-h rise" style={{ marginBottom: 0 }}>
                     Your name should feel like <i className="wr-cgrad">{concept!.concept}</i>.
                   </h1>
@@ -1134,101 +1135,101 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "refine" && (
         <div className="wr-stage" style={{ paddingTop: 8 }}>
           <div className="wr-refine">
-            <p className="wr-kicker" style={{ marginBottom: 10 }}>Check your brief</p>
-            <h1 className="wr-h" style={{ fontSize: 34, margin: "0 0 16px" }}>Is this right? Change anything, then go.</h1>
+            {/* 02·r: the live headline updates as anything below changes */}
+            <h1 className="wr-h" style={{ fontSize: 30, margin: "0 0 16px" }}>
+              Your name should feel like <i className="wr-cgrad">{concept?.concept || "…"}</i>.
+            </h1>
             <Grow value={sentence} onChange={setSentence} onEnter={() => conceptReady && toStep("brands")} placeholder="What are you building?" boxed />
             <div className="prows">
               <div className="prow">
-                <span className="plbl">Who it's for</span>
+                <span className="plbl">Feels like</span>
                 <div className="opts">
-                  {["Everyone", "Founders", "Small businesses", "Big companies", ...prefs.who.filter((x) => !["Founders", "Small businesses", "Big companies"].includes(x))].map((t) => {
-                    const on = t === "Everyone" ? !prefs.who.length : prefs.who.includes(t);
+                  {feelOpts.map((k) => (
+                    <button key={k} className={"wr-opt" + (concept?.concept === k ? " on" : "")}
+                      onClick={() => setConcept((c) => (c ? { ...c, concept: k } : c))}>{concept?.concept === k ? "✓ " : ""}{k}</button>
+                  ))}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { setFeelOpts((f) => [...f.filter((x) => x !== w), w]); setConcept((c) => (c ? { ...c, concept: w } : c)); }} />
+                </div>
+              </div>
+              <div className="prow">
+                <span className="plbl">Tone</span>
+                <div className="opts">
+                  {["Friendly", "Balanced", "Serious", "Playful"].map((t) => {
+                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone[0] === t;
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, who: t === "Everyone" ? [] : on ? prefs.who.filter((x) => x !== t) : [...prefs.who, t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : [t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.who.includes(w)) setPrefs({ ...prefs, who: [...prefs.who, w] }); }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Name style</span>
                 <div className="opts">
-                  {(() => { const BUILT = ["Invented", "Real word", "Compound", "Classical root", "Foreign word", "Initials", "Founder name", "Myth & place"]; return ["Any", ...BUILT, ...prefs.style.filter((x) => !BUILT.includes(x))]; })().map((t) => {
-                    const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
+                  {["Invented", "Real word", "Compound", "Any"].map((t) => {
+                    const on = t === "Any" ? !prefs.style.length : prefs.style[0] === t;
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : [t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.style.includes(w)) setPrefs({ ...prefs, style: [...prefs.style, w] }); }} />
-                </div>
-              </div>
-              <div className="prow">
-                <span className="plbl">Works in</span>
-                <div className="opts">
-                  <button className={"wr-opt" + (!prefs.langs.length ? " on" : "")}
-                    onClick={() => setPrefs({ ...prefs, langs: [] })}>{!prefs.langs.length ? "✓ " : ""}Global</button>
-                  {["English", "French", "Spanish", "German", ...prefs.langs.filter((x) => !["English", "French", "Spanish", "German"].includes(x))].map((t) => {
-                    const on = prefs.langs.includes(t);
-                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t}</button>;
-                  })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.langs.includes(w)) setPrefs({ ...prefs, langs: [...prefs.langs, w] }); }} />
-                </div>
-              </div>
-              <div className="prow">
-                <span className="plbl">Domain</span>
-                <div className="opts">
-                  <button className={"wr-opt" + (!prefs.doms.length ? " on" : "")}
-                    onClick={() => { if (prefs.doms.length) { setPrefs({ ...prefs, doms: [] }); setNames(null); namesPre.current = null; morePre.current = null; } }}>
-                    {!prefs.doms.length ? "✓ " : ""}Any
-                  </button>
-                  {["com", "ai", "io", ...prefs.doms.filter((d) => !["com", "ai", "io"].includes(d))].map((d) => {
-                    const on = prefs.doms.includes(d);
-                    return (
-                      <button key={d} className={"wr-opt" + (on ? " on" : "")}
-                        onClick={() => { setPrefs({ ...prefs, doms: on ? prefs.doms.filter((x) => x !== d) : [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
-                        {on ? "✓ " : ""}.{d}
-                      </button>
-                    );
-                  })}
-                  <DomAdd onAdd={(d) => { if (!prefs.doms.includes(d)) { setPrefs({ ...prefs, doms: [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; } }} />
-                </div>
-              </div>
-            </div>
-            <div className="pmore">
-              <span>More details</span>
-              <em>Optional, sharpens the names</em>
-            </div>
-            <div className="prows">
-                            <div className="prow">
-                <span className="plbl">Tone</span>
-                <div className="opts">
-                  {["Balanced", "Friendly", "Serious", "Playful", ...prefs.tone.filter((x) => !["Friendly", "Serious", "Playful"].includes(x))].map((t) => {
-                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
-                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
-                  })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.tone.includes(w)) setPrefs({ ...prefs, tone: [...prefs.tone, w] }); }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Length</span>
                 <div className="opts">
-                  {["Short · 1–2 syllables", "Medium", "Any", ...(["Short · 1–2 syllables", "Medium", "Any"].includes(prefs.length) ? [] : [prefs.length])].map((t) => (
+                  {["Short · 1–2 syllables", "Medium", "Any"].map((t) => (
                     <button key={t} className={"wr-opt" + (prefs.length === t ? " on" : "")} onClick={() => setPrefs({ ...prefs, length: t })}>{prefs.length === t ? "✓ " : ""}{t}</button>
                   ))}
-                  <AvoidAdd label="＋ add" onAdd={(w) => setPrefs({ ...prefs, length: w })} />
                 </div>
               </div>
-                                        </div>
+              <div className="prow">
+                <span className="plbl">Must work in</span>
+                <div className="opts">
+                  <button className={"wr-opt" + (!prefs.langs.length ? " on" : "")}
+                    onClick={() => setPrefs({ ...prefs, langs: [] })}>{!prefs.langs.length ? "✓ " : ""}Global</button>
+                  {["French", "English", "Spanish", ...prefs.langs.filter((x) => !["French", "English", "Spanish"].includes(x))].map((t) => {
+                    const on = prefs.langs.includes(t);
+                    return <button key={t} className={"wr-opt" + (on ? " on" : "")}
+                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [t] })}>{on ? "✓ " : ""}{t === "French" ? "FR" : t === "English" ? "EN" : t === "Spanish" ? "ES" : t}</button>;
+                  })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.langs.includes(w)) setPrefs({ ...prefs, langs: [w] }); }} />
+                </div>
+              </div>
+              <div className="prow">
+                <span className="plbl">Domain</span>
+                <div className="opts">
+                  {["com", "ai", "io", "app"].map((d) => {
+                    const on = prefs.doms[0] === d;
+                    return (
+                      <button key={d} className={"wr-opt" + (on ? " on" : "")}
+                        onClick={() => { setPrefs({ ...prefs, doms: on ? [] : [d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
+                        {on ? "✓ " : ""}.{d}
+                      </button>
+                    );
+                  })}
+                  <button className={"wr-opt" + (!prefs.doms.length ? " on" : "")}
+                    onClick={() => { if (prefs.doms.length) { setPrefs({ ...prefs, doms: [] }); setNames(null); namesPre.current = null; morePre.current = null; } }}>
+                    {!prefs.doms.length ? "✓ " : ""}Doesn't matter
+                  </button>
+                </div>
+              </div>
+              <div className="prow">
+                <span className="plbl">Avoid</span>
+                <div className="opts">
+                  {prefs.avoid.map((w) => (
+                    <button key={w} className="wr-opt on" onClick={() => setPrefs({ ...prefs, avoid: prefs.avoid.filter((x) => x !== w) })}>{w} ✕</button>
+                  ))}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.avoid.includes(w)) setPrefs({ ...prefs, avoid: [...prefs.avoid, w] }); }} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
       {step === "refine" && (
-        <div className="wr-foot">
-          <button className="wr-link" onClick={() => toStep("brief")}>← Back</button>
-          <button className="wr-btn" style={{ maxWidth: 300 }} disabled={!conceptReady}
+        <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+          <button className="wr-btn" style={{ maxWidth: 320 }} disabled={!conceptReady}
             onClick={() => { if (wordsReq.current !== wordsKey()) { setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; } toStep("brands"); }}>
-            Looks good, next →
+            Show me the words →
           </button>
+          <button className="wr-link" onClick={() => toStep("brief")}>← Back</button>
         </div>
       )}
 
@@ -1236,13 +1237,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "brands" && (
         <BrandSwipe
           deck={deck}
+          onSkip={() => toStep("words")}
           liked={prefs.brandsLiked} disliked={prefs.brandsDisliked}
           onJudge={(name, like) => setPrefs((p) => ({
             ...p,
             brandsLiked: like ? [...p.brandsLiked.filter((x) => x !== name), name] : p.brandsLiked.filter((x) => x !== name),
             brandsDisliked: !like ? [...p.brandsDisliked.filter((x) => x !== name), name] : p.brandsDisliked.filter((x) => x !== name),
           }))}
-          onBack={() => toStep("refine")}
           onNext={() => toStep(prefs.brandsLiked.length + prefs.brandsDisliked.length ? "brandsum" : "words")}
         />
       )}
@@ -1380,12 +1381,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           {!!names?.length && !namesBusy && (
-            <div className="wr-foot">
-              <span className="wr-hint">↑ ↓ to browse · Continue opens the claim</span>
-              <span className="mla" style={{ display: "inline-flex", gap: 10 }}>
+            <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+              <span style={{ display: "inline-flex", gap: 10 }}>
                 <button className="wr-btn2" disabled={moreBusy} onClick={moreNames}>{moreBusy ? "↻ …" : fails.more ? "↻ Try again" : "↻ More"}</button>
                 <button className="wr-btn" style={{ maxWidth: 340 }} onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
               </span>
+              <span className="wr-hint">↑ ↓ to browse · Continue opens the claim</span>
             </div>
           )}
         </>
@@ -1481,9 +1482,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot claimfoot">
+          <div className="wr-foot col claimfoot" style={{ gap: 4, alignItems: "center" }}>
             <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
-            <span className="wr-hint mla khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
+            <span className="wr-hint khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
           </div>
           {claimSheet === "go" && claimDom && (
             <RegistrarSheet
@@ -1538,9 +1539,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Build my brand →</button>
+            <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
           </div>
         </>
       )}
@@ -1594,9 +1595,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("tshape")}>← Back</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 260 }} onClick={() => { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); toStep("logo"); }}>Show me my logos →</button>
+            <button className="wr-link" onClick={() => toStep("tshape")}>← Back</button>
           </div>
         </>
       )}
@@ -1628,12 +1629,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
-            <button className="wr-btn2 mla" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
-            <button className="wr-btn" style={{ maxWidth: 220 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
               Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
             </button>
+            <span className="urow">
+              <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
+              <button className="wr-link" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
+            </span>
           </div>
         </>
       )}
@@ -1693,9 +1696,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep("logo")}>← Back to logos</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 300 }} onClick={() => markStep("logo", "done", "book")}>Next: Brand book →</button>
+            <button className="wr-link" onClick={() => toStep("logo")}>← Back to logos</button>
           </div>
         </>
       )}
@@ -1814,14 +1817,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               </div>
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-btn2 aslink" onClick={() => toStep("logodone")}>← Back</button>
-            <button className="wr-link mla" onClick={() => setPersDraft(draftFromSel())}>↻ Reset to original</button>
+          <div className="wr-foot col persfoot" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 280 }} onClick={() => {
               setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale, family: persDraft.family, famWeight: persDraft.famWeight, sseed: persDraft.sseed } });
               track("logopers", { name: picked.name, ...persDraft });
               toStep("logodone");
             }}>Save as my logo ✓</button>
+            <span className="urow">
+              <button className="wr-link" onClick={() => toStep("logodone")}>← Back</button>
+              <button className="wr-link" onClick={() => setPersDraft(draftFromSel())}>↻ Reset to original</button>
+            </span>
           </div>
         </>
       )}
@@ -1858,9 +1863,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               )}
             </div>
           </div>
-          <div className="wr-foot">
-            <button className="wr-link" onClick={() => toStep(logoSel ? "logodone" : "logo")}>← Logo</button>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 320 }} onClick={() => markStep("book", "done", "socials")}>Next: Social accounts →</button>
+            <button className="wr-link" onClick={() => toStep(logoSel ? "logodone" : "logo")}>← Logo</button>
           </div>
         </>
       )}
@@ -2653,9 +2658,9 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
 
 /* ── 02·b Brands you like: a 12-card swipe deck that teaches the studio
    the founder's naming taste (design handoff 02r-02b) ── */
-function BrandSwipe({ deck, liked, disliked, onJudge, onBack, onNext }: {
+function BrandSwipe({ deck, liked, disliked, onJudge, onSkip, onNext }: {
   deck: InspireBrand[]; liked: string[]; disliked: string[];
-  onJudge: (name: string, like: boolean) => void; onBack: () => void; onNext: () => void;
+  onJudge: (name: string, like: boolean) => void; onSkip: () => void; onNext: () => void;
 }) {
   // Already-judged cards (a resumed run, or a re-drawn hand) don't come back.
   const cards = useMemo(() => deck.filter((b) => !liked.includes(b.name) && !disliked.includes(b.name)), [deck]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2692,9 +2697,8 @@ function BrandSwipe({ deck, liked, disliked, onJudge, onBack, onNext }: {
       <div className="wr-stage center">
         <div className="wr-swipe">
           <div className="left">
-            <p className="wr-kicker" style={{ marginBottom: 10 }}>Brands you like</p>
-            <h1 className="wr-h" style={{ fontSize: 36, marginBottom: 10 }}>Which names would you be proud of?</h1>
-            <p className="wr-lead" style={{ marginBottom: 22 }}>These are famous brand names. Tap ♥ if you'd be proud of a name like that, ✕ if it's not you. Every swipe teaches the studio your taste.</p>
+            <h1 className="wr-h" style={{ fontSize: 34, marginBottom: 8 }}>Which names would you be proud of?</h1>
+            <p className="wr-lead" style={{ marginBottom: 18 }}>Swipe right on names you love, left on the rest.</p>
           </div>
           <div className="right">
             {done ? (
@@ -2717,9 +2721,9 @@ function BrandSwipe({ deck, liked, disliked, onJudge, onBack, onNext }: {
                       if (d > 80) judge(true); else if (d < -80) judge(false); else setDx(0);
                     }}
                   >
-                    <span className="prog">{Math.min(idx + 1, cards.length)} of {cards.length}</span>
-                    {(px > 36) && <span className="stamp like">Like</span>}
-                    {(px < -36) && <span className="stamp nope">Nope</span>}
+                    <span className="prog">{Math.min(idx + 1, cards.length)} OF {cards.length}</span>
+                    {(px > 36) && <span className="stamp like">LIKE</span>}
+                    {(px < -36) && <span className="stamp nope">NOPE</span>}
                     {card.domain && (
                       <img
                         className="blogo" alt="" draggable={false}
@@ -2728,24 +2732,28 @@ function BrandSwipe({ deck, liked, disliked, onJudge, onBack, onNext }: {
                       />
                     )}
                     <span className="bn">{card.name}</span>
-                    <span className="bd">{card.why}</span>
-                    <span className="tags"><i>{card.style}</i><i>{card.sector}</i></span>
+                    <span className="bd">{styleArticle(card.style)}{card.vibe ? ` · ${card.vibe}` : ""}</span>
+                    <span className="tags"><i>{card.style[0].toUpperCase() + card.style.slice(1)}</i><i>{card.sector}</i></span>
                   </div>
                 </div>
                 <div className="acts">
                   <button className="act no" onClick={() => judge(false)} aria-label="Not for you">✕</button>
-                  <span className="hint wr-hidemob">← or → keys</span>
                   <button className="act yes" onClick={() => judge(true)} aria-label="Like">♥</button>
                 </div>
+                {!!liked.length && (
+                  <div className="youlike">
+                    <span className="yl mono">You like · {liked.length}</span>
+                    {liked.slice(-3).map((n) => <span key={n} className="ylp">{n}</span>)}
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
       </div>
-      <div className="wr-foot">
-        <button className="wr-link" onClick={onBack}>← Back</button>
-        <button className="wr-btn2 mla" onClick={onNext}>Skip</button>
-        <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onNext}>Show me inspiring words →</button>
+      <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+        <button className="wr-btn" style={{ maxWidth: 320 }} onClick={onNext}>Show me the words →</button>
+        <button className="wr-link" onClick={onSkip}>Skip this step</button>
       </div>
     </>
   );
@@ -2771,22 +2779,40 @@ function BrandTasteSummary({ liked, disliked, axes, onAxes, onRemoveLiked, onRem
     liked.length ? liked.reduce((a, n) => a + (BRAND_AXES[n]?.[k] ?? 0.5), 0) / liked.length : 0.6,
   ])) as TasteAxes;
   const cur: TasteAxes = axes || derived;
-  const top = [...AXES_META].sort((a, b) => cur[b.k] - cur[a.k]).slice(0, 3).map((r) => r.word);
+  // The headline reads the dials: a trait near the middle drops out ("any
+  // length"), the strongest leanings lead, either pole can speak.
+  const T = 0.12;
+  const SIDES: Record<keyof TasteAxes, [string, string]> = {
+    short: ["short", "longer"], warm: ["warm", "cool"], evoc: ["evocative", "descriptive"], real: ["made of real words", "invented"],
+  };
+  const leanings = AXES_META
+    .map((m) => ({ k: m.k, v: cur[m.k], str: Math.abs(cur[m.k] - 0.5) }))
+    .sort((a, b) => b.str - a.str)
+    .filter((l) => l.str > T)
+    .slice(0, 3)
+    .map((l) => SIDES[l.k][l.v > 0.5 ? 0 : 1]);
+  const anyLen = Math.abs(cur.short - 0.5) <= T && leanings.length > 0;
+  const joined = leanings.length > 1
+    ? leanings.slice(0, -1).map((w, i) => <Fragment key={w}>{i > 0 && ", "}<i>{w}</i></Fragment>)
+    : null;
   return (
     <>
       <div className="wr-stage">
         <div className="wr-bsum">
           <h1 className="wr-h ttl">
-            You like names that are <i>{top[0]}</i>, <i>{top[1]}</i> and <i>{top[2]}</i>.
+            {leanings.length === 0
+              ? <>Your taste is <i>wide open</i> — anything can win.</>
+              : <>You like names that are {joined}{leanings.length > 1 && " and "}<i>{leanings[leanings.length - 1]}</i>{anyLen && <>, <i>any length</i></>}.</>}
           </h1>
           <p className="tsub">Updates as you change things</p>
           <div className="axes">
             <div className="hdr"><span className="k mono">Your taste</span><span className="d mono">drag to adjust</span></div>
             {AXES_META.map((r) => {
               const pos = Math.round((1 - cur[r.k]) * 100); // knob left = the first pole
+              const leanL = cur[r.k] > 0.5 + T, leanR = cur[r.k] < 0.5 - T;
               return (
                 <div className="ax" key={r.k}>
-                  <div className="t"><b>{r.label}</b><span>{r.opp}</span></div>
+                  <div className="t"><b className={leanR ? "dim" : ""}>{r.label}</b><span className={leanR ? "lean" : leanL ? "dim" : ""}>{r.opp}</span></div>
                   <div className="sl" style={{ ["--p" as any]: pos + "%" }}>
                     <i className="tick" />
                     <input
@@ -2943,10 +2969,12 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
           </div>
         </div>
       </div>
-      <div className="wr-foot wr-tfoot">
-        <button className="wr-link" onClick={onBack}>← Back</button>
-        <button className="wr-btn2 mla" onClick={onNext}>Skip</button>
-        <button className="wr-btn" style={{ maxWidth: 180 }} onClick={onNext}>Next →</button>
+      <div className="wr-foot col wr-tfoot" style={{ gap: 8, alignItems: "center" }}>
+        <button className="wr-btn" style={{ maxWidth: 220 }} onClick={onNext}>Next →</button>
+        <span className="urow">
+          <button className="wr-link" onClick={onBack}>← Back</button>
+          <button className="wr-link" onClick={onNext}>Skip</button>
+        </span>
       </div>
     </>
   );
@@ -2966,19 +2994,6 @@ function AvoidAdd({ onAdd, label }: { onAdd: (w: string) => void; label?: string
 }
 
 /* small input for the refine page's custom domain extension */
-function DomAdd({ onAdd }: { onAdd: (d: string) => void }) {
-  const [open, setOpen] = useState(false);
-  if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>＋ other</button>;
-  return (
-    <span className="wr-opt chip">.
-      <input autoFocus placeholder="io" style={{ width: "5ch" }}
-        onBlur={(e) => { const v = e.target.value.trim().toLowerCase().replace(/^\./, "").replace(/[^a-z.]/g, ""); if (v) onAdd(v); setOpen(false); }}
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} />
-    </span>
-  );
-}
-
-
 /* ── social icons (inline, official-ish glyph shapes) ── */
 function SocialIcon({ name }: { name: string }) {
   const p: Record<string, string> = {

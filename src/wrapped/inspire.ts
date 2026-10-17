@@ -9,7 +9,14 @@ export interface InspireBrand {
   sector: string;
   why: string;
   domain?: string; // the brand's site, for its logo on the swipe card
+  vibe?: string;   // two adjectives for the card's descriptor line
 }
+
+// "A place · evocative, rugged" — the card's one-breath descriptor.
+export const styleArticle = (s: InspireBrand["style"]): string =>
+  s === "real word" ? "A real word" : s === "invented" ? "An invented word" : s === "compound" ? "A compound" :
+  s === "classical" ? "A classical root" : s === "foreign" ? "A foreign word" : s === "place" ? "A place" :
+  s === "person" ? "A person" : s === "myth" ? "A myth" : "Initials";
 
 // A brand's logo, by domain (Google's favicon service: no key, no asset
 // redistribution on our side, and a graceful 404 when a logo is missing).
@@ -125,6 +132,16 @@ const POOL_DOMAINS: Record<string, string> = {
   Mistral: "mistral.ai", Lego: "lego.com", Asana: "asana.com", Muji: "muji.com",
   Anduril: "anduril.com", Patagonia: "patagonia.com", Starbucks: "starbucks.com",
 };
+const POOL_VIBES: Record<string, string> = {
+  Stripe: "minimal, grounded", Notion: "intellectual, quiet", Slack: "subversive, witty", Arc: "minimal, geometric",
+  Calm: "serene, direct", Superhuman: "aspirational, bold", Perplexity: "curious, authoritative", Nothing: "deadpan, confident",
+  Runway: "dynamic, cinematic", Innocent: "warm, playful", "Liquid Death": "provocative, unforgettable", Oatly: "friendly, irreverent",
+  "Red Bull": "primal, direct", Airbnb: "modern, practical", Allbirds: "warm, storytelling", "Back Market": "cheeky, confident",
+  Headspace: "calm, poetic", Figma: "friendly, modern", Google: "witty, approachable", Monzo: "playful, international",
+  "Häagen-Dazs": "theatrical, premium", Glossier: "chic, modern", Klarna: "clear, nordic", Mistral: "fast, forceful",
+  Lego: "warm, principled", Asana: "calm, steady", Muji: "restrained, principled", Anduril: "forceful, storied",
+  Patagonia: "evocative, rugged", Starbucks: "narrative, familiar",
+};
 export const SWIPE_POOL: InspireBrand[] = [
   // ordinary words claimed whole
   "Stripe", "Notion", "Slack", "Arc", "Calm", "Superhuman", "Perplexity", "Nothing", "Runway", "Innocent",
@@ -136,7 +153,7 @@ export const SWIPE_POOL: InspireBrand[] = [
   "Mistral", "Lego", "Asana", "Muji",
   // myth, story, place
   "Anduril", "Patagonia", "Starbucks",
-].map((n) => ({ ...INSPIRE.find((b) => b.name === n)!, domain: POOL_DOMAINS[n] }));
+].map((n) => ({ ...INSPIRE.find((b) => b.name === n)!, domain: POOL_DOMAINS[n], vibe: POOL_VIBES[n] }));
 
 export const DECK_SIZE = 8;
 // A fresh hand: shuffled, but never more than two cards of the same style,

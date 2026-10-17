@@ -1904,5 +1904,35 @@
 .wr-swipe .card .blogo { width: 46px; height: 46px; border-radius: 11px; object-fit: contain; background: #fff; padding: 4px; box-sizing: border-box; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
 
 /* 02 simplified: the concept wears the dawn gradient; an orange rule below */
-.wr-cgrad { font-style: italic; background: linear-gradient(90deg, #ff9e7a, #c9b6ff 55%, #7c9cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.wr-brule { display: block; width: 54px; height: 3.5px; border-radius: 3px; background: #ff4f1a; margin: 20px 0 22px; }
+.wr-cgrad { font-style: italic; background: linear-gradient(90deg, #ffb595, #d6c8ff 55%, #9db4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wr-brule { display: block; width: 44px; height: 3px; border-radius: 3px; background: #ff4f1a; margin: 20px 0 22px; }
+
+/* ═══ handoff 11: swipe card v2, dial emphasis, footer under-rows ═══ */
+.wr-foot.col .urow { display: inline-flex; gap: 22px; }
+
+/* 02·b — one card, logo above the name, LIKE/NOPE stamps, the you-like tray */
+.wr-swipe .card.top { background: linear-gradient(165deg, #1e1833, #15102a 55%, #100c20); border: 1px solid rgba(255, 255, 255, 0.09); }
+.wr-swipe .card .prog { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; }
+.wr-swipe .card .stamp { position: absolute; top: 18px; right: 18px; left: auto; transform: rotate(6deg); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 5px 12px; border-radius: 10px; background: none; }
+.wr-swipe .card .stamp.like { color: #3ddc84; border: 2px solid #3ddc84; }
+.wr-swipe .card .stamp.nope { color: #ff6b5e; border: 2px solid #ff6b5e; }
+.wr-swipe .card .blogo { align-self: center; width: 58px; height: 58px; border-radius: 14px; margin: 26px 0 18px; }
+.wr-swipe .card .bn { text-align: center; font-size: 42px; letter-spacing: -0.035em; }
+.wr-swipe .card .bd { text-align: center; font-size: 13.5px; color: rgba(255, 255, 255, 0.55); }
+.wr-swipe .card .tags { justify-content: center; }
+.wr-swipe .acts { justify-content: center; gap: 22px; }
+.wr-swipe .act.no { background: none; border: 1.5px solid rgba(255, 255, 255, 0.25); color: #fff; }
+.wr-swipe .act.yes { background: #fff; border: none; color: #000; }
+.wr-swipe .youlike { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.wr-swipe .youlike .yl { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); }
+.wr-swipe .youlike .ylp { background: #fff; color: #000; border-radius: 980px; font-size: 13px; font-weight: 700; padding: 7px 13px; }
+
+/* 02·b·s — the end you lean towards is bold, the other fades; drag ring */
+.wr-bsum .ax .t b.dim { font-weight: 600; opacity: 0.5; }
+.wr-bsum .ax .t span.lean { color: #fff; font-weight: 700; font-size: 15.5px; }
+.wr-bsum .ax .t span.dim { opacity: 0.5; }
+.wr-bsum .ax input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; }
+.wr-bsum .ax input[type="range"]:active::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(255, 79, 26, 0.5); }
+.wr-bsum .ax input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+.wr-bsum .ax input[type="range"]:active::-moz-range-thumb { box-shadow: 0 0 0 5px rgba(255, 79, 26, 0.5); }
+.wr-bsum .ax:has(input:active) { background: rgba(255, 255, 255, 0.04); border-radius: 12px; }
