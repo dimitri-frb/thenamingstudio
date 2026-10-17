@@ -1865,7 +1865,7 @@
   .wr-dsheet.go { max-width: 440px; border-radius: 22px; }
 }
 
-/* 09 — the domain is the open last step, on GoDaddy */
+/* 09 — the domain is the open last step, bought elsewhere */
 .wr-trip .pill.last { background: #fff; color: #111; border-color: #fff; display: inline-flex; align-items: center; gap: 8px; }
 .wr-trip .pill.last .ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #ff4f1a; display: inline-block; flex: 0 0 auto; }
 .wr-trip .pill.last b { font-weight: 600; font-size: 11px; color: #555; }

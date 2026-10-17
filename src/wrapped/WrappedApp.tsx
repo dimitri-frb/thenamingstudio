@@ -1400,7 +1400,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <span className="okball pop">✓</span>
             <h1 className="wr-h pop" style={{ fontSize: 42, marginBottom: 8 }}>{picked.name} is yours.</h1>
             <p className="mono" style={{ color: "var(--text3)", letterSpacing: "0.04em" }}>{claimDom?.domain}</p>
-            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase at the registrar whenever you're ready.</p>
+            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase whenever you're ready.</p>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 320 }} onClick={() => toStep("reveal")}>Now, your brand →</button>
@@ -2308,8 +2308,8 @@ function RegistrarSheet({ domain, price, onOpen, onLater, onClose }: {
   domain: string; price: string; onOpen: () => void; onLater: () => void; onClose: () => void;
 }) {
   const steps: [string, string][] = [
-    [`The registrar opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
-    ["Pay there", "Log in or sign up on their site. It takes a minute."],
+    [`The checkout opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
+    ["Pay there", "It takes about a minute."],
     ["Come back to this tab", "Your brand is waiting right where you left it."],
   ];
   return (
@@ -2317,8 +2317,8 @@ function RegistrarSheet({ domain, price, onOpen, onLater, onClose }: {
       <div className="wr-dsheet go" onClick={(e) => e.stopPropagation()}>
         <span className="grab" />
         <p className="k mono">{domain.toUpperCase()}{price ? ` · ${price.toUpperCase()}/YR` : ""}</p>
-        <h3>You'll buy it on the registrar's site.</h3>
-        <p className="sub">It opens in a new tab. We can't see what happens there, so:</p>
+        <h3>Buy <span className="mono" style={{ fontSize: "0.85em" }}>{domain}</span> in one minute.</h3>
+        <p className="sub">The checkout opens in a new tab. Three steps:</p>
         <div className="gsteps">
           {steps.map(([h, s], i) => (
             <div key={h} className="gstep"><i>{i + 1}</i><span><b>{h}</b><em>{s}</em></span></div>
