@@ -62,3 +62,9 @@ Rules the format settled on:
 - **ADS line**: Google Ads UI (account ocid 8601447532, campaign
   "Search — Naming EN" id 24345462378) with the date preset — automatable
   once the Google Ads API developer token lands.
+- **Gate telemetry** (since Sat 17 Oct ~22:30 Paris): the brief page logs a
+  `page {to:"brief"}` event for everyone (anonymous included), and an
+  anonymous founder who hits the sign-up gate logs a `gate {to:<step>}`
+  action. So the gate leak splits in two: briefs − gates = stalled on the
+  wow page; gates − signups = balked at the modal. Exclude Dimitri's own
+  runs (Direct source, dimitrifarber@gmail.com).

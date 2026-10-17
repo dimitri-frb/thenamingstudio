@@ -654,8 +654,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (!test && !precharged) newProcess();
     if (!test) startedAt.current = Date.now();
     track("search", { sentence: s, chips });
-    setStep("brief");
-    pushUrl("brief");
+    // Through toStep, so the brief page logs a page event like every other
+    // step — before this, 02 was the one page the admin funnel couldn't see.
+    toStep("brief");
     if (user) persist(); // anonymous runs save to the account once they sign up
   }
 
@@ -727,6 +728,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // (the React user state lags one render behind the Google callback).
     if (!test && !loadSession()?.user && ["brands", "brandsum", "words", "names"].includes(s)) {
       afterGate.current = s;
+      // Logged: an anonymous founder ASKED for more and met the gate. Briefs
+      // minus gates = stalled on the wow; gates minus signups = balked at the modal.
+      track("gate", { to: s });
       setBriefGate(true);
       return;
     }
