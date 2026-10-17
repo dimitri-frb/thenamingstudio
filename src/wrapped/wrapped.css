@@ -1953,3 +1953,18 @@
 /* the word tooltip never blocks a scroll or a tap — it's a label, not a modal */
 .wr-v2tipwrap, .wr-v2tipwrap * { pointer-events: none; }
 @media (max-width: 720px) { .claimfoot { display: none; } }
+
+/* More fonts on phones: a true bottom sheet over everything, with a dim */
+.wr-pers .fontddim { display: none; }
+@media (max-width: 720px) {
+  .wr-pers .fontddim { display: block; position: fixed; inset: 0; z-index: 119; background: rgba(0, 0, 0, 0.55); }
+}
+
+/* iOS zooms the page when a focused field's text is under 16px — every input
+   in the flow gets a 16px floor on phones, so the layout NEVER jumps on focus.
+   (Pinch zoom is untouched; this only stops the automatic focus-zoom.) */
+@media (max-width: 720px) {
+  .wr input, .wr textarea, .wr select,
+  .ka-land input, .wr-sumodal input, .wr-sumodal textarea,
+  .wr-pers .fontdd input, .wr-dsheet input { font-size: 16px !important; }
+}

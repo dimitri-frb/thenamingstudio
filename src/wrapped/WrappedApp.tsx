@@ -3,6 +3,7 @@
 // (gated when signed out) → 05 the reveal → then the own-it hub:
 // 06 domain → 06b/c logo → 07 brand book → 08 socials → 09 all set.
 import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
@@ -1769,7 +1770,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     {persDraft.family || "More fonts"} <span style={{ opacity: 0.6 }}>{persFontsOpen ? "▴" : "▾"}</span>
                   </button>
                 </div>
-                {persFontsOpen && (
+                {persFontsOpen && (() => {
+                  const dd = (
                   <div className="fontdd">
                     <input autoFocus value={persFontQ} onChange={(e) => setPersFontQ(e.target.value)} placeholder="⌕  Search fonts" />
                     <div className="list">
@@ -1786,7 +1788,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     </div>
                     <button className="ddclose" onClick={() => setPersFontsOpen(false)}>Done</button>
                   </div>
-                )}
+                  );
+                  // On phones the catalogue is a bottom sheet over everything:
+                  // portaled to <body>, because the stage's fade animation makes
+                  // a stacking context that trapped the sheet UNDER the footer.
+                  return isMobile
+                    ? createPortal(
+                        <div className="wr-pers" style={{ display: "contents" }}>
+                          <div className="fontddim" onClick={() => setPersFontsOpen(false)} />
+                          {dd}
+                        </div>,
+                        document.body)
+                    : dd;
+                })()}
                 <p className="plab">Layout</p>
                 <div className="seg">
                   {([["stacked", "Stacked"], ["side", "Side by side"], ["symbol", "Symbol only"]] as const).map(([v, l]) => (
