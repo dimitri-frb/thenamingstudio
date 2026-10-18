@@ -529,16 +529,18 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const q = new URLSearchParams(window.location.search);
     if (q.has("poll")) { show(q.get("poll") === "idle" ? "idle" : "exit"); return; } // design QA hook
     if (test) return;
-    // 04·x fires when the founder actually leaves — the tab or app is closed or
-    // backgrounded (visibilitychange covers both; there's no mouse exit-intent
-    // on phones). The ask shows the moment they come back. 04·i is the
-    // 30-second quiet version.
-    let idle = window.setTimeout(() => show("idle"), 30000);
-    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), 30000); };
-    let away = false;
+    // The ask never interrupts someone who is merely thinking: it takes 20
+    // MINUTES of stillness on one page (the timer restarts on any activity and
+    // on every page change). 04·x covers leaving — tab closed or backgrounded —
+    // and shows on return, but only when they stayed away 20+ minutes too.
+    const QUIET = 20 * 60000;
+    let idle = window.setTimeout(() => show("idle"), QUIET);
+    const reset = () => { window.clearTimeout(idle); idle = window.setTimeout(() => show("idle"), QUIET); };
+    let hiddenAt = 0;
     const vis = () => {
-      if (document.visibilityState === "hidden") { away = true; return; }
-      if (away) show("exit");
+      if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt >= QUIET) show("exit");
+      else reset(); // back quickly: a fresh quiet window, no pop-up
     };
     window.addEventListener("pointermove", reset);
     window.addEventListener("keydown", reset);
