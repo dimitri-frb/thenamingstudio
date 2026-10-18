@@ -2405,7 +2405,7 @@ function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: ()
         callback: async (resp: any) => {
           const r = await authGoogle(resp.credential);
           if (r) onUser(r.user);
-          else setErr("Sign-in didn't stick, try again.");
+          else setErr("We couldn't reach the server — check your connection and try again.");
         },
       });
       w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
@@ -2448,7 +2448,7 @@ function SignupModal({ onClose, onUser, note }: { onClose: () => void; onUser: (
         callback: async (resp: any) => {
           const r = await authGoogle(resp.credential);
           if (r) onUser(r.user);
-          else setErr("Sign-in didn't stick, try again.");
+          else setErr("We couldn't reach the server — check your connection and try again.");
         },
       });
       w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
