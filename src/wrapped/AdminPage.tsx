@@ -625,29 +625,35 @@ function Delta({ cur, was, costly }: { cur: number; was: number; costly?: boolea
 function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean }) {
   const [chan, setChan] = useState("Google Ads");
   const [wk, setWk] = useState(0);
+  // Week columns by default; the toggle narrows every column to one day.
+  const [gran, setGran] = useState<"week" | "day">("week");
   const paid = chan === "All channels" || PAID.has(chan);
-  const w0 = mondayOf(Date.now());
-  const weeks = useMemo(() => Array.from({ length: 10 }, (_, i) => w0 - i * WMS), [w0]);
+  const SPAN = gran === "week" ? WMS : 864e5;
+  const day0 = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const p0 = gran === "week" ? mondayOf(Date.now()) : day0;
+  const weeks = useMemo(() => Array.from({ length: 10 }, (_, i) => p0 - i * SPAN), [p0, SPAN]);
   const met: WeekMet[] = useMemo(() => weeks.map((t) => {
     let spend = 0, adClicks = 0;
     for (const d of ads || []) {
       const dt = new Date(d.date + "T00:00:00").getTime();
-      if (dt < t || dt >= t + WMS) continue;
+      if (dt < t || dt >= t + SPAN) continue;
       for (const r of d.rows || []) if (chan === "All channels" || r.channel === chan) { spend += r.cost || 0; adClicks += r.clicks || 0; }
     }
-    const fl = flows.filter((f) => f.first >= t && f.first < t + WMS && (chan === "All channels" || f.source === chan));
+    const fl = flows.filter((f) => f.first >= t && f.first < t + SPAN && (chan === "All channels" || f.source === chan));
     const freeVisits = chan === "All channels" ? fl.filter((f) => !PAID.has(f.source)).length : PAID.has(chan) ? 0 : fl.length;
     return {
       spend, clicks: adClicks + freeVisits,
       started: fl.filter((f) => f.step >= 1 || f.brief).length,
       signed: fl.filter((f) => f.email).length,
-      brief: fl.filter((f) => f.step >= 2).length,
+      // refine (02·r) sits before the gate, so an anonymous rewrite reaches
+      // step 2 — the funnel only counts it once they actually signed
+      brief: fl.filter((f) => f.email && f.step >= 2).length,
       words: fl.filter((f) => f.step >= 4).length,
       name: fl.filter((f) => f.step >= 5).length,
       brand: fl.filter((f) => f.step >= 7).length,
       buy: fl.filter((f) => f.buy).length,
     };
-  }), [weeks, flows, ads, chan]);
+  }), [weeks, flows, ads, chan, SPAN]);
   const sum = (a: WeekMet[], k: keyof WeekMet) => a.reduce((s, m) => s + m[k], 0);
   const l5 = met.slice(0, 5), p5 = met.slice(5, 10);
   const spend5 = sum(l5, "spend"), spendP = sum(p5, "spend");
@@ -656,6 +662,8 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
   const cps = sign5 ? spend5 / sign5 : 0, cpsP = signP ? spendP / signP : 0;
   const cpn = name5 ? spend5 / name5 : 0, cpnP = nameP ? spendP / nameP : 0;
   const lastAdDay = (ads || [])[0]?.date;
+  const pTitle = (t: number) => gran === "week" ? `W${isoWeek(t)}` : new Date(t).toLocaleDateString("en-GB", { weekday: "short" });
+  const pSub = (t: number) => gran === "week" ? weekLabel(t) : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   const cell = (m: WeekMet, prevM: WeekMet | undefined, ri: number, hid: boolean) => {
     const r = AROWS[ri];
     const v = m[r.k];
@@ -680,7 +688,11 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
     <div className="wrap ana">
       <div className="anahead">
         <h2>Channel performance</h2>
-        <span className="mono sub">{chan} · last 5 weeks vs the 5 before</span>
+        <span className="mono sub">{chan} · last 5 {gran}s vs the 5 before</span>
+        <span className="gsel">
+          <button className={gran === "week" ? "on" : ""} onClick={() => { setGran("week"); setWk(0); }}>Weeks</button>
+          <button className={gran === "day" ? "on" : ""} onClick={() => { setGran("day"); setWk(0); }}>Days</button>
+        </span>
         {lastAdDay
           ? <span className="sync"><i /> Ads synced · through {lastAdDay}</span>
           : <span className="sync none">No spend data yet — paste docs/ads/ads-script.js into Google Ads → Scripts</span>}
@@ -704,7 +716,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       <div className="wksel">
         {weeks.slice(0, 5).map((t, i) => (
           <button key={t} className={wk === i ? "on" : ""} onClick={() => setWk(i)}>
-            <b>W{isoWeek(t)}</b><span>{i === 0 ? "so far" : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+            <b>{pTitle(t)}</b><span>{i === 0 ? "so far" : pSub(t)}</span>
           </button>
         ))}
       </div>
@@ -716,13 +728,13 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
               <th className="stp" />
               {weeks.slice(0, 5).map((t, i) => (
                 <th key={t} colSpan={4} className={"wkh" + (i === wk ? " sel" : "")}>
-                  <b>W{isoWeek(t)}</b> <span>{weekLabel(t)}{i === 0 ? " · so far" : ""}</span>
+                  <b>{pTitle(t)}</b> <span>{pSub(t)}{i === 0 ? " · so far" : ""}</span>
                   {paid && <em className="mono">{eur(met[i].spend)}</em>}
                 </th>
               ))}
             </tr>
             <tr className="subs">
-              <th className="stp">STEP<u className="sm"> · W{isoWeek(weeks[wk])}</u></th>
+              <th className="stp">STEP<u className="sm"> · {pTitle(weeks[wk])} {pSub(weeks[wk])}</u></th>
               {weeks.slice(0, 5).map((t, i) => {
                 const h = i === wk ? "" : " wkhid";
                 return <Fragment key={t}><th className={"h" + h}>#</th><th className={"h" + h}>{paid ? "€ / #" : ""}</th><th className={"h" + h}>Step</th><th className={"h" + h}>Total</th></Fragment>;
@@ -739,7 +751,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
           </tbody>
         </table>
       </div>
-      <p className="ananote mono">{loading ? "Loading the log…" : "# people who reached the step · €/# that week’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the week before"}</p>
+      <p className="ananote mono">{loading ? "Loading the log…" : `# people who reached the step · €/# that ${gran}’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the ${gran} before`}</p>
     </div>
   );
 }

@@ -2096,3 +2096,8 @@
   .kadm .fbsteps { gap: 4px; }
   .kadm .fbsteps .col .l { font-size: 8px; }
 }
+
+/* Analysis: the Weeks / Days granularity toggle */
+.kadm .anahead .gsel { display: inline-flex; background: #f2f1ee; border-radius: 980px; padding: 3px; }
+.kadm .anahead .gsel button { border: none; background: none; font-family: inherit; font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 980px; cursor: pointer; color: #6a6a6a; }
+.kadm .anahead .gsel button.on { background: #000; color: #fff; }
