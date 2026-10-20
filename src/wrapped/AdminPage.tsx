@@ -598,8 +598,8 @@ type WeekMet = { spend: number; clicks: number; started: number; signed: number;
 const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean }[] = [
   { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
   { k: "started", t: "Started", s: "Started", d: "typed a brief, pressed “Name it”" },
-  { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in with Google" },
-  { k: "brief", t: "Brief confirmed", s: "Brief", d: "continued past the brief" },
+  { k: "brief", t: "Brief confirmed", s: "Brief", d: "continued into the brand swipe" },
+  { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in to see the words" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "continued with a name", main: true },
   { k: "brand", t: "Brand done", s: "Brand done", d: "logo + brand book" },
@@ -645,9 +645,9 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       spend, clicks: adClicks + freeVisits,
       started: fl.filter((f) => f.step >= 1 || f.brief).length,
       signed: fl.filter((f) => f.email).length,
-      // refine (02·r) sits before the gate, so an anonymous rewrite reaches
-      // step 2 — the funnel only counts it once they actually signed
-      brief: fl.filter((f) => f.email && f.step >= 2).length,
+      // since 20 Oct the gate sits before the WORDS: brands/brandsum (step 2)
+      // are open to anonymous founders, so Brief confirmed comes before Sign-ups
+      brief: fl.filter((f) => f.step >= 2).length,
       words: fl.filter((f) => f.step >= 4).length,
       name: fl.filter((f) => f.step >= 5).length,
       brand: fl.filter((f) => f.step >= 7).length,

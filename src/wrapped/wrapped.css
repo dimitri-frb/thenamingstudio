@@ -2101,3 +2101,69 @@
 .kadm .anahead .gsel { display: inline-flex; background: #f2f1ee; border-radius: 980px; padding: 3px; }
 .kadm .anahead .gsel button { border: none; background: none; font-family: inherit; font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 980px; cursor: pointer; color: #6a6a6a; }
 .kadm .anahead .gsel button.on { background: #000; color: #fff; }
+
+/* ── 05 Claim v2: validate in the app, buy later (handoff 13 · Fix 1) ── */
+.wr-claim2stage { display: flex; flex-direction: column; align-items: center; }
+.wr-claim2 { width: 100%; max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; }
+.wr-claim2 .hero { text-align: center; padding-top: 6px; }
+.wr-claim2 .cname { font-family: 'Archivo', var(--sans); font-weight: 900; letter-spacing: -0.04em; font-size: clamp(44px, 13vw, 58px); line-height: 1; margin: 0 0 10px; }
+.wr-claim2 .pron { font-size: 11.5px; color: var(--text3); letter-spacing: 0.06em; margin-bottom: 12px; }
+.wr-claim2 .story { font-size: 14.5px; line-height: 1.55; color: var(--text2); max-width: 320px; margin: 0 auto; }
+.wr-claim2 .story i { color: var(--text); font-style: italic; }
+.wr-claim2 .storybtn { display: inline; margin-left: 6px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+.wr-claim2 .sgrid { text-align: left; margin-top: 14px; }
+.wr-claim2 .pick { margin-top: 26px; }
+.wr-claim2 .pick .k { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+.wr-claim2 .domrow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.04); border-radius: 16px; padding: 13px 16px; margin-bottom: 10px; font-family: inherit; color: var(--text); cursor: pointer; }
+.wr-claim2 .domrow .radio { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); position: relative; }
+.wr-claim2 .domrow.on { background: #fff; color: #000; border-color: #fff; }
+.wr-claim2 .domrow.on .radio { border-color: #000; }
+.wr-claim2 .domrow.on .radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #000; }
+.wr-claim2 .domrow .dmid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wr-claim2 .domrow .d { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.wr-claim2 .domrow .st { font-size: 10.5px; color: var(--text3); }
+.wr-claim2 .domrow.on .st { color: #555; }
+.wr-claim2 .domrow .st.live { display: inline-flex; align-items: center; gap: 5px; color: #0c8a57; font-weight: 700; }
+.wr-claim2 .livedot { width: 7px; height: 7px; border-radius: 50%; background: #12a36b; animation: wr-livepulse 1.6s ease infinite; }
+@keyframes wr-livepulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(18, 163, 107, 0.45); } 50% { box-shadow: 0 0 0 5px rgba(18, 163, 107, 0); } }
+.wr-claim2 .domrow .pr { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.wr-claim2 .domrow .pr em { font-style: normal; font-size: 10px; color: var(--text3); }
+.wr-claim2 .domrow.on .pr em { color: #777; }
+.wr-claim2 .buynote { font-size: 11px; color: var(--text3); margin: 4px 2px 0; }
+.wr-btnor.cbig { width: 100%; max-width: 420px; height: 54px; font-size: 16px; }
+
+/* ── 05·k Kept ── */
+.wr-kept .okball { margin-bottom: 18px; }
+.keptcard { width: 100%; max-width: 360px; margin: 0 auto; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; padding: 6px 0; text-align: left; }
+.keptcard .krow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; font-family: inherit; color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+.keptcard .krow:last-child { border-bottom: none; }
+.keptcard .krow.lead { cursor: pointer; }
+.keptcard .ic { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; font-style: normal; }
+.keptcard .ic.ok { background: #12a36b; color: #fff; }
+.keptcard .ic.nx { background: var(--accent, #ff4f1a); color: #fff; }
+.keptcard .ic.out { border: 1.5px solid rgba(255, 255, 255, 0.3); color: var(--text3); }
+.keptcard .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.keptcard .mid b { font-size: 14px; }
+.keptcard .mid small { font-size: 11px; color: var(--text3); }
+.keptcard .val { font-size: 12.5px; color: var(--text2); white-space: nowrap; }
+.keptcard .val.next { color: var(--accent, #ff4f1a); font-weight: 800; font-size: 11px; letter-spacing: 0.08em; }
+.keptcard .krow.dimr .mid b { color: var(--text2); }
+
+/* ── 00·s gate v2: the words blurred behind the promise (handoff 13 · Fix 2) ── */
+.wr-gate2 { position: fixed; inset: 0; z-index: 120; background: #0c0b0a; display: flex; flex-direction: column; justify-content: flex-end; }
+.wr-gate2 .back { position: absolute; inset: 0; padding: 72px 22px 0; filter: blur(5px); opacity: 0.85; pointer-events: auto; -webkit-mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.25) 100%); mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.25) 100%); overflow: hidden; }
+.wr-gate2 .back h1 { font-family: 'Archivo', var(--sans); font-weight: 900; letter-spacing: -0.03em; font-size: 28px; color: #fff; margin: 0 0 20px; }
+.wr-gate2 .cloud { display: flex; flex-wrap: wrap; gap: 9px; }
+.wr-gate2 .cloud .chip { border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.85); border-radius: 980px; padding: 8px 14px; font-size: 13.5px; font-weight: 600; }
+.wr-gate2 .card { position: relative; z-index: 2; background: #fff; color: #111; border-radius: 26px; margin: 0 14px calc(14px + env(safe-area-inset-bottom)); padding: 22px 22px 18px; text-align: center; box-shadow: 0 24px 80px -20px rgba(0, 0, 0, 0.8); }
+.wr-gate2 .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8a8a8a; margin-bottom: 8px; }
+.wr-gate2 h3 { font-family: 'Archivo', var(--sans); font-weight: 900; letter-spacing: -0.03em; font-size: 26px; line-height: 1.1; margin: 0 0 8px; color: #000; }
+.wr-gate2 .sub { font-size: 13.5px; color: #555; line-height: 1.5; max-width: 290px; margin: 0 auto 14px; }
+.wr-gate2 .gbtn { display: flex; justify-content: center; min-height: 44px; }
+.wr-gate2 .fine { font-size: 11px; color: #9a9a9a; margin: 10px 0 0; }
+@media (min-width: 721px) {
+  .wr-gate2 { justify-content: center; align-items: center; }
+  .wr-gate2 .card { max-width: 400px; width: 100%; margin: 0; }
+}
+.keptcard .krow { text-align: left; font-size: inherit; }
+.wr-kept .okball { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000; display: grid; place-items: center; font-size: 19px; font-weight: 800; }

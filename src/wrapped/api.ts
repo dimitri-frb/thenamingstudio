@@ -68,6 +68,8 @@ export interface SavedSearch {
   picked?: WName | null;
   domain?: string;          // the chosen domain
   domPrice?: string;        // its price when we checked ("$32/yr" shows on the account card)
+  domCheckedAt?: number;    // when availability was last verified (the claim screen's live check)
+  domStatus?: "chosen" | "bought"; // chosen = kept in the app, not bought anywhere yet
   bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
   logo?: { key: string; title: string; seed: number; accent?: string } | null;
   taste?: unknown;          // the Brand chapter's taste picks
@@ -313,11 +315,12 @@ export function track(event: string, payload: Record<string, unknown> = {}): voi
 
 /* ── domains ── */
 const boardCache = new Map<string, Promise<DomainBoardData>>();
-export function fetchDomainBoard(name: string, doms?: string[]): Promise<DomainBoardData> {
+export function fetchDomainBoard(name: string, doms?: string[], fresh = false): Promise<DomainBoardData> {
   const key = (name || "").trim().toLowerCase() + "|" + (doms || []).join(",");
   const empty: DomainBoardData = { name, tlds: [], variants: [], source: "none" };
   if (!(name || "").trim()) return Promise.resolve(empty);
   if (TEST) return Promise.resolve(SAMPLE_BOARD((name || "").trim().toLowerCase()));
+  if (fresh) boardCache.delete(key); // the claim screen re-verifies on open — never show a stale "available"
   const hit = boardCache.get(key);
   if (hit) return hit;
   const p = (async () => (await post<DomainBoardData>({ phase: "domainboard", payload: { name, doms } })) || empty)();

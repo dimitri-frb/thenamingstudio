@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, toPalette, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
@@ -207,6 +207,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [moreBusy, setMoreBusy] = useState(false);
   const [picked, setPicked] = useState<WName | null>(test ? ACTIVE().names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
+  const [boardAt, setBoardAt] = useState(0); // when availability was really checked
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
@@ -220,8 +221,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const pollShown = useRef(false);
   // ── 05 Claim: the story fold, the endings sheet, the registrar sheet, 05·✓ ──
   const [claimStory, setClaimStory] = useState(false);
-  const [claimSheet, setClaimSheet] = useState<null | "tld" | "go">(null);
-  const [claimDone, setClaimDone] = useState(false); // 05·✓, after the buy-now jump
   const [domBought, setDomBought] = useState(false); // user-set only ("Mark as done")
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
@@ -567,6 +566,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     void import("./Book"); // warm the lazy book chunk alongside its content
     fetchDomainBoard(picked.name, prefs.doms).then((b) => {
       setBoard(b);
+      setBoardAt(Date.now());
       fail("board", !b.tlds.length);
     });
     if (test) { setBook(sampleBook(picked.name)); return; }
@@ -726,11 +726,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // so only these events prove the founder actually SAW a step.
   const afterGate = useRef<Step | null>(null);
   function toStep(s: Step) {
-    // The sign-up gate (00·s) sits between the wrapped brief and the words:
-    // an anonymous founder asking for brands/words signs up first, then lands
-    // exactly where they were heading. loadSession() is the synchronous truth
-    // (the React user state lags one render behind the Google callback).
-    if (!test && !loadSession()?.user && ["brands", "brandsum", "words", "names"].includes(s)) {
+    // The sign-up gate (00·s) sits right before the WORDS: an anonymous
+    // founder briefs, swipes and tunes freely, and signs up only when the
+    // words — visible, blurred, behind the card — are one tap away.
+    // loadSession() is the synchronous truth (the React user state lags one
+    // render behind the Google callback).
+    if (!test && !loadSession()?.user && ["words", "names"].includes(s)) {
       afterGate.current = s;
       // Logged: an anonymous founder ASKED for more and met the gate. Briefs
       // minus gates = stalled on the wow; gates minus signups = balked at the modal.
@@ -839,7 +840,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   function pickName(n: WName) {
     setPicked(n);
     setBoard(null); setDomSel(null); setLogoSel(null); setLogoSeed(0);
-    setClaimStory(false); setClaimSheet(null); setClaimDone(false); setDomBought(false);
+    setClaimStory(false); setDomBought(false);
     track("pick", { name: n.name, score: n.score, rank: (names || []).findIndex((x) => x.name === n.name) + 1 });
     toStep("claim");
     persist({ picked: n });
@@ -869,31 +870,39 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     domSel ||
     (picked?.dom?.free ? { domain: picked.dom.domain, status: "available" as const, price: picked.dom.price } :
      picked?.alt ? { domain: picked.alt.domain, status: "available" as const, price: picked.alt.price } : null);
+  // The 05 radio rows: three options, the current pick always among them.
+  const claimRows = useMemo<DomainCard[]>(() => {
+    const rows = domRows.slice(0, 3);
+    if (claimDom && !rows.some((d) => d.domain === claimDom.domain)) { rows.unshift(claimDom); return rows.slice(0, 3); }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domRows, claimDom?.domain]);
+  const checkTime = boardAt ? new Date(boardAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  useEffect(() => { // 05 opens → re-verify availability, never a stale "Available now"
+    if (test || step !== "claim" || !picked) return;
+    fetchDomainBoard(picked.name, prefs.doms, true).then((b) => {
+      setBoard(b);
+      setBoardAt(Date.now());
+      // the selected row is gone → the best free row takes over
+      setDomSel((cur) => {
+        if (!cur) return cur;
+        const still = [...b.tlds, ...b.variants].find((d) => d.domain === cur.domain);
+        return still && still.status === "available" ? still : null;
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // "Keep {Name}" claims the name + domain in the studio (no purchase): the
   // choice is saved, the funnel logs it, and the brand chapter opens.
   function keepName(to: Step = "reveal") {
     const d = claimDom;
-    if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "" });
+    if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "", checkedAt: boardAt || undefined });
     const ns = { ...steps, domain: "done" as const };
     setSteps(ns);
-    persist({ steps: ns, domain: d?.domain, domPrice: d?.price || d?.offerPrice || "" });
-    setClaimSheet(null);
+    persist({ steps: ns, domain: d?.domain, domPrice: d?.price || d?.offerPrice || "", domCheckedAt: boardAt || undefined, domStatus: "chosen" });
     toStep(to);
-  }
-
-  // 05·r → the registrar: just a link out, in a new tab. No cart, no verification.
-  // This tab switches to 05·✓ so the founder lands back on "it's yours".
-  function openRegistrar() {
-    const d = claimDom;
-    if (!d) return;
-    window.open(d.offerUrl || registrarUrl(d.domain), "_blank", "noopener");
-    track("godaddy", { domain: d.domain, price: d.price || d.offerPrice || "" });
-    const ns = { ...steps, domain: "done" as const };
-    setSteps(ns);
-    persist({ steps: ns, domain: d.domain, domPrice: d.price || d.offerPrice || "" });
-    setClaimSheet(null);
-    setClaimDone(true);
   }
 
   async function downloadLogoPack() {
@@ -957,7 +966,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (step === "brief" && concept) { e.preventDefault(); toStep("brands"); }
         else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
         else if (step === "names" && names?.length) { e.preventDefault(); continueWithSel(); }
-        else if (step === "claim" && !claimSheet && !claimDone) { e.preventDefault(); keepName(); }
+        else if (step === "claim") { e.preventDefault(); keepName(); }
         else if (step === "reveal") { e.preventDefault(); toStep("brand"); }
         else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
         else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
@@ -1001,7 +1010,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return t;
   };
 
-  const pal = book?.palette ? toPalette(book.palette) : tastePalette(taste);
   // Logos always wear the quiz picks directly (never a stale pre-taste book palette).
   const lpal = tastePalette(taste);
   const lshape = tasteShape(taste);
@@ -1401,39 +1409,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 05 Claim — keep the name, buy the domain at the end (ex reveal + domain) ═══ */}
-      {step === "claim" && picked && claimDone && (
+      {/* ═══ 05 Claim — validate the name IN the app; buying happens at the end ═══ */}
+      {step === "claim" && picked && (
         <>
-          <div className="wr-stage center wr-claimdone" style={{ textAlign: "center", alignItems: "center" }}>
-            <span className="okball pop">✓</span>
-            <h1 className="wr-h pop" style={{ fontSize: 42, marginBottom: 8 }}>{picked.name} is yours.</h1>
-            <p className="mono" style={{ color: "var(--text3)", letterSpacing: "0.04em" }}>{claimDom?.domain}</p>
-            <p className="wr-lead rise" style={{ maxWidth: 330, margin: "14px auto 0" }}>You can finish your purchase whenever you're ready.</p>
-          </div>
-          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 320 }} onClick={() => toStep("reveal")}>Now, your brand →</button>
-            <p className="wr-hint">Logo · colours · type · brand book</p>
-          </div>
-        </>
-      )}
-      {step === "claim" && picked && !claimDone && (
-        <>
-          <div className="wr-stage wr-claimstage">
-            <div className="wr-claim">
-              <div className="cl rise">
-                <p className="wr-kicker" style={{ marginBottom: 10 }}>Your name</p>
+          <div className="wr-stage wr-claim2stage">
+            <div className="wr-claim2">
+              <div className="hero rise">
                 <h1 className="cname pop">{picked.name}</h1>
                 <p className="pron mono">
                   {book?.saying?.syllables?.length ? book.saying.syllables.map((s) => (s.stress ? s.s.toUpperCase() : s.s.toLowerCase())).join(" · ") + "  ·  " : ""}
-                  {picked.score}% fit with your brief
+                  {picked.score}% fit
                 </p>
                 <p className="story">
                   {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
-                  {" "}{picked.tagline}
+                  {!claimStory && <button className="wr-link storybtn" onClick={() => setClaimStory(true)}>Story ↓</button>}
                 </p>
-                {!claimStory ? (
-                  <button className="wr-link fold" onClick={() => setClaimStory(true)}>Read the story ↓</button>
-                ) : (
+                {claimStory && (
                   <>
                     <div className="sgrid rise">
                       <div>
@@ -1455,103 +1446,66 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   </>
                 )}
               </div>
-              <div className="cr rise">
-                <div className="dcard">
-                  <p className="k mono">Its domain</p>
-                  <div className="drow">
-                    <i className="dot" />
-                    <span className="d mono">{claimDom?.domain || "checking…"}</span>
-                    {(claimDom?.price || claimDom?.offerPrice) && <span className="pr mono">{claimDom.price || claimDom.offerPrice}<em>/yr</em></span>}
-                  </div>
-                  <div className="drow2">
-                    <span className="was">Was free when we searched</span>
-                    {(() => {
-                      const others = domRows.filter((d) => d.domain !== claimDom?.domain).map((d) => d.tld || "." + d.domain.split(".").pop());
-                      const uniq = Array.from(new Set(others)).slice(0, 3);
-                      return uniq.length ? (
-                        <button className={"tldpill mono" + (claimSheet === "tld" ? " prs" : "")} onClick={() => setClaimSheet(claimSheet === "tld" ? null : "tld")}>
-                          Or {uniq.join(" ")} ›
-                        </button>
-                      ) : null;
-                    })()}
-                  </div>
-                  {claimSheet === "tld" && (
-                    <DomEndingsSheet
-                      name={picked.name}
-                      rows={domRows.slice(0, 5)}
-                      current={claimDom?.domain || ""}
-                      bestIdx={bestDomIdx}
-                      onUse={(d) => { setDomSel(d); setClaimSheet(null); }}
-                      onClose={() => setClaimSheet(null)}
-                    />
-                  )}
-                </div>
-                <button className="wr-btnor" onClick={() => keepName()}>Keep {picked.name}, build the brand →</button>
-                <button className="wr-link golink" onClick={() => setClaimSheet("go")}>Buy {claimDom?.domain || "it"} now ↗</button>
-              </div>
-            </div>
-          </div>
-          {/* no footer links here: the top bar's ‹ goes back, the space is the
-              claim's (desktop keeps the ⏎ hint) */}
-          <div className="wr-foot col claimfoot" style={{ gap: 4, alignItems: "center" }}>
-            <span className="wr-hint khint"><i className="kbd">⏎</i> to keep {picked.name}</span>
-          </div>
-          {claimSheet === "go" && claimDom && (
-            <RegistrarSheet
-              domain={claimDom.domain}
-              price={claimDom.price || claimDom.offerPrice || ""}
-              onOpen={openRegistrar}
-              onLater={() => keepName()}
-              onClose={() => setClaimSheet(null)}
-            />
-          )}
-        </>
-      )}
-
-      {/* ═══ 05·v the reveal — name and domain claimed, brand next ═══ */}
-      {step === "reveal" && picked && (
-        <>
-          <div className="wr-stage center">
-            <div className="wr-revcols">
-              <div className="left rise">
-                <p className="wr-kicker" style={{ marginBottom: 14 }}>Your name</p>
-                <h1 className="wr-bigname pop" style={{ textAlign: "left" }}>{picked.name}</h1>
-                <p className="meaning">
-                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
-                </p>
-              </div>
-              <div className="right rise">
-                <p className="tri">Name and domain, done. <i>Now the brand.</i></p>
-                <div className="rrow one">
-                  <span className="i ok">✓</span>
-                  <span className="mid"><span className="hl"><b>Name</b><small>You've got it. Congrats!</small></span></span>
-                  <span className="nm2">{picked.name}</span>
-                </div>
-                <div className="rrow one">
-                  <span className="i ok">✓</span>
-                  <span className="mid"><span className="hl"><b>Domain</b><small>Claimed. It's yours.</small></span></span>
-                  <span className="nm2 mono">{domSel?.domain || picked.dom?.domain}</span>
-                </div>
-                <button className="rrow lead" onClick={() => toStep("brand")}>
-                  <span className="i">3</span>
-                  <span className="mid">
-                    <span className="hl"><b>Brand</b><small className="right">Built from your taste</small></span>
-                    <span className="minis">
-                      <span className="mini"><i className="mv" dangerouslySetInnerHTML={{ __html: logoSvg("sunrise", picked.name, pal, { variant: "tile", accent: "dawn", height: 20 }) }} /><em>Logo</em></span>
-                      <span className="mini"><i className="mv aa">Aa</i><em>Font</em></span>
-                      <span className="mini"><i className="mv sws"><b style={{ background: pal.dawn }} /><b style={{ background: pal.haze }} /><b style={{ background: pal.nova }} /></i><em>Colours</em></span>
-                      <span className="mini"><i className="mv pg" /><em>Brand book</em></span>
-                      <span className="mini"><i className="mv at">@</i><em>Socials</em></span>
-                    </span>
-                  </span>
-                  <span className="ar">→</span>
-                </button>
+              <div className="pick rise">
+                <p className="k mono">Pick its domain</p>
+                {!claimRows.length && <p className="wr-hint" style={{ margin: "10px 0" }}>Checking its domains…</p>}
+                {claimRows.map((d) => {
+                  const on = d.domain === claimDom?.domain;
+                  return (
+                    <button key={d.domain} className={"domrow" + (on ? " on" : "")} onClick={() => setDomSel(d)}>
+                      <i className="radio" />
+                      <span className="dmid">
+                        <span className="d mono">{d.domain}</span>
+                        {on
+                          ? <span className="st live"><i className="livedot" /> Available now{checkTime ? ` · ${checkTime}` : ""}</span>
+                          : <span className="st">{d.status === "available" ? "Available" : "For sale"}</span>}
+                      </span>
+                      {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
+                    </button>
+                  );
+                })}
+                <p className="buynote">Price per year when you buy it · nothing to pay to us</p>
               </div>
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Build my brand →</button>
-            <button className="wr-link" onClick={() => toStep("names")}>← Back to the names</button>
+            <button className="wr-btnor cbig" disabled={!claimDom} onClick={() => keepName()}>Choose {claimDom?.domain || "a domain"} →</button>
+          </div>
+        </>
+      )}
+
+      {/* ═══ 05·k Kept — the commit, celebrated in the app; the brand is next ═══ */}
+      {step === "reveal" && picked && (
+        <>
+          <div className="wr-stage center wr-kept" style={{ textAlign: "center", alignItems: "center" }}>
+            <span className="okball pop">✓</span>
+            <h1 className="wr-h pop" style={{ fontSize: 40, marginBottom: 8 }}>{picked.name} is yours.</h1>
+            <p className="wr-lead rise" style={{ margin: "0 auto 22px", maxWidth: 300 }}>It's in your account. Here is what comes next.</p>
+            <div className="keptcard rise">
+              <div className="krow">
+                <i className="ic ok">✓</i>
+                <span className="mid"><b>Name</b></span>
+                <span className="val">{picked.name}</span>
+              </div>
+              <div className="krow">
+                <i className="ic ok">✓</i>
+                <span className="mid"><b>Domain</b><small>it's secured · buy it later</small></span>
+                <span className="val mono">{domSel?.domain || picked.dom?.domain || "—"}</span>
+              </div>
+              <button className="krow lead" onClick={() => toStep("brand")}>
+                <i className="ic nx">3</i>
+                <span className="mid"><b>Your brand</b><small>logo · colours · brand book</small></span>
+                <span className="val next">NEXT</span>
+              </button>
+              <div className="krow dimr">
+                <i className="ic out">4</i>
+                <span className="mid"><b>Social accounts</b><small>claim @{picked.name.toLowerCase().replace(/[^a-z0-9]/g, "")} on each network</small></span>
+                <span className="val">~1 min</span>
+              </div>
+            </div>
+          </div>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Now, your brand →</button>
           </div>
         </>
       )}
@@ -1971,14 +1925,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {briefGate && (
         <BriefGateModal
-          brief={sentence.trim()}
+          words={(styles || []).flatMap((st) => st.words.map((w) => w.w))}
           onClose={() => setBriefGate(false)}
           onUser={(u) => {
             setUser(u);
             setBriefGate(false);
             track("signup", {}); // same process as the run: one row per user in the admin
             persist();
-            const t = afterGate.current || "brands";
+            const t = afterGate.current || "words";
             afterGate.current = null;
             toStep(t);
           }}
@@ -2280,67 +2234,7 @@ function NamesGridV2({ names, known, sel, onSel }: {
 }
 
 /* ── 05·d: the other endings — a bottom sheet on phones, a popover on desktop ── */
-function DomEndingsSheet({ name, rows, current, bestIdx, onUse, onClose }: {
-  name: string; rows: DomainCard[]; current: string; bestIdx: number;
-  onUse: (d: DomainCard) => void; onClose: () => void;
-}) {
-  const [pend, setPend] = useState<DomainCard | null>(rows.find((r) => r.domain === current) || rows[0] || null);
-  return (
-    <div className="wr-dsheetwrap" onClick={onClose}>
-      <div className="wr-dsheet" onClick={(e) => e.stopPropagation()}>
-        <span className="grab" />
-        <p className="hd">Other endings for {name}</p>
-        <p className="sub">All checked a second ago. Tap one to switch.</p>
-        <div className="rows">
-          {rows.map((d, i) => {
-            const on = pend?.domain === d.domain;
-            return (
-              <button key={d.domain} className={"row" + (on ? " on" : "")} onClick={() => setPend(d)}>
-                <i className={"dot" + (d.status === "negotiable" ? " sale" : "")} />
-                <span className="d mono">{d.domain}</span>
-                <span className="st">{i === bestIdx ? "Best pick" : d.status === "negotiable" ? "For sale" : "Available"}</span>
-                <span className="pr mono">{d.price || d.offerPrice || ""}</span>
-                {on && <i className="ck">✓</i>}
-              </button>
-            );
-          })}
-        </div>
-        <button className="use" disabled={!pend} onClick={() => pend && onUse(pend)}>Use {pend?.domain || "…"}</button>
-      </div>
-    </div>
-  );
-}
-
-/* ── 05·r: the registrar hand-off — three honest steps, then just a link out ── */
-function RegistrarSheet({ domain, price, onOpen, onLater, onClose }: {
-  domain: string; price: string; onOpen: () => void; onLater: () => void; onClose: () => void;
-}) {
-  const steps: [string, string][] = [
-    [`The checkout opens, searching ${domain}`, "Check it's still free, then add it to your cart."],
-    ["Pay there", "It takes about a minute."],
-    ["Come back to this tab", "Your brand is waiting right where you left it."],
-  ];
-  return (
-    <div className="wr-dsheetwrap" onClick={onClose}>
-      <div className="wr-dsheet go" onClick={(e) => e.stopPropagation()}>
-        <span className="grab" />
-        <p className="k mono">{domain.toUpperCase()}{price ? ` · ${price.toUpperCase()}/YR` : ""}</p>
-        <h3>Buy <span className="mono" style={{ fontSize: "0.85em" }}>{domain}</span> in one minute.</h3>
-        <p className="sub">The checkout opens in a new tab. Three steps:</p>
-        <div className="gsteps">
-          {steps.map(([h, s], i) => (
-            <div key={h} className="gstep"><i>{i + 1}</i><span><b>{h}</b><em>{s}</em></span></div>
-          ))}
-        </div>
-        <button className="wr-btnor" onClick={onOpen}>Buy {domain} ↗</button>
-        <button className="wr-btn2 later" onClick={onLater}>Later — keep building my brand</button>
-        <p className="fn">We'll remind you at the end, and it stays in your account.</p>
-      </div>
-    </div>
-  );
-}
-
-/* 04·x / 04·i: the feedback ask — on coming back after leaving, or 30 s of quiet. */
+/* 04·x / 04·i: the feedback ask — on coming back after leaving, or 20 min of quiet. */
 const POLL_OPTS = [
   "Names don't fit my brief", "Taking too long",
   "Just exploring", "Domains are taken",
@@ -2387,7 +2281,7 @@ function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit
   );
 }
 
-function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: () => void; onUser: (u: WUser) => void }) {
+function BriefGateModal({ words, onClose, onUser }: { words: string[]; onClose: () => void; onUser: (u: WUser) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -2408,23 +2302,29 @@ function BriefGateModal({ brief, onClose, onUser }: { brief: string; onClose: ()
           else setErr("We couldn't reach the server — check your connection and try again.");
         },
       });
-      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
+      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", width: 300 });
     };
     return loadGsi(init);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // The real generated words when they're ready; believable stand-ins when not.
+  const chips = (words.length ? words : ["bloom", "forge", "north", "ember", "drift", "atlas", "lumen", "vale", "pulse", "marrow", "onset", "glint", "haven", "arc", "tide", "cairn", "noon", "fable", "ridge", "spark", "moss", "quill", "zephyr", "slate", "dawn", "pique", "crest", "loop", "nest", "prism", "ray", "clay", "grove", "shoal", "plume", "frost", "roam", "kindle", "halo", "verge", "mica", "sway"]).slice(0, 44);
   return (
-    <div className="wr-sumodal gate" onClick={onClose}>
-      <div className="panel" onClick={(e) => e.stopPropagation()}>
-        <span className="bt" style={{ fontFamily: "'Archivo', var(--sans)", fontWeight: 900, letterSpacing: "-0.045em", fontSize: 16, display: "block", marginBottom: 16 }}>NAME NAME</span>
-        <h3>Save your brief.<br />Then we name it.</h3>
-        {brief && (
-          <p className="briefrow"><em>Brief</em><span>{brief}</span></p>
-        )}
+    <div className="wr-gate2">
+      {/* 00·s: their words exist and are waiting — show them, softly out of reach */}
+      <div className="back" onClick={onClose} aria-hidden>
+        <h1>Tap the words that feel like you.</h1>
+        <div className="cloud">
+          {chips.map((w) => <span key={w} className="chip">{w}</span>)}
+        </div>
+      </div>
+      <div className="card rise" onClick={(e) => e.stopPropagation()}>
+        <p className="eyebrow mono">{words.length ? `${words.length} words ready for your brief` : "Your words are nearly ready"}</p>
+        <h3>See your words.<br />Free, no card.</h3>
+        <p className="sub">One tap with Google to unlock them. Your brief is already saved.</p>
         <div className="gbtn" ref={host} />
-        {err && <p className="small" style={{ color: "#ff7a6e" }}>{err}</p>}
-        <p className="small dim">Free. No card. We only use it to save your names.</p>
-        <button className="wr-link" style={{ marginTop: 6 }} onClick={onClose}>← Edit my brief</button>
+        {err && <p className="fine" style={{ color: "#c0392b" }}>{err}</p>}
+        <p className="fine">Takes 5 seconds · we never post anything</p>
       </div>
     </div>
   );

@@ -62,6 +62,10 @@ Rules the format settled on:
 - **ADS line**: Google Ads UI (account ocid 8601447532, campaign
   "Search — Naming EN" id 24345462378) with the date preset — automatable
   once the Google Ads API developer token lands.
+- **Gate moved again** (Mon 20 Oct): the sign-up gate now sits right before
+  the WORDS — anonymous founders brief, swipe and tune freely; `gate {to:"words"}`
+  fires at the ask. The claim screen no longer links out: choosing a domain
+  saves it as `chosen` and buying is only offered at the end + account.
 - **Gate telemetry** (since Sat 17 Oct ~22:30 Paris): the brief page logs a
   `page {to:"brief"}` event for everyone (anonymous included), and an
   anonymous founder who hits the sign-up gate logs a `gate {to:<step>}`
