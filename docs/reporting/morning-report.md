@@ -62,6 +62,10 @@ Rules the format settled on:
 - **ADS line**: Google Ads UI (account ocid 8601447532, campaign
   "Search — Naming EN" id 24345462378) with the date preset — automatable
   once the Google Ads API developer token lands.
+- **Gate right after the brief** (Tue 21 Oct ~22:05 Paris): the deep-dive
+  (02·r) became mandatory the same afternoon, which put an ungated page in
+  front of the swipe-gate; the gate now fires on leaving 02, restoring the
+  exact 17–19 Oct position. `gate {to:"refine"}`.
 - **Gate reverted to the swipe** (Tue 21 Oct ~22:30 Paris): the words-gate
   experiment halved sign-ups per brief (44% at the landing → ~30% at the
   swipe → 11% at the words), so the gate is back at the swipe with the new

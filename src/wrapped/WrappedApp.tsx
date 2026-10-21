@@ -729,13 +729,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // so only these events prove the founder actually SAW a step.
   const afterGate = useRef<Step | null>(null);
   function toStep(s: Step) {
-    // The sign-up gate (00·s) sits after the deep-dive, at the brand swipe:
-    // the words-gate experiment (20–21 Oct) halved sign-ups per brief to 11%,
-    // so the gate reverted to the position that converted ~30% with equal
-    // post-gate depth. The card still shows the words, blurred, as the prize.
+    // The sign-up gate (00·s) fires right after the brief (02), before the
+    // deep-dive: the position that converted ~30% on 17–19 Oct. (The words-gate
+    // experiment of 20–21 Oct halved that to 11%.) The card shows the words,
+    // blurred, as the prize.
     // loadSession() is the synchronous truth (the React user state lags one
     // render behind the Google callback).
-    if (!test && !loadSession()?.user && ["brands", "brandsum", "words", "names"].includes(s)) {
+    if (!test && !loadSession()?.user && ["refine", "brands", "brandsum", "words", "names"].includes(s)) {
       afterGate.current = s;
       // Logged: an anonymous founder ASKED for more and met the gate. Briefs
       // minus gates = stalled on the wow; gates minus signups = balked at the modal.
