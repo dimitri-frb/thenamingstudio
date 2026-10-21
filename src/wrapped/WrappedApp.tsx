@@ -237,6 +237,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  const [resumeAuth, setResumeAuth] = useState<string | null>(null); // ?resume= opened signed-out
   const [briefGate, setBriefGate] = useState(false); // 00·s: sign up right after Name it
   const [shareMsg, setShareMsg] = useState("");
   // Which generations failed (engine unreachable / bad answer) → honest retry UI.
@@ -296,6 +297,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (me.user) setUser(me.user);
         const s = me.searches.find((x) => x.id === resume);
         if (s) { hydrate(s); return; }
+        if (!me.user) { setResumeAuth(resume); return; } // an email link on a signed-out device
       }
       const snap = loadSnap();
       if (snap?.sentence && snap.step && snap.step !== "land") {
@@ -342,6 +344,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (s.concept) conceptFor.current = s.sentence;
     setConcept(s.concept || null);
     setStarred(s.starred || []);
+    if (s.styles?.length) setStyles(s.styles);
     setNames(s.names || null);
     setPicked(s.picked || null);
     setSteps(s.steps || {});
@@ -358,6 +361,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     pushUrl(target, true);
   }
 
+  useEffect(() => { // the stop email reads the account copy: keep words + stars in it
+    if (test || !user || !styles?.length) return;
+    const t = setTimeout(() => persist(), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, user, styles, starred]);
+
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
@@ -369,7 +379,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const status: SavedSearch["status"] = steps.domain === "done" || over.steps?.domain === "done" ? "claimed" : (names?.length ? "ready" : "exploring");
     putSearch({
       id: processId(), at: startedAt.current, updated: Date.now(),
-      sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
+      sentence: sentence.trim(), chips, concept, starred, styles, names: names || undefined,
       picked, steps, status, bought: domBought,
       logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font, custom: logoSel.custom } : null,
       taste,
@@ -1955,6 +1965,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
+      {resumeAuth && (
+        <SignupModal
+          note="Sign in to pick up right where you left off."
+          onClose={() => setResumeAuth(null)}
+          onUser={async (u) => {
+            setUser(u);
+            const id = resumeAuth;
+            setResumeAuth(null);
+            const me = await fetchMe();
+            const s = me.searches.find((x) => x.id === id);
+            if (s) hydrate(s); else gotoAccount();
+          }}
+        />
+      )}
       {bookOpen && bookCtx && <Suspense fallback={null}><BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share} /></Suspense>}
       {bookCtx && <Suspense fallback={null}><BookPrint ctx={bookCtx} /></Suspense>}
 

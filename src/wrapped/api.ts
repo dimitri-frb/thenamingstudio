@@ -68,6 +68,7 @@ export interface SavedSearch {
   chips: string[];
   concept?: WConcept | null;
   starred?: WWord[];
+  styles?: WStyle[] | null; // the word cloud, kept so an email's words match the page it links to
   names?: WName[];
   picked?: WName | null;
   domain?: string;          // the chosen domain
@@ -350,7 +351,8 @@ export function saveSession(s: { token: string; user: WUser } | null): void {
 }
 
 export async function authGoogle(credential: string): Promise<{ token: string; user: WUser; searches: SavedSearch[] } | null> {
-  const r = await post<{ token: string; user: WUser; searches: SavedSearch[] }>({ phase: "auth-google", credential });
+  // The brief rides along so the welcome email can name the project.
+  const r = await post<{ token: string; user: WUser; searches: SavedSearch[] }>({ phase: "auth-google", credential, brief: String(loadSnap()?.sentence || "") });
   // No track("signup") here: the flow fires it AFTER newProcess(), so the
   // sign-up lands in the same process group as the search it belongs to.
   if (r?.token) saveSession({ token: r.token, user: r.user });

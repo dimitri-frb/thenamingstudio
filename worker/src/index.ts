@@ -19,6 +19,8 @@ interface KVNamespace {
 }
 interface ExecutionContext { waitUntil(promise: Promise<unknown>): void }
 
+import { handleUnsub, sendStop, sendWelcome, type StopCandidate } from "./emails";
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGIN?: string; // optional: lock CORS to your site; defaults to *
@@ -33,6 +35,8 @@ export interface Env {
   GODADDY_SECRET?: string; // optional: GoDaddy API secret (paired with GODADDY_KEY)
   GOOGLE_CLIENT_ID?: string; // optional: Google OAuth Web client id (verifies sign-in tokens)
   ADS_KEY?: string;        // optional: shared secret the Google Ads Script sends with daily spend
+  EMAIL?: { send(msg: any): Promise<{ messageId: string }> }; // Cloudflare Email Sending binding
+  POSTAL_ADDRESS?: string; // email-footer postal address (omitted until set)
 }
 
 const MODEL = {
@@ -56,6 +60,43 @@ function cors(env: Env): Record<string, string> {
 }
 
 export default {
+  // Hourly: one stop email per flow, ~24h after the founder's last activity,
+  // matched to the furthest step (handoff 15). Max one, ever, per flow.
+  async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (!env.LOG || !env.EMAIL) return;
+    const now = Date.now();
+    const accts = await env.LOG.list({ prefix: "acct:", limit: 1000 });
+    for (const k of accts.keys) {
+      try {
+        const acct = JSON.parse((await env.LOG.get(k.name)) || "{}");
+        const email = String(acct?.user?.email || "").toLowerCase();
+        const searches: any[] = acct?.searches || [];
+        if (!email || !searches.length) continue;
+        const latest = searches.reduce((a, b) => ((b?.updated || 0) > (a?.updated || 0) ? b : a));
+        const idle = now - (latest?.updated || 0);
+        // 24–30h after the last activity: tolerant of a missed hourly run, and
+        // the stopmail marker below guarantees one email per flow, ever.
+        if (idle < 24 * 3600e3 || idle >= 30 * 3600e3) continue;
+        if (await env.LOG.get(`optout:${email}`)) continue;
+        if (await env.LOG.get(`stopmail:${latest.id}`)) continue;
+        const sent = await sendStop(env, {
+          email, name: acct?.user?.name || "", flowId: latest.id, brief: latest.sentence || "",
+          cloud: (latest.styles || []).flatMap((st: any) => st?.words || []).map((w: any) => ({ w: w?.w, lang: w?.lang })),
+          starred: latest.starred, names: latest.names, picked: latest.picked,
+          domain: latest.domain, domPrice: latest.domPrice, domStatus: latest.domStatus,
+          steps: latest.steps, logo: latest.logo,
+        } as StopCandidate, async (domain: string) => {
+          const dot = domain.indexOf(".");
+          return (await rdap(domain.slice(0, dot), domain.slice(dot + 1))) === "available";
+        });
+        if (sent) {
+          await env.LOG.put(`stopmail:${latest.id}`, sent);
+          ctx.waitUntil(writeLog(env, "mail", latest.id, { payload: { kind: sent, email } }, { kind: sent }));
+        }
+      } catch { /* one bad account never stops the pass */ }
+    }
+  },
+
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors(env) });
 
@@ -72,6 +113,7 @@ export default {
         }
         return json({ ok: true, lastEventMin }, env);
       }
+      if (url.pathname === "/unsub") return handleUnsub(env, url);
       if (url.searchParams.has("log")) return readLog(env, url);
       return json({ ok: true }, env);
     }
@@ -152,6 +194,32 @@ export default {
       return json(r, env);
     }
 
+    // Email previews: W + S·1–S·4 with sample data, to an OWNER address only
+    // (ADMIN_EMAILS), so it can never mail anyone else. Subjects say [Preview].
+    if (phase === "mailtest") {
+      const to = String(body?.payload?.to || "").toLowerCase();
+      const owners = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase());
+      if (!env.EMAIL || !env.ADS_KEY || String(body?.key || "") !== env.ADS_KEY || !owners.includes(to)) return json({ error: "not allowed" }, env, 403);
+      const penv = { ...env, PREVIEW: true } as any;
+      const brief = "a rooftop cinema club in Marseille";
+      await sendWelcome(penv, to, "Dimitri Farber", brief);
+      const cloud = ["starlight", "lumière", "nocturne", "marquee", "dusk", "stella", "velvet", "encore", "azur", "reel", "horizon", "mistral", "glow", "sera", "frame", "ciel"]
+        .map((w, i) => ({ w, lang: ["lumière", "azur", "mistral", "ciel"].includes(w) ? "FR" : ["stella", "sera"].includes(w) ? "IT" : undefined, i }));
+      const names = [
+        { name: "Aurova", tagline: "Aurora made new: the glow before the film starts.", dom: { domain: "aurova.com", free: true, price: "$32" } },
+        { name: "Embra" }, { name: "Lumen" }, { name: "Nocta" }, { name: "Velour" }, { name: "Encora" },
+      ];
+      const base = { email: to, name: "Dimitri", flowId: "preview", brief, cloud: [...cloud, ...cloud, ...cloud] };
+      const yes = async () => true;
+      const out = {
+        S1: await sendStop(penv, { ...base } as any, yes),
+        S2: await sendStop(penv, { ...base, starred: [{ w: "dusk" }], names } as any, yes),
+        S3: await sendStop(penv, { ...base, starred: [{ w: "dusk" }], names, picked: names[0] } as any, yes),
+        S4: await sendStop(penv, { ...base, starred: [{ w: "dusk" }], names, picked: names[0], domain: "aurova.com", domStatus: "chosen", steps: { domain: "done" } } as any, yes),
+      };
+      return json({ ok: true, sent: out }, env);
+    }
+
     // Daily ad spend, pushed by the Google Ads Script (docs/ads/ads-script.js)
     // with a shared secret. One KV entry per day, rows merged by channel +
     // campaign so re-sends of the same window just refresh the numbers.
@@ -226,7 +294,7 @@ export default {
     }
 
     // ── Accounts (Google sign-in + saved searches, stored in the LOG KV) ──
-    if (phase === "auth-google") return json(await authGoogle(env, body), env);
+    if (phase === "auth-google") return json(await authGoogle(env, body, ctx), env);
     if (phase === "me") return json(await whoAmI(env, body), env);
     if (phase === "search-put") return json(await searchPut(env, body), env);
     if (phase === "search-del") {
@@ -999,7 +1067,7 @@ async function sessionUser(env: Env, token: unknown): Promise<any | null> {
   try { return JSON.parse((await env.LOG.get(`sess:${token}`)) || "null"); } catch { return null; }
 }
 
-async function authGoogle(env: Env, body: any): Promise<any> {
+async function authGoogle(env: Env, body: any, ctx?: ExecutionContext): Promise<any> {
   if (!env.LOG) return { error: "no account store" };
   const u = await verifyGoogle(env, String(body?.credential || ""));
   if (!u) return { error: "invalid credential" };
@@ -1013,6 +1081,8 @@ async function authGoogle(env: Env, body: any): Promise<any> {
   if (isNew && !body?.test) {
     const payload = { email: u.email, fromName: u.name, kind: "signup" };
     await writeLog(env, "lead", body?.process, { payload, who: body?.who }, payload);
+    // W · welcome, instantly — the brief rides on the sign-in call
+    if (env.EMAIL && ctx) ctx.waitUntil(sendWelcome(env, u.email, u.name || "", String(body?.brief || "")));
   }
   return { token, user: u, searches: acct.searches || [] };
 }

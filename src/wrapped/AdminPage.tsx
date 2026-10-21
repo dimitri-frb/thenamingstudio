@@ -600,8 +600,8 @@ type WeekMet = { spend: number; clicks: number; started: number; dive: number; s
 const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean }[] = [
   { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
   { k: "started", t: "Started", s: "Started", d: "typed a brief, pressed “Name it”" },
+  { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in at the gate, right after the brief" },
   { k: "dive", t: "Deep-dived", s: "Deep-dive", d: "opened the brief deep-dive (02·r)" },
-  { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in at the gate" },
   { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
@@ -648,7 +648,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
     return {
       spend, clicks: adClicks + freeVisits,
       started: fl.filter((f) => f.step >= 1 || f.brief).length,
-      dive: fl.filter((f) => f.dive).length,
+      dive: fl.filter((f) => f.email && f.dive).length,
       signed: fl.filter((f) => f.email).length,
       swiped: fl.filter((f) => f.email && f.step >= 3).length,
       words: fl.filter((f) => f.email && f.step >= 5).length,
