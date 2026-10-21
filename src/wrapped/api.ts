@@ -7,7 +7,11 @@ import { convClaim, convSignup } from "./gtag";
 // "dimitri-4dd" in Sept 2026; the old host is NXDOMAIN).
 export const ENDPOINT =
   (import.meta as any).env?.VITE_NAMING_API ||
-  "https://api.namename.ai";
+  // workers.dev until the NS migration finishes propagating everywhere:
+  // api.namename.ai is NXDOMAIN on resolvers that still cache the GoDaddy
+  // nameservers (cut 21 Oct ~19:05, broke the API for ~2h). Swap to
+  // api.namename.ai a few days after 2026-10-21.
+  "https://naming-studio-api.kairosfund.workers.dev";
 
 // The Google OAuth Web client id (a public identifier, not a secret). The env
 // var wins so another deployment can override it; this default keeps dev and
