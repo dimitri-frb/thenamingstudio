@@ -5,7 +5,7 @@
 import { T } from "./emailTemplates";
 
 export interface EmailEnv {
-  EMAIL?: { send(msg: { to: string; from: string | { email: string; name?: string }; subject: string; html: string; headers?: Record<string, string> }): Promise<{ messageId: string }> };
+  EMAIL?: { send(msg: { to: string; from: string | { email: string; name?: string }; subject: string; html: string; text?: string; headers?: Record<string, string> }): Promise<{ messageId: string }> };
   LOG?: KVNamespace;
   ADS_KEY?: string;        // doubles as the unsubscribe-link signing secret
   POSTAL_ADDRESS?: string; // CAN-SPAM/CNIL footer address; footer omits it until set
@@ -50,10 +50,22 @@ function common(env: EmailEnv): Record<string, string> {
   };
 }
 
-async function deliver(env: EmailEnv, to: string, subject: string, html: string): Promise<boolean> {
+// A plain-text twin of the HTML: mail without one scores as spammier.
+function textOf(html: string): string {
+  return html
+    .replace(/<head[\s\S]*?<\/head>/i, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<a\b[^>]*href="(https?:[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => `${label.replace(/<[^>]+>/g, "").trim()} (${href})`)
+    .replace(/<br\s*\/?>|<\/(p|tr|h\d|div)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#10084;&#65039;/g, "♥").replace(/&#9733;/g, "★").replace(/&#\d+;|&[a-z]+;/g, "")
+    .replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*(\n\s*)+/g, "\n\n").trim();
+}
+
+async function deliver(env: EmailEnv, to: string, subject: string, html: string, headers?: Record<string, string>): Promise<boolean> {
   if (!env.EMAIL) return false;
   try {
-    await env.EMAIL.send({ to, from: FROM, subject: (env as any).PREVIEW ? `[Preview] ${subject}` : subject, html });
+    await env.EMAIL.send({ to, from: FROM, subject: (env as any).PREVIEW ? `[Preview] ${subject}` : subject, html, text: textOf(html), ...(headers ? { headers } : {}) });
     return true;
   } catch (e: any) {
     console.error("email send failed", e?.code, e?.message);
@@ -119,14 +131,17 @@ export async function sendStop(
   const stage = stageFor(c);
   if (!stage || !env.ADS_KEY) return null;
   const resume = (go = "") => `${SITE}/?resume=${encodeURIComponent(c.flowId)}${go ? `&go=${go}` : ""}&utm_source=email&utm_campaign=${stage.toLowerCase()}`;
-  const base = { ...common(env), unsub_url: await unsubUrl(c.email, env.ADS_KEY), project: esc(projectPhrase(c.brief)) };
+  const unsub = await unsubUrl(c.email, env.ADS_KEY);
+  const base = { ...common(env), unsub_url: unsub, project: esc(projectPhrase(c.brief)) };
+  // Gmail/Yahoo one-click unsubscribe (RFC 8058): a POST to the same signed URL
+  const LU = { "List-Unsubscribe": `<${unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
 
   if (stage === "S1") {
     const words = (c.cloud && c.cloud.length ? c.cloud : (c.starred || []).map((s) => ({ w: s.w }))).filter((w) => w.w);
     if (!words.length) return null; // nothing honest to show — skip rather than fake it
     const total = Math.max(words.length, c.cloud?.length || 0);
     const html = merge(T.S1, { ...base, word_count: String(total), word_cloud: wordCloud(words, total), cta_url: resume() });
-    return (await deliver(env, c.email, `${total} words are waiting for you`, html)) ? "S1" : null;
+    return (await deliver(env, c.email, `${total} words are waiting for you`, html, LU)) ? "S1" : null;
   }
 
   if (stage === "S2") {
@@ -143,7 +158,7 @@ export async function sendStop(
       names_more: String(Math.max(0, names.length - 1)), alt_more: String(Math.max(0, names.length - 3)),
       cta_url: resume(),
     });
-    return (await deliver(env, c.email, `${top.name} and ${Math.max(1, names.length - 1)} more names are waiting`, html)) ? "S2" : null;
+    return (await deliver(env, c.email, `${top.name} and ${Math.max(1, names.length - 1)} more names are waiting`, html, LU)) ? "S2" : null;
   }
 
   if (stage === "S3") {
@@ -156,12 +171,12 @@ export async function sendStop(
       domain_price: esc(dom.price || c.domPrice || ""), checked_at: checked,
       cta_url: resume(),
     });
-    return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, html)) ? "S3" : null;
+    return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, html, LU)) ? "S3" : null;
   }
 
   // S4
   const html = merge(T.S4, { ...base, picked_name: esc(c.picked?.name || c.names?.[0]?.name || "Your name"), cta_url: resume("logo") });
-  return (await deliver(env, c.email, `${c.picked?.name || "Your name"} needs a face`, html)) ? "S4" : null;
+  return (await deliver(env, c.email, `${c.picked?.name || "Your name"} needs a face`, html, LU)) ? "S4" : null;
 }
 
 /* ── the unsubscribe door (GET /unsub?u=&k=) ── */

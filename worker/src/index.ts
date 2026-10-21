@@ -101,6 +101,9 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors(env) });
 
     // Central request log read endpoint: GET ?log=1[&key=ADMIN_KEY][&limit=N].
+    // One-click unsubscribe from the mail client itself (RFC 8058 POST)
+    if (req.method === "POST" && new URL(req.url).pathname === "/unsub") return handleUnsub(env, new URL(req.url));
+
     if (req.method === "GET") {
       const url = new URL(req.url);
       // Uptime probe (GitHub Actions, every 15 min + after each push): the
