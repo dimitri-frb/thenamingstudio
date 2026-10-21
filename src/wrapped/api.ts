@@ -71,7 +71,7 @@ export interface SavedSearch {
   domCheckedAt?: number;    // when availability was last verified (the claim screen's live check)
   domStatus?: "chosen" | "bought"; // chosen = kept in the app, not bought anywhere yet
   bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
-  logo?: { key: string; title: string; seed: number; accent?: string } | null;
+  logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
   taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
   steps: { domain?: "done" | "skipped"; logo?: "done" | "skipped"; book?: "done" | "skipped"; socials?: "done" | "skipped" };

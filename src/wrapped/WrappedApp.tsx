@@ -212,7 +212,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [logoSeed, setLogoSeed] = useState(0);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
-  const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number } | null>(null);
+  const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number; tileKey?: string } | null>(null);
   const [persBusy, setPersBusy] = useState(false);
   const [persAsk, setPersAsk] = useState("");
   const [persFontsOpen, setPersFontsOpen] = useState(false);
@@ -346,7 +346,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setPicked(s.picked || null);
     setSteps(s.steps || {});
     setDomBought(!!s.bought);
-    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0, font: (s.logo as any).font });
+    if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0, font: (s.logo as any).font, custom: (s.logo as any).custom });
     const target: Step =
       s.picked && go === "domain" ? "claim" :
       s.picked && go && ["book", "socials"].includes(go) ? (go as Step) :
@@ -371,7 +371,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       id: processId(), at: startedAt.current, updated: Date.now(),
       sentence: sentence.trim(), chips, concept, starred, names: names || undefined,
       picked, steps, status, bought: domBought,
-      logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font } : null,
+      logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font, custom: logoSel.custom } : null,
       taste,
       ...over,
     } as SavedSearch);
@@ -686,6 +686,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       ? { symbol: logoSel.custom.symbol, layout: logoSel.custom.layout, scale: logoSel.custom.scale }
       : (M[logoSel?.key || ""] || [{ symbol: "half", layout: "side" }, { symbol: "half", layout: "side" }, { symbol: "half", layout: "side" }])[v];
     return {
+      // Until the founder touches symbol or layout, the preview and every
+      // later render (book, pack, favicon) delegate to the tile itself.
+      tileKey: logoSel?.custom ? logoSel.custom.tileKey : logoSel?.key,
       symbol: d.symbol,
       layout: d.layout,
       accentHex: logoSel?.custom?.accentHex || lpal[logoSel?.accent || "dawn"] || lpal.dawn,
@@ -1682,11 +1685,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     return n ? <span className="edits">Edited · {n} change{n > 1 ? "s" : ""}</span> : null;
                   })()}
                 </div>
-                <div className="hero" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "light", font: persDraft.font, shape: lshape, custom: persDraft, height: 150 }) }} />
+                <div className="hero" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "light", font: persDraft.font, shape: lshape, seed: logoSel?.seed ?? 0, custom: persDraft, height: 150 }) }} />
                 <div className="minis">
-                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, custom: persDraft, height: 36 }) }} />
-                  <span className="m dawn" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "dawn", font: persDraft.font, shape: lshape, custom: persDraft, height: 36 }) }} />
-                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, custom: { ...persDraft, layout: "symbol" }, height: 44 }) }} />
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, seed: logoSel?.seed ?? 0, custom: persDraft, height: 36 }) }} />
+                  <span className="m dawn" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "dawn", font: persDraft.font, shape: lshape, seed: logoSel?.seed ?? 0, custom: persDraft, height: 36 }) }} />
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, seed: logoSel?.seed ?? 0, custom: { ...persDraft, layout: "symbol" }, height: 44 }) }} />
                 </div>
                 <p className="wr-hint" style={{ marginTop: 10 }}>Every version updates with your changes.</p>
               </div>
@@ -1694,12 +1697,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <div className="plabrow">
                   <p className="plab">Symbol</p>
                   {persDraft.symbol !== "none" && (
-                    <button className="pmini" onClick={() => setPersDraft({ ...persDraft, sseed: (persDraft.sseed || 0) + 1 })}>↻ More</button>
+                    <button className="pmini" onClick={() => setPersDraft({ ...persDraft, tileKey: undefined, sseed: (persDraft.sseed || 0) + 1 })}>↻ More</button>
                   )}
                 </div>
                 <div className="symgrid">
                   {PERS_SYMBOLS.map(({ k, l }) => (
-                    <button key={k} className={persDraft.symbol === k ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, symbol: k })}>
+                    <button key={k} className={persDraft.symbol === k && !persDraft.tileKey ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, tileKey: undefined, symbol: k })}>
                       <SymIcon k={k} /><em>{l}</em>
                     </button>
                   ))}
@@ -1767,7 +1770,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <p className="plab">Layout</p>
                 <div className="seg">
                   {([["stacked", "Stacked"], ["side", "Side by side"], ["symbol", "Symbol only"]] as const).map(([v, l]) => (
-                    <button key={v} className={persDraft.layout === v ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, layout: v })}>{l}</button>
+                    <button key={v} className={persDraft.layout === v && !persDraft.tileKey ? "on" : ""} onClick={() => setPersDraft({ ...persDraft, tileKey: undefined, layout: v })}>{l}</button>
                   ))}
                 </div>
                 <p className="plab">Or just ask</p>
@@ -1797,7 +1800,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           </div>
           <div className="wr-foot col persfoot" style={{ gap: 8, alignItems: "center" }}>
             <button className="wr-btn" style={{ maxWidth: 280 }} onClick={() => {
-              setLogoSel({ key: "custom", title: "Custom", accent: "dawn", seed: 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale, family: persDraft.family, famWeight: persDraft.famWeight, sseed: persDraft.sseed } });
+              // The tile reference and seed survive the save: an untouched or
+              // recoloured logo stays THE tile everywhere (book, pack, favicon).
+              setLogoSel({ key: persDraft.tileKey || "custom", title: logoSel?.title || "Custom", accent: logoSel?.accent || "dawn", seed: logoSel?.seed ?? 0, font: persDraft.font, custom: { symbol: persDraft.symbol, layout: persDraft.layout, accentHex: persDraft.accentHex, scale: persDraft.scale, family: persDraft.family, famWeight: persDraft.famWeight, sseed: persDraft.sseed, tileKey: persDraft.tileKey } });
               track("logopers", { name: picked.name, ...persDraft });
               toStep("logodone");
             }}>Save as my logo ✓</button>

@@ -23,6 +23,7 @@ export type Accent = "dawn" | "haze" | "nova";
 export type CustomSymbol = "half" | "full" | "ring" | "horizon" | "rays" | "arc" | "monogram" | "none";
 export interface CustomLogo {
   symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex?: string; scale?: number;
+  tileKey?: string;        // the picked tile — kept until symbol/layout are touched, so every render IS that tile
   family?: string;       // a Google Fonts family picked in "More fonts"
   famWeight?: number;
   sseed?: number;        // "↻ More": cycles subtle symbol proportions
@@ -115,9 +116,9 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : 
 
 const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
-export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape; custom?: CustomLogo } = {}): string {
+export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; accentHex?: string; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape; family?: string; famWeight?: number; custom?: CustomLogo } = {}): string {
   const variant = opts.variant || "light";
-  const accent = pal[opts.accent || "dawn"];
+  const accent = opts.accentHex && variant !== "mono" ? opts.accentHex : pal[opts.accent || "dawn"];
   const name = cap((rawName || "Name").trim());
   const shape: LogoShape = opts.shape || "round";
   const v = ((opts.seed || 0) % 3 + 3) % 3; // structural variant per round
@@ -142,7 +143,11 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   const FACES: Record<LogoFont, { serif?: boolean; weight: number; wf: number }> = {
     bold: { weight: 800, wf: 0.60 }, serif: { serif: true, weight: 500, wf: 0.56 }, light: { weight: 400, wf: 0.58 },
   };
-  const face = opts.font ? FACES[opts.font] : v === 1 ? FACES.serif : v === 2 ? FACES.light : FACES.bold;
+  const face = {
+    ...(opts.font ? FACES[opts.font] : v === 1 ? FACES.serif : v === 2 ? FACES.light : FACES.bold),
+    ...(opts.family ? { family: opts.family, weight: opts.famWeight || 600, wf: 0.6 } : {}),
+  };
+  if (opts.family) ensureFonts([{ family: opts.family, weight: opts.famWeight }]);
   const wWord = (text: string, fs: number, spacing = 0) => Math.max(fs, text.length * fs * face.wf + text.length * spacing);
 
   const fs = 44;
@@ -167,6 +172,13 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
   // the custom accent and typeface below.
   if ((opts.custom || key === "custom") && key !== "appicon" && variant !== "icon") {
     const c: CustomLogo = opts.custom || { symbol: "half", layout: "side" };
+    if (c.tileKey) {
+      return logoSvg(c.tileKey, rawName, pal, {
+        ...opts, custom: undefined,
+        accentHex: c.accentHex || opts.accentHex,
+        family: c.family || opts.family, famWeight: c.famWeight || opts.famWeight,
+      });
+    }
     if (c.family) ensureFonts([{ family: c.family, weight: c.famWeight }]);
     const sc = c.scale || 1;
     const accRaw = c.accentHex || accent;
