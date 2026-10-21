@@ -5,6 +5,9 @@ compatibility_date = "2024-11-01"
 # The API's own door: api.namename.ai (the namename.ai zone lives on
 # Cloudflare since 2026-10-21). workers.dev stays as a fallback host.
 routes = [{ pattern = "api.namename.ai", custom_domain = true }]
+# REQUIRED alongside routes: wrangler disables the workers.dev URL by default
+# once a route exists, and the app still calls workers.dev (21 Oct outage).
+workers_dev = true
 
 # Secrets / vars (set via wrangler, NOT committed):
 #   npx wrangler secret put ANTHROPIC_API_KEY   # required: your Anthropic API key
