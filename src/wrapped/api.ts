@@ -7,7 +7,7 @@ import { convClaim, convSignup } from "./gtag";
 // "dimitri-4dd" in Sept 2026; the old host is NXDOMAIN).
 export const ENDPOINT =
   (import.meta as any).env?.VITE_NAMING_API ||
-  "https://naming-studio-api.kairosfund.workers.dev";
+  "https://api.namename.ai";
 
 // The Google OAuth Web client id (a public identifier, not a secret). The env
 // var wins so another deployment can override it; this default keeps dev and

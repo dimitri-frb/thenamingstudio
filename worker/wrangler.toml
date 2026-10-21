@@ -2,6 +2,10 @@ name = "naming-studio-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
+# The API's own door: api.namename.ai (the namename.ai zone lives on
+# Cloudflare since 2026-10-21). workers.dev stays as a fallback host.
+routes = [{ pattern = "api.namename.ai", custom_domain = true }]
+
 # Secrets / vars (set via wrangler, NOT committed):
 #   npx wrangler secret put ANTHROPIC_API_KEY   # required: your Anthropic API key
 #   (optional) [vars] ALLOWED_ORIGIN = "https://dimitri-frb.github.io"  # lock CORS
