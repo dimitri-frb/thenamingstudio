@@ -1681,11 +1681,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     return n ? <span className="edits">Edited · {n} change{n > 1 ? "s" : ""}</span> : null;
                   })()}
                 </div>
-                <div className="hero" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "light", font: persDraft.font, custom: persDraft, height: 150 }) }} />
+                <div className="hero" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "light", font: persDraft.font, shape: lshape, custom: persDraft, height: 150 }) }} />
                 <div className="minis">
-                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, custom: persDraft, height: 36 }) }} />
-                  <span className="m dawn" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "dawn", font: persDraft.font, custom: persDraft, height: 36 }) }} />
-                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, custom: { ...persDraft, layout: "symbol" }, height: 44 }) }} />
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, custom: persDraft, height: 36 }) }} />
+                  <span className="m dawn" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "dawn", font: persDraft.font, shape: lshape, custom: persDraft, height: 36 }) }} />
+                  <span className="m night" dangerouslySetInnerHTML={{ __html: logoSvg("custom", picked.name, lpal, { variant: "night", font: persDraft.font, shape: lshape, custom: { ...persDraft, layout: "symbol" }, height: 44 }) }} />
                 </div>
                 <p className="wr-hint" style={{ marginTop: 10 }}>Every version updates with your changes.</p>
               </div>
@@ -1884,22 +1884,32 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <h1 className="wr-bigname pop" style={{ marginBottom: 26 }}>{picked.name}</h1>
               {(() => {
                 const dm = domSel?.domain || picked.dom?.domain || "";
-                const namePill = <span className="pill" key="n"><i className="ok">✓</i> Name <b>{picked.name}</b></span>;
-                const brandPill = <span className="pill" key="b"><i className={logoSel || steps.book === "done" || steps.socials === "done" ? "ok" : "no"}>{logoSel || steps.book === "done" || steps.socials === "done" ? "✓" : "·"}</i> Brand <b>logo · book · socials</b></span>;
-                // The domain is the one OPEN step until the founder buys it on
-                // the registrar (and tells us so — we never verify).
-                const domPill = domBought || !dm ? (
-                  <span className="pill" key="d"><i className={steps.domain === "done" ? "ok" : "no"}>{steps.domain === "done" ? "✓" : "·"}</i> Domain <b>{dm || "later"}</b></span>
-                ) : (
-                  <span className="pill last" key="d">
-                    <i className="ring" /> Domain · last step <b className="mono">{dm} · not bought yet</b>
-                    <button className="gd" onClick={() => { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: "done" }); }}>Buy ↗</button>
-                  </span>
-                );
-                const order = isMobile ? [namePill, domPill, brandPill] : [namePill, brandPill, domPill];
+                const brandDone = !!logoSel || steps.book === "done" || steps.socials === "done";
                 return (
-                  <div className="wr-trip rise">
-                    {order.map((p, i) => <Fragment key={i}>{i > 0 && <span className="joins">{isMobile ? "↓" : "→"}</span>}{p}</Fragment>)}
+                  <div className="keptcard rise donecard">
+                    <div className="krow">
+                      <i className="ic ok">✓</i>
+                      <span className="mid"><b>Name</b></span>
+                      <span className="val">{picked.name}</span>
+                    </div>
+                    <div className="krow">
+                      <i className={"ic " + (brandDone ? "ok" : "out")}>{brandDone ? "✓" : "·"}</i>
+                      <span className="mid"><b>Brand</b><small>logo · brand book · socials</small></span>
+                      <span className="val">{brandDone ? "done" : "later"}</span>
+                    </div>
+                    {domBought || !dm ? (
+                      <div className="krow">
+                        <i className={"ic " + (steps.domain === "done" ? "ok" : "out")}>{steps.domain === "done" ? "✓" : "·"}</i>
+                        <span className="mid"><b>Domain</b></span>
+                        <span className="val mono">{dm || "later"}</span>
+                      </div>
+                    ) : (
+                      <div className="krow">
+                        <i className="ic ring" />
+                        <span className="mid"><b>Domain · last step</b><small className="mono">{dm} · not bought yet</small></span>
+                        <button className="kbuy" onClick={() => { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: "done" }); }}>Buy ↗</button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

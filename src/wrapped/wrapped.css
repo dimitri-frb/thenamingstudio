@@ -2167,3 +2167,8 @@
 }
 .keptcard .krow { text-align: left; font-size: inherit; }
 .wr-kept .okball { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000; display: grid; place-items: center; font-size: 19px; font-weight: 800; }
+
+/* done page: the pills become the kept checklist */
+.keptcard.donecard { max-width: 380px; }
+.keptcard .ic.ring { border: 3px solid var(--accent, #ff4f1a); background: none; }
+.keptcard .kbuy { border: none; background: var(--accent, #ff4f1a); color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 800; border-radius: 980px; padding: 8px 16px; cursor: pointer; white-space: nowrap; }

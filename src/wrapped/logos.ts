@@ -178,7 +178,7 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
     const sym = (cx: number, cy: number, r: number) => {
       switch (c.symbol) {
         case "none": return "";
-        case "full": return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${acc}"${ring}/>`;
+        case "full": return faint ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${acc}"${ring}/>` : dot(cx, cy, r, acc);
         case "ring": {
           const sw = r * (sv === 1 ? 0.3 : sv === 2 ? 0.58 : 0.44);
           return `<circle cx="${cx}" cy="${cy}" r="${r - sw / 2}" fill="none" stroke="${acc}" stroke-width="${sw}"/>`;
@@ -208,7 +208,13 @@ export function logoSvg(key: string, rawName: string, pal: Palette, opts: { vari
           return `<rect x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" rx="${rx}" fill="${acc}"${ring}/>` +
             `<text x="${cx}" y="${cy + r * 0.42}" text-anchor="middle" font-family="${FONT}" font-size="${r * 1.2}" font-weight="800" fill="${letterFg}">${esc((name[0] || "A").toUpperCase())}</text>`;
         }
-        default: return `<path d="M ${cx - r} ${cy + r * 0.5} A ${r} ${r} 0 0 1 ${cx + r} ${cy + r * 0.5} Z" fill="${acc}"${ring}/>`;
+        default:
+          // "half" follows the founder's shape pick, exactly like the tiles —
+          // a round arc only when the taste says round (the faint ring needs
+          // the stroke, so a white-on-white symbol keeps the outlined arc).
+          return faint
+            ? `<path d="M ${cx - r} ${cy + r * 0.5} A ${r} ${r} 0 0 1 ${cx + r} ${cy + r * 0.5} Z" fill="${acc}"${ring}/>`
+            : sun(cx, cy + r * 0.5, r, acc);
       }
     };
     const cface = c.family ? { ...face, family: c.family, weight: c.famWeight || 600 } : face;
