@@ -963,7 +963,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         return;
       }
       if (e.key === "Enter" && !e.shiftKey && !typing) {
-        if (step === "brief" && concept) { e.preventDefault(); toStep("brands"); }
+        if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
         else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
         else if (step === "names" && names?.length) { e.preventDefault(); continueWithSel(); }
         else if (step === "claim") { e.preventDefault(); keepName(); }
@@ -981,7 +981,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    brief: "land", refine: "brief", brands: "brief", brandsum: "brands", words: "brandsum", names: "words", claim: "names", reveal: "claim",
+    brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", claim: "names", reveal: "claim",
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
   };
@@ -1142,8 +1142,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!conceptReady} onClick={() => toStep("brands")}>Show me the words →</button>
-            <button className="wr-link" onClick={() => toStep("refine")}>Not quite? Rewrite the brief</button>
+            {/* 02·r is a REQUIRED stop: the deep-dive sharpens the brief before anything generates further */}
+            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!conceptReady} onClick={() => toStep("refine")}>Let's deep-dive your brief →</button>
           </div>
         </>
       )}
