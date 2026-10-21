@@ -1,0 +1,53 @@
+# Uptime guard — born from the 21 Oct 2026 outage (19:05–21:47, found by a
+# user, not by us). Runs from GitHub's network, never Dimitri's home ISP.
+# A red run emails the repo owner: that IS the alert.
+#   1. both API hosts answer
+#   2. the LIVE site's bundle points at a host that answers (the exact 21 Oct failure)
+#   3. real visitors are still reaching the API (no event for 60 min = something's wrong)
+name: Uptime
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Let a fresh deploy land (site + worker build in parallel)
+        if: github.event_name == 'push'
+        run: sleep 180
+
+      - name: Both API hosts answer
+        run: |
+          for h in https://naming-studio-api.kairosfund.workers.dev https://api.namename.ai; do
+            code=000
+            for i in 1 2 3; do
+              code=$(curl -s -o /tmp/body -w "%{http_code}" -m 15 "$h/health") && [ "$code" = 200 ] && break
+              sleep 15
+            done
+            echo "$h -> $code $(cat /tmp/body 2>/dev/null)"
+            [ "$code" = 200 ] || { echo "::error::API host $h is DOWN (HTTP $code)"; exit 1; }
+          done
+
+      - name: The live site calls a host that answers
+        run: |
+          js=$(curl -sf -m 15 https://namename.ai/ | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+          [ -n "$js" ] || { echo "::error::namename.ai did not serve the app"; exit 1; }
+          host=$(curl -sf -m 15 "https://namename.ai/$js" | grep -oE 'https://(naming-studio-api\.kairosfund\.workers\.dev|api\.namename\.ai)' | head -1)
+          [ -n "$host" ] || { echo "::error::no API host found in the live bundle $js"; exit 1; }
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 "$host/health")
+          echo "live bundle $js calls $host -> $code"
+          [ "$code" = 200 ] || { echo "::error::the LIVE app calls $host, which is DOWN (HTTP $code)"; exit 1; }
+
+      - name: Real visitors are still reaching the API
+        if: github.event_name != 'push'
+        run: |
+          mins=$(curl -sf -m 15 https://naming-studio-api.kairosfund.workers.dev/health | jq -r '.lastEventMin')
+          echo "last visitor event: ${mins} min ago"
+          if [ "$mins" = "null" ] || [ "$mins" -gt 60 ]; then
+            echo "::error::no visitor event for ${mins} min — traffic stopped reaching the API"; exit 1
+          fi

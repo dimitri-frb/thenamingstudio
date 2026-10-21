@@ -62,6 +62,16 @@ export default {
     // Central request log read endpoint: GET ?log=1[&key=ADMIN_KEY][&limit=N].
     if (req.method === "GET") {
       const url = new URL(req.url);
+      // Uptime probe (GitHub Actions, every 15 min + after each push): the
+      // host answers AND real visitors are still reaching us. Writes nothing.
+      if (url.pathname === "/health") {
+        let lastEventMin: number | null = null;
+        if (env.LOG) {
+          const k = (await env.LOG.list({ prefix: "log:", limit: 1 })).keys[0]?.name;
+          if (k) lastEventMin = Math.round((Date.now() - (1e15 - Number(k.split(":")[1]))) / 60000);
+        }
+        return json({ ok: true, lastEventMin }, env);
+      }
       if (url.searchParams.has("log")) return readLog(env, url);
       return json({ ok: true }, env);
     }
