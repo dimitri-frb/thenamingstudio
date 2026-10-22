@@ -1,4 +1,7 @@
 name = "naming-studio-api"
+# Pinned: the login now sees several Cloudflare accounts, and wrangler
+# refuses to guess in non-interactive runs.
+account_id = "4dd5fcebf00dd83cf1e07a72183b0434"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 

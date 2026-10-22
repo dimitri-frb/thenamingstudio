@@ -47,7 +47,11 @@ jobs:
         if: github.event_name != 'push'
         run: |
           mins=$(curl -sf -m 15 https://naming-studio-api.kairosfund.workers.dev/health | jq -r '.lastEventMin')
-          echo "last visitor event: ${mins} min ago"
-          if [ "$mins" = "null" ] || [ "$mins" -gt 60 ]; then
+          # Paris nights are naturally quiet (0–3 briefs between 04:00 and 09:00):
+          # 60 min of silence is an alarm by day, 240 min by night.
+          h=$(TZ=Europe/Paris date +%-H)
+          limit=60; if [ "$h" -lt 9 ]; then limit=240; fi
+          echo "last visitor event: ${mins} min ago (limit ${limit} at ${h}h Paris)"
+          if [ "$mins" = "null" ] || [ "$mins" -gt "$limit" ]; then
             echo "::error::no visitor event for ${mins} min — traffic stopped reaching the API"; exit 1
           fi
