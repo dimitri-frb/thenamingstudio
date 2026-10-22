@@ -160,6 +160,10 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
   return { flows: merged.sort((a, b) => b.last - a.last), gated };
 }
 
+// Search ignores case AND accents: "lea" finds "Léa", "amelie" finds "Amélie".
+const fold = (v: string) => (v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const hit = (q: string, fields: (string | undefined)[]) => { const n = fold(q.trim()); return !n || fields.some((v) => fold(v || "").includes(n)); };
+
 const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60000);
   if (m < 1) return "now";
@@ -200,7 +204,6 @@ export function AdminPage() {
   const [ads, setAds] = useState<AdsDay[] | null>(null);
   const [roles, setRoles] = useState<{ owners: string[]; admins: string[] } | null>(null);
   const [selUser, setSelUser] = useState<string | null>(null);
-  const [uq, setUq] = useState("");
   const [uTab, setUTab] = useState<"all" | "new" | "named" | "admins">("all");
 
   const BASE = () => (import.meta as any).env.BASE_URL || "/";
@@ -268,7 +271,8 @@ export function AdminPage() {
   const countries = Array.from(new Set(inRange.map((f) => f.country).filter(Boolean)));
 
   const anyFilter = !!(stopAt !== null || fSource || fCountry || fDevice || fName || fDomain || tab !== "all" || q);
-  const shown = inRange.filter((f) => {
+  const searching = !!q.trim();
+  const shown = (searching ? flows : inRange).filter((f) => {
     if (tab !== "all" && f.status !== tab) return false;
     if (stopAt !== null && f.step !== stopAt) return false;
     if (fSource && f.source !== fSource) return false;
@@ -279,8 +283,7 @@ export function AdminPage() {
     if (fName === "none" && f.name) return false;
     if (fDomain === "claimed" && !f.domain) return false;
     if (fDomain === "none" && f.domain) return false;
-    const sq = q.trim().toLowerCase();
-    if (sq && ![f.email, f.uname, f.brief, f.name, f.domain].some((v) => v.toLowerCase().includes(sq))) return false;
+    if (!hit(q, [f.email, f.uname, f.brief, f.name, f.domain, ...f.shortlist])) return false;
     return true;
   });
   const selFlow = shown.find((f) => f.id === sel) || flows.find((f) => f.id === sel) || null;
@@ -358,11 +361,11 @@ export function AdminPage() {
           </div>
         </div>
       ) : view === "users" ? (
-        <UsersView flows={inRange} roles={roles} q={uq} setQ={setUq} tab={uTab} setTab={setUTab} sel={selUser} setSel={setSelUser} onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }} />
+        <UsersView flows={q.trim() ? flows : inRange} roles={roles} q={q} tab={uTab} setTab={setUTab} sel={selUser} setSel={setSelUser} onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }} />
       ) : view === "analysis" ? (
         <AnalysisView flows={flows} ads={ads} loading={!items} />
       ) : view === "feedback" ? (
-        <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items}
+        <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items} q={q}
           onOpenFlow={(id) => { setRange(0); setSel(id); setView("flows"); }} />
       ) : (
         <div className="wrap">
@@ -395,6 +398,7 @@ export function AdminPage() {
             })}
           </div>
           {gatedN > 0 && <p className="gatenote mono">+ {gatedN} typed a brief and left at the sign-up gate</p>}
+          {searching && <p className="gatenote mono">Searching all dates · {shown.length} match{shown.length === 1 ? "" : "es"}</p>}
 
           {/* toolbar */}
           <div className="toolbar">
@@ -487,9 +491,9 @@ interface AdminUser {
   source: string; country: string; flows: number; names: number; role: "Owner" | "Admin" | "User";
   theirFlows: Flow[];
 }
-function UsersView({ flows, roles, q, setQ, tab, setTab, sel, setSel, onRole }: {
+function UsersView({ flows, roles, q, tab, setTab, sel, setSel, onRole }: {
   flows: Flow[]; roles: { owners: string[]; admins: string[] } | null;
-  q: string; setQ: (s: string) => void;
+  q: string;
   tab: "all" | "new" | "named" | "admins"; setTab: (t: any) => void;
   sel: string | null; setSel: (s: string | null) => void;
   onRole: (email: string, role: "admin" | "user") => void;
@@ -517,8 +521,7 @@ function UsersView({ flows, roles, q, setQ, tab, setTab, sel, setSel, onRole }: 
     if (tab === "new" && u.first < week) return false;
     if (tab === "named" && !u.names) return false;
     if (tab === "admins" && u.role === "User") return false;
-    const sq = q.trim().toLowerCase();
-    if (sq && ![u.email, u.uname].some((v) => v.toLowerCase().includes(sq))) return false;
+    if (!hit(q, [u.email, u.uname, ...u.theirFlows.flatMap((f) => [f.name, f.brief, f.domain])])) return false;
     return true;
   });
   const selU = shown.find((u) => u.email === sel) || users.find((u) => u.email === sel) || null;
@@ -535,7 +538,6 @@ function UsersView({ flows, roles, q, setQ, tab, setTab, sel, setSel, onRole }: 
             <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{l}</button>
           ))}
         </span>
-        <input className="usearch" placeholder="Search name or email…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="split">
         <div className="tbl">
@@ -779,8 +781,8 @@ const CANON: Record<string, string> = {
 const canonR = (r: string) => CANON[r] || r;
 const TRIG: Record<string, string> = { exit: "Closed the tab", idle: "Inactive 30 s" };
 
-function FeedbackView({ items, flows, from, to, loading, onOpenFlow }: {
-  items: LogItem[]; flows: Flow[]; from: number; to: number; loading: boolean; onOpenFlow: (id: string) => void;
+function FeedbackView({ items, flows, from, to, loading, q, onOpenFlow }: {
+  items: LogItem[]; flows: Flow[]; from: number; to: number; loading: boolean; q: string; onOpenFlow: (id: string) => void;
 }) {
   const [rsel, setRsel] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -804,7 +806,11 @@ function FeedbackView({ items, flows, from, to, loading, onOpenFlow }: {
   const whereBase = polls.length ? polls : answers;
   const where = FB_STEPS.map((s) => whereBase.filter((it) => STEP_LAB[String(it.input?.payload?.step || "")] === s).length);
   const wMax = Math.max(1, ...where);
-  const cards = answers.filter((a) => !rsel || reasonsOf(a).includes(rsel));
+  const cards = answers.filter((a) => {
+    if (rsel && !reasonsOf(a).includes(rsel)) return false;
+    const pl = a.input?.payload || {};
+    return hit(q, [pl.meta?.email, pl.meta?.uname, pl.note, ...reasonsOf(a)]);
+  });
   const shownCards = showAll ? cards : cards.slice(0, 8);
   const flowFor = (a: LogItem): Flow | null => {
     const byId = flows.find((f) => f.id === a.process);
