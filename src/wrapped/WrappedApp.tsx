@@ -7,15 +7,16 @@ import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
   ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
-  loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, registrarUrl, sampleBook,
+  loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
-  type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept,
+  type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
 import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
+import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
 // loads once a founder has picked a name, never on the ad click's first paint.
@@ -26,6 +27,7 @@ const ScaledPage = lazy(() => import("./Book").then((m) => ({ default: m.ScaledP
 type Step =
   | "land" | "how" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "claim" | "reveal"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
+  | "snap" | "unlock" | "early" | "kit" | "mkt"
   | "done";
 // The product is a triptych: Name → Domain → Brand. The domain is claimed
 // right inside chapter 1 now (05 Claim), so there's no Domain chapter left.
@@ -45,19 +47,25 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   tshape: { label: "Chapter 3 · Brand · Shape", segs: 9, idx: 3 },
   taste:  { label: "Chapter 3 · Brand · Your taste", segs: 9, idx: 4 },
   logo:   { label: "Chapter 3 · Brand · Logos", segs: 9, idx: 5 },
+  snap:   { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
+  unlock: { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
+  early:  { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
   logodone: { label: "Chapter 3 · Brand · Your logo", segs: 9, idx: 6 },
   pers:   { label: "Chapter 3 · Brand · Personalize", segs: 9, idx: 6 },
   book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
   socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
+  kit:    { label: "Chapter 3 · Brand · Socials kit", segs: 9, idx: 8 },
+  mkt:    { label: "Chapter 3 · Brand · Marketing kit", segs: 9, idx: 8 },
 };
-const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "claim", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "logodone", "pers", "book", "socials", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "claim", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
   land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "5-claim", reveal: "5-reveal",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
-  logo: "8-logos", logodone: "8-logo", pers: "8-personalize", book: "9-brand-book", socials: "10-socials", done: "11-done",
+  logo: "8-logos", snap: "8-preview", unlock: "8-unlock", early: "8-early-access", logodone: "8-logo", pers: "8-personalize",
+  book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", done: "11-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -180,6 +188,15 @@ const tasteLine = (t: Taste) => {
   return head[0].toUpperCase() + head.slice(1) + ", with " + (type[t.type] || "a clean sans") + ".";
 };
 
+// The snapshot's voice line before the book lands: three adjectives from the quiz.
+const tasteVoice = (t: Taste): string[] => {
+  const by: Record<string, string[]> = {
+    "Soft & warm": ["warm", "clear", "confident"], "Bold & bright": ["bold", "bright", "direct"],
+    "Calm & minimal": ["calm", "clear", "essential"], "Playful": ["playful", "curious", "warm"],
+  };
+  return by[t.feeling[0]] || by["Soft & warm"];
+};
+
 const SOCIALS = [
   { name: "Instagram", desc: "Photos, stories and reels", url: "https://www.instagram.com/accounts/emailsignup/" },
   { name: "X", desc: "Updates and conversation", url: "https://x.com/i/flow/signup" },
@@ -241,7 +258,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const v2Known = useRef<string[] | null>(null);            // names present before the last "6 more"
   const [book, setBook] = useState<WBook | null>(test ? sampleBook(ACTIVE().names[0].name) : null);
   const [steps, setSteps] = useState<SavedSearch["steps"]>({});
+  // ── Handoff 19 · the brand paywall (phase 1: Unlock is free "early access") ──
+  const [unlocked, setUnlocked] = useState(false);
+  const [kit, setKit] = useState<WKit | null>(test ? sampleKit(ACTIVE().names[0].name, "") : null);
+  const [whyNot, setWhyNot] = useState(false);
+  const kitReq = useRef("");
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
+  // {price}: €29 / €39 / €49, one variant per user (hash of the Google email),
+  // so a founder never sees the price move between runs or devices.
+  const price = priceFor(user?.email || processId());
+  // Open: unlocked (early access), test mode, or a run that reached the book
+  // before the paywall existed (grandfathered).
+  // (/test/…?locked previews the locked states.)
+  const [lockPreview] = useState(() => test && /[?&]locked\b/.test(window.location.search));
+  const brandOpen = (test && !lockPreview) || unlocked || !!steps.book || !!steps.socials;
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
   const [resumeAuth, setResumeAuth] = useState<string | null>(null); // ?resume= opened signed-out
@@ -295,7 +325,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   useEffect(() => {
     if (test) { // sample data is all seeded, so any step URL works directly
       const t = SLUG_STEP[pathSlug()];
-      if (t) { if (t === "logodone") setLogoSel(logoConcepts(0)[0]); setStep(t); }
+      if (t) { if (STEPS_ALL.indexOf(t) > STEPS_ALL.indexOf("logo")) setLogoSel(logoConcepts(0)[0]); setStep(t); }
       return;
     }
     (async () => {
@@ -325,6 +355,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.feelOpts) setFeelOpts(snap.feelOpts);
         if (snap.taste) setTaste(snap.taste);
         if (snap.bought) setDomBought(true);
+        if (snap.unlocked) setUnlocked(true);
+        if (snap.kit) setKit(snap.kit);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           (["brief", "words"].includes(slugStep) && snap.sentence) ||
@@ -356,10 +388,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setPicked(s.picked || null);
     setSteps(s.steps || {});
     setDomBought(!!s.bought);
+    setUnlocked(!!s.brandUnlocked);
+    setKit(s.kit || null);
     if (s.logo) setLogoSel({ key: s.logo.key, title: s.logo.title, accent: (s.logo as any).accent || "dawn", seed: s.logo.seed || 0, font: (s.logo as any).font, custom: (s.logo as any).custom });
     const target: Step =
       s.picked && go === "domain" ? "claim" :
-      s.picked && go && ["book", "socials"].includes(go) ? (go as Step) :
+      s.picked && go && ["book", "socials", "kit", "mkt", "unlock"].includes(go) ? (go as Step) :
       s.picked && go === "logo" ? (s.logo ? "logodone" : "logo") :
       s.picked ? (s.steps?.domain ? "reveal" : "claim") :
       s.names?.length ? "names" :
@@ -378,8 +412,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
-    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, bought: domBought });
-  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, domBought]);
+    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, bought: domBought, unlocked, kit });
+  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, domBought, unlocked, kit]);
 
   function persist(over: Partial<SavedSearch> = {}) {
     if (test || !sentence.trim()) return;
@@ -390,6 +424,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       picked, steps, status, bought: domBought,
       logo: logoSel ? { key: logoSel.key, title: logoSel.title, seed: logoSel.seed, accent: logoSel.accent, font: logoSel.font, custom: logoSel.custom } : null,
       taste,
+      brandUnlocked: unlocked || undefined, unlockSource: unlocked ? "early_access" : undefined,
+      priceVariant: price, kit: kit || undefined,
       ...over,
     } as SavedSearch);
   }
@@ -761,6 +797,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       return;
     }
     if (s !== step) track("page", { to: s });
+    if (s === "done" && step !== "done") track("done", { name: picked?.name, unlocked: brandOpen });
     setStep(s); pushUrl(s); window.scrollTo(0, 0);
   }
 
@@ -1030,12 +1067,57 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         else if (step === "reveal") { e.preventDefault(); toStep("brand"); }
         else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
         else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
-        else if (step === "socials") { e.preventDefault(); markStep("socials", "done", "done"); track("done", { name: picked?.name }); }
+        else if (step === "socials") { e.preventDefault(); markStep("socials", "done", "kit"); }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  /* ── Handoff 19 · paywall: events, unlock, the kit's copy ── */
+  const unlockTapped = useRef(false);
+  useEffect(() => { // P·2 seen / left without unlocking; P·3 granted
+    if (test || !picked) return;
+    if (step === "unlock" && !brandOpen) {
+      unlockTapped.current = false;
+      track("paywall_seen", { price, variant: `eur${price}`, name: picked.name });
+      return () => { if (!unlockTapped.current && !unlocked) track("paywall_dismissed", { price, via: "leave" }); };
+    }
+    if (step === "early") track("early_access_granted", { price, name: picked.name });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+  function unlockFrom(source: "paywall" | "locked_page" | "account" | "done") {
+    track("unlock_clicked", { price, variant: `eur${price}`, source });
+    if (source !== "paywall") { toStep("unlock"); return; }
+    unlockTapped.current = true;
+    setUnlocked(true);
+    persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
+    toStep("early");
+  }
+  function keepFreePreview() {
+    unlockTapped.current = true; // logged here, not again on leaving
+    track("paywall_dismissed", { price, via: "keep" });
+    const k = "ns.whynot." + processId();
+    let seen = false;
+    try { seen = !!localStorage.getItem(k); localStorage.setItem(k, "1"); } catch { /* private mode */ }
+    if (seen && !test) toStep("done"); else setWhyNot(true);
+  }
+  const kitFail = !!fails.kit;
+  useEffect(() => { // the socials + marketing copy, written once the kit is open
+    if (test || !picked || kit || !brandOpen || !["early", "logodone", "book", "socials", "kit", "mkt"].includes(step)) return;
+    const key = picked.name + "|" + retryTick;
+    if (kitReq.current === key) return;
+    kitReq.current = key;
+    const who = picked.name;
+    wrapApi.kit({
+      name: who, sentence: sentence.trim(), concept: concept?.concept || "", tagline: picked.tagline || "",
+      voice: book?.voice?.words || [], domain: domSel?.domain || picked.dom?.domain || "",
+    }).then((k) => {
+      if (picked?.name !== who) return;
+      if (k?.posts?.length) { setKit(k); persist({ kit: k }); } else fail("kit", true);
+    }).catch(() => fail("kit", true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, picked, kit, brandOpen, step, retryTick]);
 
   /* ── shared chrome ── */
   const chapter = CHAPTERS[step];
@@ -1043,7 +1125,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const backTarget: Partial<Record<Step, Step>> = {
     brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", claim: "names", reveal: "claim",
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
-    logo: "taste", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
+    logo: "taste", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
+    kit: "socials", mkt: "kit",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -1062,17 +1145,39 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "ttype" ? "tshape" :
       step === "tshape" ? "taste" :
       step === "taste" ? "logo" :
-      step === "logo" ? (logoSel ? "logodone" : "book") :
+      step === "logo" ? (logoSel ? "snap" : null) :
+      step === "snap" ? (brandOpen ? "logodone" : "unlock") :
+      step === "early" ? "logodone" :
       step === "pers" ? "book" :
       step === "logodone" ? "book" :
       step === "book" ? "socials" :
-      step === "socials" ? "done" : null;
+      step === "socials" ? "kit" :
+      step === "kit" ? "mkt" :
+      step === "mkt" ? "done" : null;
     return t;
   };
 
   // Logos always wear the quiz picks directly (never a stale pre-taste book palette).
   const lpal = tastePalette(taste);
   const lshape = tasteShape(taste);
+  // Everything the paywall + kit screens draw with: the run's own logo and palette.
+  const payLogo = logoSel || (picked ? { key: BRAND_TILES[0].key, title: BRAND_TILES[0].title, accent: "dawn" as const, seed: logoSeed, font: tasteFont(taste) } : null);
+  const payCtx: PayCtx | null = picked && payLogo ? {
+    name: picked.name,
+    domain: domSel?.domain || picked.dom?.domain || picked.alt?.domain || "",
+    pal: lpal,
+    logoLight: logoSvg(payLogo.key, picked.name, lpal, { variant: payLogo.key === "appicon" ? "icon" : "light", accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom, height: 120 }),
+    kitLogo: { key: payLogo.key, name: picked.name, pal: lpal, opts: { accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom } },
+    voice: book?.voice?.words?.length ? book.voice.words : tasteVoice(taste),
+    headFont: payLogo.custom?.family || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
+    price,
+    onBuyDomain: () => {
+      const dm = domSel?.domain || picked.dom?.domain || picked.alt?.domain || "";
+      if (dm) { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: step }); }
+    },
+    track: (ev, payload) => track(ev, { name: picked.name, ...payload }),
+  } : null;
+  const LOCK_OF: Partial<Record<Step, LockKind>> = { logodone: "pack", pers: "pers", book: "book", socials: "socials", kit: "socials", mkt: "mkt" };
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
@@ -1634,19 +1739,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("logodone"); }}>
+            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("snap"); }}>
               Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
             </button>
             <span className="urow">
               <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
-              <button className="wr-link" onClick={() => markStep("logo", "skipped", "book")}>Skip the logo</button>
+              <button className="wr-link" onClick={() => { setLogoSel(logoSel || { key: BRAND_TILES[0].key, title: BRAND_TILES[0].title, accent: "dawn", seed: logoSeed, font: tasteFont(taste), shape: lshape }); toStep("snap"); }}>Skip the logo</button>
             </span>
           </div>
         </>
       )}
 
       {/* ═══ 06c your logo ═══ */}
-      {step === "logodone" && picked && logoSel && (
+      {step === "logodone" && picked && logoSel && brandOpen && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 10 }}>
             <div className="wr-lwrap wr-ldet">
@@ -1708,7 +1813,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* ═══ 06f·b personalize the logo ═══ */}
-      {step === "pers" && picked && persDraft && (
+      {step === "pers" && picked && persDraft && brandOpen && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18 }}>
             <div className="wr-lwrap wr-pers">
@@ -1851,7 +1956,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* ═══ 07 brand book ═══ */}
-      {step === "book" && picked && (
+      {step === "book" && picked && brandOpen && (
         <>
           <div className="wr-stage center">
             <div className="inner-nar wr-owncols">
@@ -1890,7 +1995,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* ═══ 08 socials ═══ */}
-      {step === "socials" && picked && (
+      {step === "socials" && picked && brandOpen && (
         <>
           <div className="wr-stage center">
             <div className="inner-nar">
@@ -1911,10 +2016,32 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 300 }} onClick={() => { track("done", { name: picked.name }); markStep("socials", "done", "done"); }}>Finish →</button>
-            <button className="wr-link" onClick={() => { track("done", { name: picked.name }); markStep("socials", "skipped", "done"); }}>Skip for now</button>
+            <button className="wr-btn" style={{ maxWidth: 300 }} onClick={() => markStep("socials", "done", "kit")}>Next: your socials kit →</button>
+            <button className="wr-link" onClick={() => markStep("socials", "skipped", "kit")}>Skip for now</button>
           </div>
         </>
+      )}
+
+      {/* ═══ P·1 snapshot · P·2 unlock · P·3 early access (handoff 19) ═══ */}
+      {step === "snap" && payCtx && (
+        <Snapshot c={payCtx} unlocked={brandOpen} onNext={() => toStep(brandOpen ? "logodone" : "unlock")} />
+      )}
+      {step === "unlock" && payCtx && (
+        brandOpen && !test // already open: no paywall to show, just the way in
+          ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} />
+          : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onKeep={keepFreePreview} />
+      )}
+      {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep("logodone")} />}
+      {/* P·5a: a paid page, for a run that hasn't unlocked */}
+      {picked && payCtx && !brandOpen && LOCK_OF[step] && (
+        <Locked c={payCtx} kind={LOCK_OF[step]!} book={book} onUnlock={() => unlockFrom("locked_page")} onBack={() => toStep("snap")} />
+      )}
+      {/* ═══ 08·k socials kit · 08·m marketing kit ═══ */}
+      {step === "kit" && payCtx && brandOpen && (
+        <SocialsKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onNext={() => toStep("mkt")} onBack={() => toStep("socials")} />
+      )}
+      {step === "mkt" && payCtx && brandOpen && (
+        <MarketingKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onFinish={() => toStep("done")} onBack={() => toStep("kit")} />
       )}
 
       {/* ═══ 09 all set ═══ */}
@@ -1934,11 +2061,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                       <span className="mid"><b>Name</b></span>
                       <span className="val">{picked.name}</span>
                     </div>
-                    <div className="krow">
-                      <i className={"ic " + (brandDone ? "ok" : "out")}>{brandDone ? "✓" : "·"}</i>
-                      <span className="mid"><b>Brand</b><small>logo · brand book · socials</small></span>
-                      <span className="val">{brandDone ? "done" : "later"}</span>
-                    </div>
+                    {brandOpen ? (
+                      <div className="krow">
+                        <i className={"ic " + (brandDone ? "ok" : "out")}>{brandDone ? "✓" : "·"}</i>
+                        <span className="mid"><b>Brand kit</b><small>logo · brand book · socials · marketing</small></span>
+                        <span className="val">{brandDone ? "done" : "later"}</span>
+                      </div>
+                    ) : (
+                      <div className="krow">
+                        <i className="ic out">🔒</i>
+                        <span className="mid"><b>Brand kit · locked</b><small>logo pack · brand book · socials · marketing</small></span>
+                        <button className="kbuy or" onClick={() => unlockFrom("done")}>Unlock €{price}</button>
+                      </div>
+                    )}
                     {domBought || !dm ? (
                       <div className="krow">
                         <i className={"ic " + (steps.domain === "done" ? "ok" : "out")}>{steps.domain === "done" ? "✓" : "·"}</i>
@@ -1988,6 +2123,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             afterGate.current = null;
             toStep(t);
           }}
+        />
+      )}
+      {whyNot && (
+        <WhyNot
+          onPick={(reason) => { track("why_not", { reason, price, name: picked?.name }); setWhyNot(false); toStep("done"); }}
+          onSkip={() => { setWhyNot(false); toStep("done"); }}
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}

@@ -54,6 +54,18 @@ export interface WBook {
   messaging: { oneLiner: string; pitch: string; boilerplate: string; use: string[]; avoid: string[] };
 }
 
+// The paid kit's words (handoff 19): socials + marketing, generated per run.
+export interface WKit {
+  bioShort: string;                 // Instagram / TikTok / X
+  bioLong: string;                  // LinkedIn
+  posts: { label: string; title: string; caption: string }[]; // Day 1 teaser · Day 3 launch · Day 7 story
+  googleHeadlines: string[];        // ≤ 30 characters each
+  googleDescription: string;        // ≤ 90 characters
+  metaPrimary: string;
+  metaHeadline: string;
+  weeks: { title: string; line: string; channels: string[] }[]; // Tease · Launch · Proof
+}
+
 export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }
 export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string }
 
@@ -76,6 +88,10 @@ export interface SavedSearch {
   domCheckedAt?: number;    // when availability was last verified (the claim screen's live check)
   domStatus?: "chosen" | "bought"; // chosen = kept in the app, not bought anywhere yet
   bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
+  brandUnlocked?: boolean;  // the paid brand kit is open (phase 1: free "early access")
+  unlockSource?: string;    // "early_access" (phase 1) | "stripe" (phase 2)
+  priceVariant?: number;    // the €29/39/49 shown to this user (stable per user)
+  kit?: WKit | null;        // socials + marketing copy for this run
   logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
   taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
@@ -139,6 +155,10 @@ export const wrapApi = {
 
   namesRaw: (payload: Record<string, unknown>) => gen<{ names: WName[] }>("wrapnames", payload, () =>
     ({ names: (payload.exclude as string[])?.length ? ACTIVE().moreNames : ACTIVE().names })),
+
+  // The socials + marketing kit: one call, validated lengths server-side.
+  kit: (payload: { name: string; sentence: string; concept: string; tagline: string; voice: string[]; domain: string }) =>
+    gen<WKit>("wrapkit", payload, () => sampleKit(payload.name, payload.domain)),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
   book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
@@ -338,6 +358,15 @@ export function fetchDomainBoard(name: string, doms?: string[], fresh = false): 
 // domain. No cart pre-fill, no affiliate checkout, no purchase verification.
 // We link the registrar whose live prices we display (Porkbun), so the number
 // a founder sees is the number at checkout — and we never NAME it in the UI.
+// Handoff 19 · the brand kit's price: €29 / €39 / €49, one variant per user
+// (hash of the Google email), so the price never moves between runs or devices.
+export const PAY_PRICES = [29, 39, 49];
+export function priceFor(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.toLowerCase().charCodeAt(i)) >>> 0;
+  return PAY_PRICES[h % PAY_PRICES.length];
+}
+
 export const registrarUrl = (domain: string) =>
   `https://porkbun.com/checkout/search?q=${encodeURIComponent(domain)}`;
 
@@ -835,3 +864,25 @@ export function tillerBook(): WBook {
     },
   };
 }
+
+export function sampleKit(name: string, domain: string): WKit {
+  return {
+    bioShort: `Names for what comes next ✶ ${domain}`,
+    bioLong: `${name} helps founders find the one name that feels like them, with its domain and a brand ready to launch, in minutes.`,
+    posts: [
+      { label: "Day 1 · Teaser", title: "Something new is rising.", caption: `Something new is rising. ${name}, soon.` },
+      { label: "Day 3 · Launch", title: `Meet ${name}. Names for what comes next.`, caption: `Meet ${name} ✶ Names for what comes next. We help founders find the one name that feels like them, in minutes. Link in bio.` },
+      { label: "Day 7 · Story", title: "Why we started.", caption: `A week in. Here is why we started ${name}, and what we learned.` },
+    ],
+    googleHeadlines: ["Find your brand name, fast", "Names for what comes next", "A name you'll be known as"],
+    googleDescription: `${name} finds a clear, ownable name and its free domain in minutes. Try it free.`,
+    metaPrimary: `Starting something? Your name is the first thing people meet. ${name} finds yours in minutes.`,
+    metaHeadline: "Meet your name.",
+    weeks: [
+      { title: "Week 1 · Tease", line: "Two teaser posts and a waitlist link in every bio.", channels: ["Instagram", "LinkedIn"] },
+      { title: "Week 2 · Launch", line: "The launch post, a founder story, and the first search ads go live.", channels: ["All socials", "Google Ads"] },
+      { title: "Week 3 · Proof", line: "Share one result or first customer, then retarget site visitors.", channels: ["Instagram", "Meta Ads"] },
+    ],
+  };
+}
+

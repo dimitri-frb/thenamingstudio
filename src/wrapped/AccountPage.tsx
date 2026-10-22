@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import "./wrapped.css";
 import {
   GOOGLE_CLIENT_ID, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, putSearch, registrarUrl, saveSession,
-  searchDel, track, type SavedSearch, type WUser,
+  searchDel, priceFor, track, type SavedSearch, type WUser,
 } from "./api";
 import { AvatarMenu, BASE, SettingsPane } from "./paper";
 import { STEPS } from "./AdminPage";
@@ -89,7 +89,7 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
             <div className="cards">
               {shown.map((s) => (
                 <FlowCard
-                  key={s.id} s={s} demo={demo}
+                  key={s.id} s={s} demo={demo} price={s.priceVariant || priceFor(user?.email || s.id)}
                   onDeleted={() => setSearches((xs) => xs.filter((x) => x.id !== s.id))}
                   onBought={() => {
                     const next = { ...s, bought: true, updated: Date.now() };
@@ -107,7 +107,33 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
   );
 }
 
-function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: boolean; onDeleted: () => void; onBought: () => void }) {
+// P·5b · the run's three rows once it reached the brand snapshot: the free
+// preview, the domain link, and the brand kit (locked + Unlock, or Open).
+function KitRows({ s, price, resume }: { s: SavedSearch; price: number; resume: (go?: string) => string }) {
+  if (!s.picked || !s.logo) return null;
+  const open = !!s.brandUnlocked || !!s.steps?.book || !!s.steps?.socials;
+  return (
+    <div className="kitrows">
+      <div className="kr"><i className="ok">✓</i><b>Name &amp; logo preview</b><span className="r">Free</span></div>
+      {s.domain && (
+        <div className="kr">
+          <i className="dot" /><span className="mono">{s.domain}</span>
+          <a className="r lk" href={registrarUrl(s.domain)} target="_blank" rel="noopener noreferrer" onClick={() => track("godaddy", { domain: s.domain, from: "account" })}>{s.bought ? "Bought ✓" : "Buy ↗"}</a>
+        </div>
+      )}
+      {open ? (
+        <div className="kr"><i className="ok">✓</i><b>Brand kit · Open</b><a className="r lk" href={resume("logo")}>Open →</a></div>
+      ) : (
+        <div className="kr lockd">
+          <i>🔒</i><b>Brand kit · locked</b>
+          <a className="r unl" href={resume("unlock")} onClick={() => track("unlock_clicked", { price, variant: `eur${price}`, source: "account", name: s.picked?.name })}>Unlock €{price}</a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FlowCard({ s, demo, price, onDeleted, onBought }: { s: SavedSearch; demo: boolean; price: number; onDeleted: () => void; onBought: () => void }) {
   const st = stepOf(s);
   const completed = st >= 9;
   const date = new Date(s.updated || s.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -137,6 +163,7 @@ function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: bool
           onClick={() => track("godaddy", { domain: s.domain, from: "account" })}
         >Buy {s.domain} ↗</a>
         <p className="markdone">Already bought it? <button onClick={onBought}>Mark as done</button></p>
+        <KitRows s={s} price={price} resume={resume} />
         <div className="acts">
           <a className="btn ghost" href={resume(completed ? "book" : undefined)}>{completed ? "Open brand book" : "Continue →"}</a>
         </div>
@@ -156,6 +183,7 @@ function FlowCard({ s, demo, onDeleted, onBought }: { s: SavedSearch; demo: bool
         <span className="segs">{STEPS.map((_, i) => <i key={i} className={i < st ? "d" : i === st ? "c" : ""} />)}</span>
       </div>
       <p className="line">{line}</p>
+      <KitRows s={s} price={price} resume={resume} />
       <div className="acts">
         {completed ? (
           <>

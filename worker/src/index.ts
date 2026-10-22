@@ -454,6 +454,7 @@ export default {
       if (data == null) return json({ error: "parse failed" }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "wrapnames") data = await enrichWrapNames(env, data, body?.payload?.prefs?.doms);
+      if (phase === "wrapkit") data = fitKit(data);
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
@@ -885,6 +886,21 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // 07 The brand book: generated as TWO parallel halves (half:"a" = tagline,
   // story, origin, saying; half:"b" = who, palette, voice, messaging) so the
   // whole book lands in one Sonnet-latency, not two.
+  // Paid kit (handoff 19): socials bios + launch posts + ads + a 3-week plan.
+  wrapkit: (b) => ({ model: MODEL.smart, max: 1800, prompt:
+    `You are the launch strategist at a world-class branding studio.\n` + LANG_LINE +
+    `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" — domain ${String(b.payload?.domain || "").slice(0, 60)}.\n` +
+    `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". The name should feel like: "${String(b.payload?.concept || "").slice(0, 120)}". Tagline: "${String(b.payload?.tagline || "").slice(0, 160)}". Voice: ${JSON.stringify((b.payload?.voice || []).slice(0, 4))}.\n\n` +
+    `Write the launch kit, in that voice, specific to THIS brand (never generic, never mention Name Name). EVERY field, ads included, in the brief's language — a city or country named in the brief does not change it:\n` +
+    `- bioShort: an Instagram/TikTok/X bio, max 150 characters, may end with the domain.\n` +
+    `- bioLong: a LinkedIn "about", 2 short sentences.\n` +
+    `- posts: exactly 3 square launch posts: label "Day 1 · Teaser", "Day 3 · Launch", "Day 7 · Story". title = the words ON the image (max 8 words); caption = the post caption (1–3 sentences).\n` +
+    `- googleHeadlines: exactly 3 Google search ad headlines, EACH MAX 30 CHARACTERS including spaces.\n` +
+    `- googleDescription: one search ad description, MAX 90 CHARACTERS.\n` +
+    `- metaPrimary: a Meta ad primary text, 1–2 sentences. metaHeadline: max 40 characters.\n` +
+    `- weeks: exactly 3: titles "Week 1 · Tease", "Week 2 · Launch", "Week 3 · Proof"; line = one sentence of what to do; channels = 1–2 of: Instagram, LinkedIn, TikTok, X, All socials, Google Ads, Meta Ads, Email.\n` +
+    `Return ONLY minified JSON {"bioShort":"","bioLong":"","posts":[{"label":"","title":"","caption":""}],"googleHeadlines":[""],"googleDescription":"","metaPrimary":"","metaHeadline":"","weeks":[{"title":"","line":"","channels":[""]}]}` }),
+
   wrapbook: (b) => {
     const intro =
       LANG_LINE +
@@ -1686,3 +1702,24 @@ function hash(s: string): number {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
 }
+
+// Ad platforms reject over-length copy: enforce the limits the prompt asked for.
+function fitKit(d: any): any {
+  const cut = (t: unknown, n: number) => {
+    const v = String(t || "").trim();
+    if (v.length <= n) return v;
+    const w = v.slice(0, n + 1).replace(/\s+\S*$/, "");
+    return (w.length >= n * 0.6 ? w : v.slice(0, n)).replace(/[\s,;:–-]+$/, "");
+  };
+  const heads = (Array.isArray(d?.googleHeadlines) ? d.googleHeadlines : []).map((h: unknown) => cut(h, 30)).filter(Boolean).slice(0, 3);
+  return {
+    ...d,
+    bioShort: cut(d?.bioShort, 150),
+    googleHeadlines: heads,
+    googleDescription: cut(d?.googleDescription, 90),
+    metaHeadline: cut(d?.metaHeadline, 40),
+    posts: (Array.isArray(d?.posts) ? d.posts : []).slice(0, 3),
+    weeks: (Array.isArray(d?.weeks) ? d.weeks : []).slice(0, 3),
+  };
+}
+

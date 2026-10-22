@@ -24,7 +24,7 @@ const ACTION_STEP: Record<string, number> = {
 const LEGACY_STEP: Record<string, number> = { wrapchips: 1, wrapconcept: 2, wrapwords: 4, wrapnames: 5 };
 const PAGE_STEP: Record<string, number> = {
   ask: 1, brief: 1, refine: 2, brands: 3, brandsum: 3, words: 4, names: 5, claim: 6, reveal: 6,
-  domain: 6, taste: 7, logo: 7, logodone: 7, pers: 7, book: 8, socials: 9, done: 10,
+  domain: 6, taste: 7, logo: 7, snap: 7, unlock: 7, early: 7, logodone: 7, pers: 7, book: 8, socials: 9, kit: 9, mkt: 9, done: 10,
 };
 
 interface Flow {
@@ -38,6 +38,11 @@ interface Flow {
   domain: string;
   dive: boolean;                  // opened the deep-dive (02·r)
   buy: boolean;                   // clicked out to buy the domain
+  logo: boolean;                  // picked a logo → the free brand snapshot (P·1)
+  paywall: boolean;               // saw P·2 Unlock (handoff 19)
+  unlock: boolean;                // tapped Unlock (paywall, locked page or account)
+  price: number;                  // the €29/39/49 variant this person saw
+  why: string;                    // P·6 "why not now?" answer
   source: string; campaign: string; content: string; device: string; lang: string; country: string;
   feedback: string;               // the 04·x/04·i exit poll, when the user answered it
   gateOnly?: boolean;             // the landing gate's stray sign-up group (folds into the real flow)
@@ -58,6 +63,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "", dive: false, buy: false,
+      logo: false, paywall: false, unlock: false, price: 0, why: "",
       source: "", campaign: "", content: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     // pass 1: identity + content (the email can arrive on any event)
@@ -86,6 +92,10 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "domain" && p.domain) f.domain = p.domain;
       if (e.phase === "godaddy") f.buy = true; // historic event name for the buy click
       if (e.phase === "page" && String(p.to || "") === "refine") f.dive = true;
+      if (e.phase === "logo" || (e.phase === "page" && ["snap", "logodone"].includes(String(p.to || "")))) f.logo = true;
+      if (e.phase === "paywall_seen") { f.paywall = true; f.price = Number(p.price) || f.price; }
+      if (e.phase === "unlock_clicked") { f.unlock = true; f.price = Number(p.price) || f.price; }
+      if (e.phase === "why_not" && p.reason) f.why = String(p.reason);
       if (e.phase === "wrapnames") {
         const names = (e.output?.names || []).map((n: any) => n?.name).filter(Boolean);
         if (names.length) f.shortlist = names.slice(0, 3);
@@ -143,6 +153,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       main.last = Math.max(main.last, o.last);
       if (o.brief.length > main.brief.length) main.brief = o.brief;
       main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain; main.buy ||= o.buy; main.dive ||= o.dive;
+      main.logo ||= o.logo; main.paywall ||= o.paywall; main.unlock ||= o.unlock; main.price ||= o.price; main.why ||= o.why;
       main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content;
       main.device ||= o.device; main.lang ||= o.lang; main.country ||= o.country;
       main.feedback ||= o.feedback;
@@ -468,6 +479,7 @@ export function AdminPage() {
                 </div>
                 {selFlow.brief && <><p className="lbl">Brief</p><p className="val">“{selFlow.brief}”</p></>}
                 {selFlow.feedback && <><p className="lbl">Feedback</p><p className="val">{selFlow.feedback}</p></>}
+                {selFlow.paywall && <><p className="lbl">Paywall · €{selFlow.price || "?"}</p><p className="val">{selFlow.unlock ? "Unlocked (early access)" : "Kept the free preview"}{selFlow.why ? ` — why not: ${selFlow.why}` : ""}</p></>}
                 {(selFlow.name || selFlow.domain) && <><p className="lbl">Name &amp; domain</p><p className="val"><b>{selFlow.name || "—"}</b>{selFlow.domain && <span className="mono"> · {selFlow.domain}</span>}</p></>}
                 {!!selFlow.words.length && <><p className="lbl">Starred words</p><p className="val dim">{selFlow.words.join(" · ")}</p></>}
                 {!selFlow.name && !!selFlow.shortlist.length && <><p className="lbl">Shortlist</p><p className="val dim">{selFlow.shortlist.join(" · ")}</p></>}
@@ -598,8 +610,9 @@ const CHANNELS: [string, string][] = [
   ["Organic search", "#12A36B"], ["Referral", "#F59E0B"], ["Product Hunt", "#DA552F"], ["Newsletter", "#8B5CF6"], ["Direct", "#6A6A6A"],
 ];
 const PAID = new Set(["Google Ads", "Meta Ads", "LinkedIn Ads"]);
-type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; chose: number; brand: number; buy: number };
-const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean }[] = [
+type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; chose: number; brand: number; paywall: number; unlock: number; buy: number };
+// `base`: the row a step % divides by, when it isn't the row above.
+const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean; base?: keyof WeekMet }[] = [
   { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
   { k: "started", t: "Started", s: "Started", d: "typed a brief, pressed “Name it”" },
   { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in at the gate, right after the brief" },
@@ -608,8 +621,10 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
   { k: "chose", t: "Chose its domain", s: "Chose domain", d: "tapped Choose — name + domain kept" },
-  { k: "brand", t: "Brand done", s: "Brand done", d: "logo + brand book" },
-  { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain" },
+  { k: "brand", t: "Brand done", s: "Brand done", d: "picked a logo, saw the free brand snapshot" },
+  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29 / €39 / €49)" },
+  { k: "unlock", t: "Unlock clicked", s: "Unlock", d: "tapped Unlock: the number this test measures" },
+  { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of “Chose its domain”)", base: "chose" },
 ];
 const WMS = 7 * 864e5;
 const mondayOf = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
@@ -626,6 +641,56 @@ function Delta({ cur, was, costly }: { cur: number; was: number; costly?: boolea
   const pct = Math.round(((cur - was) / was) * 100);
   const good = costly ? pct <= 0 : pct >= 0;
   return <em className={"dlt " + (good ? "up" : "down")}>{pct >= 0 ? "▲" : "▼"} {Math.abs(pct)}%</em>;
+}
+
+/* ── Handoff 19 · the paywall test: unlock ÷ seen, per price variant ── */
+function PaywallTest({ flows, chan }: { flows: Flow[]; chan: string }) {
+  const fl = flows.filter((f) => f.paywall && (chan === "All channels" || f.source === chan));
+  const rows = [29, 39, 49].map((p) => {
+    const g = fl.filter((f) => f.price === p);
+    const un = g.filter((f) => f.unlock).length;
+    const why = new Map<string, number>();
+    for (const f of g) if (f.why) why.set(f.why, (why.get(f.why) || 0) + 1);
+    const top = [...why.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { p, seen: g.length, un, rate: g.length ? (un / g.length) * 100 : 0, top: top ? `${top[0]} · ${top[1]}` : "—" };
+  });
+  const seen = fl.length, un = fl.filter((f) => f.unlock).length;
+  const whyAll = new Map<string, number>();
+  for (const f of fl) if (f.why) whyAll.set(f.why, (whyAll.get(f.why) || 0) + 1);
+  return (
+    <div className="paytest">
+      <div className="anahead">
+        <h2>Paywall test</h2>
+        <span className="mono sub">{chan} · since launch · Unlock clicked ÷ Paywall seen, per price</span>
+      </div>
+      <div className="anascroll">
+        <table className="anatbl pt">
+          <thead>
+            <tr className="subs"><th className="stp">PRICE</th><th className="h">Seen</th><th className="h">Unlock</th><th className="h">Rate</th><th className="h">Top “why not”</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.p}>
+                <td className="stp"><b className="mono">€{r.p}</b></td>
+                <td className="mono n">{r.seen}</td>
+                <td className="mono n">{r.un}</td>
+                <td className="mono tot">{r.seen ? (r.rate >= 10 ? Math.round(r.rate) : r.rate.toFixed(1)) + "%" : "—"}</td>
+                <td className="dim">{r.top}</td>
+              </tr>
+            ))}
+            <tr className="mainrow">
+              <td className="stp"><b>All prices</b></td>
+              <td className="mono n">{seen}</td>
+              <td className="mono n">{un}</td>
+              <td className="mono tot">{seen ? Math.round((un / seen) * 100) + "%" : "—"}</td>
+              <td className="dim">{[...whyAll.entries()].sort((a, b) => b[1] - a[1]).map(([w, n]) => `${w} ${n}`).join(" · ") || "—"}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="ananote mono">Phase 1: Unlock is free (“You’re early”), so this measures intent at each price, not revenue. Small samples swing: read it at 30+ seen per price.</p>
+    </div>
+  );
 }
 
 function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean }) {
@@ -656,7 +721,9 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       words: fl.filter((f) => f.email && f.step >= 5).length,
       name: fl.filter((f) => f.email && f.step >= 6).length,
       chose: fl.filter((f) => !!f.domain).length,
-      brand: fl.filter((f) => f.step >= 8).length,
+      brand: fl.filter((f) => f.logo || f.step >= 8).length,
+      paywall: fl.filter((f) => f.paywall).length,
+      unlock: fl.filter((f) => f.unlock).length,
       buy: fl.filter((f) => f.buy).length,
     };
   }), [weeks, flows, ads, chan, SPAN]);
@@ -674,7 +741,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
     const r = AROWS[ri];
     const v = m[r.k];
     const h = hid ? " wkhid" : "";
-    const stepBase = ri === 0 ? 0 : m[AROWS[ri - 1].k];
+    const stepBase = ri === 0 ? 0 : m[r.base || AROWS[ri - 1].k];
     const tot = m.clicks ? (v / m.clicks) * 100 : 0;
     const totPrev = prevM && prevM.clicks ? (prevM[r.k] / prevM.clicks) * 100 : null;
     const pts = totPrev === null ? null : tot - totPrev;
@@ -758,6 +825,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         </table>
       </div>
       <p className="ananote mono">{loading ? "Loading the log…" : `# people who reached the step · €/# that ${gran}’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the ${gran} before`}</p>
+      <PaywallTest flows={flows} chan={chan} />
     </div>
   );
 }
@@ -899,7 +967,8 @@ const DEMO_ITEMS: LogItem[] = [
   mk("p1", "wrapconcept", 25.9 * H, { sentence: "Une appli repas" }), mk("p1", "wrapwords", 25.8 * H), 
   mk("p1", "wrapnames", 25.6 * H, { words: [{ w: "mijoter" }, { w: "cadence" }, { w: "panier" }] }, "FR", { names: [{ name: "Mijo" }, { name: "Cadane" }, { name: "Panette" }] }),
   mk("p1", "pick", 25.5 * H, { name: "Mijo", ...meta1 }), mk("p1", "domain", 25.4 * H, { domain: "mijo.app", ...meta1 }),
-  mk("p1", "logo", 25.2 * H, meta1), mk("p1", "book", 25 * H, meta1), mk("p1", "done", 24.9 * H, { name: "Mijo", ...meta1 }),
+  mk("p1", "logo", 25.2 * H, meta1), mk("p1", "paywall_seen", 25.15 * H, { price: 39, ...meta1 }), mk("p1", "unlock_clicked", 25.1 * H, { price: 39, source: "paywall", ...meta1 }),
+  mk("p1", "book", 25 * H, meta1), mk("p1", "done", 24.9 * H, { name: "Mijo", ...meta1 }),
   mk("p2", "signup", 5 * H, meta2), mk("p2", "search", 5 * H - 60000, { sentence: "A B2B platform that automates carbon accounting", ...meta2 }),
   mk("p2", "wrapconcept", 4.9 * H), mk("p2", "wrapwords", 4.8 * H),
   mk("p2", "wrapnames", 4.5 * H, { words: [{ w: "ledger" }, { w: "north" }] }, "GB", { names: [{ name: "Carbent" }, { name: "Fathom" }, { name: "Nordica" }] }),
@@ -910,6 +979,8 @@ const DEMO_ITEMS: LogItem[] = [
   mk("p4", "wrapconcept", 49.9 * H, {}, "US"), mk("p4", "wrapwords", 49.8 * H, {}, "US"),
   mk("p4", "wrapnames", 49.5 * H, { words: [{ w: "echo" }, { w: "letter" }] }, "US", { names: [{ name: "Echolet" }, { name: "Castnote" }] }),
   mk("p4", "pick", 49.4 * H, { name: "Echolet", ...meta4 }, "US"),
+  mk("p4", "logo", 49.2 * H, meta4, "US"), mk("p4", "paywall_seen", 49.1 * H, { price: 49, ...meta4 }, "US"),
+  mk("p4", "why_not", 49.05 * H, { reason: "Too expensive", ...meta4 }, "US"),
   mk("p2", "poll", 4.45 * H, { variant: "exit", step: "names", ...meta2 }, "GB"),
   mk("p3", "poll", 0.1 * H, { variant: "idle", step: "brief", ...meta3 }, "ES"),
   mk("p4", "poll", 49.45 * H, { variant: "idle", step: "words", ...meta4 }, "US"),
