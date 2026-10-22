@@ -224,6 +224,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [domBought, setDomBought] = useState(false); // user-set only ("Mark as done")
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
+  // The name picker (04): our pick + 5 on phones, our pick + 8 on desktop; "Show N more" adds N.
+  const firstBatch = isMobile ? 6 : 9;
+  const moreBatch = isMobile ? 5 : 8;
+  const nameBatch = useRef<Map<string, number>>(new Map()); // name → which "more" round coined it (0 = first)
+  const [newestBatch, setNewestBatch] = useState(0);
+  const [pickSay, setPickSay] = useState("");               // the pick's pronunciation (desktop card)
+  const namesViewed = useRef("");
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 720px)");
     const fn = () => setIsMobile(mq.matches);
@@ -565,7 +572,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (namesPre.current?.key === key) return;
     const t = setTimeout(() => {
       namesPre.current?.st.abort(); // a stale set's stream is money down the drain
-      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs) };
+      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs, firstBatch) };
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -794,6 +801,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       }
       const batch = [...st.names].sort((x, y) => (y.score || 0) - (x.score || 0));
       const fin = [...base, ...batch];
+      if (!base.length) { nameBatch.current = new Map(batch.map((n) => [n.name, 0])); setNewestBatch(0); }
+      else {
+        const b = Math.max(0, ...Array.from(nameBatch.current.values())) + 1;
+        batch.forEach((n) => nameBatch.current.set(n.name, b));
+        setNewestBatch(b);
+      }
       setNames(fin);
       setNamesBusy(false); setMoreBusy(false);
       persist({ names: fin });
@@ -804,7 +817,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       // "Generate six more" should feel instant: the next batch coins itself now.
       if (!test) {
         const exKey = fin.map((n) => n.name).join("|");
-        morePre.current = { key: exKey, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs) };
+        morePre.current = { key: exKey, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs, moreBatch) };
       }
     };
     st.listeners.add(upd);
@@ -816,6 +829,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     toStep("names");
     if (names?.length || namesBusy) return;
     v2Known.current = null; setV2Sel(null);
+    nameBatch.current = new Map(); setNewestBatch(0); namesViewed.current = "";
     setNamesBusy(true);
     setNamesProg(0);
     waitStart.current = Date.now();
@@ -824,7 +838,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     let entry = namesPre.current;
     if (!entry || entry.key !== key) { // the stars changed since the prefetch
       entry?.st.abort();
-      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", words, [], prefs) };
+      entry = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", words, [], prefs, firstBatch) };
       namesPre.current = entry;
     }
     attachStream(entry.st, []);
@@ -840,13 +854,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (moreBusy || !names) return;
     v2Known.current = names.map((n) => n.name); // V2: new batch shows on top with a NEW tag
     track("morenames", { have: names.length });
+    track("names_more_clicked", { batch: newestBatch + 1 });
     setMoreBusy(true);
     fail("more", false);
     const exKey = names.map((n) => n.name).join("|");
     // A pre-charged batch that silently failed in the background is no batch:
     // fall through to a fresh stream instead of consuming the error.
     const pre = morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
-    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs);
+    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch);
     morePre.current = null;
     attachStream(st, names);
   }
@@ -860,16 +875,47 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ picked: n });
   }
 
-  // The names list shows the latest batch on top (orange NEW tags): the same
-  // display order feeds the mobile rows, the desktop grid and the ↑↓ keys.
-  const displayNames = (): WName[] => {
-    const all = names || [];
-    const known = v2Known.current;
-    if (!known) return all;
-    return [...all.filter((n) => !known.includes(n.name)), ...all.filter((n) => known.includes(n.name))];
+  // 04 picker: only names with a free domain (or one still being checked) are
+  // shown; "our pick" is the highest fit of the first round and never moves;
+  // the others run newest round first, each round in fit order.
+  const domOf = (n: WName) => (n.dom?.free ? n.dom : n.alt || null);
+  const batchOf = (n: WName) => nameBatch.current.get(n.name) ?? 0;
+  const shownNames = (names || []).filter((n) => domOf(n) || !(n as any).domd);
+  const pickN: WName | null =
+    shownNames.filter((n) => batchOf(n) === 0).sort((a, b) => (b.score || 0) - (a.score || 0))[0] || shownNames[0] || null;
+  const otherNames = shownNames
+    .filter((n) => n !== pickN)
+    .map((n, i) => ({ n, i }))
+    .sort((a, b) => batchOf(b.n) - batchOf(a.n) || a.i - b.i)
+    .map((x) => x.n);
+  const displayNames = (): WName[] => (pickN ? [pickN, ...otherNames] : otherNames);
+  const selName = v2Sel ?? pickN?.name ?? null;
+  const selectName = (name: string) => {
+    const n = (names || []).find((x) => x.name === name);
+    setV2Sel(name === pickN?.name ? null : name);
+    track("name_selected", { name, wasPick: name === pickN?.name, batch: n ? batchOf(n) : 0 });
   };
-  const selName = v2Sel ?? names?.[0]?.name ?? null;
-  const continueWithSel = () => { const n = (names || []).find((x) => x.name === selName); if (n) pickName(n); };
+  const continueWithSel = () => {
+    const n = (names || []).find((x) => x.name === selName);
+    if (!n) return;
+    track("names_continue", { name: n.name, wasPick: n.name === pickN?.name, batch: batchOf(n) });
+    pickName(n);
+  };
+
+  useEffect(() => {
+    if (step !== "names" || namesBusy || !pickN) return;
+    const key = (names || []).slice(0, 3).map((n) => n.name).join("|");
+    if (namesViewed.current !== key) { namesViewed.current = key; track("names_viewed", { count: shownNames.length, pick: pickN.name }); }
+    if (isMobile || test) return;
+    let live = true;
+    setPickSay("");
+    bookFetch(pickN).then((b) => {
+      const syl = b?.saying?.syllables;
+      if (live && syl?.length) setPickSay(syl.map((x) => (x.stress ? x.s.toUpperCase() : x.s.toLowerCase())).join(" · "));
+    }).catch(() => {});
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, namesBusy, pickN?.name, isMobile]);
 
   function markStep(k: keyof SavedSearch["steps"], v: "done" | "skipped", next: Step) {
     const ns = { ...steps, [k]: v };
@@ -1364,61 +1410,41 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 04 / 04b the names (V2 mobile: six compact rows, domain on each) ═══ */}
-      {step === "names" && isMobile && (
+      {/* ═══ 04 the name picker: our pick on top / left, the others as blocks ═══ */}
+      {step === "names" && (
         <>
-          <div className="wr-stage wr-v2stage" style={{ paddingTop: 18 }}>
+          <div className={"wr-stage " + (isMobile ? "wr-v2stage" : "pkstage")} style={{ paddingTop: isMobile ? 14 : 18, paddingBottom: 8 }}>
             {fails.names && !names?.length ? (
               <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={() => makeNames()} /></div>
             ) : namesBusy && !names?.length ? (
               <NamingWait coined={namesProg} starred={starred} />
-            ) : (
-              <NamesListV2
-                names={names || []}
-                known={v2Known.current}
-                sel={v2Sel ?? names?.[0]?.name ?? null}
-                onSel={setV2Sel}
+            ) : pickN ? (
+              <NamesPicker
+                mobile={isMobile}
+                pick={pickN}
+                others={otherNames}
+                newestBatch={newestBatch}
+                batchOf={batchOf}
+                sel={selName}
+                onSel={selectName}
+                onMore={moreNames}
+                moreBusy={moreBusy}
+                moreFail={!!fails.more}
+                batchSize={moreBatch}
+                say={pickSay}
               />
-            )}
+            ) : null}
           </div>
           {!!names?.length && !namesBusy && (
-            <div className="wr-foot wr-v2nbar">
-              <button className="more" disabled={moreBusy} onClick={moreNames}>
-                {moreBusy ? "↻ …" : fails.more ? "↻ Try again" : v2Known.current ? "↻ More" : "↻ 6 more"}
-              </button>
-              <button className="go" onClick={continueWithSel}>
-                Continue with {selName || "…"} →
-              </button>
-            </div>
-          )}
-        </>
-      )}
-      {step === "names" && !isMobile && (
-        <>
-          <div className="wr-stage" style={{ paddingTop: 18, paddingBottom: 8 }}>
-            <div className="wr-nameswrap">
-              {fails.names && !names?.length ? (
-                <div style={{ margin: "34px 0" }}><GenFail note="The studio couldn't coin your names just now." onRetry={makeNames} /></div>
-              ) : namesBusy && !names?.length ? (
-                <NamingWait coined={namesProg} starred={starred} />
-              ) : (
-                <NamesGridV2
-                  names={names || []}
-                  known={v2Known.current}
-                  sel={selName}
-                  onSel={setV2Sel}
-                />
-              )}
-            </div>
-          </div>
-          {!!names?.length && !namesBusy && (
-            <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-              <span style={{ display: "inline-flex", gap: 10 }}>
-                <button className="wr-btn2" disabled={moreBusy} onClick={moreNames}>{moreBusy ? "↻ …" : fails.more ? "↻ Try again" : "↻ More"}</button>
-                <button className="wr-btn" style={{ maxWidth: 340 }} onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
-              </span>
-              <span className="wr-hint">↑ ↓ to browse · Continue opens the claim</span>
-            </div>
+            isMobile ? (
+              <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+                <button className="wr-btnor cbig" onClick={continueWithSel}>Continue with {selName || "…"} →</button>
+              </div>
+            ) : (
+              <div className="wr-foot pkfoot">
+                <button className="wr-btn" onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
+              </div>
+            )
           )}
         </>
       )}
@@ -2195,79 +2221,82 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
 }
 
 /* ── V2·04 / 04b (mobile): six names, one screen, domain on each ── */
-const V2_SPELL: Record<number, string> = { 6: "Six", 9: "Nine", 12: "Twelve", 15: "Fifteen", 18: "Eighteen", 24: "Twenty-four" };
-function NamesListV2({ names, known, sel, onSel }: {
-  names: WName[]; known: string[] | null; sel: string | null; onSel: (n: string) => void;
+const SPELL = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
+  "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"];
+const spell = (n: number) => SPELL[n] || String(n);
+
+/* ── 04 · the name picker (handoff 18): our pick, chosen by default and never
+   moving; every alternative one tap away as a block; one action. ── */
+function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, onMore, moreBusy, moreFail, batchSize, say }: {
+  mobile: boolean; pick: WName; others: WName[]; newestBatch: number; batchOf: (n: WName) => number;
+  sel: string | null; onSel: (name: string) => void; onMore: () => void; moreBusy: boolean; moreFail: boolean;
+  batchSize: number; say: string;
 }) {
-  const fresh = known ? names.filter((n) => !known.includes(n.name)) : [];
-  const olds = known ? names.filter((n) => known.includes(n.name)) : names;
-  const display = [...fresh, ...olds];
-  const freshSet = new Set(fresh.map((n) => n.name));
-  return (
-    <div className="wr-v2n">
-      <h1 className="wr-h ttl">{known ? `${V2_SPELL[names.length] || names.length} names, and counting.` : "Six names for your brief."}</h1>
-      {known && <p className="sub">New ones on top · your pick is kept</p>}
-      <div className="rows">
-        {display.map((n) => {
-          const d = n.dom?.free ? n.dom : n.alt || null;
-          const on = n.name === sel;
-          return (
-            <button key={n.name} className={"row" + (on ? " on" : "")} onClick={() => onSel(n.name)}>
-              <span className="l1">
-                <b className="nm">{n.name}</b>
-                {freshSet.has(n.name) && <i className="new">NEW</i>}
-                {d ? <span className="dm"><i className="dot" />{d.domain}</span>
-                  : !(n as any).domd ? <span className="dm dim">checking…</span> : null}
-                <span className="fit">{n.score}%</span>
-              </span>
-              <span className="why">{n.tagline || n.roots}</span>
-              <span className={"ring" + (on ? " ck" : "")}>{on ? "✓" : ""}</span>
-            </button>
-          );
-        })}
-      </div>
+  const pickOn = sel === pick.name;
+  const domOf = (n: WName) => (n.dom?.free ? n.dom : n.alt || null);
+  const pd = domOf(pick);
+  const isNew = (n: WName) => newestBatch > 0 && batchOf(n) === newestBatch;
+  const freshCount = others.filter(isNew).length;
+  const cols = mobile ? 2 : 3;
+  const rem = others.length % cols;
+  const span = rem === 0 ? cols : cols - rem; // "Show more" always closes the last row
+  const moreLabel = moreBusy ? "↻ …" : moreFail ? "↻ Try again" : `↻ Show ${batchSize} more`;
+
+  const pickCard = (
+    <button className={"pick" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
+      <span className="glow" aria-hidden />
+      <span className="top">
+        <span className="tag mono">★ OUR PICK FOR YOU</span>
+        {pickOn && !mobile && <span className="ck">✓</span>}
+      </span>
+      <b className="nm">{pick.name}</b>
+      {!mobile && say && <span className="say mono">{say}</span>}
+      <span className="why">{pick.tagline || pick.roots}</span>
+      <span className="pills">
+        <span className="pl mono">{pd ? <><i className="dot" />{pd.domain} free</> : "checking…"}</span>
+        <span className="pl mono">{pick.score}% fit</span>
+      </span>
+    </button>
+  );
+
+  const blocks = (
+    <div className="grid">
+      {others.map((n) => {
+        const d = domOf(n);
+        const on = sel === n.name;
+        return (
+          <button key={n.name} className={"blk" + (on ? " on" : "") + (isNew(n) ? " new" : "")} onClick={() => onSel(n.name)}>
+            <span className="hd">
+              <b className="nm">{n.name}</b>
+              {isNew(n) && <i className="newt mono">NEW</i>}
+              <span className="fit mono">{on ? "✓" : `${n.score}%`}</span>
+            </span>
+            <span className="vibe">{n.tagline || n.roots}</span>
+            <span className="dm mono">{d ? <><i className="dot" />{d.domain}</> : "checking…"}</span>
+          </button>
+        );
+      })}
+      <button className="more" style={{ gridColumn: `span ${span}` }} disabled={moreBusy} onClick={onMore}>
+        {mobile && span === 1 ? <><span className="ic">↻</span><span>{moreLabel.replace("↻ ", "")}</span></> : moreLabel}
+      </button>
     </div>
   );
-}
 
-/* ── 04 desktop: six cards in two columns, one pick, ⏎ continues ── */
-function NamesGridV2({ names, known, sel, onSel }: {
-  names: WName[]; known: string[] | null; sel: string | null; onSel: (n: string) => void;
-}) {
-  const fresh = known ? names.filter((n) => !known.includes(n.name)) : [];
-  const olds = known ? names.filter((n) => known.includes(n.name)) : names;
-  const display = [...fresh, ...olds];
-  const freshSet = new Set(fresh.map((n) => n.name));
+  if (mobile) {
+    return (
+      <div className="wr-pk">
+        {pickCard}
+        <p className="lbl mono">{newestBatch > 0 ? `${others.length} names · newest first` : "Or choose another"}</p>
+        {blocks}
+      </div>
+    );
+  }
   return (
-    <div className="wr-ngrid">
-      <h1 className="wr-h ttl">
-        {known ? `${V2_SPELL[fresh.length] || fresh.length} more for your brief.` : "Six names for your brief."}
-        <span className="tsub">{known ? "New ones on top · your pick is kept" : "Pick the one · every domain is free"}</span>
-      </h1>
-      <div className="grid">
-        {display.map((n) => {
-          const d = n.dom?.free ? n.dom : n.alt || null;
-          const on = n.name === sel;
-          return (
-            <button key={n.name} className={"card" + (on ? " on" : "")} onClick={() => onSel(n.name)}>
-              <span className="main">
-                <span className="hd">
-                  <b className="nm">{n.name}</b>
-                  {freshSet.has(n.name) && <i className="new">NEW</i>}
-                  <span className="rt mono">{n.roots}</span>
-                </span>
-                <span className="why">{n.tagline || n.roots}</span>
-                {(d || !(n as any).domd) && <span className="dm mono">{d ? <><i className="dot" />{d.domain} free</> : "checking…"}</span>}
-              </span>
-              <span className="sc">
-                <span className="n">{n.score}<small>%</small></span>
-                <span className="l mono">Brief fit</span>
-                <span className="bar"><i style={{ width: `${Math.min(100, Math.max(4, n.score))}%` }} /></span>
-              </span>
-              <span className={"ring" + (on ? " ck" : "")}>{on ? "✓" : ""}</span>
-            </button>
-          );
-        })}
+    <div className="wr-pkd">
+      <div className="left">{pickCard}</div>
+      <div className="right">
+        <h1 className="wr-h ttl">{newestBatch > 0 ? `${spell(freshCount)} more for your brief.` : `${spell(others.length + 1)} names for your brief.`}</h1>
+        {blocks}
       </div>
     </div>
   );

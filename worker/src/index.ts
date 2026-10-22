@@ -821,15 +821,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   // 04 The names: six scored names coined from the starred words. Enriched server-side
   // with a real free domain per name (RDAP), so "domains checked" is true.
-  wrapnames: (b) => ({ model: MODEL.opus, max: 2200, prompt:
+  // payload.count: names per batch (5–9; the picker asks 6 then 5 on phones, 9 then 8 on desktop).
+  wrapnames: (b) => { const N = Math.min(9, Math.max(5, Number(b.payload?.count) || 6)); return { model: MODEL.opus, max: 380 * N + 300, prompt:
     `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n` + LANG_LINE + `\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` + prefLine(b.payload?.prefs) +
     `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
-    `Coin exactly 6 brand names built from and around that material. Every one must be a name you would stake the studio's reputation on: no filler, no near-duplicates, nothing generic.\n\n` +
+    `Coin exactly ${N} brand names built from and around that material. Every one must be a name you would stake the studio's reputation on: no filler, no near-duplicates, nothing generic.\n\n` +
     `THE SECOND LEVEL — before coining, state privately what this founder SELLS versus what people GET (they sell organization but create clarity; sell tools but create agency; sell a service but create belonging). Name the second level, never the mechanism.\n\n` +
     `WHAT GREAT LOOKS LIKE:\n` +
-    `- Short: usually 1 to 3 syllables, 4 to 9 letters, sayable once and spellable from hearing. ONE of the six may be longer — a confident real word or a two-word phrase — when it carries a bigger idea.\n` +
+    `- Short: usually 1 to 3 syllables, 4 to 9 letters, sayable once and spellable from hearing. ONE of them may be longer — a confident real word or a two-word phrase — when it carries a bigger idea.\n` +
     `- Original and evocative: it suggests the transformation this brief promises, never literally describes the product.\n` +
     `- A point of view: the name hints at what this brand believes or refuses — presence, not just pleasantness.\n` +
     `- Ownable: distinctive enough to be a real trademark.\n` +
@@ -862,8 +863,8 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     ((() => {
       const picked = (Array.isArray(b.payload?.prefs?.style) ? b.payload.prefs.style : b.payload?.prefs?.style ? [b.payload.prefs.style] : []).filter((x: string) => x && x !== "Any");
       return picked.length
-        ? `TECHNIQUES — the founder asked for: ${picked.join(", ")}. Make MOST of the six match those (cover each picked style at least once), and include one or two from other styles for range.\n\n`
-        : `TECHNIQUES — the six MUST span at least four different styles, so the founder sees real range: at least TWO REAL WORDS repurposed (a familiar word in a surprising context is the strongest move — Stripe, Oracle, Slack — and the most underused), one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style. A concrete OBJECT or SYMBOL that embodies the mission (the Monocle move) counts as a real word and often beats an abstraction.\n\n`;
+        ? `TECHNIQUES — the founder asked for: ${picked.join(", ")}. Make MOST of them match those (cover each picked style at least once), and include one or two from other styles for range.\n\n`
+        : `TECHNIQUES — the ${N} MUST span at least four different styles, so the founder sees real range: at least TWO REAL WORDS repurposed (a familiar word in a surprising context is the strongest move — Stripe, Oracle, Slack — and the most underused), one COMPOUND/blend of two starred words, one INVENTED coinage (sound-led or Latin/Greek root), and one FOREIGN or classical gem; never more than two names of the same style. A concrete OBJECT or SYMBOL that embodies the mission (the Monocle move) counts as a real word and often beats an abstraction.\n\n`;
     })()) +
     `HARD RULES:\n` +
     `- No tired startup tells: no -ly / -ify / -io / -ai / -hub / -fy endings, no dropped-vowel tricks.\n` +
@@ -872,14 +873,14 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- Nothing unpronounceable, nothing a famous company already owns.\n` +
     `- CHECK THE FIRST ASSOCIATION: no country, region or city names as-is (Moldova is a nation, not a brand), and nothing whose primary meaning is grim, punitive or medical (a pillory is a shaming device) — unless the brief explicitly wants that edge.\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
-      ? `- Already proposed, the founder wants DIFFERENT ones: ${b.payload.exclude.slice(-30).join(", ")}. Do not repeat or lightly vary them — and OPEN THE SEARCH WIDER: avoid their first letters and endings, draw on different starred words and different techniques, change the register (if they were soft, go bolder; if latinate, go anglo; if abstract, go concrete). The new six should feel like a different studio round, not the same idea again.\n` : ``) +
+      ? `- Already proposed, the founder wants DIFFERENT ones: ${b.payload.exclude.slice(-30).join(", ")}. Do not repeat or lightly vary them — and OPEN THE SEARCH WIDER: avoid their first letters and endings, draw on different starred words and different techniques, change the register (if they were soft, go bolder; if latinate, go anglo; if abstract, go concrete). The new ones should feel like a different studio round, not the same idea again.\n` : ``) +
     `\nFor each name give:\n` +
     `- "roots": the recipe in 2-4 words, mono-style (e.g. "aurora + nova", "spark, respelled", "vela, Latin sail").\n` +
     `- "parts": 1 or 2 origin cards, each {"part":"aurora","note":"the sky's first colour"} (note max 6 words; if a language matters, start the note with it, e.g. "Latin, a new star").\n` +
     `- "tagline": an inspiring italic line about this name for THIS brand: two short sentences, 8 to 16 words total (e.g. "The sky's first colour, meeting a new star. A beginning that shines.").\n` +
     `- "score": brief fit 0-100, honest spread (most 72-90, reserve 93+ for the rare exceptional one). Order strongest first.\n` +
     `- "style": the technique, exactly one of "invented", "real word", "compound", "classical", "foreign".\n` +
-    `Return ONLY minified JSON {"names":[{"name":"","roots":"","style":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly 6 items.` }),
+    `Return ONLY minified JSON {"names":[{"name":"","roots":"","style":"","parts":[{"part":"","note":""}],"tagline":"","score":0}]} with exactly ${N} items.` }; },
 
   // 07 The brand book: generated as TWO parallel halves (half:"a" = tagline,
   // story, origin, saying; half:"b" = who, palette, voice, messaging) so the
