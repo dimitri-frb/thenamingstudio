@@ -43,7 +43,7 @@ interface Flow {
   unlock: boolean;                // tapped Unlock (paywall, locked page or account)
   price: number;                  // the €29/39/49 variant this person saw
   why: string;                    // P·6 "why not now?" answer
-  source: string; campaign: string; content: string; device: string; lang: string; country: string;
+  source: string; campaign: string; content: string; term: string; device: string; lang: string; country: string;
   feedback: string;               // the 04·x/04·i exit poll, when the user answered it
   gateOnly?: boolean;             // the landing gate's stray sign-up group (folds into the real flow)
   timeline: { at: number; step: string }[];
@@ -64,7 +64,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "", dive: false, buy: false,
       logo: false, paywall: false, unlock: false, price: 0, why: "",
-      source: "", campaign: "", content: "", device: "", lang: "", country: "", feedback: "", timeline: [],
+      source: "", campaign: "", content: "", term: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     // pass 1: identity + content (the email can arrive on any event)
     for (const e of evs) {
@@ -76,6 +76,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
         if (m.source) f.source = m.source;
         if (m.campaign) f.campaign = m.campaign;
         if (m.content) f.content = m.content;
+        if (m.term) f.term = m.term;
         if (m.device) f.device = m.device;
         if (m.lang) f.lang = m.lang;
       }
@@ -154,7 +155,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (o.brief.length > main.brief.length) main.brief = o.brief;
       main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain; main.buy ||= o.buy; main.dive ||= o.dive;
       main.logo ||= o.logo; main.paywall ||= o.paywall; main.unlock ||= o.unlock; main.price ||= o.price; main.why ||= o.why;
-      main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content;
+      main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content; main.term ||= o.term;
       main.device ||= o.device; main.lang ||= o.lang; main.country ||= o.country;
       main.feedback ||= o.feedback;
       if (!main.words.length) main.words = o.words;
@@ -306,11 +307,11 @@ export function AdminPage() {
 
   function exportCsv() {
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
-    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
+    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,keyword,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
     const yn = (b: boolean) => (b ? "1" : "0");
     const lines = shown.map((f) => [
       esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/10)`), f.status,
-      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), f.country, esc(f.device), f.lang,
+      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), esc(f.term), f.country, esc(f.device), f.lang,
       new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
       yn(f.dive), yn(f.logo), yn(f.paywall), f.price || "", yn(f.unlock), esc(f.why), yn(f.buy), esc(f.feedback),
     ].join(","));
@@ -478,7 +479,7 @@ export function AdminPage() {
                 <h3>{selFlow.uname || "Anonymous"}</h3>
                 <p className="mono dim">{selFlow.email || "no account yet"}</p>
                 <div className="meta">
-                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Ad group", selFlow.content || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
+                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Ad group", selFlow.content || "—"], ["Keyword", selFlow.term || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
                     <p key={k}><em>{k}</em><span>{v}</span></p>
                   ))}
                 </div>
@@ -698,6 +699,45 @@ function PaywallTest({ flows, chan }: { flows: Flow[]; chan: string }) {
   );
 }
 
+/* ── Which ad groups / keywords bring founders who get to a name (last 30 days) ── */
+function Breakdown({ flows, chan, by, title, empty }: { flows: Flow[]; chan: string; by: "content" | "term"; title: string; empty: string }) {
+  const since = Date.now() - 30 * 864e5;
+  const fl = flows.filter((f) => f.first >= since && (chan === "All channels" || f.source === chan));
+  const g = new Map<string, Flow[]>();
+  for (const f of fl) { const k = f[by] || `(${empty})`; if (!g.has(k)) g.set(k, []); g.get(k)!.push(f); }
+  const rows = [...g.entries()].map(([k, v]) => {
+    const signed = v.filter((f) => f.email).length, named = v.filter((f) => f.email && f.step >= 6).length;
+    return { k, n: v.length, signed, named, rate: signed ? Math.round((named / signed) * 100) : 0 };
+  }).sort((a, b) => b.n - a.n).slice(0, 15);
+  if (!rows.length) return null;
+  return (
+    <div className="paytest">
+      <div className="anahead">
+        <h2>{title}</h2>
+        <span className="mono sub">{chan} · last 30 days · Names = name chosen ÷ sign-ups</span>
+      </div>
+      <div className="anascroll">
+        <table className="anatbl pt">
+          <thead>
+            <tr className="subs"><th className="stp">{by === "term" ? "KEYWORD" : "AD GROUP"}</th><th className="h">Visits</th><th className="h">Sign-ups</th><th className="h">Names</th><th className="h">Rate</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.k}>
+                <td className="stp"><b className="mono">{r.k}</b></td>
+                <td className="mono n">{r.n}</td>
+                <td className="mono n">{r.signed}</td>
+                <td className="mono n">{r.named}</td>
+                <td className="mono tot">{r.signed ? r.rate + "%" : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean }) {
   const [chan, setChan] = useState("Google Ads");
   const [wk, setWk] = useState(0);
@@ -833,6 +873,8 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       </div>
       <p className="ananote mono">{loading ? "Loading the log…" : `# people who reached the step · €/# that ${gran}’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the ${gran} before`}</p>
       <PaywallTest flows={flows} chan={chan} />
+      <Breakdown flows={flows} chan={chan} by="content" title="By ad group" empty="no ad group tag" />
+      <Breakdown flows={flows} chan={chan} by="term" title="By keyword" empty="no keyword yet" />
     </div>
   );
 }

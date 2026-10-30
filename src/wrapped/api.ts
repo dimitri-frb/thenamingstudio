@@ -318,7 +318,13 @@ export function attrib(): Record<string, string> {
     const ua = navigator.userAgent;
     const dev = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Other";
     const br = /Edg\//.test(ua) ? "Edge" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Browser";
-    const a = { source, campaign, content: q.get("utm_content") || "", device: `${dev} · ${br}`, lang: (navigator.language || "en").slice(0, 5) };
+    // Google Ads' Final URL suffix adds kw={keyword}&mt={matchtype}&ag={adgroupid}:
+    // the keyword that brought the visitor, and the ad group even when an ad's
+    // own URL lacks utm_content.
+    const kw = (q.get("utm_term") || q.get("kw") || "").slice(0, 80);
+    const mt = (q.get("mt") || "").slice(0, 1);
+    const content = q.get("utm_content") || (q.get("ag") ? `ag ${q.get("ag")}` : "");
+    const a = { source, campaign, content, term: kw ? (mt ? `${kw} [${mt}]` : kw) : "", device: `${dev} · ${br}`, lang: (navigator.language || "en").slice(0, 5) };
     localStorage.setItem("ns.attrib", JSON.stringify(a));
     return a;
   } catch { return {}; }
