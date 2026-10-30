@@ -527,7 +527,17 @@ async function readLog(env: Env, url: URL): Promise<Response> {
   // The funnel is personal data (emails, briefs): the raw GET endpoint is only
   // ever open with an explicit ADMIN_KEY; the app itself uses "adminlog".
   if (!env.ADMIN_KEY || url.searchParams.get("key") !== env.ADMIN_KEY) return json({ error: "unauthorized" }, env, 401);
-  return json({ items: (await logItems(env, Math.min(300, Math.max(1, Number(url.searchParams.get("limit")) || 150)))).items }, env);
+  // ?ads=1: the daily spend rows (same as "adminads"), for reading outside the browser.
+  if (url.searchParams.has("ads")) {
+    const list = await env.LOG.list({ prefix: "ads:", limit: 1000 });
+    const days = (await Promise.all(list.keys.map(async (k) => {
+      try { return { date: k.name.slice(4), rows: JSON.parse((await env.LOG!.get(k.name)) || "[]") }; } catch { return null; }
+    }))).filter(Boolean);
+    return json({ days }, env);
+  }
+  // Paged like "adminlog": pass the returned cursor back until it is null.
+  const r = await logItems(env, Math.min(900, Math.max(1, Number(url.searchParams.get("limit")) || 150)), url.searchParams.get("cursor") || undefined);
+  return json(r, env);
 }
 
 function json(data: unknown, env: Env, status = 200): Response {
