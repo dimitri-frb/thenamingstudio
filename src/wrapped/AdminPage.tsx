@@ -303,11 +303,13 @@ export function AdminPage() {
 
   function exportCsv() {
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
-    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,country,device,lang,started,last_active,time_spent";
+    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
+    const yn = (b: boolean) => (b ? "1" : "0");
     const lines = shown.map((f) => [
       esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/10)`), f.status,
       esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), f.country, esc(f.device), f.lang,
       new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
+      yn(f.dive), yn(f.logo), yn(f.paywall), f.price || "", yn(f.unlock), esc(f.why), yn(f.buy), esc(f.feedback),
     ].join(","));
     download(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }), `namename-flows-${new Date().toISOString().slice(0, 10)}.csv`);
   }
