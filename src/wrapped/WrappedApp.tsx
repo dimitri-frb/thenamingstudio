@@ -1076,6 +1076,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   /* ── Handoff 19 · paywall: events, unlock, the kit's copy ── */
   const unlockTapped = useRef(false);
+  const earlyLogged = useRef(false); // once per run: the "early" page can re-render or be revisited
   useEffect(() => { // P·2 seen / left without unlocking; P·3 granted
     if (test || !picked) return;
     if (step === "unlock" && !brandOpen) {
@@ -1083,7 +1084,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       track("paywall_seen", { price, variant: `eur${price}`, name: picked.name });
       return () => { if (!unlockTapped.current && !unlocked) track("paywall_dismissed", { price, via: "leave" }); };
     }
-    if (step === "early") track("early_access_granted", { price, name: picked.name });
+    if (step === "early" && !earlyLogged.current) { earlyLogged.current = true; track("early_access_granted", { price, name: picked.name }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
   function unlockFrom(source: "paywall" | "locked_page" | "account" | "done") {

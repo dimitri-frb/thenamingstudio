@@ -253,7 +253,10 @@ export function AdminPage() {
   useEffect(() => { if (!demo) adminRoles().then((r) => { if (r && (r as any).owners) setRoles(r as any); }); else setRoles({ owners: ["dimitri@dfginvest.fr"], admins: [] }); }, [demo]);
 
   const built = useMemo(() => (items ? buildFlows(items) : { flows: [], gated: [] }), [items]);
-  const flows = built.flows;
+  // Clean numbers: our own runs (owners + admins), probes and scripted hits never count.
+  const team = useMemo(() => new Set([...(roles?.owners || []), ...(roles?.admins || [])].map((e) => e.toLowerCase())), [roles]);
+  const flows = useMemo(() => built.flows.filter((f) =>
+    f.source !== "Probe" && !/curl|bot|headless/i.test(f.device) && !(demo ? false : team.has(f.email.toLowerCase()))), [built, team, demo]);
   const [from, to] = ((): [number, number] => {
     const now = Date.now();
     const d0 = new Date(); d0.setHours(0, 0, 0, 0);
@@ -619,7 +622,7 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "started", t: "Started", s: "Started", d: "typed a brief, pressed “Name it”" },
   { k: "signed", t: "Sign-ups", s: "Sign-ups", d: "signed in at the gate, right after the brief" },
   { k: "dive", t: "Deep-dived", s: "Deep-dive", d: "opened the brief deep-dive (02·r)" },
-  { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste" },
+  { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste (step % of Sign-ups: the deep-dive is optional)", base: "signed" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
   { k: "chose", t: "Chose its domain", s: "Chose domain", d: "tapped Choose — name + domain kept" },
@@ -722,8 +725,8 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       swiped: fl.filter((f) => f.email && f.step >= 3).length,
       words: fl.filter((f) => f.email && f.step >= 5).length,
       name: fl.filter((f) => f.email && f.step >= 6).length,
-      chose: fl.filter((f) => !!f.domain).length,
-      brand: fl.filter((f) => f.logo || f.step >= 8).length,
+      chose: fl.filter((f) => f.email && !!f.domain).length,
+      brand: fl.filter((f) => f.email && (f.logo || f.step >= 8)).length,
       paywall: fl.filter((f) => f.paywall).length,
       unlock: fl.filter((f) => f.unlock).length,
       buy: fl.filter((f) => f.buy).length,
@@ -754,7 +757,9 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         <td className={"mono" + h}>{ri === 0 ? "—" : stepBase ? Math.round((v / stepBase) * 100) + "%" : "—"}</td>
         <td className={"mono tot" + h}>
           {ri === 0 ? (m.clicks ? "100%" : "—") : m.clicks ? (tot >= 10 ? Math.round(tot) : tot.toFixed(1)) + "%" : "—"}
-          {ri > 0 && pts !== null && m.clicks ? <i className={pts >= 0 ? "up" : "down"}>{pts >= 0 ? "▲" : "▼"} {Math.abs(pts).toFixed(1)}</i> : <i className="ghost">{" "}</i>}
+          {ri > 0 && pts !== null && m.clicks
+            ? Math.abs(pts) < 0.05 ? <i className="flat">= 0.0</i> : <i className={pts > 0 ? "up" : "down"}>{pts > 0 ? "▲" : "▼"} {Math.abs(pts).toFixed(1)}</i>
+            : <i className="ghost">{" "}</i>}
         </td>
       </Fragment>
     );

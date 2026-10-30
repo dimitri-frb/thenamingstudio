@@ -2018,6 +2018,7 @@
 .kadm .anatbl .tot i.up { color: #12a36b; }
 .kadm .anatbl .tot i.down { color: #e0461a; }
 .kadm .anatbl .tot i.ghost { visibility: hidden; }
+.kadm .anatbl .tot i.flat { color: #9a9a9a; }
 .kadm .anatbl .mainrow td { background: #fff5f0; }
 .kadm .anatbl .mainrow .stp { background: #fff5f0; box-shadow: inset 2px 0 0 #ff4f1a; }
 .kadm .ananote { font-size: 10px; color: #b4b1a8; margin: 10px 2px 0; }
