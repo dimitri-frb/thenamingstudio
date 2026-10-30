@@ -624,7 +624,7 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
   { k: "chose", t: "Chose its domain", s: "Chose domain", d: "tapped Choose — name + domain kept" },
   { k: "brand", t: "Brand done", s: "Brand done", d: "picked a logo, saw the free brand snapshot" },
-  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29 / €39 / €49)" },
+  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29)" },
   { k: "unlock", t: "Unlock clicked", s: "Unlock", d: "tapped Unlock: the number this test measures" },
   { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of “Chose its domain”)", base: "chose" },
 ];

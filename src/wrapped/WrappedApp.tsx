@@ -264,7 +264,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [whyNot, setWhyNot] = useState(false);
   const kitReq = useRef("");
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
-  // {price}: €29 / €39 / €49, one variant per user (hash of the Google email),
+  // {price}: PAY_PRICES, one variant per user (hash of the Google email),
   // so a founder never sees the price move between runs or devices.
   const price = priceFor(user?.email || processId());
   // Open: unlocked (early access), test mode, or a run that reached the book

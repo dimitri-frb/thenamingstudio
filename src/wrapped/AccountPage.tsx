@@ -89,7 +89,7 @@ export function AccountPage({ initialTab }: { initialTab?: "mine" | "settings" |
             <div className="cards">
               {shown.map((s) => (
                 <FlowCard
-                  key={s.id} s={s} demo={demo} price={s.priceVariant || priceFor(user?.email || s.id)}
+                  key={s.id} s={s} demo={demo} price={priceFor(user?.email || s.id)}
                   onDeleted={() => setSearches((xs) => xs.filter((x) => x.id !== s.id))}
                   onBought={() => {
                     const next = { ...s, bought: true, updated: Date.now() };

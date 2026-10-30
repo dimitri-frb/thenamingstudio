@@ -90,7 +90,7 @@ export interface SavedSearch {
   bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
   brandUnlocked?: boolean;  // the paid brand kit is open (phase 1: free "early access")
   unlockSource?: string;    // "early_access" (phase 1) | "stripe" (phase 2)
-  priceVariant?: number;    // the €29/39/49 shown to this user (stable per user)
+  priceVariant?: number;    // the price shown to this user (stable per user)
   kit?: WKit | null;        // socials + marketing copy for this run
   logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
   taste?: unknown;          // the Brand chapter's taste picks
@@ -358,9 +358,10 @@ export function fetchDomainBoard(name: string, doms?: string[], fresh = false): 
 // domain. No cart pre-fill, no affiliate checkout, no purchase verification.
 // We link the registrar whose live prices we display (Porkbun), so the number
 // a founder sees is the number at checkout — and we never NAME it in the UI.
-// Handoff 19 · the brand kit's price: €29 / €39 / €49, one variant per user
-// (hash of the Google email), so the price never moves between runs or devices.
-export const PAY_PRICES = [29, 39, 49];
+// Handoff 19 · the brand kit's price. The €29/39/49 test is paused (30 Oct):
+// €29 for everyone. Put more prices back here to restart it — one variant per
+// user (hash of the Google email), so the price never moves between runs.
+export const PAY_PRICES = [29];
 export function priceFor(key: string): number {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.toLowerCase().charCodeAt(i)) >>> 0;
