@@ -961,44 +961,85 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ steps: ns });
   }
 
-  // 05 Claim: the domain on the card — the board's selection once it loads,
-  // else the verified-free domain the names list already showed.
-  const claimDom: DomainCard | null =
-    domSel ||
-    (picked?.dom?.free ? { domain: picked.dom.domain, status: "available" as const, price: picked.dom.price } :
-     picked?.alt ? { domain: picked.alt.domain, status: "available" as const, price: picked.alt.price } : null);
-  // The 05 radio rows: three options, the current pick always among them.
-  const claimRows = useMemo<DomainCard[]>(() => {
-    const rows = domRows.slice(0, 3);
-    if (claimDom && !rows.some((d) => d.domain === claimDom.domain)) { rows.unshift(claimDom); return rows.slice(0, 3); }
-    return rows;
+  // 05 Claim (handoff claim-A, "made unblockable"): the exact .com (shown
+  // struck through when taken) + up to 6 FREE alternatives, the closest one
+  // pre-selected. The domain is optional: the primary button is never disabled.
+  const [claimFail, setClaimFail] = useState(false); // check failed, or > 8 s
+  const [claimTry, setClaimTry] = useState(0);
+  const [claimT0, setClaimT0] = useState(0);
+  const [, setClaimTick] = useState(0);
+  const claimSeen = useRef(false);
+  const claimView = useMemo(() => {
+    if (!board || !picked) return null;
+    const slug = picked.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const all = [...board.tlds, ...board.variants];
+    const by = (d: string) => all.find((x) => x.domain === d);
+    const free = (d?: DomainCard) => !!d && d.status === "available";
+    const com = by(`${slug}.com`);
+    const order = [
+      ...(prefs.doms || []).map((t) => `${slug}.${String(t).replace(/^\./, "")}`),
+      `get${slug}.com`, `${slug}.io`, `try${slug}.com`, `${slug}.app`, `${slug}.co`, `hello${slug}.com`,
+      `use${slug}.com`, `${slug}.ai`, `meet${slug}.com`, `my${slug}.com`, `${slug}app.com`, `${slug}hq.com`, `${slug}.dev`,
+    ];
+    const seen = new Set<string>([`${slug}.com`]);
+    const alts: DomainCard[] = [];
+    for (const d of order) { const c = by(d); if (free(c) && !seen.has(d)) { seen.add(d); alts.push(c!); } }
+    const rows = free(com) ? [com!, ...alts.slice(0, 6)] : alts.slice(0, 6);
+    return { taken: com && !free(com) ? com : null, rows, exactFree: free(com), freeCount: all.filter(free).length };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domRows, claimDom?.domain]);
+  }, [board, picked?.name]);
+  const claimState: "checking" | "failed" | "nofree" | "exact_free" | "taken_alts" =
+    claimView ? (!claimView.rows.length ? "nofree" : claimView.exactFree ? "exact_free" : "taken_alts") : claimFail ? "failed" : "checking";
+  // The selected row: the founder's tap, else the closest match (row 0).
+  const claimSel: DomainCard | null = claimView?.rows.find((d) => d.domain === domSel?.domain) || claimView?.rows[0] || null;
   const checkTime = boardAt ? new Date(boardAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => { // 05 opens → re-verify availability, never a stale "Available now"
-    if (test || step !== "claim" || !picked) return;
+    if (step !== "claim" || !picked) return;
+    let live = true;
+    const t0 = Date.now();
+    claimSeen.current = false;
+    setClaimFail(false); setClaimT0(t0);
+    const failed = (error: string) => { if (!live) return; setClaimFail(true); track("claim_check_failed", { error, elapsed_ms: Date.now() - t0 }); };
+    const slow = setTimeout(() => failed("timeout"), 8000); // A·5 after ~8 s; a late answer still fills the rows
+    const tick = setInterval(() => setClaimTick((n) => n + 1), 1000);
     fetchDomainBoard(picked.name, prefs.doms, true).then((b) => {
+      if (!live) return;
+      clearTimeout(slow);
+      if (!b.tlds.length) { failed("empty"); return; }
+      setClaimFail(false);
       setBoard(b);
       setBoardAt(Date.now());
-      // the selected row is gone → the best free row takes over
+      // the selected row is gone → the closest free row takes over
       setDomSel((cur) => {
         if (!cur) return cur;
         const still = [...b.tlds, ...b.variants].find((d) => d.domain === cur.domain);
         return still && still.status === "available" ? still : null;
       });
-    });
+    }).catch((e) => { clearTimeout(slow); failed(String(e?.message || e).slice(0, 80)); });
+    return () => { live = false; clearTimeout(slow); clearInterval(tick); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, claimTry]);
 
-  // "Keep {Name}" claims the name + domain in the studio (no purchase): the
-  // choice is saved, the funnel logs it, and the brand chapter opens.
-  function keepName(to: Step = "reveal") {
-    const d = claimDom;
+  useEffect(() => { // claim_seen: once per visit, the first settled state
+    if (step !== "claim" || claimSeen.current || claimState === "checking") return;
+    claimSeen.current = true;
+    track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, claimState]);
+
+  // Save the name, with the chosen domain or none ("pick a domain later"): no
+  // purchase here. The funnel logs it, and the brand chapter opens.
+  function keepName(d: DomainCard | null, to: Step = "reveal") {
+    if (!claimSeen.current) { claimSeen.current = true; track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 }); }
+    track("claim_saved", { domain: d?.domain || null, state: claimState });
     if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "", checkedAt: boardAt || undefined });
-    const ns = { ...steps, domain: "done" as const };
+    setDomSel(d);
+    const ns = { ...steps, domain: d ? "done" as const : "skipped" as const };
     setSteps(ns);
-    persist({ steps: ns, domain: d?.domain, domPrice: d?.price || d?.offerPrice || "", domCheckedAt: boardAt || undefined, domStatus: "chosen" });
+    persist(d
+      ? { steps: ns, domain: d.domain, domPrice: d.price || d.offerPrice || "", domCheckedAt: boardAt || undefined, domStatus: "chosen" }
+      : { steps: ns, domain: undefined, domPrice: "", domStatus: "later" });
     toStep(to);
   }
 
@@ -1063,7 +1104,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
         else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
         else if (step === "names" && names?.length) { e.preventDefault(); continueWithSel(); }
-        else if (step === "claim") { e.preventDefault(); keepName(); }
+        else if (step === "claim") { e.preventDefault(); keepName(claimSel); }
         else if (step === "reveal") { e.preventDefault(); toStep("brand"); }
         else if (step === "logodone") { e.preventDefault(); markStep("logo", "done", "book"); }
         else if (step === "book") { e.preventDefault(); markStep("book", "done", "socials"); }
@@ -1555,17 +1596,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 05 Claim — validate the name IN the app; buying happens at the end ═══ */}
+      {/* ═══ 05 Claim — the name first; its domain is optional (handoff claim-A) ═══ */}
       {step === "claim" && picked && (
         <>
           <div className="wr-stage wr-claim2stage">
-            <div className="wr-claim2">
+            <div className="wr-claim2 cla">
               <div className="hero rise">
+                <p className="kick">Your name</p>
                 <h1 className="cname pop">{picked.name}</h1>
-                <p className="pron mono">
-                  {book?.saying?.syllables?.length ? book.saying.syllables.map((s) => (s.stress ? s.s.toUpperCase() : s.s.toLowerCase())).join(" · ") + "  ·  " : ""}
-                  {picked.score}% fit
-                </p>
                 <p className="story">
                   {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
                   {!claimStory && <button className="wr-link storybtn" onClick={() => setClaimStory(true)}>Story ↓</button>}
@@ -1593,29 +1631,62 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 )}
               </div>
               <div className="pick rise">
-                <p className="k mono">Pick its domain</p>
-                {!claimRows.length && <p className="wr-hint" style={{ margin: "10px 0" }}>Checking its domains…</p>}
-                {claimRows.map((d) => {
-                  const on = d.domain === claimDom?.domain;
-                  return (
-                    <button key={d.domain} className={"domrow" + (on ? " on" : "")} onClick={() => setDomSel(d)}>
-                      <i className="radio" />
-                      <span className="dmid">
-                        <span className="d mono">{d.domain}</span>
-                        {on
-                          ? <span className="st live"><i className="livedot" /> Available now{checkTime ? ` · ${checkTime}` : ""}</span>
-                          : <span className="st">{d.status === "available" ? "Available" : "For sale"}</span>}
-                      </span>
-                      {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
-                    </button>
-                  );
-                })}
-                <p className="buynote">Price per year when you buy it · nothing to pay to us</p>
+                <div className="krow">
+                  <p className="k mono">Its domain · optional</p>
+                  {claimState === "checking"
+                    ? <span className="ks mono"><i className="spin" />{Math.max(1, Math.round((Date.now() - claimT0) / 1000))}s</span>
+                    : claimView && claimView.rows.length > 0 ? <span className="ks mono">{claimView.rows.length} free{checkTime ? ` · checked ${checkTime}` : ""}</span> : null}
+                </div>
+                {claimState === "checking" && (
+                  <>
+                    <div className="skel" /><div className="skel" /><div className="skel short" />
+                    <p className="buynote mono">Checking .com, .io, .app and close variants. Usually under 5 seconds.</p>
+                  </>
+                )}
+                {(claimState === "failed" || claimState === "nofree") && (
+                  <>
+                    <div className="cnote">
+                      <b>⚠︎ {claimState === "failed" ? "We couldn't check domains just now." : "No free domain yet."}</b>
+                      <span>{claimState === "failed" ? "Your name is safe. We'll check again from your account." : "Your name is kept either way. We'll keep looking from your account."}</span>
+                    </div>
+                    <button className="cchip" onClick={() => { setBoard(null); setClaimTry((n) => n + 1); }}>↻ Try again</button>
+                  </>
+                )}
+                {claimView && claimView.rows.length > 0 && (
+                  <>
+                    {claimView.taken && (
+                      <div className="domrow gone">
+                        <i className="x">✕</i>
+                        <span className="dmid"><span className="d mono">{claimView.taken.domain}</span></span>
+                        <span className="st mono">{claimView.taken.status === "negotiable" ? "For sale" : "Taken"}</span>
+                      </div>
+                    )}
+                    {claimView.rows.map((d, i) => {
+                      const on = d.domain === claimSel?.domain;
+                      return (
+                        <button key={d.domain} className={"domrow" + (on ? " on" : "")}
+                          onClick={() => { setDomSel(d); track("claim_domain_selected", { domain: d.domain, position: i }); }}>
+                          <i className="radio" />
+                          <span className="dmid">
+                            <span className="d mono">{d.domain}</span>
+                            <span className="st mono">{i === 0 ? (claimView.exactFree ? "Available now · exact match" : "Available now · closest match") : "Available"}</span>
+                          </span>
+                          {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
+                        </button>
+                      );
+                    })}
+                    <p className="buynote mono">Price per year when you buy it · nothing to pay to us</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btnor cbig" disabled={!claimDom} onClick={() => keepName()}>Choose {claimDom?.domain || "a domain"} →</button>
+            <button className="wr-btnor cbig" onClick={() => keepName(claimSel)}>Save and discover your brand →</button>
+            <span className="urow">
+              <button className="wr-link" onClick={() => toStep("names")}>← Names</button>
+              <button className="wr-link" onClick={() => keepName(null)}>Pick a domain later</button>
+            </span>
           </div>
         </>
       )}
@@ -1634,9 +1705,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <span className="val">{picked.name}</span>
               </div>
               <div className="krow">
-                <i className="ic ok">✓</i>
-                <span className="mid"><b>Domain</b><small>it's secured · buy it later</small></span>
-                <span className="val mono">{domSel?.domain || picked.dom?.domain || "—"}</span>
+                <i className={"ic " + (steps.domain === "skipped" ? "out" : "ok")}>{steps.domain === "skipped" ? "·" : "✓"}</i>
+                <span className="mid"><b>Domain</b><small>{steps.domain === "skipped" ? "pick one later from your account" : "it's secured · buy it later"}</small></span>
+                <span className="val mono">{steps.domain === "skipped" ? "later" : domSel?.domain || picked.dom?.domain || "—"}</span>
               </div>
               <button className="krow lead" onClick={() => toStep("brand")}>
                 <i className="ic nx">3</i>
@@ -2053,7 +2124,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <p className="wr-kicker rise" style={{ marginBottom: 16 }}>It's yours</p>
               <h1 className="wr-bigname pop" style={{ marginBottom: 26 }}>{picked.name}</h1>
               {(() => {
-                const dm = domSel?.domain || picked.dom?.domain || "";
+                const dm = steps.domain === "skipped" ? "" : domSel?.domain || picked.dom?.domain || "";
                 const brandDone = !!logoSel || steps.book === "done" || steps.socials === "done";
                 return (
                   <div className="keptcard rise donecard">

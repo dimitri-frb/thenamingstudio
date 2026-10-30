@@ -2132,6 +2132,45 @@
 .wr-claim2 .domrow.on .pr em { color: #777; }
 .wr-claim2 .buynote { font-size: 11px; color: var(--text3); margin: 4px 2px 0; }
 .wr-btnor.cbig { width: 100%; max-width: 420px; height: 54px; font-size: 16px; }
+/* 05 Claim · concept A (handoff claim-A): left-aligned hero, optional domain, never blocked */
+.wr-claim2.cla .hero { text-align: left; padding-top: 2px; }
+.wr-claim2.cla .kick { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text3); margin: 0 0 6px; }
+.wr-claim2.cla .cname { font-family: 'Inter Tight', var(--sans); font-weight: 600; letter-spacing: -0.045em; font-size: clamp(46px, 14vw, 60px); margin: 0 0 10px; }
+.wr-claim2.cla .story { margin: 0; max-width: none; font-size: 14px; }
+.wr-claim2.cla .pick { margin-top: 22px; }
+.wr-claim2.cla .krow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.wr-claim2.cla .krow .k { margin: 0; }
+.wr-claim2.cla .ks, .wr-claim2.cla .domrow .st, .wr-claim2.cla .buynote { font-family: var(--mono); }
+.wr-claim2.cla .ks { font-size: 10.5px; color: var(--text3); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.wr-claim2.cla .spin { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.25); border-top-color: rgba(255,255,255,.8); animation: cla-spin .8s linear infinite; }
+@keyframes cla-spin { to { transform: rotate(360deg); } }
+.wr-claim2.cla .domrow { min-height: 46px; padding: 7px 14px; margin-bottom: 6px; border-radius: 13px; gap: 12px; }
+.wr-claim2.cla .domrow .d { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+.wr-claim2.cla .domrow .st { font-size: 11px; color: #3ddc84; }
+.wr-claim2.cla .domrow .pr { font-family: var(--mono); font-size: 14px; }
+.wr-claim2.cla .domrow.on { background: rgba(255,255,255,.06); color: var(--text); border-color: #fff; border-width: 1.5px; }
+.wr-claim2.cla .domrow.on .st { color: #3ddc84; }
+.wr-claim2.cla .domrow.on .pr em { color: var(--text3); }
+.wr-claim2.cla .domrow.on .radio { border-color: #FF4F1A; }
+.wr-claim2.cla .domrow.on .radio::after { background: #FF4F1A; }
+.wr-claim2.cla .domrow.gone { cursor: default; border-style: dashed; background: none; opacity: .75; }
+.wr-claim2.cla .domrow.gone .x { font-style: normal; color: #e0461a; font-size: 12px; width: 18px; text-align: center; }
+.wr-claim2.cla .domrow.gone .d { text-decoration: line-through; color: var(--text3); }
+.wr-claim2.cla .domrow.gone .st { color: #e0461a; opacity: .85; }
+.wr-claim2.cla .skel { height: 46px; border-radius: 13px; margin-bottom: 6px; background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.09), rgba(255,255,255,.04)); background-size: 200% 100%; animation: skel 1.4s ease infinite; }
+.wr-claim2.cla .skel.short { width: 72%; }
+@keyframes skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.wr-claim2.cla .buynote { font-size: 10.5px; margin-top: 6px; }
+.wr-claim2.cla .cnote { display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; line-height: 1.45; color: var(--text2); }
+.wr-claim2.cla .cnote b { color: var(--text); font-weight: 700; }
+.wr-claim2.cla .cchip { margin-top: 12px; align-self: flex-start; background: none; border: 1px solid rgba(255,255,255,.3); color: var(--text); border-radius: 999px; padding: 6px 12px; font: 600 12.5px var(--sans); cursor: pointer; }
+.wr-claim2.cla .pick { display: flex; flex-direction: column; }
+@media (min-width: 900px) {
+  .wr-claim2.cla { max-width: 920px; flex-direction: row; align-items: center; gap: 56px; }
+  .wr-claim2.cla .hero { flex: 1; min-width: 0; }
+  .wr-claim2.cla .cname { font-size: 84px; }
+  .wr-claim2.cla .pick { flex: 0 0 380px; margin-top: 0; }
+}
 
 /* ── 05·k Kept ── */
 .wr-kept .okball { margin-bottom: 18px; }
