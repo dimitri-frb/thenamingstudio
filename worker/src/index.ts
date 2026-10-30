@@ -885,6 +885,18 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- CHECK THE FIRST ASSOCIATION: no country, region or city names as-is (Moldova is a nation, not a brand), and nothing whose primary meaning is grim, punitive or medical (a pillory is a shaming device) — unless the brief explicitly wants that edge.\n` +
     (Array.isArray(b.payload?.exclude) && b.payload.exclude.length
       ? `- Already proposed, the founder wants DIFFERENT ones: ${b.payload.exclude.slice(-30).join(", ")}. Do not repeat or lightly vary them — and OPEN THE SEARCH WIDER: avoid their first letters and endings, draw on different starred words and different techniques, change the register (if they were soft, go bolder; if latinate, go anglo; if abstract, go concrete). The new ones should feel like a different studio round, not the same idea again.\n` : ``) +
+    // The names page's one-tap reaction strip (handoff round 2 · R): the founder
+    // told us which way to go — this overrides the range rules above.
+    ((() => {
+      const st = b.payload?.steer || {};
+      const seed = String(st.seed || "").replace(/[^\p{L}\p{N} &'-]/gu, "").slice(0, 40);
+      const line =
+        st.kind === "real" ? `THIS ROUND, THE FOUNDER ASKED FOR MORE REAL WORDS: at least ${Math.max(1, N - 1)} of the ${N} must be real words (English or foreign, classical allowed) repurposed in a surprising context. No invented coinages.` :
+        st.kind === "short" ? `THIS ROUND, THE FOUNDER ASKED FOR SHORTER NAMES: every name 3 to 6 letters, ideally 4 or 5, one or two syllables.` :
+        st.kind === "vibe" ? `THIS ROUND, THE FOUNDER ASKED FOR A DIFFERENT VIBE: change the register completely from the names already proposed (tone, sound, imagery, technique). If they were soft, go bold; if latinate, go plain English; if abstract, go concrete.` :
+        st.kind === "like" && seed ? `THIS ROUND, THE FOUNDER ASKED FOR MORE LIKE "${seed}": same technique, sound and feeling as ${seed}, but genuinely different names; none may share its first three letters.` : "";
+      return line ? `- ${line} This instruction overrides the technique-range rules above.\n` : "";
+    })()) +
     `\nFor each name give:\n` +
     `- "roots": the recipe in 2-4 words, mono-style (e.g. "aurora + nova", "spark, respelled", "vela, Latin sail").\n` +
     `- "parts": 1 or 2 origin cards, each {"part":"aurora","note":"the sky's first colour"} (note max 6 words; if a language matters, start the note with it, e.g. "Latin, a new star").\n` +

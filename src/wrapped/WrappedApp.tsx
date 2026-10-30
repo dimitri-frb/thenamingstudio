@@ -6,7 +6,7 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, type NameSteer,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
@@ -222,6 +222,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [namesProg, setNamesProg] = useState(0);      // names coined so far (drives the wait screen)
   const waitStart = useRef(0);
   const [moreBusy, setMoreBusy] = useState(false);
+  // 04 reaction strip: the chip being made ("Shorter"), the chips used, and each
+  // batch's label ("Shorter ↓"), so stacked batches read as answers.
+  const [reacting, setReacting] = useState<string | null>(null);
+  const [usedChips, setUsedChips] = useState<string[]>([]);
+  const batchLabels = useRef(new Map<number, string>());
+  const nextBatchLabel = useRef("");
+  const lastMore = useRef<() => void>(() => {});
   const [picked, setPicked] = useState<WName | null>(test ? ACTIVE().names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
   const [boardAt, setBoardAt] = useState(0); // when availability was really checked
@@ -831,7 +838,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       st.listeners.add(() => setNames((cur) => (cur ? [...cur] : cur)));
       if (!base.length && waitStart.current) { recordEta(Date.now() - waitStart.current); waitStart.current = 0; }
       if (st.error || !st.names.length) {
-        setNamesBusy(false); setMoreBusy(false);
+        setNamesBusy(false); setMoreBusy(false); setReacting(null); nextBatchLabel.current = "";
         if (base.length) fail("more", true);
         else { setNames(null); fail("names", true); }
         return;
@@ -842,10 +849,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       else {
         const b = Math.max(0, ...Array.from(nameBatch.current.values())) + 1;
         batch.forEach((n) => nameBatch.current.set(n.name, b));
+        batchLabels.current.set(b, nextBatchLabel.current || "More");
+        nextBatchLabel.current = "";
         setNewestBatch(b);
       }
       setNames(fin);
-      setNamesBusy(false); setMoreBusy(false);
+      setNamesBusy(false); setMoreBusy(false); setReacting(null);
       persist({ names: fin });
       if (!test && !base.length && fin[0]) {
         bookFetch(fin[0]);
@@ -861,7 +870,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     upd();
   }
 
-  function makeNames(words: WWord[] = starred, method: "manual" | "pick-for-me" = "manual") {
+  function makeNames(words: WWord[] = starred, method: "manual" | "auto" = "manual") {
     track("wordsdone", { count: words.length, method });
     toStep("names");
     if (names?.length || namesBusy) return;
@@ -880,26 +889,41 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     }
     attachStream(entry.st, []);
   }
-  // V2 words: "Pick for me" stars the cloud's top words up to five, then continues.
-  function continueWithWords(extra: WWord[], method: "manual" | "pick-for-me") {
+  // Words (03): the button is never grey. With nothing starred it continues in
+  // "auto" mode, starring the strongest words first (handoff round 2 · W·0).
+  function continueWithWords(extra: WWord[], method: "manual" | "auto") {
+    track("words_continue", { starred_count: starred.length, mode: method });
     const all = [...starred, ...extra.filter((w) => !starred.some((s) => s.w === w.w))];
     if (extra.length) { setStarred(all); persist({ starred: all }); }
     makeNames(all, method);
   }
 
-  function moreNames() {
+  // "Show 6 more" (no steer), or a reaction chip: 6 names in that direction,
+  // on this page, the new batch on top under the chip's label.
+  function moreNames(steer?: NameSteer, label?: string) {
     if (moreBusy || !names) return;
+    lastMore.current = () => moreNames(steer, label);
     v2Known.current = names.map((n) => n.name); // V2: new batch shows on top with a NEW tag
     track("morenames", { have: names.length });
     track("names_more_clicked", { batch: newestBatch + 1 });
+    if (steer && label) {
+      track("names_reaction", { chip: steer.kind, batch: newestBatch + 1 });
+      setReacting(label);
+      setUsedChips((u) => (u.includes(steer.kind) ? u : [...u, steer.kind]));
+    }
+    nextBatchLabel.current = label || "More";
     setMoreBusy(true);
     fail("more", false);
     const exKey = names.map((n) => n.name).join("|");
     // A pre-charged batch that silently failed in the background is no batch:
-    // fall through to a fresh stream instead of consuming the error.
-    const pre = morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
-    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch);
-    morePre.current = null;
+    // fall through to a fresh stream instead of consuming the error. A steered
+    // round never uses the (unsteered) pre-charge.
+    const pre = !steer && morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
+    const t0 = Date.now();
+    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch, steer);
+    if (!pre) morePre.current = null;
+    if (steer) st.final.then((r) => track("names_reaction_result", { count: r?.length || 0, ms: Date.now() - t0, ...(r?.length ? {} : { failed: true }) }));
+    if (pre) morePre.current = null;
     attachStream(st, names);
   }
 
@@ -1102,7 +1126,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       }
       if (e.key === "Enter" && !e.shiftKey && !typing) {
         if (step === "brief" && concept) { e.preventDefault(); toStep("refine"); }
-        else if (step === "words" && starred.length) { e.preventDefault(); makeNames(); }
+        else if (step === "words" && styles) { e.preventDefault(); if (starred.length) continueWithWords([], "manual"); else continueWithWords(strongestWords(styles, 5), "auto"); }
         else if (step === "names" && names?.length) { e.preventDefault(); continueWithSel(); }
         else if (step === "claim") { e.preventDefault(); keepName(claimSel); }
         else if (step === "reveal") { e.preventDefault(); toStep("brand"); }
@@ -1136,13 +1160,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
     toStep("early");
   }
+  // K · the kit teaser on "{Name} is yours" opens the paywall early; the
+  // paywall then knows to send "Keep my free preview" back into the brand flow.
+  const payFrom = useRef<"reveal" | "">("");
+  function openKit(source: "card" | "link") {
+    track("kit_teaser_tap", { source });
+    payFrom.current = "reveal";
+    toStep("unlock");
+  }
+  useEffect(() => { // kit_teaser_seen: once per visit of the reveal page
+    if (step === "reveal" && picked && !brandOpen && !test) track("kit_teaser_seen", { name: picked.name });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   function keepFreePreview() {
     unlockTapped.current = true; // logged here, not again on leaving
     track("paywall_dismissed", { price, via: "keep" });
-    const k = "ns.whynot." + processId();
-    let seen = false;
-    try { seen = !!localStorage.getItem(k); localStorage.setItem(k, "1"); } catch { /* private mode */ }
-    if (seen && !test) toStep("done"); else setWhyNot(true);
+    const from = payFrom.current; payFrom.current = "";
+    toStep(from === "reveal" ? "brand" : "done");
   }
   const kitFail = !!fails.kit;
   useEffect(() => { // the socials + marketing copy, written once the kit is open
@@ -1506,6 +1540,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               starred={starred}
               onToggle={starToggle}
               onContinue={continueWithWords}
+              onBack={() => toStep("brief")}
             />
           )}
         </div>
@@ -1514,10 +1549,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <>
           <div className="wr-stage" style={{ paddingTop: 16 }}>
             {styles && <>
-              <h1 className="wr-h" style={{ marginBottom: 6 }}>Star the words that inspire you.</h1>
-              <p className="wr-hint" style={{ marginBottom: 14 }}>
-                {`${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll`}
-              </p>
+              <div className="wr-whead">
+                <h1 className="wr-h" style={{ marginBottom: 4 }}>Star the words that inspire you.</h1>
+                <span className="wr-hint mono">{`${styles.reduce((a, s) => a + s.words.length, 0)} words · scroll ↓ →`}</span>
+              </div>
+              <p className="wr-hint" style={{ marginBottom: 14 }}>Optional. Star a few, or skip and we'll pick the strongest.</p>
             </>}
             {!styles ? (
               fails.words || fails.concept
@@ -1534,25 +1570,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     </div>
                   ))}
                 </div>
-                <div className="wr-wmore">
-                  {!test && !wordsMaxed && (
-                    <button className="wr-btn2" disabled={moreWordsBusy} onClick={loadMoreWords}>
-                      {moreWordsBusy ? "Mining more words…" : "↻ Show more words"}
-                    </button>
-                  )}
-                  <button className="wr-link" onClick={() => toStep("refine")}>Not finding it? Redefine the brief</button>
-                </div>
               </>
             )}
           </div>
-          <div className="wr-foot col" style={{ gap: 10 }}>
-            <div className="wr-starred">
-              {starred.map((w) => <button key={w.w} className="wr-starpill" style={{ cursor: "pointer", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.28)" }} onClick={() => starToggle(w)}>{w.w}</button>)}
-              {!starred.length && <span className="wr-hint">Tap a word to star it</span>}
-            </div>
-            <button className="wr-btn" disabled={!starred.length} onClick={() => makeNames()}>
-              ✦ Turn my {starred.length || ""} word{starred.length === 1 ? "" : "s"} into names
+          <div className="wr-foot col" style={{ gap: 10, alignItems: "center" }}>
+            <StarMeter n={starred.length} />
+            <button className="wr-btn" style={{ width: "auto", minWidth: 240, padding: "0 26px" }} disabled={!styles} onClick={() => starred.length
+              ? continueWithWords([], "manual")
+              : continueWithWords(strongestWords(styles || [], 5), "auto")}>
+              {starred.length ? "See my 6 names →" : "Show me names →"} <i className="kbd">⏎</i>
             </button>
+            <span className="urow">
+              {!test && !wordsMaxed && <button className="wr-link" disabled={moreWordsBusy} onClick={loadMoreWords}>{moreWordsBusy ? "Mining more words…" : "↻ Shuffle words"}</button>}
+              <button className="wr-link" onClick={() => toStep("brief")}>← Brief</button>
+            </span>
           </div>
         </>
       )}
@@ -1574,24 +1605,26 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 batchOf={batchOf}
                 sel={selName}
                 onSel={selectName}
-                onMore={moreNames}
                 moreBusy={moreBusy}
                 moreFail={!!fails.more}
-                batchSize={moreBatch}
+                onRetry={() => lastMore.current()}
                 say={pickSay}
+                reacting={reacting}
+                usedChips={usedChips}
+                batchLabel={(b) => batchLabels.current.get(b) || "More"}
+                onReact={(kind, label) => moreNames(kind === "like" ? { kind, seed: selName || pickN.name } : { kind }, label)}
+                selName={selName || pickN.name}
               />
             ) : null}
           </div>
           {!!names?.length && !namesBusy && (
-            isMobile ? (
-              <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-                <button className="wr-btnor cbig" onClick={continueWithSel}>Continue with {selName || "…"} →</button>
-              </div>
-            ) : (
-              <div className="wr-foot pkfoot">
-                <button className="wr-btn" onClick={continueWithSel}>Continue with {selName || "…"} <i className="kbd">⏎</i></button>
-              </div>
-            )
+            <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+              <button className="wr-btnor cbig" style={isMobile ? undefined : { width: "auto", padding: "0 30px", height: 50 }} onClick={continueWithSel}>Continue with {selName || "…"} →</button>
+              <span className="urow">
+                <button className="wr-link" onClick={() => toStep("words")}>← Words</button>
+                <button className="wr-link" disabled={moreBusy} onClick={() => moreNames()}>{moreBusy && !reacting ? "↻ …" : `↻ Show ${moreBatch} more`}</button>
+              </span>
+            </div>
           )}
         </>
       )}
@@ -1691,41 +1724,70 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 05·k Kept — the commit, celebrated in the app; the brand is next ═══ */}
-      {step === "reveal" && picked && (
-        <>
-          <div className="wr-stage center wr-kept" style={{ textAlign: "center", alignItems: "center" }}>
-            <span className="okball pop">✓</span>
-            <h1 className="wr-h pop" style={{ fontSize: 40, marginBottom: 8 }}>{picked.name} is yours.</h1>
-            <p className="wr-lead rise" style={{ margin: "0 auto 22px", maxWidth: 300 }}>It's in your account. Here is what comes next.</p>
-            <div className="keptcard rise">
-              <div className="krow">
-                <i className="ic ok">✓</i>
-                <span className="mid"><b>Name</b></span>
-                <span className="val">{picked.name}</span>
+      {/* ═══ 05·k Kept — the commit; the brand is next, and the €29 kit is
+           previewed inside step 3 (handoff round 2 · K). The free path stays first. ═══ */}
+      {step === "reveal" && picked && (() => {
+        const handle = picked.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const later = steps.domain === "skipped";
+        const dm = domSel?.domain || picked.dom?.domain || "";
+        const teaser = (side: boolean) => (
+          <button className={"kteaser " + (side ? "side" : "in")} onClick={() => openKit("card")}>
+            {side && <span className="kup mono">Coming up in step 3</span>}
+            <KitTiles name={picked.name} handle={handle} pal={lpal} />
+            <span className="kprice">
+              <span className="kl"><b>Full brand kit · €{price}</b> one-time<small>{side ? "You see a free preview first. Nothing to pay to continue." : "Free preview first · nothing to pay to continue"}</small></span>
+              <span className="kin">{side ? "See what's inside ›" : "Inside ›"}</span>
+            </span>
+          </button>
+        );
+        return (
+          <>
+            <div className="wr-stage wr-kept kept2">
+              <div className="kleft">
+                <span className="okball g pop">✓</span>
+                <h1 className="wr-h pop">{picked.name} is yours.</h1>
+                <p className="wr-lead rise">It's in your account. Here is what comes next.</p>
+                <div className="keptcard rise">
+                  <div className="krow">
+                    <i className="ic ok">✓</i>
+                    <span className="mid"><b>Name</b><small className="mono">{picked.name}</small></span>
+                  </div>
+                  {later ? (
+                    <button className="krow" onClick={() => toStep("claim")}>
+                      <i className="ic out">2</i>
+                      <span className="mid"><b>Domain · later</b><small className="mono">Pick one any time</small></span>
+                      <span className="val pickl">Pick ›</span>
+                    </button>
+                  ) : (
+                    <div className="krow">
+                      <i className="ic ok">✓</i>
+                      <span className="mid"><b>Domain</b><small className="mono">{dm || "—"} · kept</small></span>
+                    </div>
+                  )}
+                  <div className="kbrand">
+                    <button className="krow lead" onClick={() => toStep("brand")}>
+                      <i className="ic nx">3</i>
+                      <span className="mid"><b>Your brand</b><small className="mono">logo · colours · brand book</small></span>
+                      <span className="val next">NEXT</span>
+                    </button>
+                    {!brandOpen && teaser(false)}
+                  </div>
+                  <div className="krow dimr">
+                    <i className="ic out">4</i>
+                    <span className="mid"><b>Social accounts</b></span>
+                    <span className="val mono">~1 min</span>
+                  </div>
+                </div>
               </div>
-              <div className="krow">
-                <i className={"ic " + (steps.domain === "skipped" ? "out" : "ok")}>{steps.domain === "skipped" ? "·" : "✓"}</i>
-                <span className="mid"><b>Domain</b><small>{steps.domain === "skipped" ? "pick one later from your account" : "it's secured · buy it later"}</small></span>
-                <span className="val mono">{steps.domain === "skipped" ? "later" : domSel?.domain || picked.dom?.domain || "—"}</span>
-              </div>
-              <button className="krow lead" onClick={() => toStep("brand")}>
-                <i className="ic nx">3</i>
-                <span className="mid"><b>Your brand</b><small>logo · colours · brand book</small></span>
-                <span className="val next">NEXT</span>
-              </button>
-              <div className="krow dimr">
-                <i className="ic out">4</i>
-                <span className="mid"><b>Social accounts</b><small>claim @{picked.name.toLowerCase().replace(/[^a-z0-9]/g, "")} on each network</small></span>
-                <span className="val">~1 min</span>
-              </div>
+              {!brandOpen && <div className="kright">{teaser(true)}</div>}
             </div>
-          </div>
-          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Now, your brand →</button>
-          </div>
-        </>
-      )}
+            <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+              <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Now, your brand →</button>
+              {!brandOpen && <button className="wr-link" onClick={() => openKit("link")}>Get the full kit · €{price}</button>}
+            </div>
+          </>
+        );
+      })()}
 
       {/* ═══ Chapter 3 · Brand — opener ═══ */}
       {step === "brand" && picked && (
@@ -2101,9 +2163,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "unlock" && payCtx && (
         brandOpen && !test // already open: no paywall to show, just the way in
           ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} />
-          : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onKeep={keepFreePreview} />
+          : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onKeep={keepFreePreview} onWhy={(reason) => track("why_not", { reason, price, inline: true, name: picked?.name })} />
       )}
-      {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep("logodone")} />}
+      {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep(logoSel ? "logodone" : "brand")} />}
       {/* P·5a: a paid page, for a run that hasn't unlocked */}
       {picked && payCtx && !brandOpen && LOCK_OF[step] && (
         <Locked c={payCtx} kind={LOCK_OF[step]!} book={book} onUnlock={() => unlockFrom("locked_page")} onBack={() => toStep("snap")} />
@@ -2300,9 +2362,63 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 /* 00·s — after "Name it": one tap with Google, the brief is kept */
 const LANG_FULL: Record<string, string> = { EN: "English", LA: "Latin", IT: "Italian", FR: "French", ES: "Spanish", GR: "Greek", JP: "Japanese", AR: "Arabic", DE: "German", PT: "Portuguese", SV: "Swedish", NL: "Dutch" };
 /* ── V2·03 / 03·5 (mobile): the word cloud — tap a few, shuffle, hold for meaning ── */
-function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
+/* K · three locked kit tiles (brand book page, logo versions, social avatar),
+   drawn from the taste palette, before any logo exists. */
+function KitTiles({ name, handle, pal }: { name: string; handle: string; pal: { dawn: string; haze: string; nova: string; night: string } }) {
+  return (
+    <span className="ktiles">
+      <span className="kt">
+        <span className="art bk" style={{ background: `linear-gradient(135deg, ${pal.dawn}, ${pal.haze} 55%, ${pal.nova})` }}>
+          <i className="bt mono">BRAND BOOK</i>
+          <span className="pg"><i className="mono">01 · STORY</i><u /><u /><u className="s" /></span>
+        </span>
+        <span className="cap">Brand book · 12 p</span>
+      </span>
+      <span className="kt">
+        <span className="art lg">
+          <span className="c" style={{ background: "#F7F5F1" }}><i className="sun" style={{ background: pal.dawn }} /></span>
+          <span className="c" style={{ background: pal.night }}><b>{name}</b></span>
+          <span className="c" style={{ background: pal.dawn }} />
+          <span className="c" style={{ background: pal.haze }} />
+        </span>
+        <span className="cap">Every logo version</span>
+      </span>
+      <span className="kt">
+        <span className="art so">
+          <span className="av"><i className="sun" style={{ background: pal.dawn }} /></span>
+          <i className="hn mono">@{handle}</i>
+        </span>
+        <span className="cap">Socials kit</span>
+      </span>
+    </span>
+  );
+}
+
+/* The strongest n words: the six angles interleaved, first word of each first. */
+function strongestWords(styles: WStyle[], n: number): WWord[] {
+  const out: WWord[] = []; const seen = new Set<string>();
+  for (let i = 0; i < 40 && out.length < n; i++) {
+    for (const s of styles) {
+      const w = s.words[i];
+      if (w && !seen.has(w.w.toLowerCase())) { seen.add(w.w.toLowerCase()); out.push(w); if (out.length >= n) break; }
+    }
+  }
+  return out;
+}
+
+/* The words counter (W·0/3/5): five segments, and what starring buys. */
+function StarMeter({ n }: { n: number }) {
+  return (
+    <div className="wr-starmeter">
+      <span className="bar">{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < n ? "on" : ""} />)}</span>
+      <span className="t">{n === 0 ? "None starred · we'll pick the strongest" : <><b>{n} starred</b> · {n >= 5 ? "ready for sharp names" : "names get sharper with 5"}</>}</span>
+    </div>
+  );
+}
+
+function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
   styles: WStyle[]; starred: WWord[]; onToggle: (w: WWord) => void;
-  onContinue: (extra: WWord[], method: "manual" | "pick-for-me") => void;
+  onContinue: (extra: WWord[], method: "manual" | "auto") => void; onBack: () => void;
 }) {
   const pool = useMemo(() => { // every word, interleaved across the six angles
     const cols = styles.map((s) => s.words);
@@ -2324,7 +2440,6 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
   const [sheet, setSheet] = useState<{ w: WWord; x: number; y: number; demo?: boolean } | null>(null);
   const pressTimer = useRef<number>(0);
   const longFired = useRef(false);
-  const need = Math.max(0, 3 - starred.length); // "a few": the button unlocks at three
 
   // First visit only: the meaning bubble opens by itself on one word, until the
   // first tap — so "hold to see" explains itself (user.seenHoldHint).
@@ -2386,6 +2501,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
   return (
     <div className="wr-v2w">
       <h1 className="wr-h ttl">Tap the words that feel like you.</h1>
+      <p className="opthint">Optional. Star a few, or skip and we'll pick the strongest.</p>
       <p className="holdhint"><i /> Hold a word to see what it means</p>
       <div className="cloud">
         {cloud.map((w) => {
@@ -2401,24 +2517,23 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
               onContextMenu={(e) => e.preventDefault()}
               onClick={() => { if (longFired.current) { longFired.current = false; return; } onToggle(w); }}
             >
-              {w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
+              {on && "✓ "}{w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
             </button>
           );
         })}
       </div>
       <div className="dock">
         <div className="fade"><span>↓ Scroll for more</span></div>
-        <button className="cta" disabled={need > 0} onClick={() => onContinue([], "manual")}>
-          {need > 0 ? "Pick a few words" : "See my 6 names →"}
+        <StarMeter n={starred.length} />
+        <button className="cta" onClick={() => starred.length
+          ? onContinue([], "manual")
+          // nothing starred: the cloud's strongest five (pool order interleaves the six angles)
+          : onContinue(cloud.slice(0, 5), "auto")}>
+          {starred.length ? "See my 6 names →" : "Show me names →"}
         </button>
         <div className="links">
           <button onClick={shuffle}>↻ Shuffle words</button>
-          <button onClick={() => {
-            // The lazy path is the mobile path: top up to five with the cloud's
-            // strongest words (pool order interleaves the six angles) and go.
-            const picks = cloud.filter((w) => !starred.some((s) => s.w === w.w)).slice(0, Math.max(0, 5 - starred.length));
-            onContinue(picks, "pick-for-me");
-          }}>Not sure? Pick for me</button>
+          <button onClick={onBack}>← Brief</button>
         </div>
       </div>
       {sheet && (
@@ -2434,28 +2549,40 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue }: {
 }
 
 /* ── V2·04 / 04b (mobile): six names, one screen, domain on each ── */
-const SPELL = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
-  "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"];
-const spell = (n: number) => SPELL[n] || String(n);
 
 /* ── 04 · the name picker (handoff 18): our pick, chosen by default and never
    moving; every alternative one tap away as a block; one action. ── */
-function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, onMore, moreBusy, moreFail, batchSize, say }: {
+const REACT_CHIPS: { kind: NameSteer["kind"]; label: (pick: string) => string }[] = [
+  { kind: "real", label: () => "More real words" },
+  { kind: "short", label: () => "Shorter" },
+  { kind: "vibe", label: () => "Different vibe" },
+  { kind: "like", label: (p) => `More like ${p}` },
+];
+
+function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, moreBusy, moreFail, onRetry, say, reacting, usedChips, batchLabel, onReact, selName }: {
   mobile: boolean; pick: WName; others: WName[]; newestBatch: number; batchOf: (n: WName) => number;
-  sel: string | null; onSel: (name: string) => void; onMore: () => void; moreBusy: boolean; moreFail: boolean;
-  batchSize: number; say: string;
+  sel: string | null; onSel: (name: string) => void; moreBusy: boolean; moreFail: boolean; onRetry: () => void;
+  say: string; reacting: string | null; usedChips: string[]; batchLabel: (b: number) => string;
+  onReact: (kind: NameSteer["kind"], label: string) => void; selName: string;
 }) {
   const pickOn = sel === pick.name;
   const domOf = (n: WName) => (n.dom?.free ? n.dom : n.alt || null);
   const pd = domOf(pick);
   const isNew = (n: WName) => newestBatch > 0 && batchOf(n) === newestBatch;
-  const freshCount = others.filter(isNew).length;
-  const cols = mobile ? 2 : 3;
-  const rem = others.length % cols;
-  const span = rem === 0 ? cols : cols - rem; // "Show more" always closes the last row
-  const moreLabel = moreBusy ? "↻ …" : moreFail ? "↻ Try again" : `↻ Show ${batchSize} more`;
+  const fresh = others.filter(isNew);
+  const earlier = others.filter((n) => !isNew(n));
+  const loading = moreBusy && !!reacting;
+  // R·2/R·3 on phones: the pick shrinks to one line so the new batch is in view.
+  const slim = mobile && (loading || (fresh.length > 0 && newestBatch > 0));
 
-  const pickCard = (
+  const pickCard = slim ? (
+    <button className={"pick slim" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
+      <span className="ck">{pickOn ? "✓" : ""}</span>
+      <b className="nm">{pick.name}</b>
+      <span className="tag mono">★ OUR PICK</span>
+      <span className="fit mono">{pick.score}% fit</span>
+    </button>
+  ) : (
     <button className={"pick" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
       <span className="glow" aria-hidden />
       <span className="top">
@@ -2472,35 +2599,76 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, o
     </button>
   );
 
-  const blocks = (
-    <div className="grid">
-      {others.map((n) => {
-        const d = domOf(n);
-        const on = sel === n.name;
-        return (
-          <button key={n.name} className={"blk" + (on ? " on" : "") + (isNew(n) ? " new" : "")} onClick={() => onSel(n.name)}>
-            <span className="hd">
-              <b className="nm">{n.name}</b>
-              {isNew(n) && <i className="newt mono">NEW</i>}
-              <span className="fit mono">{on ? "✓" : `${n.score}%`}</span>
-            </span>
-            <span className="vibe">{n.tagline || n.roots}</span>
-            <span className="dm mono">{d ? <><i className="dot" />{d.domain}</> : "checking…"}</span>
-          </button>
-        );
-      })}
-      <button className="more" style={{ gridColumn: `span ${span}` }} disabled={moreBusy} onClick={onMore}>
-        {mobile && span === 1 ? <><span className="ic">↻</span><span>{moreLabel.replace("↻ ", "")}</span></> : moreLabel}
-      </button>
+  const strip = (
+    <div className={"rstrip" + (loading ? " busy" : "")}>
+      <div className="rh">
+        <b>Not quite? Tell us in one tap</b>
+        {loading ? <span className="mono">making 6…</span> : usedChips.length ? <span className="mono">tap again for more</span> : null}
+      </div>
+      <div className="rchips">
+        {REACT_CHIPS.map((c) => {
+          const label = c.label(selName);
+          const on = reacting === label;
+          const used = usedChips.includes(c.kind);
+          return (
+            <button key={c.kind} className={(on ? "on" : "") + (used && !on ? " used" : "")} disabled={moreBusy} onClick={() => onReact(c.kind, label)}>
+              {on ? <><i className="spin" />{label}</> : used ? `✓ ${label}` : label}
+            </button>
+          );
+        })}
+      </div>
     </div>
+  );
+
+  const card = (n: WName, nw = false) => {
+    const d = domOf(n);
+    const on = sel === n.name;
+    return (
+      <button key={n.name} className={"blk" + (on ? " on" : "") + (nw ? " new" : "")} onClick={() => onSel(n.name)}>
+        <span className="hd">
+          <b className="nm">{n.name}</b>
+          <span className="fit mono">{on ? "✓" : `${n.score}%`}</span>
+        </span>
+        <span className="vibe">{n.tagline || n.roots}</span>
+        <span className="dm mono">{d ? <><i className="dot" />{d.domain}</> : "checking…"}</span>
+      </button>
+    );
+  };
+
+  const list = (
+    <>
+      {moreFail && !moreBusy && (
+        <div className="rfail"><span>⚠︎ Couldn't make more just now</span><button onClick={onRetry}>↻ Try again</button></div>
+      )}
+      {loading ? (
+        <>
+          <p className="lbl mono"><span>{reacting} ↓</span><span>about 3 s</span></p>
+          <div className="grid">{Array.from({ length: 6 }, (_, i) => <span key={i} className="blk skel" />)}</div>
+          {others.length > 0 && <p className="lbl mono">Earlier</p>}
+          <div className="grid">{others.map((n) => card(n))}</div>
+        </>
+      ) : fresh.length > 0 ? (
+        <>
+          <p className="lbl mono"><span>{batchLabel(newestBatch)} ↓</span><span>{fresh.length} new</span></p>
+          <div className="grid">{fresh.map((n) => card(n, true))}</div>
+          {earlier.length > 0 && <p className="lbl mono">Earlier</p>}
+          <div className="grid">{earlier.map((n) => card(n))}</div>
+        </>
+      ) : (
+        <>
+          <p className="lbl mono">Or choose another</p>
+          <div className="grid">{others.map((n) => card(n))}</div>
+        </>
+      )}
+    </>
   );
 
   if (mobile) {
     return (
       <div className="wr-pk">
         {pickCard}
-        <p className="lbl mono">{newestBatch > 0 ? `${others.length} names · newest first` : "Or choose another"}</p>
-        {blocks}
+        {strip}
+        {list}
       </div>
     );
   }
@@ -2508,8 +2676,8 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, o
     <div className="wr-pkd">
       <div className="left">{pickCard}</div>
       <div className="right">
-        <h1 className="wr-h ttl">{newestBatch > 0 ? `${spell(freshCount)} more for your brief.` : `${spell(others.length + 1)} names for your brief.`}</h1>
-        {blocks}
+        {strip}
+        {list}
       </div>
     </div>
   );

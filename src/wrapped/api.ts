@@ -218,8 +218,11 @@ export async function fetchFreeDom(name: string, doms?: string[]): Promise<{ dom
   return { dom: r?.dom ?? null, alt: r?.alt ?? null };
 }
 
-export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = [], prefs?: unknown, count?: number): NameStream {
-  const payload = { sentence, chips, concept, words, exclude, prefs, count };
+// steer: the names page's reaction strip ("real" words, "short", a different
+// "vibe", or "like" a seed name), read by the worker's names prompt.
+export type NameSteer = { kind: "real" | "short" | "vibe" | "like"; seed?: string };
+export function coinNames(sentence: string, chips: string[], concept: string, words: WWord[], exclude: string[] = [], prefs?: unknown, count?: number, steer?: NameSteer): NameStream {
+  const payload = { sentence, chips, concept, words, exclude, prefs, count, steer };
   const ctrl = new AbortController();
   const st: NameStream = { names: [], done: false, error: false, listeners: new Set(), final: null as any, abort: () => ctrl.abort() };
   const notify = () => st.listeners.forEach((f) => { try { f(); } catch { /* listener gone */ } });

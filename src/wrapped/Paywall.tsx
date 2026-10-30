@@ -57,56 +57,82 @@ export function Snapshot({ c, unlocked, onNext }: { c: PayCtx; unlocked: boolean
   );
 }
 
-/* ── P·2 · Unlock: the paywall ── */
-export function Unlock({ c, onUnlock, onKeep }: { c: PayCtx; onUnlock: () => void; onKeep: () => void }) {
+/* ── P·2 · Unlock: the paywall (handoff round 2 · P·2) — sell the value,
+   remove the risk, ask "why not" on the page itself (saved on tap). ── */
+// The refund promise and the payment line show only once they're true:
+// a real 14-day refund policy and Stripe live (phase 2).
+export const PAY_LIVE = false;
+const WHY_INLINE = ["Too expensive", "Just exploring", "Only needed the name", "Later"];
+const INSIDE: [string, string][] = [
+  ["12-page brand book", "story, voice, messaging"],
+  ["Logo in every version", "SVG + PNG, app icon, favicon"],
+  ["Colours & fonts", "palette, type pair, how to use them"],
+  ["Socials kit", "avatar, banners, bios"],
+  ["Marketing kit", "launch posts, ad copy, 3-week plan"],
+];
+export function Unlock({ c, onUnlock, onKeep, onWhy }: { c: PayCtx; onUnlock: () => void; onKeep: () => void; onWhy: (reason: string) => void }) {
   const p = c.pal;
+  const [why, setWhy] = useState("");
   const previews: { label: string; art: React.ReactElement }[] = [
-    { label: "Brand book · 12 pages", art: (
+    { label: "Brand book", art: (
       <div className="pv book" style={{ background: `linear-gradient(135deg, ${p.dawn}, ${p.haze} 55%, ${p.nova})` }}>
         <span className="pg"><i /><i /><i className="s" /></span>
         <span className="pg w"><i /><i /><i /><i className="s" /></span>
       </div>) },
-    { label: "Logo pack · SVG + PNG", art: (
+    { label: "Logo pack", art: (
       <div className="pv pack">
         <span className="lt" dangerouslySetInnerHTML={{ __html: c.logoLight }} />
         <span className="lt" style={{ background: p.night }} dangerouslySetInnerHTML={{ __html: logoSvg(c.kitLogo.key, c.name, p, { ...c.kitLogo.opts, variant: "night", height: 60 }) }} />
         <span className="lt" style={{ background: p.dawn }} dangerouslySetInnerHTML={{ __html: logoSvg("appicon", c.name, p, { ...c.kitLogo.opts, custom: undefined, variant: "icon", height: 60 }) }} />
         <span className="lt" style={{ background: p.haze }} />
-        <span className="lt" style={{ background: p.nova }} />
-        <span className="lt" style={{ background: "#F7F5F1" }} />
       </div>) },
     { label: "Socials kit", art: (
-      <div className="pv soc" style={{ background: `linear-gradient(135deg, ${p.dawn}, ${p.haze})` }}>
+      <div className="pv soc" style={{ background: "#141416" }}>
         <span className="av" dangerouslySetInnerHTML={{ __html: avatarSvg(c.kitLogo) }} />
-        <span className="hn mono">@{c.name.toLowerCase().replace(/[^a-z0-9]/g, "")}</span>
-      </div>) },
-    { label: "Marketing kit", art: (
-      <div className="pv mkt" style={{ background: p.night }}>
-        <span className="k mono">Launch post</span>
-        <b>Meet {c.name}.<br />A new beginning.</b>
       </div>) },
   ];
   return (
     <>
-      <div className="wr-stage wr-pw">
-        <p className="wr-kicker">The full brand</p>
-        <h1 className="wr-h ttl">Everything {c.name} needs to launch.</h1>
-        <div className="pvgrid">
-          {previews.map((x) => (
-            <div key={x.label} className="pvc">
-              <div className="pvw">{x.art}<span className="fog" /><span className="lock">🔒 Locked</span></div>
-              <b>{x.label}</b>
-            </div>
-          ))}
+      <div className="wr-stage wr-pw pw2">
+        <div className="pwl">
+          <p className="wr-kicker">The full brand</p>
+          <h1 className="wr-h ttl">Everything {c.name} needs to launch.</h1>
+          <p className="anchor">A naming agency charges <b>€2,000+</b> for this.</p>
+          <div className="pvrow">
+            {previews.map((x) => (
+              <div key={x.label} className="pvc">
+                <div className="pvw">{x.art}<span className="fog" /></div>
+                <b>{x.label}</b>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="price">
-          <span className="n mono">€{c.price}</span>
-          <span className="t"><b>One-time, yours forever</b><span>Pay once · instant access</span></span>
+        <div className="pwr">
+          <ul className="inside">
+            {INSIDE.map(([k, v]) => <li key={k}><i>✓</i><span><b>{k}</b> · {v}</span></li>)}
+          </ul>
+          <div className="price2">
+            <span className="pl"><span className="n mono">€{c.price}</span><span className="s">one-time · yours forever</span></span>
+            <span className="pr">
+              {PAY_LIVE ? (
+                <><b>Love it or it's free</b><span>Full refund within 14 days</span><span className="mono sec">🔒 Secure · Apple Pay · card</span></>
+              ) : (
+                <><b>Instant access</b><span>Every file unlocks in one tap</span><span className="mono sec">Saved to your account</span></>
+              )}
+            </span>
+          </div>
         </div>
       </div>
-      <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+      <div className="wr-foot col pw2foot" style={{ gap: 6, alignItems: "center" }}>
         <button className="wr-btnor cbig" onClick={onUnlock}>Unlock {c.name}'s brand · €{c.price}</button>
         <button className="wr-link" onClick={onKeep}>Keep my free preview</button>
+        {why ? (
+          <p className="whyrow done"><span className="chip on">✓ {why}</span> Thanks, noted. Your preview stays saved.</p>
+        ) : (
+          <p className="whyrow"><span className="q">Not today? Why:</span>
+            {WHY_INLINE.map((w) => <button key={w} className="chip" onClick={() => { setWhy(w); onWhy(w); }}>{w}</button>)}
+          </p>
+        )}
       </div>
     </>
   );
