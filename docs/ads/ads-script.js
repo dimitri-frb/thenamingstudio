@@ -1,9 +1,10 @@
 // Name Name — daily spend push to the admin dashboard.
 //
 // Where it goes: Google Ads → Tools → Bulk actions → Scripts → + → paste this,
-// authorize, then schedule it DAILY (any morning hour). Each run re-sends the
-// last 30 days, so corrections and late clicks heal themselves and the first
-// run backfills a month of history.
+// authorize, then schedule it HOURLY (so today's spend is current in /admin;
+// a daily run leaves today frozen at the morning's figure). Each run re-sends
+// the last 30 days, so corrections and late clicks heal themselves and the
+// first run backfills a month of history.
 //
 // Before saving: replace ADS_KEY below with the real key (it lives in the
 // Cloudflare Worker's secrets, never in this public repo).
