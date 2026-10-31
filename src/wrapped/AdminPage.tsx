@@ -209,6 +209,8 @@ const TABS: [Tab, string][] = [["overview", "Overview"], ["people", "People"], [
 type RangeSel = { kind: "7" | "30" | "all" | "custom"; from?: number; to?: number };
 const DAY = 864e5;
 const dayStart = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+// The next local midnight: calendar arithmetic, never +24 h (25 Oct had 25 h).
+const nextDay = (t: number) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(); };
 const ymd = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const dmon = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const LAUNCH = new Date("2026-10-14T00:00:00").getTime(); // ads + tracking start
@@ -462,8 +464,8 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
   ];
   // daily series for the chart
   const days: number[] = [];
-  for (let t = dayStart(Math.max(from, LAUNCH)); t < to; t += DAY) days.push(t); // before 14 Oct: tests only
-  const series = days.map((t) => { const s = statsFor(flows, gated, ads, t, t + DAY); return { t, conv: s.briefs ? (s.chosen / s.briefs) * 100 : NaN, cost: s.chosen ? s.spend / s.chosen : NaN }; });
+  for (let t = dayStart(Math.max(from, LAUNCH)); t < to; t = nextDay(t)) days.push(t); // before 14 Oct: tests only
+  const series = days.map((t) => { const s = statsFor(flows, gated, ads, t, nextDay(t)); return { t, conv: s.briefs ? (s.chosen / s.briefs) * 100 : NaN, cost: s.chosen ? s.spend / s.chosen : NaN, briefs: s.briefs, signed: s.signed, chosen: s.chosen, spend: s.spend }; });
   const num = (u: Update) => updates.findIndex((x) => x.id === u.id) + 1;
   const inRange = updates.filter((u) => { const t = new Date(u.date + "T00:00:00").getTime(); return t >= dayStart(Math.max(from, LAUNCH)) && t < to; });
   // conversion (Brief → Name chosen), 3 days after vs 3 days before each update
@@ -527,24 +529,6 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
       </div>
       <div className="v2grid2">
         <div className="v2card">
-          <div className="v2head"><h3>Channels</h3><span className="sub">paid and free</span></div>
-          <table className="v2tbl">
-            <thead><tr><th>CHANNEL</th><th className="r">SPEND</th><th className="r">SIGN-UPS</th><th className="r">NAMES</th><th className="r">€ / NAME</th></tr></thead>
-            <tbody>
-              {chanRows.map(([k, c]) => (
-                <tr key={k}>
-                  <td><i className="cdot" style={{ background: (CHANNELS.find(([n]) => n === k) || ["", "#6a6a6a"])[1] }} />{k}</td>
-                  <td className="r mono">{c.spend ? eur0(c.spend) : "—"}</td>
-                  <td className="r mono">{c.signed}</td>
-                  <td className="r mono">{c.names}</td>
-                  <td className="r mono">{c.spend && c.names ? eur0(c.spend / c.names) : "—"}</td>
-                </tr>
-              ))}
-              {!chanRows.length && <tr><td colSpan={5} className="dim">{loading ? "Loading…" : "Nothing in this range."}</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        <div className="v2card">
           <div className="v2head"><h3>Main changes</h3><button className="addbtn" onClick={() => setAdding((x) => !x)}>{adding ? "Cancel" : "+ Add"}</button></div>
           {adding && (
             <div className="uform">
@@ -575,13 +559,33 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
           </div>
           <p className="v2note">Conversion (brief → name chosen), 3 days after vs 3 days before</p>
         </div>
+        <div className="v2card">
+          <div className="v2head"><h3>Channels</h3><span className="sub">paid and free</span></div>
+          <table className="v2tbl">
+            <thead><tr><th>CHANNEL</th><th className="r">SPEND</th><th className="r">SIGN-UPS</th><th className="r">NAMES</th><th className="r">€ / NAME</th></tr></thead>
+            <tbody>
+              {chanRows.map(([k, c]) => (
+                <tr key={k}>
+                  <td><i className="cdot" style={{ background: (CHANNELS.find(([n]) => n === k) || ["", "#6a6a6a"])[1] }} />{k}</td>
+                  <td className="r mono">{c.spend ? eur0(c.spend) : "—"}</td>
+                  <td className="r mono">{c.signed}</td>
+                  <td className="r mono">{c.names}</td>
+                  <td className="r mono">{c.spend && c.names ? eur0(c.spend / c.names) : "—"}</td>
+                </tr>
+              ))}
+              {!chanRows.length && <tr><td colSpan={5} className="dim">{loading ? "Loading…" : "Nothing in this range."}</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
-function Chart({ series, updates, num }: { series: { t: number; conv: number; cost: number }[]; updates: Update[]; num: (u: Update) => number }) {
+type Pt = { t: number; conv: number; cost: number; briefs: number; signed: number; chosen: number; spend: number };
+function Chart({ series, updates, num }: { series: Pt[]; updates: Update[]; num: (u: Update) => number }) {
   const W = 760, H = 230, L = 34, R = 40, T = 24, B = 22;
+  const [hov, setHov] = useState<number | null>(null);
   if (series.length < 2) return <p className="hint">Not enough days in this range.</p>;
   const cMax = Math.max(5, Math.ceil(Math.max(0, ...series.map((s) => (isFinite(s.conv) ? s.conv : 0))) / 5) * 5);
   const eMax = Math.max(10, Math.ceil(Math.max(0, ...series.map((s) => (isFinite(s.cost) ? s.cost : 0))) / 10) * 10);
@@ -592,9 +596,9 @@ function Chart({ series, updates, num }: { series: { t: number; conv: number; co
   const convY = series.map((s) => (isFinite(s.conv) ? yc(s.conv) : null));
   const costY = series.map((s) => (isFinite(s.cost) ? ye(s.cost) : null));
   const area = (() => { const pts = convY.map((y, i) => (y === null ? null : `${x(i).toFixed(1)},${y.toFixed(1)}`)).filter(Boolean); if (pts.length < 2) return ""; const idx = convY.map((y, i) => (y === null ? -1 : i)).filter((i) => i >= 0); return `M${x(idx[0])},${H - B} L${pts.join(" L")} L${x(idx[idx.length - 1])},${H - B} Z`; })();
-  const t0 = series[0].t, t1 = series[series.length - 1].t;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (series.length - 1)));
   return (
+    <div className="v2chartw" onMouseLeave={() => setHov(null)}>
     <svg className="v2chart" viewBox={`0 0 ${W} ${H}`}>
       {[0, 0.5, 1].map((f) => <line key={f} x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} className="grid" />)}
       <text x={L - 6} y={T + 4} className="ax" textAnchor="end">{cMax}%</text>
@@ -604,15 +608,56 @@ function Chart({ series, updates, num }: { series: { t: number; conv: number; co
       <text x={W - R + 6} y={T + (H - T - B) / 2 + 4} className="ax or">€{eMax / 2}</text>
       <text x={W - R + 6} y={H - B + 4} className="ax or">€0</text>
       {area && <path d={area} className="area" />}
-      {updates.map((u) => {
-        const t = new Date(u.date + "T00:00:00").getTime();
-        const xi = L + ((t - t0) / Math.max(DAY, t1 - t0)) * (W - L - R);
-        return <g key={u.id}><line x1={xi} x2={xi} y1={T - 6} y2={H - B} className="mark" /><circle cx={xi} cy={T - 12} r={8} className="mk" /><text x={xi} y={T - 8.5} className="mkt" textAnchor="middle">{num(u)}</text></g>;
+      {[...new Set(updates.map((u) => u.date))].map((date) => {
+        // one dashed line per day; same-day updates sit side by side on it
+        const i = series.findIndex((s) => ymd(s.t) === date);
+        if (i < 0) return null;
+        const xi = x(i);
+        const us = updates.filter((u) => u.date === date);
+        return (
+          <g key={date}>
+            <line x1={xi} x2={xi} y1={T - 6} y2={H - B} className="mark" />
+            {us.map((u, k) => {
+              const cx = xi + (k - (us.length - 1) / 2) * 17;
+              return <g key={u.id}><circle cx={cx} cy={T - 12} r={8} className="mk" /><text x={cx} y={T - 8.5} className="mkt" textAnchor="middle">{num(u)}</text></g>;
+            })}
+          </g>
+        );
       })}
       <path d={path(convY)} className="lk" />
       <path d={path(costY)} className="lo" />
       {ticks.map((i) => <text key={i} x={x(i)} y={H - 4} className="ax" textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"}>{dmon(series[i].t)}</text>)}
+      {hov !== null && (
+        <g className="hov">
+          <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} className="hl" />
+          {convY[hov] !== null && <circle cx={x(hov)} cy={convY[hov]!} r={4} className="hk" />}
+          {costY[hov] !== null && <circle cx={x(hov)} cy={costY[hov]!} r={4} className="ho" />}
+        </g>
+      )}
+      {/* one invisible column per day catches the pointer (mouse and touch) */}
+      {series.map((_, i) => {
+        const w = (W - L - R) / Math.max(1, series.length - 1);
+        return <rect key={i} x={x(i) - w / 2} y={0} width={w} height={H} className="hz" onMouseEnter={() => setHov(i)} onTouchStart={() => setHov(i)} onClick={() => setHov(i)} />;
+      })}
     </svg>
+    {hov !== null && (() => {
+      const p = series[hov];
+      const ups = updates.filter((u) => u.date === ymd(p.t));
+      const left = (x(hov) / W) * 100;
+      return (
+        <div className="v2tip" style={{ left: `${left}%`, transform: `translateX(${left > 70 ? "-100%" : left < 30 ? "0" : "-50%"})` }}>
+          <b>{new Date(p.t).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</b>
+          <p><i className="k" />Conversion<span className="mono">{isFinite(p.conv) ? p.conv.toFixed(1) + "%" : "—"}</span></p>
+          <p><i className="o" />Cost / name<span className="mono">{eur0(p.cost)}</span></p>
+          <p className="dim">Briefs<span className="mono">{p.briefs}</span></p>
+          <p className="dim">Sign-ups<span className="mono">{p.signed}</span></p>
+          <p className="dim">Names chosen<span className="mono">{p.chosen}</span></p>
+          <p className="dim">Spend<span className="mono">{p.spend ? eur0(p.spend) : "—"}</span></p>
+          {ups.map((u) => <p key={u.id} className="up"><i className="n">{num(u)}</i>{u.title}</p>)}
+        </div>
+      );
+    })()}
+    </div>
   );
 }
 

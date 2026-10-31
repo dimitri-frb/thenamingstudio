@@ -2655,6 +2655,19 @@
 .kv2 .v2chart .lo { fill: none; stroke: #ff4f1a; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .kv2 .v2chart .mark { stroke: #999; stroke-dasharray: 3 3; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .kv2 .v2chart .mk { fill: #000; }
+.kv2 .v2chartw { position: relative; }
+.kv2 .v2chart .hz { fill: transparent; cursor: crosshair; }
+.kv2 .v2chart .hl { stroke: #000; stroke-width: 1; opacity: .25; vector-effect: non-scaling-stroke; }
+.kv2 .v2chart .hk { fill: #000; } .kv2 .v2chart .ho { fill: #ff4f1a; }
+.kv2 .v2tip { position: absolute; top: 18px; z-index: 5; pointer-events: none; background: #fff; border: 1px solid #e3e1dc; border-radius: 12px; box-shadow: 0 14px 40px -14px rgba(0,0,0,.3); padding: 10px 12px; min-width: 190px; font-size: 12px; }
+.kv2 .v2tip b { display: block; font-size: 12.5px; margin-bottom: 6px; }
+.kv2 .v2tip p { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
+.kv2 .v2tip p span { margin-left: auto; font-weight: 700; }
+.kv2 .v2tip p.dim { color: #6a6a6a; }
+.kv2 .v2tip i.k, .kv2 .v2tip i.o { width: 10px; height: 2px; background: #000; display: inline-block; }
+.kv2 .v2tip i.o { background: #ff4f1a; }
+.kv2 .v2tip p.up { margin-top: 6px; padding-top: 6px; border-top: 1px solid #efeeea; font-weight: 600; }
+.kv2 .v2tip i.n { font-style: normal; width: 15px; height: 15px; border-radius: 50%; background: #000; color: #fff; font-size: 9px; display: inline-grid; place-items: center; flex: 0 0 auto; }
 .kv2 .v2chart .mkt { font: 700 9.5px 'Inter Tight', sans-serif; fill: #fff; }
 .kv2 .ulegend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12px; }
 .kv2 .ulegend span { display: inline-flex; align-items: center; gap: 6px; }
