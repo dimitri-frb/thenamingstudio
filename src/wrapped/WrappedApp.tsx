@@ -1680,13 +1680,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 )}
                 {claimView && claimView.rows.length > 0 && (
                   <>
-                    {claimView.taken && (
-                      <div className="domrow gone">
-                        <i className="x">✕</i>
-                        <span className="dmid"><span className="d mono">{claimView.taken.domain}</span></span>
-                        <span className="st mono">{claimView.taken.status === "negotiable" ? "For sale" : "Taken"}</span>
-                      </div>
-                    )}
                     {claimView.rows.map((d, i) => {
                       const on = d.domain === claimSel?.domain;
                       return (
@@ -1695,12 +1688,17 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                           <i className="radio" />
                           <span className="dmid">
                             <span className="d mono">{d.domain}</span>
-                            <span className="st mono">{i === 0 ? (claimView.exactFree ? "Available now · exact match" : "Available now · closest match") : "Available"}</span>
+                            <span className="st mono">{i === 0 ? (claimView.exactFree ? "Available now · exact match" : "Available now · best match") : "Available"}</span>
                           </span>
                           {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
                         </button>
                       );
                     })}
+                    {/* The taken .com is a quiet note under the list, never the first
+                        thing they see: lead with what they CAN have. */}
+                    {claimView.taken && (
+                      <p className="takennote">{claimView.taken.domain} is {claimView.taken.status === "negotiable" ? "registered (for sale)" : "already registered"} · most brands start on a variant</p>
+                    )}
                     <p className="buynote mono">Price per year when you buy it · nothing to pay to us</p>
                   </>
                 )}
