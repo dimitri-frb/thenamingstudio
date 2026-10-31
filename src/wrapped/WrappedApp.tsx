@@ -294,6 +294,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const bookPre = useRef(new Map<string, Promise<WBook | null>>());
   const namesPre = useRef<{ key: string; st: NameStream } | null>(null);
   const morePre = useRef<{ key: string; st: NameStream } | null>(null);
+  // Every reaction chip is pre-coined too, so a tap is instant: one stream per
+  // chip, keyed by the names already shown (+ the seed for "More like").
+  const reactPre = useRef(new Map<string, { key: string; st: NameStream }>());
   const stepRef = useRef(step);
   stepRef.current = step;
 
@@ -610,16 +613,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }, [step, poll, test]);
 
   useEffect(() => { // names: pre-coined (streaming) while the founder is still starring
-    if (test || step !== "words" || names?.length || starred.length < 2) return;
-    const key = starKey(starred);
+    if (test || step !== "words" || names?.length || !styles) return;
+    // Nothing starred yet: pre-coin what "Show me names →" will send (the
+    // strongest five), so that path is instant too.
+    const ws = starred.length ? starred : strongestWords(styles, 5);
+    const key = starKey(ws);
     if (namesPre.current?.key === key) return;
     const t = setTimeout(() => {
       namesPre.current?.st.abort(); // a stale set's stream is money down the drain
-      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, [], prefs, firstBatch) };
-    }, 700);
+      namesPre.current = { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", ws, [], prefs, firstBatch) };
+    }, starred.length ? 700 : 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test, step, starred, names, sentence, chips, concept]);
+  }, [test, step, starred, names, sentence, chips, concept, styles]);
 
   useEffect(() => { // book + domain board: precharged the moment a name is picked
     if (!picked) return;
@@ -864,6 +870,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       if (!test) {
         const exKey = fin.map((n) => n.name).join("|");
         morePre.current = { key: exKey, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs, moreBatch) };
+        prechargeReactions(fin);
       }
     };
     st.listeners.add(upd);
@@ -898,6 +905,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     makeNames(all, method);
   }
 
+  // Pre-coin one round per reaction chip for the names on screen. "More like"
+  // follows the selected name (re-coined when the selection settles).
+  const reactKey = (fin: WName[], st: NameSteer) => fin.map((n) => n.name).join("|") + "#" + st.kind + (st.seed ? ":" + st.seed : "");
+  function prechargeReaction(fin: WName[], st: NameSteer) {
+    const key = reactKey(fin, st);
+    const cur = reactPre.current.get(st.kind);
+    if (cur?.key === key && !cur.st.error) return;
+    cur?.st.abort();
+    reactPre.current.set(st.kind, { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs, moreBatch, st) });
+  }
+  function prechargeReactions(fin: WName[]) {
+    if (test) return;
+    const seed = v2Sel || fin[0]?.name || "";
+    (["real", "short", "vibe"] as const).forEach((kind, i) => setTimeout(() => prechargeReaction(fin, { kind }), i * 250));
+    if (seed) setTimeout(() => prechargeReaction(fin, { kind: "like", seed }), 750);
+  }
+
   // "Show 6 more" (no steer), or a reaction chip: 6 names in that direction,
   // on this page, the new batch on top under the chip's label.
   function moreNames(steer?: NameSteer, label?: string) {
@@ -918,12 +942,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // A pre-charged batch that silently failed in the background is no batch:
     // fall through to a fresh stream instead of consuming the error. A steered
     // round never uses the (unsteered) pre-charge.
-    const pre = !steer && morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
+    const rp = steer ? reactPre.current.get(steer.kind) : null;
+    const pre = steer
+      ? (rp && rp.key === reactKey(names, steer) && !rp.st.error ? rp.st : null)
+      : (morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null);
+    if (steer && pre) reactPre.current.delete(steer.kind);
     const t0 = Date.now();
     const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch, steer);
-    if (!pre) morePre.current = null;
-    if (steer) st.final.then((r) => track("names_reaction_result", { count: r?.length || 0, ms: Date.now() - t0, ...(r?.length ? {} : { failed: true }) }));
-    if (pre) morePre.current = null;
+    if (!steer) morePre.current = null;
+    if (steer) st.final.then((r) => track("names_reaction_result", { count: r?.length || 0, ms: Date.now() - t0, pre: !!pre, ...(r?.length ? {} : { failed: true }) }));
     attachStream(st, names);
   }
 
@@ -956,6 +983,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setV2Sel(name === pickN?.name ? null : name);
     track("name_selected", { name, wasPick: name === pickN?.name, batch: n ? batchOf(n) : 0 });
   };
+  useEffect(() => { // "More like {selection}": re-coined once the selection settles
+    if (test || step !== "names" || !names?.length || namesBusy || moreBusy || !selName) return;
+    const t = setTimeout(() => prechargeReaction(names, { kind: "like", seed: selName }), 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, step, names, namesBusy, moreBusy, selName]);
   const continueWithSel = () => {
     const n = (names || []).find((x) => x.name === selName);
     if (!n) return;
@@ -2528,7 +2561,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
         <button className="cta" onClick={() => starred.length
           ? onContinue([], "manual")
           // nothing starred: the cloud's strongest five (pool order interleaves the six angles)
-          : onContinue(cloud.slice(0, 5), "auto")}>
+          : onContinue(strongestWords(styles, 5), "auto")}>
           {starred.length ? "See my 6 names →" : "Show me names →"}
         </button>
         <div className="links">
