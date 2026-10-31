@@ -107,8 +107,8 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "domain" || (e.phase === "page" && String(p.to || "") === "reveal")) f.saved = true;
       if (e.phase === "kit_teaser_tap") f.teaser = true;
       if (e.phase === "words_continue" && p.mode === "auto") f.autoWords = true;
-      if (e.phase === "names_reaction") f.reactions++;
-      if (e.phase === "names_reaction_result" && p.failed) f.reactFails++;
+      if (e.phase === "names_reaction" || e.phase === "names_more") f.reactions++; // more-names rounds (the strip's chips, then "Show 6 more")
+      if ((e.phase === "names_reaction_result" || e.phase === "names_more_result") && p.failed) f.reactFails++;
       if (e.phase === "wrapnames") {
         const names = (e.output?.names || []).map((n: any) => n?.name).filter(Boolean);
         if (names.length) f.shortlist = names.slice(0, 3);
@@ -728,7 +728,7 @@ function Signals({ flows, chan }: { flows: Flow[]; chan: string }) {
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) + "%" : "—");
   const rows: [string, string, string][] = [
     ["Words skipped", `${auto} of ${toNames.length}`, `${pct(auto, toNames.length)} reached names with nothing starred`],
-    ["Names reactions", `${taps} taps · ${react.length} people`, fails ? `${fails} failed rounds` : "no failed rounds"],
+    ["More names", `${taps} rounds · ${react.length} people`, fails ? `${fails} failed rounds` : "no failed rounds"],
     ["Saved, domain later", `${later} of ${saved.length}`, `${pct(later, saved.length)} saved the name without a domain`],
     ["Kit teaser", `${fl.filter((f) => f.teaser).length} taps`, `→ ${fl.filter((f) => f.teaser && f.unlock).length} unlocked`],
   ];

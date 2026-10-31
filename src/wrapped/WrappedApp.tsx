@@ -6,7 +6,7 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, type NameSteer,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
@@ -222,13 +222,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [namesProg, setNamesProg] = useState(0);      // names coined so far (drives the wait screen)
   const waitStart = useRef(0);
   const [moreBusy, setMoreBusy] = useState(false);
-  // 04 reaction strip: the chip being made ("Shorter"), the chips used, and each
-  // batch's label ("Shorter ↓"), so stacked batches read as answers.
-  const [reacting, setReacting] = useState<string | null>(null);
-  const [usedChips, setUsedChips] = useState<string[]>([]);
-  const batchLabels = useRef(new Map<number, string>());
-  const nextBatchLabel = useRef("");
-  const lastMore = useRef<() => void>(() => {});
+
   const [picked, setPicked] = useState<WName | null>(test ? ACTIVE().names[0] : null);
   const [board, setBoard] = useState<DomainBoardData | null>(null);
   const [boardAt, setBoardAt] = useState(0); // when availability was really checked
@@ -249,8 +243,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
   // The name picker (04): our pick + 5 on phones, our pick + 8 on desktop; "Show N more" adds N.
-  const firstBatch = isMobile ? 6 : 9;
-  const moreBatch = isMobile ? 5 : 8;
+  const firstBatch = 7; // the pick + 6 others (handoff names-no-strip)
+  const moreBatch = 6;
   const nameBatch = useRef<Map<string, number>>(new Map()); // name → which "more" round coined it (0 = first)
   const [newestBatch, setNewestBatch] = useState(0);
   const [pickSay, setPickSay] = useState("");               // the pick's pronunciation (desktop card)
@@ -294,9 +288,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const bookPre = useRef(new Map<string, Promise<WBook | null>>());
   const namesPre = useRef<{ key: string; st: NameStream } | null>(null);
   const morePre = useRef<{ key: string; st: NameStream } | null>(null);
-  // Every reaction chip is pre-coined too, so a tap is instant: one stream per
-  // chip, keyed by the names already shown (+ the seed for "More like").
-  const reactPre = useRef(new Map<string, { key: string; st: NameStream }>());
+
   const stepRef = useRef(step);
   stepRef.current = step;
 
@@ -583,8 +575,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     });
   }
 
-  useEffect(() => { // 04·x / 04·i: one gentle ask at the words or names page, never twice
-    if ((step !== "names" && step !== "words") || poll || pollShown.current) return;
+  useEffect(() => { // 04·x / 04·i: one gentle ask on the words page, never twice (not on names: handoff names-no-strip)
+    if (step !== "words" || poll || pollShown.current) return;
     // "poll" logs every ask, answered or not: the Feedback tab's shown /
     // answered / stayed split needs the asks that got ignored too.
     const show = (v: "exit" | "idle") => { if (!pollShown.current) { pollShown.current = true; setPoll(v); track("poll", { variant: v, step }); } };
@@ -844,7 +836,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       st.listeners.add(() => setNames((cur) => (cur ? [...cur] : cur)));
       if (!base.length && waitStart.current) { recordEta(Date.now() - waitStart.current); waitStart.current = 0; }
       if (st.error || !st.names.length) {
-        setNamesBusy(false); setMoreBusy(false); setReacting(null); nextBatchLabel.current = "";
+        setNamesBusy(false); setMoreBusy(false);
         if (base.length) fail("more", true);
         else { setNames(null); fail("names", true); }
         return;
@@ -855,12 +847,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       else {
         const b = Math.max(0, ...Array.from(nameBatch.current.values())) + 1;
         batch.forEach((n) => nameBatch.current.set(n.name, b));
-        batchLabels.current.set(b, nextBatchLabel.current || "More");
-        nextBatchLabel.current = "";
+
         setNewestBatch(b);
       }
       setNames(fin);
-      setNamesBusy(false); setMoreBusy(false); setReacting(null);
+      setNamesBusy(false); setMoreBusy(false);
       persist({ names: fin });
       if (!test && !base.length && fin[0]) {
         bookFetch(fin[0]);
@@ -870,7 +861,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       if (!test) {
         const exKey = fin.map((n) => n.name).join("|");
         morePre.current = { key: exKey, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs, moreBatch) };
-        prechargeReactions(fin);
       }
     };
     st.listeners.add(upd);
@@ -905,52 +895,28 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     makeNames(all, method);
   }
 
-  // Pre-coin one round per reaction chip for the names on screen. "More like"
-  // follows the selected name (re-coined when the selection settles).
-  const reactKey = (fin: WName[], st: NameSteer) => fin.map((n) => n.name).join("|") + "#" + st.kind + (st.seed ? ":" + st.seed : "");
-  function prechargeReaction(fin: WName[], st: NameSteer) {
-    const key = reactKey(fin, st);
-    const cur = reactPre.current.get(st.kind);
-    if (cur?.key === key && !cur.st.error) return;
-    cur?.st.abort();
-    reactPre.current.set(st.kind, { key, st: coinNames(sentence.trim(), chips, concept?.concept || "", starred, fin.map((n) => n.name), prefs, moreBatch, st) });
-  }
-  function prechargeReactions(fin: WName[]) {
-    if (test) return;
-    const seed = v2Sel || fin[0]?.name || "";
-    (["real", "short", "vibe"] as const).forEach((kind, i) => setTimeout(() => prechargeReaction(fin, { kind }), i * 250));
-    if (seed) setTimeout(() => prechargeReaction(fin, { kind: "like", seed }), 750);
-  }
-
-  // "Show 6 more" (no steer), or a reaction chip: 6 names in that direction,
-  // on this page, the new batch on top under the chip's label.
-  function moreNames(steer?: NameSteer, label?: string) {
+  // "↻ Show 6 more" (handoff names-no-strip · S·2/S·3): 6 new names on top,
+  // pre-coined in the background as soon as the previous batch lands.
+  const batchesLoaded = useRef(1);
+  function moreNames() {
     if (moreBusy || !names) return;
-    lastMore.current = () => moreNames(steer, label);
-    v2Known.current = names.map((n) => n.name); // V2: new batch shows on top with a NEW tag
+    v2Known.current = names.map((n) => n.name); // V2: new batch shows on top
     track("morenames", { have: names.length });
     track("names_more_clicked", { batch: newestBatch + 1 });
-    if (steer && label) {
-      track("names_reaction", { chip: steer.kind, batch: newestBatch + 1 });
-      setReacting(label);
-      setUsedChips((u) => (u.includes(steer.kind) ? u : [...u, steer.kind]));
-    }
-    nextBatchLabel.current = label || "More";
+    track("names_more", { batch: newestBatch + 1 });
     setMoreBusy(true);
     fail("more", false);
     const exKey = names.map((n) => n.name).join("|");
     // A pre-charged batch that silently failed in the background is no batch:
-    // fall through to a fresh stream instead of consuming the error. A steered
-    // round never uses the (unsteered) pre-charge.
-    const rp = steer ? reactPre.current.get(steer.kind) : null;
-    const pre = steer
-      ? (rp && rp.key === reactKey(names, steer) && !rp.st.error ? rp.st : null)
-      : (morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null);
-    if (steer && pre) reactPre.current.delete(steer.kind);
+    // fall through to a fresh stream instead of consuming the error.
+    const pre = morePre.current?.key === exKey && !morePre.current.st.error ? morePre.current.st : null;
     const t0 = Date.now();
-    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch, steer);
-    if (!steer) morePre.current = null;
-    if (steer) st.final.then((r) => track("names_reaction_result", { count: r?.length || 0, ms: Date.now() - t0, pre: !!pre, ...(r?.length ? {} : { failed: true }) }));
+    const st = pre || coinNames(sentence.trim(), chips, concept?.concept || "", starred, names.map((n) => n.name), prefs, moreBatch);
+    morePre.current = null;
+    st.final.then((r) => {
+      if (r?.length) batchesLoaded.current++;
+      track("names_more_result", { count: r?.length || 0, ms: Date.now() - t0, failed: !r?.length, pre: !!pre });
+    });
     attachStream(st, names);
   }
 
@@ -982,24 +948,23 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const n = (names || []).find((x) => x.name === name);
     setV2Sel(name === pickN?.name ? null : name);
     track("name_selected", { name, wasPick: name === pickN?.name, batch: n ? batchOf(n) : 0 });
+    track("names_pick_changed", { name, position: displayNames().findIndex((x) => x.name === name) });
   };
-  useEffect(() => { // "More like {selection}": re-coined once the selection settles
-    if (test || step !== "names" || !names?.length || namesBusy || moreBusy || !selName) return;
-    const t = setTimeout(() => prechargeReaction(names, { kind: "like", seed: selName }), 1200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test, step, names, namesBusy, moreBusy, selName]);
   const continueWithSel = () => {
     const n = (names || []).find((x) => x.name === selName);
     if (!n) return;
-    track("names_continue", { name: n.name, wasPick: n.name === pickN?.name, batch: batchOf(n) });
+    track("names_continue", { name: n.name, wasPick: n.name === pickN?.name, batch: batchOf(n), batches_loaded: batchesLoaded.current });
     pickName(n);
   };
 
   useEffect(() => {
     if (step !== "names" || namesBusy || !pickN) return;
     const key = (names || []).slice(0, 3).map((n) => n.name).join("|");
-    if (namesViewed.current !== key) { namesViewed.current = key; track("names_viewed", { count: shownNames.length, pick: pickN.name }); }
+    if (namesViewed.current !== key) {
+      namesViewed.current = key;
+      track("names_viewed", { count: shownNames.length, pick: pickN.name });
+      if (!(names || []).some((n) => batchOf(n) > 0)) track("names_seen", { count: shownNames.length });
+    }
     if (isMobile || test) return;
     let live = true;
     setPickSay("");
@@ -1640,13 +1605,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 onSel={selectName}
                 moreBusy={moreBusy}
                 moreFail={!!fails.more}
-                onRetry={() => lastMore.current()}
+                onRetry={moreNames}
                 say={pickSay}
-                reacting={reacting}
-                usedChips={usedChips}
-                batchLabel={(b) => batchLabels.current.get(b) || "More"}
-                onReact={(kind, label) => moreNames(kind === "like" ? { kind, seed: selName || pickN.name } : { kind }, label)}
-                selName={selName || pickN.name}
               />
             ) : null}
           </div>
@@ -1655,7 +1615,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <button className="wr-btnor cbig" style={isMobile ? undefined : { width: "auto", padding: "0 30px", height: 50 }} onClick={continueWithSel}>Continue with {selName || "…"} →</button>
               <span className="urow">
                 <button className="wr-link" onClick={() => toStep("words")}>← Words</button>
-                <button className="wr-link" disabled={moreBusy} onClick={() => moreNames()}>{moreBusy && !reacting ? "↻ …" : `↻ Show ${moreBatch} more`}</button>
+                <button className="wr-link" disabled={moreBusy} onClick={() => moreNames()}>{moreBusy ? `Making ${moreBatch} more…` : `↻ Show ${moreBatch} more`}</button>
               </span>
             </div>
           )}
@@ -2585,18 +2545,9 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
 
 /* ── 04 · the name picker (handoff 18): our pick, chosen by default and never
    moving; every alternative one tap away as a block; one action. ── */
-const REACT_CHIPS: { kind: NameSteer["kind"]; label: (pick: string) => string }[] = [
-  { kind: "real", label: () => "More real words" },
-  { kind: "short", label: () => "Shorter" },
-  { kind: "vibe", label: () => "Different vibe" },
-  { kind: "like", label: (p) => `More like ${p}` },
-];
-
-function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, moreBusy, moreFail, onRetry, say, reacting, usedChips, batchLabel, onReact, selName }: {
+function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, moreBusy, moreFail, onRetry, say }: {
   mobile: boolean; pick: WName; others: WName[]; newestBatch: number; batchOf: (n: WName) => number;
-  sel: string | null; onSel: (name: string) => void; moreBusy: boolean; moreFail: boolean; onRetry: () => void;
-  say: string; reacting: string | null; usedChips: string[]; batchLabel: (b: number) => string;
-  onReact: (kind: NameSteer["kind"], label: string) => void; selName: string;
+  sel: string | null; onSel: (name: string) => void; moreBusy: boolean; moreFail: boolean; onRetry: () => void; say: string;
 }) {
   const pickOn = sel === pick.name;
   const domOf = (n: WName) => (n.dom?.free ? n.dom : n.alt || null);
@@ -2604,9 +2555,9 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
   const isNew = (n: WName) => newestBatch > 0 && batchOf(n) === newestBatch;
   const fresh = others.filter(isNew);
   const earlier = others.filter((n) => !isNew(n));
-  const loading = moreBusy && !!reacting;
-  // R·2/R·3 on phones: the pick shrinks to one line so the new batch is in view.
-  const slim = mobile && (loading || (fresh.length > 0 && newestBatch > 0));
+  // S·2/S·3/S·4 on phones: the pick shrinks to one line so the new batch (or
+  // the error) is in view.
+  const slim = mobile && (moreBusy || moreFail || fresh.length > 0);
 
   const pickCard = slim ? (
     <button className={"pick slim" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
@@ -2632,27 +2583,6 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
     </button>
   );
 
-  const strip = (
-    <div className={"rstrip" + (loading ? " busy" : "")}>
-      <div className="rh">
-        <b>Not quite? Tell us in one tap</b>
-        {loading ? <span className="mono">making 6…</span> : usedChips.length ? <span className="mono">tap again for more</span> : null}
-      </div>
-      <div className="rchips">
-        {REACT_CHIPS.map((c) => {
-          const label = c.label(selName);
-          const on = reacting === label;
-          const used = usedChips.includes(c.kind);
-          return (
-            <button key={c.kind} className={(on ? "on" : "") + (used && !on ? " used" : "")} disabled={moreBusy} onClick={() => onReact(c.kind, label)}>
-              {on ? <><i className="spin" />{label}</> : used ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   const card = (n: WName, nw = false) => {
     const d = domOf(n);
     const on = sel === n.name;
@@ -2673,16 +2603,16 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
       {moreFail && !moreBusy && (
         <div className="rfail"><span>⚠︎ Couldn't make more just now</span><button onClick={onRetry}>↻ Try again</button></div>
       )}
-      {loading ? (
+      {moreBusy ? (
         <>
-          <p className="lbl mono"><span>{reacting} ↓</span><span>about 10 s</span></p>
+          <p className="lbl mono"><span>New ↓</span><span>about 10 s</span></p>
           <div className="grid">{Array.from({ length: 6 }, (_, i) => <span key={i} className="blk skel" />)}</div>
           {others.length > 0 && <p className="lbl mono">Earlier</p>}
           <div className="grid">{others.map((n) => card(n))}</div>
         </>
       ) : fresh.length > 0 ? (
         <>
-          <p className="lbl mono"><span>{batchLabel(newestBatch)} ↓</span><span>{fresh.length} new</span></p>
+          <p className="lbl mono"><span>New ↓</span><span>{fresh.length} new</span></p>
           <div className="grid">{fresh.map((n) => card(n, true))}</div>
           {earlier.length > 0 && <p className="lbl mono">Earlier</p>}
           <div className="grid">{earlier.map((n) => card(n))}</div>
@@ -2696,22 +2626,11 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
     </>
   );
 
-  if (mobile) {
-    return (
-      <div className="wr-pk">
-        {pickCard}
-        {strip}
-        {list}
-      </div>
-    );
-  }
+  if (mobile) return <div className="wr-pk">{pickCard}{list}</div>;
   return (
     <div className="wr-pkd">
       <div className="left">{pickCard}</div>
-      <div className="right">
-        {strip}
-        {list}
-      </div>
+      <div className="right">{list}</div>
     </div>
   );
 }
