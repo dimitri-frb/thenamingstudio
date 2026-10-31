@@ -67,7 +67,7 @@ export interface WKit {
 }
 
 export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }
-export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string }
+export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string; local?: string[] } // local: the visitor's country extensions (uk, co.uk…)
 
 export interface WUser { sub: string; email: string; name: string; picture?: string }
 

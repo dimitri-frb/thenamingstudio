@@ -998,15 +998,18 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const by = (d: string) => all.find((x) => x.domain === d);
     const free = (d?: DomainCard) => !!d && d.status === "available";
     const com = by(`${slug}.com`);
+    // .com leads (below); then the founder's own extensions and their
+    // country's (name.uk, name.co.uk for a UK visitor); then the best variants.
     const order = [
       ...(prefs.doms || []).map((t) => `${slug}.${String(t).replace(/^\./, "")}`),
+      ...(board.local || []).map((t) => `${slug}.${t}`),
       `get${slug}.com`, `${slug}.io`, `try${slug}.com`, `${slug}.app`, `${slug}.co`, `hello${slug}.com`,
       `use${slug}.com`, `${slug}.ai`, `meet${slug}.com`, `my${slug}.com`, `${slug}app.com`, `${slug}hq.com`, `${slug}.dev`,
     ];
     const seen = new Set<string>([`${slug}.com`]);
     const alts: DomainCard[] = [];
     for (const d of order) { const c = by(d); if (free(c) && !seen.has(d)) { seen.add(d); alts.push(c!); } }
-    const rows = free(com) ? [com!, ...alts.slice(0, 6)] : alts.slice(0, 6);
+    const rows = free(com) ? [com!, ...alts.slice(0, 6)] : alts.slice(0, 6); // up to 7 rows when .com is free
     return { taken: com && !free(com) ? com : null, rows, exactFree: free(com), freeCount: all.filter(free).length };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board, picked?.name]);

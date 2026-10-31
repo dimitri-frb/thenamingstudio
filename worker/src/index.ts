@@ -169,7 +169,10 @@ export default {
     }
 
     if (phase === "domainboard") {
-      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || [], body?.payload?.doms || []), env);
+      // The visitor's country (Cloudflare's geo) adds its own extensions right
+      // after .com: a UK founder sees name.com, name.uk, name.co.uk first.
+      const country = String((req as any)?.cf?.country || "").toUpperCase();
+      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || [], body?.payload?.doms || [], country), env);
     }
 
     // What's actually on a (taken) domain, plus whether it looks like a real
@@ -1034,6 +1037,7 @@ const RDAP_BASE: Record<string, string> = {
   fr: "https://rdap.nic.fr/",
   es: "https://rdap.nic.es/",
   "co.uk": "https://rdap.nominet.uk/",
+  uk: "https://rdap.nominet.uk/",
 };
 
 // The alternative TLDs we check alongside .com, in the order founders care about.
@@ -1312,10 +1316,15 @@ const BOARD_PRICE: Record<string, [string, string]> = {
   co: ["$24", "$30/yr"], net: ["$12", "$15/yr"], dev: ["$12", "$16/yr"], xyz: ["$10", "$12/yr"],
   org: ["$10", "$13/yr"],
   studio: ["$25", "$32/yr"], world: ["$28", "$34/yr"], life: ["$26", "$32/yr"], team: ["$28", "$36/yr"],
-  fr: ["€8", "€10/yr"], es: ["€8", "€10/yr"], "co.uk": ["£8", "£10/yr"],
+  fr: ["€8", "€10/yr"], es: ["€8", "€10/yr"], "co.uk": ["£8", "£10/yr"], uk: ["£8", "£10/yr"],
 };
 // Maps geo selection (from brief.geos) to the ccTLD to prioritise right after .com.
 const GEO_TLD: Record<string, string> = { France: "fr", Spain: "es", UK: "co.uk" };
+// ISO country (cf.country) → the extensions a local founder expects, in order.
+const COUNTRY_TLDS: Record<string, string[]> = {
+  GB: ["uk", "co.uk"], IE: ["ie"], FR: ["fr"], ES: ["es"], DE: ["de"], NL: ["nl"], IT: ["it"],
+  BE: ["be"], CH: ["ch"], CA: ["ca"], AU: ["au"],
+};
 
 // ── Live registration prices ──
 // Porkbun publishes real registrar pricing with no key; the register button
@@ -1463,13 +1472,13 @@ async function godaddyPrice(env: Env, domain: string): Promise<{ price: string }
   finally { clearTimeout(timer); }
 }
 
-async function domainBoard(env: Env, name: string, geos: string[] = [], doms: string[] = []): Promise<any> {
+async function domainBoard(env: Env, name: string, geos: string[] = [], doms: string[] = [], country = ""): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
   const PRICES = await tldPrices(env);
   const priceOf = (t: string): [string, string] => PRICES[t] || BOARD_PRICE[t] || ["$15", "$18/yr"];
   // Build TLD list: .com first, then any ccTLDs the founder cares about, then standard ones.
-  const ccTlds = (geos || []).map((g) => GEO_TLD[g]).filter(Boolean) as string[];
+  const ccTlds = [...new Set([...(COUNTRY_TLDS[country] || []), ...((geos || []).map((g) => GEO_TLD[g]).filter(Boolean) as string[])])];
   const prefTlds = (Array.isArray(doms) ? doms : [])
     .map((d) => String(d).toLowerCase().replace(/^\./, "").trim()).filter(Boolean);
   const lead = [...prefTlds, "com", ...ccTlds];
@@ -1588,7 +1597,7 @@ async function domainBoard(env: Env, name: string, geos: string[] = [], doms: st
     });
   }
 
-  return { name, tlds, variants: variantHits, source };
+  return { name, tlds, variants: variantHits, source, local: ccTlds };
 }
 
 // ───────────────────────── INPI trademark check ─────────────────────────
