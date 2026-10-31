@@ -2241,6 +2241,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {briefGate && (
         <BriefGateModal
           words={(styles || []).flatMap((st) => st.words.map((w) => w.w))}
+          brief={sentence.trim()}
           onClose={() => setBriefGate(false)}
           onUser={(u) => {
             setUser(u);
@@ -2684,7 +2685,7 @@ function NamePoll({ variant, page = "names", onClose, onSend }: { variant: "exit
   );
 }
 
-function BriefGateModal({ words, onClose, onUser }: { words: string[]; onClose: () => void; onUser: (u: WUser) => void }) {
+function BriefGateModal({ words, brief, onClose, onUser }: { words: string[]; brief: string; onClose: () => void; onUser: (u: WUser) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -2705,7 +2706,7 @@ function BriefGateModal({ words, onClose, onUser }: { words: string[]; onClose: 
           else setErr("We couldn't reach the server — check your connection and try again.");
         },
       });
-      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", width: 300 });
+      w.google.accounts.id.renderButton(host.current, { type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "pill", width: Math.min(340, Math.max(240, (host.current.clientWidth || 300))) });
     };
     return loadGsi(init);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2721,13 +2722,13 @@ function BriefGateModal({ words, onClose, onUser }: { words: string[]; onClose: 
           {chips.map((w) => <span key={w} className="chip">{w}</span>)}
         </div>
       </div>
-      <div className="card rise" onClick={(e) => e.stopPropagation()}>
-        <p className="eyebrow mono">{words.length ? `${words.length} words ready for your brief` : "Your words are nearly ready"}</p>
-        <h3>See your words.<br />Free, no card.</h3>
-        <p className="sub">One tap with Google to unlock them. Your brief is already saved.</p>
+      <div className="card dark rise" onClick={(e) => e.stopPropagation()}>
+        <span className="wm">NAME NAME</span>
+        <h3>Your perfect name.<br />100% free.</h3>
+        {brief && <p className="gbrief"><em>BRIEF</em><span>{brief}</span></p>}
         <div className="gbtn" ref={host} />
-        {err && <p className="fine" style={{ color: "#c0392b" }}>{err}</p>}
-        <p className="fine">Takes 5 seconds · we never post anything</p>
+        {err && <p className="fine" style={{ color: "#ff7a6e" }}>{err}</p>}
+        <p className="fine">Free. No card. We only use it to save your names.</p>
       </div>
     </div>
   );
