@@ -2642,7 +2642,7 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
       )}
       {loading ? (
         <>
-          <p className="lbl mono"><span>{reacting} ↓</span><span>about 3 s</span></p>
+          <p className="lbl mono"><span>{reacting} ↓</span><span>about 10 s</span></p>
           <div className="grid">{Array.from({ length: 6 }, (_, i) => <span key={i} className="blk skel" />)}</div>
           {others.length > 0 && <p className="lbl mono">Earlier</p>}
           <div className="grid">{others.map((n) => card(n))}</div>

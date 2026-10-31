@@ -41,6 +41,12 @@ interface Flow {
   logo: boolean;                  // picked a logo → the free brand snapshot (P·1)
   paywall: boolean;               // saw P·2 Unlock (handoff 19)
   unlock: boolean;                // tapped Unlock (paywall, locked page or account)
+  saved: boolean;                 // saved the name at 05 (with a domain or "pick later")
+  later: boolean;                 // saved it with "Pick a domain later"
+  teaser: boolean;                // tapped the €29 kit teaser on "{Name} is yours"
+  autoWords: boolean;             // continued from Words with nothing starred
+  reactions: number;              // names reaction-strip taps
+  reactFails: number;             // reaction rounds that failed
   price: number;                  // the €29/39/49 variant this person saw
   why: string;                    // P·6 "why not now?" answer
   source: string; campaign: string; content: string; term: string; device: string; lang: string; country: string;
@@ -63,7 +69,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "", dive: false, buy: false,
-      logo: false, paywall: false, unlock: false, price: 0, why: "",
+      logo: false, paywall: false, unlock: false, price: 0, why: "", saved: false, later: false, teaser: false, autoWords: false, reactions: 0, reactFails: 0,
       source: "", campaign: "", content: "", term: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     // pass 1: identity + content (the email can arrive on any event)
@@ -97,6 +103,12 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "paywall_seen") { f.paywall = true; f.price = Number(p.price) || f.price; }
       if (e.phase === "unlock_clicked") { f.unlock = true; f.price = Number(p.price) || f.price; }
       if (e.phase === "why_not" && p.reason) f.why = String(p.reason);
+      if (e.phase === "claim_saved") { f.saved = true; if (!p.domain) f.later = true; }
+      if (e.phase === "domain" || (e.phase === "page" && String(p.to || "") === "reveal")) f.saved = true;
+      if (e.phase === "kit_teaser_tap") f.teaser = true;
+      if (e.phase === "words_continue" && p.mode === "auto") f.autoWords = true;
+      if (e.phase === "names_reaction") f.reactions++;
+      if (e.phase === "names_reaction_result" && p.failed) f.reactFails++;
       if (e.phase === "wrapnames") {
         const names = (e.output?.names || []).map((n: any) => n?.name).filter(Boolean);
         if (names.length) f.shortlist = names.slice(0, 3);
@@ -155,6 +167,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (o.brief.length > main.brief.length) main.brief = o.brief;
       main.uname ||= o.uname; main.name ||= o.name; main.domain ||= o.domain; main.buy ||= o.buy; main.dive ||= o.dive;
       main.logo ||= o.logo; main.paywall ||= o.paywall; main.unlock ||= o.unlock; main.price ||= o.price; main.why ||= o.why;
+      main.saved ||= o.saved; main.later ||= o.later; main.teaser ||= o.teaser; main.autoWords ||= o.autoWords; main.reactions += o.reactions; main.reactFails += o.reactFails;
       main.source ||= o.source; main.campaign ||= o.campaign; main.content ||= o.content; main.term ||= o.term;
       main.device ||= o.device; main.lang ||= o.lang; main.country ||= o.country;
       main.feedback ||= o.feedback;
@@ -485,6 +498,7 @@ export function AdminPage() {
                 </div>
                 {selFlow.brief && <><p className="lbl">Brief</p><p className="val">“{selFlow.brief}”</p></>}
                 {selFlow.feedback && <><p className="lbl">Feedback</p><p className="val">{selFlow.feedback}</p></>}
+                {selFlow.later && !selFlow.domain && <><p className="lbl">Domain</p><p className="val">Pick later (saved the name without one)</p></>}
                 {selFlow.paywall && <><p className="lbl">Paywall · €{selFlow.price || "?"}</p><p className="val">{selFlow.unlock ? "Unlocked (early access)" : "Kept the free preview"}{selFlow.why ? ` — why not: ${selFlow.why}` : ""}</p></>}
                 {(selFlow.name || selFlow.domain) && <><p className="lbl">Name &amp; domain</p><p className="val"><b>{selFlow.name || "—"}</b>{selFlow.domain && <span className="mono"> · {selFlow.domain}</span>}</p></>}
                 {!!selFlow.words.length && <><p className="lbl">Starred words</p><p className="val dim">{selFlow.words.join(" · ")}</p></>}
@@ -616,7 +630,7 @@ const CHANNELS: [string, string][] = [
   ["Organic search", "#12A36B"], ["Referral", "#F59E0B"], ["Product Hunt", "#DA552F"], ["Newsletter", "#8B5CF6"], ["Direct", "#6A6A6A"],
 ];
 const PAID = new Set(["Google Ads", "Meta Ads", "LinkedIn Ads"]);
-type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; chose: number; brand: number; paywall: number; unlock: number; buy: number };
+type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; saved: number; chose: number; brand: number; teaser: number; paywall: number; unlock: number; buy: number };
 // `base`: the row a step % divides by, when it isn't the row above.
 const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean; base?: keyof WeekMet }[] = [
   { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
@@ -626,9 +640,11 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste (step % of Sign-ups: the deep-dive is optional)", base: "signed" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
-  { k: "chose", t: "Chose its domain", s: "Chose domain", d: "tapped Choose — name + domain kept" },
-  { k: "brand", t: "Brand done", s: "Brand done", d: "picked a logo, saw the free brand snapshot" },
-  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29)" },
+  { k: "saved", t: "Saved the name", s: "Saved", d: "saved it at 05, with a domain or “pick a domain later”" },
+  { k: "chose", t: "…with a domain", s: "+ domain", d: "saved it WITH a domain (step % of Saved)", base: "saved" },
+  { k: "brand", t: "Brand done", s: "Brand done", d: "picked a logo, saw the free brand snapshot (step % of Saved)", base: "saved" },
+  { k: "teaser", t: "Kit teaser tapped", s: "Teaser", d: "tapped the €29 kit on “{Name} is yours” (step % of Saved)", base: "saved" },
+  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29), after the brand or from the teaser (step % of Saved)", base: "saved" },
   { k: "unlock", t: "Unlock clicked", s: "Unlock", d: "tapped Unlock: the number this test measures" },
   { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of “Chose its domain”)", base: "chose" },
 ];
@@ -699,6 +715,42 @@ function PaywallTest({ flows, chan }: { flows: Flow[]; chan: string }) {
   );
 }
 
+/* ── Round-2 signals (last 30 days): how the new Words, Names and teaser get used ── */
+function Signals({ flows, chan }: { flows: Flow[]; chan: string }) {
+  const since = Date.now() - 30 * 864e5;
+  const fl = flows.filter((f) => f.first >= since && f.email && (chan === "All channels" || f.source === chan));
+  const toNames = fl.filter((f) => f.step >= 5);
+  const auto = toNames.filter((f) => f.autoWords).length;
+  const react = fl.filter((f) => f.reactions > 0);
+  const taps = fl.reduce((a, f) => a + f.reactions, 0), fails = fl.reduce((a, f) => a + f.reactFails, 0);
+  const saved = fl.filter((f) => f.saved || f.domain);
+  const later = saved.filter((f) => f.later).length;
+  const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) + "%" : "—");
+  const rows: [string, string, string][] = [
+    ["Words skipped", `${auto} of ${toNames.length}`, `${pct(auto, toNames.length)} reached names with nothing starred`],
+    ["Names reactions", `${taps} taps · ${react.length} people`, fails ? `${fails} failed rounds` : "no failed rounds"],
+    ["Saved, domain later", `${later} of ${saved.length}`, `${pct(later, saved.length)} saved the name without a domain`],
+    ["Kit teaser", `${fl.filter((f) => f.teaser).length} taps`, `→ ${fl.filter((f) => f.teaser && f.unlock).length} unlocked`],
+  ];
+  return (
+    <div className="paytest">
+      <div className="anahead">
+        <h2>New-flow signals</h2>
+        <span className="mono sub">{chan} · last 30 days · signed-up flows</span>
+      </div>
+      <div className="anascroll">
+        <table className="anatbl pt">
+          <tbody>
+            {rows.map(([k, v, d]) => (
+              <tr key={k}><td className="stp"><b>{k}</b></td><td className="mono n">{v}</td><td className="dim">{d}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ── Which ad groups / keywords bring founders who get to a name (last 30 days) ── */
 function Breakdown({ flows, chan, by, title, empty }: { flows: Flow[]; chan: string; by: "content" | "term"; title: string; empty: string }) {
   const since = Date.now() - 30 * 864e5;
@@ -765,8 +817,10 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       swiped: fl.filter((f) => f.email && f.step >= 3).length,
       words: fl.filter((f) => f.email && f.step >= 5).length,
       name: fl.filter((f) => f.email && f.step >= 6).length,
+      saved: fl.filter((f) => f.email && (f.saved || !!f.domain)).length,
       chose: fl.filter((f) => f.email && !!f.domain).length,
       brand: fl.filter((f) => f.email && (f.logo || f.step >= 8)).length,
+      teaser: fl.filter((f) => f.teaser).length,
       paywall: fl.filter((f) => f.paywall).length,
       unlock: fl.filter((f) => f.unlock).length,
       buy: fl.filter((f) => f.buy).length,
@@ -872,6 +926,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         </table>
       </div>
       <p className="ananote mono">{loading ? "Loading the log…" : `# people who reached the step · €/# that ${gran}’s spend ÷ # · Step = % of the step above · Total = % of clicks · ▲▼ points vs the ${gran} before`}</p>
+      <Signals flows={flows} chan={chan} />
       <PaywallTest flows={flows} chan={chan} />
       <Breakdown flows={flows} chan={chan} by="content" title="By ad group" empty="no ad group tag" />
       <Breakdown flows={flows} chan={chan} by="term" title="By keyword" empty="no keyword yet" />
