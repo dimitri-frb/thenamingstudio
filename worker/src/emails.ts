@@ -62,6 +62,13 @@ function textOf(html: string): string {
     .replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*(\n\s*)+/g, "\n\n").trim();
 }
 
+// A 1×1 open pixel (admin v2 · Emails): GET /o logs "mail_open" for this
+// email + flow. Opens are approximate (Apple Mail pre-loads images).
+function withPixel(html: string, kind: string, flowId: string): string {
+  const img = `<img src="${API}/o?k=${encodeURIComponent(kind)}&f=${encodeURIComponent(flowId || "")}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;opacity:0">`;
+  return html.includes("</body>") ? html.replace("</body>", img + "</body>") : html + img;
+}
+
 async function deliver(env: EmailEnv, to: string, subject: string, html: string, headers?: Record<string, string>): Promise<boolean> {
   if (!env.EMAIL) return false;
   try {
@@ -74,7 +81,7 @@ async function deliver(env: EmailEnv, to: string, subject: string, html: string,
 }
 
 /* ── W · welcome, instantly at sign-up ── */
-export async function sendWelcome(env: EmailEnv, to: string, name: string, brief: string): Promise<void> {
+export async function sendWelcome(env: EmailEnv, to: string, name: string, brief: string, flowId = ""): Promise<boolean> {
   const project = projectPhrase(brief);
   const html = merge(T.W, {
     ...common(env),
@@ -82,7 +89,7 @@ export async function sendWelcome(env: EmailEnv, to: string, name: string, brief
     project: esc(project),
     cta_url: `${SITE}/account?utm_source=email&utm_campaign=w`,
   });
-  await deliver(env, to, `Let’s find the perfect name for your ${project}`, html);
+  return deliver(env, to, `Let’s find the perfect name for your ${project}`, withPixel(html, "W", flowId));
 }
 
 /* ── the stop email, one per flow, matched to the furthest step ── */
@@ -141,7 +148,7 @@ export async function sendStop(
     if (!words.length) return null; // nothing honest to show — skip rather than fake it
     const total = Math.max(words.length, c.cloud?.length || 0);
     const html = merge(T.S1, { ...base, word_count: String(total), word_cloud: wordCloud(words, total), cta_url: resume() });
-    return (await deliver(env, c.email, `${total} words are waiting for you`, html, LU)) ? "S1" : null;
+    return (await deliver(env, c.email, `${total} words are waiting for you`, withPixel(html, "S1", c.flowId), LU)) ? "S1" : null;
   }
 
   if (stage === "S2") {
@@ -158,7 +165,7 @@ export async function sendStop(
       names_more: String(Math.max(0, names.length - 1)), alt_more: String(Math.max(0, names.length - 3)),
       cta_url: resume(),
     });
-    return (await deliver(env, c.email, `${top.name} and ${Math.max(1, names.length - 1)} more names are waiting`, html, LU)) ? "S2" : null;
+    return (await deliver(env, c.email, `${top.name} and ${Math.max(1, names.length - 1)} more names are waiting`, withPixel(html, "S2", c.flowId), LU)) ? "S2" : null;
   }
 
   if (stage === "S3") {
@@ -171,12 +178,12 @@ export async function sendStop(
       domain_price: esc(dom.price || c.domPrice || ""), checked_at: checked,
       cta_url: resume(),
     });
-    return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, html, LU)) ? "S3" : null;
+    return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, withPixel(html, "S3", c.flowId), LU)) ? "S3" : null;
   }
 
   // S4
   const html = merge(T.S4, { ...base, picked_name: esc(c.picked?.name || c.names?.[0]?.name || "Your name"), cta_url: resume("logo") });
-  return (await deliver(env, c.email, `${c.picked?.name || "Your name"} needs a face`, html, LU)) ? "S4" : null;
+  return (await deliver(env, c.email, `${c.picked?.name || "Your name"} needs a face`, withPixel(html, "S4", c.flowId), LU)) ? "S4" : null;
 }
 
 /* ── the unsubscribe door (GET /unsub?u=&k=) ── */

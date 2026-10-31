@@ -4,7 +4,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import "./wrapped.css";
 import { ENDPOINT, adminRoles, loadSession, roleSet, saveSession } from "./api";
-import { AvatarMenu, SettingsPane } from "./paper";
+import { AvatarMenu } from "./paper";
 import { download } from "./zip";
 
 interface LogItem { id: string; at: number; process?: string; phase: string; input?: any; output?: any }
@@ -203,51 +203,96 @@ const spent = (f: Flow) => {
 };
 const fdate = (t: number) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-// "today"/"yday" are calendar days in the admin's own timezone; a string is a
-// picked date ("YYYY-MM-DD"); numbers are rolling windows; 0 is everything.
-type Range = "today" | "yday" | 7 | 30 | 0 | string;
+/* ════════ Admin v2 (handoff admin-v2): Overview · People · Analysis · Feedback · Emails ════════ */
+type Tab = "overview" | "people" | "analysis" | "feedback" | "emails";
+const TABS: [Tab, string][] = [["overview", "Overview"], ["people", "People"], ["analysis", "Analysis"], ["feedback", "Feedback"], ["emails", "Emails"]];
+type RangeSel = { kind: "7" | "30" | "all" | "custom"; from?: number; to?: number };
+const DAY = 864e5;
+const dayStart = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const ymd = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const dmon = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const LAUNCH = new Date("2026-10-14T00:00:00").getTime(); // ads + tracking start
+const W_LAUNCH = new Date("2026-10-21T22:04:00+02:00").getTime(); // lifecycle emails live
+const TRACK_AT = new Date("2026-11-01T00:00:00+01:00").getTime(); // open pixel + email_back live
+
+interface Update { id: string; title: string; date: string; step: string; note?: string }
+const SEED_UPDATES: Update[] = [
+  { id: "u1", date: "2026-10-16", title: "Funnel fixes: names, swipe, registrar unnamed", step: "04 · Names" },
+  { id: "u2", date: "2026-10-21", title: "Gate after the brief + lifecycle emails", step: "Gate · Emails" },
+  { id: "u3", date: "2026-10-22", title: "Name picker: our pick by default", step: "04 · Names" },
+  { id: "u4", date: "2026-10-22", title: "Brand paywall “You’re early”", step: "P·2" },
+  { id: "u5", date: "2026-10-30", title: "€29 for everyone + claim never blocks", step: "05 · Claim" },
+  { id: "u6", date: "2026-10-30", title: "Words always active, kit teaser, paywall v2", step: "03 · 05·k · P·2" },
+  { id: "u7", date: "2026-10-31", title: "Name picker without the strip", step: "04 · Names" },
+  { id: "u8", date: "2026-10-31", title: "Domain page leads with a free domain", step: "05 · Claim" },
+];
+
+// The numbers every view shares, for one window.
+interface Stats { briefs: number; signed: number; words: number; names: number; chosen: number; brand: number; paywall: number; unlock: number; spend: number }
+function statsFor(flows: Flow[], gated: number[], ads: AdsDay[] | null, from: number, to: number, chan?: string): Stats {
+  const fl = flows.filter((f) => f.first >= from && f.first < to && (!chan || (f.source || "Direct") === chan));
+  const s = fl.filter((f) => f.email);
+  let spend = 0;
+  const a = ymd(from), b = ymd(to - 1);
+  for (const d of ads || []) if (d.date >= a && d.date <= b) for (const r of d.rows || []) if (!chan || r.channel === chan) spend += r.cost || 0;
+  return {
+    briefs: fl.filter((f) => f.brief || f.step >= 1).length + (chan ? 0 : gated.filter((t) => t >= from && t < to).length),
+    signed: s.length,
+    words: s.filter((f) => f.step >= 4).length,
+    names: s.filter((f) => f.step >= 5).length,
+    chosen: s.filter((f) => f.step >= 6).length,
+    brand: s.filter((f) => f.logo || f.step >= 7).length,
+    paywall: fl.filter((f) => f.paywall).length,
+    unlock: fl.filter((f) => f.unlock).length,
+    spend,
+  };
+}
+
+// "▲ 18%" vs the previous window of the same length; cost going down is good.
+function Trend({ cur, was, costly, na }: { cur: number; was: number; costly?: boolean; na?: boolean }) {
+  if (na) return <em className="tr flat" title="The previous period starts before launch (14 Oct)">— vs before launch</em>;
+  if (!isFinite(cur) || !isFinite(was)) return <em className="tr flat">—</em>;
+  if (!was) return <em className="tr flat">{cur ? "new" : "—"}</em>;
+  const pct = Math.round(((cur - was) / was) * 100);
+  if (pct === 0) return <em className="tr flat">= 0%</em>;
+  const good = costly ? pct < 0 : pct > 0;
+  return <em className={"tr " + (good ? "up" : "down")}>{pct > 0 ? "▲" : "▼"} {Math.abs(pct)}%</em>;
+}
+const eur0 = (v: number) => (isFinite(v) && v > 0 ? "€" + (v >= 100 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v >= 10 ? 0 : 2)) : "—");
 
 export function AdminPage() {
   const me = loadSession()?.user || (new URLSearchParams(window.location.search).has("demo") ? { name: "Dimitri Farber", email: "dimitri@dfginvest.fr" } as any : null);
   const [items, setItems] = useState<LogItem[] | null>(null);
   const [err, setErr] = useState("");
-  const [q, setQ] = useState("");
-  const [range, setRange] = useState<Range>(7);
-  const [tab, setTab] = useState<"all" | "live" | "stopped" | "done">("all");
-  const [stopAt, setStopAt] = useState<number | null>(null);
-  const [fSource, setFSource] = useState("");
-  const [fCountry, setFCountry] = useState("");
-  const [fDevice, setFDevice] = useState("");
-  const [fName, setFName] = useState("");
-  const [fDomain, setFDomain] = useState("");
-  const [sel, setSel] = useState<string | null>(null);
-  const [settings, setSettings] = useState(false);
-  const [view, setView] = useState<"flows" | "users" | "analysis" | "feedback">(
-    window.location.pathname.includes("/admin/users") ? "users" :
-    window.location.pathname.includes("/admin/analysis") ? "analysis" :
-    window.location.pathname.includes("/admin/feedback") ? "feedback" : "flows");
   const [ads, setAds] = useState<AdsDay[] | null>(null);
   const [roles, setRoles] = useState<{ owners: string[]; admins: string[] } | null>(null);
-  const [selUser, setSelUser] = useState<string | null>(null);
-  const [uTab, setUTab] = useState<"all" | "new" | "named" | "admins">("all");
-
+  const [updates, setUpdates] = useState<Update[] | null>(null);
+  const [mailStats, setMailStats] = useState<{ unsubscribed: number } | null>(null);
+  const pathTab = ((window.location.pathname.match(/\/admin\/(\w+)/)?.[1] || "").replace("users", "people")) as Tab;
+  const [tab, setTabState] = useState<Tab>(TABS.some(([t]) => t === pathTab) ? pathTab : "overview");
+  const [range, setRange] = useState<RangeSel>({ kind: "30" });
+  const [selPerson, setSelPerson] = useState<string | null>(null);
   const BASE = () => (import.meta as any).env.BASE_URL || "/";
-
   const demo = new URLSearchParams(window.location.search).has("demo");
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    try { window.history.replaceState(null, "", BASE() + "admin" + (t === "overview" ? "" : "/" + t) + window.location.search); } catch { /* ignore */ }
+  };
+  const call = (body: Record<string, unknown>) => fetch(ENDPOINT, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...body, token: loadSession()?.token || "" }),
+  }).then((r) => r.json());
+
   useEffect(() => {
-    if (demo) { setItems(DEMO_ITEMS); setAds(DEMO_ADS); return; }
+    if (demo) { setItems(DEMO_ITEMS); setAds(DEMO_ADS); setUpdates(SEED_UPDATES); setMailStats({ unsubscribed: 2 }); return; }
     // The log keeps the whole history and one call may only touch ~900 keys:
     // page through with the cursor, painting as the pages land (newest first).
     let dead = false;
     (async () => {
       const all: LogItem[] = [];
       let cursor: string | undefined;
-      for (let i = 0; i < 30 && !dead; i++) {
-        const d = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ phase: "adminlog", token: loadSession()?.token || "", limit: 900, cursor }),
-        }).then((r) => r.json());
+      for (let i = 0; i < 40 && !dead; i++) {
+        const d = await call({ phase: "adminlog", limit: 900, cursor });
         if (dead) return;
         if (d.error) { setErr(String(d.error)); return; }
         all.push(...(d.items || []));
@@ -256,14 +301,12 @@ export function AdminPage() {
         cursor = d.cursor;
       }
     })().catch((e) => { if (!dead) setErr(String(e)); });
-    fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phase: "adminads", token: loadSession()?.token || "" }),
-    }).then((r) => r.json()).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => a.date < b.date ? 1 : -1)); }).catch(() => {});
+    call({ phase: "adminads" }).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => (a.date < b.date ? 1 : -1))); }).catch(() => {});
+    call({ phase: "admin-updates" }).then((d) => { if (!dead) setUpdates(Array.isArray(d?.list) && d.list.length ? d.list : SEED_UPDATES); }).catch(() => setUpdates(SEED_UPDATES));
+    call({ phase: "adminmail" }).then((d) => { if (!dead && !d.error) setMailStats(d); }).catch(() => {});
     return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   useEffect(() => { if (!demo) adminRoles().then((r) => { if (r && (r as any).owners) setRoles(r as any); }); else setRoles({ owners: ["dimitri@dfginvest.fr"], admins: [] }); }, [demo]);
 
   const built = useMemo(() => (items ? buildFlows(items) : { flows: [], gated: [] }), [items]);
@@ -271,64 +314,19 @@ export function AdminPage() {
   const team = useMemo(() => new Set([...(roles?.owners || []), ...(roles?.admins || [])].map((e) => e.toLowerCase())), [roles]);
   const flows = useMemo(() => built.flows.filter((f) =>
     f.source !== "Probe" && !/curl|bot|headless/i.test(f.device) && !(demo ? false : team.has(f.email.toLowerCase()))), [built, team, demo]);
+  const firstAt = useMemo(() => Math.max(LAUNCH - 20 * DAY, Math.min(Date.now(), ...flows.map((f) => f.first))), [flows]);
   const [from, to] = ((): [number, number] => {
     const now = Date.now();
-    const d0 = new Date(); d0.setHours(0, 0, 0, 0);
-    const t0 = d0.getTime();
-    if (range === "today") return [t0, now];
-    if (range === "yday") return [t0 - 86400000, t0];
-    if (range === 0) return [0, now];
-    if (typeof range === "number") return [now - range * 86400000, now];
-    const d = new Date(range + "T00:00:00"); // a picked calendar day
-    const s = isNaN(d.getTime()) ? t0 : d.getTime();
-    return [s, s + 86400000];
+    if (range.kind === "7") return [now - 7 * DAY, now];
+    if (range.kind === "30") return [now - 30 * DAY, now];
+    if (range.kind === "all") return [dayStart(firstAt), now];
+    return [range.from!, Math.min(now, range.to!)];
   })();
-  const inRange = flows.filter((f) => f.last >= from && f.last < to);
-  const gatedN = built.gated.filter((t) => t >= from && t < to).length;
-
-  const kStarted = inRange.length;
-  const kNamed = inRange.filter((f) => f.name).length;
-  const kDomain = inRange.filter((f) => f.domain).length;
-  const kDone = inRange.filter((f) => f.status === "done").length;
-
-  // drop-off: how many reached each step
-  const reach = STEPS.map((_, i) => inRange.filter((f) => f.step >= i).length);
-  const stoppedAt = STEPS.map((_, i) => inRange.filter((f) => f.step === i && f.status !== "live").length);
-
-  const sources = Array.from(new Set(inRange.map((f) => f.source).filter(Boolean)));
-  const countries = Array.from(new Set(inRange.map((f) => f.country).filter(Boolean)));
-
-  const anyFilter = !!(stopAt !== null || fSource || fCountry || fDevice || fName || fDomain || tab !== "all" || q);
-  const searching = !!q.trim();
-  const shown = (searching ? flows : inRange).filter((f) => {
-    if (tab !== "all" && f.status !== tab) return false;
-    if (stopAt !== null && f.step !== stopAt) return false;
-    if (fSource && f.source !== fSource) return false;
-    if (fCountry && f.country !== fCountry) return false;
-    if (fDevice === "mobile" && !/iPhone|Android|iPad/.test(f.device)) return false;
-    if (fDevice === "desktop" && /iPhone|Android|iPad/.test(f.device)) return false;
-    if (fName === "has" && !f.name) return false;
-    if (fName === "none" && f.name) return false;
-    if (fDomain === "claimed" && !f.domain) return false;
-    if (fDomain === "none" && f.domain) return false;
-    if (!hit(q, [f.email, f.uname, f.brief, f.name, f.domain, ...f.shortlist])) return false;
-    return true;
-  });
-  const selFlow = shown.find((f) => f.id === sel) || flows.find((f) => f.id === sel) || null;
-
-  function clearAll() { setTab("all"); setStopAt(null); setFSource(""); setFCountry(""); setFDevice(""); setFName(""); setFDomain(""); setQ(""); }
-
-  function exportCsv() {
-    const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
-    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,keyword,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
-    const yn = (b: boolean) => (b ? "1" : "0");
-    const lines = shown.map((f) => [
-      esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/10)`), f.status,
-      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), esc(f.term), f.country, esc(f.device), f.lang,
-      new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
-      yn(f.dive), yn(f.logo), yn(f.paywall), f.price || "", yn(f.unlock), esc(f.why), yn(f.buy), esc(f.feedback),
-    ].join(","));
-    download(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }), `namename-flows-${new Date().toISOString().slice(0, 10)}.csv`);
+  const len = Math.max(DAY, to - from);
+  const sortedUpdates = useMemo(() => [...(updates || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)), [updates]);
+  async function saveUpdates(list: Update[]) {
+    setUpdates(list);
+    if (!demo) await call({ phase: "admin-updates", list }).catch(() => {});
   }
 
   if (!me && !demo) {
@@ -351,274 +349,489 @@ export function AdminPage() {
   }
 
   return (
-    <div className="kadm">
-      {/* top bar */}
-      <div className="bar">
+    <div className="kadm kv2">
+      <div className="v2bar">
         <span className="brand"><span className="bt">NAME NAME</span><em>Admin</em></span>
-        <input className="search" placeholder="Search email, name, brief, final name…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <span className="ranges">
-          {([["Today", "today"], ["Yesterday", "yday"], ["7d", 7], ["30d", 30], ["All", 0]] as const).map(([l, v]) => (
-            <button key={l} className={range === v ? "on" : ""} onClick={() => setRange(v as Range)}>{l}</button>
-          ))}
-          <input
-            type="date" className={"day" + (typeof range === "string" && range !== "today" && range !== "yday" ? " on" : "")}
-            value={typeof range === "string" && range !== "today" && range !== "yday" ? range : ""}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => e.target.value && setRange(e.target.value)}
-            title="Pick a day"
-          />
-        </span>
-        <button className="csv" onClick={exportCsv}>↓ CSV</button>
+        <nav className="v2tabs">
+          {TABS.map(([t, l]) => <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{l}</button>)}
+        </nav>
+        <RangeControl range={range} setRange={setRange} from={from} to={to} firstAt={firstAt} />
         <AvatarMenu me={me} isAdmin current="admin" onLogout={() => { saveSession(null); window.location.assign(BASE()); }} />
       </div>
-      <div className="viewrow">
-        <span className="seg">
-          {(["flows", "users", "analysis", "feedback"] as const).map((v) => (
-            <button key={v} className={view === v && !settings ? "on" : ""} onClick={() => { setView(v); setSettings(false); }}>{v[0].toUpperCase() + v.slice(1)}</button>
-          ))}
-        </span>
-        <button className={"seglink" + (settings ? " on" : "")} onClick={() => setSettings((x) => !x)}>Settings</button>
-      </div>
+      {tab === "overview" && (
+        <Overview flows={flows} gated={built.gated} ads={ads} from={from} to={to} len={len} updates={sortedUpdates}
+          onSave={saveUpdates} loading={!items} />
+      )}
+      {tab === "people" && (
+        <People flows={flows} items={items || []} from={from} to={to} sel={selPerson} setSel={setSelPerson} roles={roles}
+          onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }}
+          loading={!items} />
+      )}
+      {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!items} />}
+      {tab === "feedback" && (
+        <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items} q=""
+          onOpenFlow={(id) => { setRange({ kind: "all" }); setSelPerson(id); setTab("people"); }} />
+      )}
+      {tab === "emails" && <Emails items={items || []} flows={flows} from={from} to={to} len={len} unsub={mailStats?.unsubscribed ?? null} loading={!items} />}
+    </div>
+  );
+}
 
-      {settings ? (
-        <div className="wrap">
-          <SettingsPane me={me} />
-          <div className="panelcard">
-            <p className="lbl">Team &amp; roles</p>
-            {(roles?.owners || []).map((e) => <p key={e}><span className="mono">{e}</span> — Owner</p>)}
-            {(roles?.admins || []).map((e) => <p key={e}><span className="mono">{e}</span> — Admin <button className="rolerm" onClick={async () => { if (await roleSet(e, "user")) setRoles((r) => r && { ...r, admins: r.admins.filter((x) => x !== e) }); }}>remove</button></p>)}
-            <p className="hint">Grant the admin role from the Users tab; owners come from the Worker's ADMIN_EMAILS.</p>
-          </div>
-        </div>
-      ) : view === "users" ? (
-        <UsersView flows={q.trim() ? flows : inRange} roles={roles} q={q} tab={uTab} setTab={setUTab} sel={selUser} setSel={setSelUser} onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }} />
-      ) : view === "analysis" ? (
-        <AnalysisView flows={flows} ads={ads} loading={!items} />
-      ) : view === "feedback" ? (
-        <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items} q={q}
-          onOpenFlow={(id) => { setRange(0); setSel(id); setView("flows"); }} />
-      ) : (
-        <div className="wrap">
-          {/* KPIs */}
-          <div className="kpis">
-            {([["Flows started", kStarted], ["Reached a name", kNamed], ["Completed", kDone], ["Domain claimed", kDomain]] as const).map(([l, v]) => (
-              <div key={l} className="kpi"><b>{v}</b><span>{l}</span></div>
-            ))}
-          </div>
-
-          {/* drop-off chart */}
-          <div className="funnel">
-            {STEPS.map((st, i) => {
-              const max = Math.max(1, ...reach);
-              // conversion into this step: what share of the previous step's people made it here
-              const conv = i > 0 && reach[i - 1] ? Math.round((reach[i] / reach[i - 1]) * 100) : null;
-              // drop-off as a share of the people who started THIS step
-              const stopPct = reach[i] ? Math.round((stoppedAt[i] / reach[i]) * 100) : 0;
-              return (
-                <Fragment key={st}>
-                  {i > 0 && <span className="fconv mono" title={`${reach[i - 1]} → ${reach[i]}`}>{conv === null ? "" : `${conv}%`}</span>}
-                  <button className={"fb" + (stopAt === i ? " on" : "")} onClick={() => setStopAt(stopAt === i ? null : i)} title={`${reach[i]} reached · ${stoppedAt[i]} stopped here`}>
-                    <i style={{ height: `${Math.max(4, (reach[i] / max) * 72)}px` }} />
-                    <b>{reach[i]}</b>
-                    <span>{st}</span>
-                    <em>{stoppedAt[i] && i < STEPS.length - 1 ? `−${stopPct}% stopped` : " "}</em>
-                  </button>
-                </Fragment>
-              );
-            })}
-          </div>
-          {gatedN > 0 && <p className="gatenote mono">+ {gatedN} typed a brief and left at the sign-up gate</p>}
-          {searching && <p className="gatenote mono">Searching all dates · {shown.length} match{shown.length === 1 ? "" : "es"}</p>}
-
-          {/* toolbar */}
-          <div className="toolbar">
-            <span className="flabel">Filter</span>
-            <span className="tabs">
-              {([["All", "all", inRange.length], ["Live now", "live", inRange.filter((f) => f.status === "live").length], ["Stopped", "stopped", inRange.filter((f) => f.status === "stopped").length], ["Completed", "done", kDone]] as const).map(([l, v, n]) => (
-                <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v as any)}>{l} <i>{n}</i></button>
-              ))}
-            </span>
-            <select className={fSource ? "on" : ""} value={fSource} onChange={(e) => setFSource(e.target.value)}>
-              <option value="">Source</option>
-              {sources.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select className={fCountry ? "on" : ""} value={fCountry} onChange={(e) => setFCountry(e.target.value)}>
-              <option value="">Country</option>
-              {countries.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select className={fDevice ? "on" : ""} value={fDevice} onChange={(e) => setFDevice(e.target.value)}>
-              <option value="">Device</option><option value="mobile">Mobile</option><option value="desktop">Desktop</option>
-            </select>
-            <select className={fName ? "on" : ""} value={fName} onChange={(e) => setFName(e.target.value)}>
-              <option value="">Name</option><option value="has">Has a name</option><option value="none">No name</option>
-            </select>
-            <select className={fDomain ? "on" : ""} value={fDomain} onChange={(e) => setFDomain(e.target.value)}>
-              <option value="">Domain</option><option value="claimed">Claimed</option><option value="none">None</option>
-            </select>
-            {anyFilter && <button className="clear" onClick={clearAll}>Clear</button>}
-          </div>
-
-          {/* table + panel */}
-          <div className="split">
-            <div className="tbl">
-              {!items && <p className="hint">Loading the log…</p>}
-              {items && !shown.length && <p className="hint">No flows match.</p>}
-              {shown.map((f) => (
-                <button key={f.id} className={"row" + (sel === f.id ? " on" : "")} onClick={() => setSel(sel === f.id ? null : f.id)}>
-                  <span className="user">
-                    <i className="av">{(f.uname || f.email || "?")[0].toUpperCase()}</i>
-                    <span><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "—"}</em></span>
-                  </span>
-                  <span className="brief">{f.brief || "—"}</span>
-                  <span className="stop">
-                    <b className={f.status === "live" ? "live" : ""}>{STEPS[f.step]}</b>
-                    <em>{f.step + 1}/11</em>
-                    <span className="segs">{STEPS.map((_, i) => <i key={i} className={i < f.step ? "d" : i === f.step ? "c" : ""} />)}</span>
-                  </span>
-                  <span className="nm">{f.name ? <b>{f.name}</b> : <em>{f.shortlist.join(", ") || "—"}</em>}</span>
-                  <span className="dom mono">{f.domain || "—"}</span>
-                  <span className="act">
-                    <b>{f.status === "live" ? "● live now" : ago(f.last)}</b>
-                    {f.source && <em>{f.source}</em>}
-                  </span>
-                </button>
-              ))}
+/* ── the one date range: 7d · 30d · All · Custom (O·d·cal); a bottom sheet on phones ── */
+function RangeControl({ range, setRange, from, to, firstAt }: { range: RangeSel; setRange: (r: RangeSel) => void; from: number; to: number; firstAt: number }) {
+  const [open, setOpen] = useState(false);
+  const [a, setA] = useState<number>(dayStart(from));
+  const [b, setB] = useState<number>(dayStart(to));
+  const [month, setMonth] = useState<number>(() => { const d = new Date(to); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); });
+  const [picking, setPicking] = useState<"a" | "b">("a");
+  const openIt = () => { setA(dayStart(from)); setB(dayStart(to)); setPicking("a"); const d = new Date(to); setMonth(new Date(d.getFullYear(), d.getMonth(), 1).getTime()); setOpen(true); };
+  const label = range.kind === "custom" ? `${dmon(from)} – ${dmon(to - 1)}` : range.kind === "all" ? "All" : range.kind + "d";
+  const today = dayStart(Date.now());
+  const quick: [string, number, number][] = [
+    ["Today", today, today], ["Yesterday", today - DAY, today - DAY], ["Last 7 days", today - 6 * DAY, today], ["Last 30 days", today - 29 * DAY, today],
+    ["This month", new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(), today], ["Since launch", dayStart(firstAt), today],
+  ];
+  const apply = (x = a, y = b) => { const lo = Math.min(x, y), hi = Math.max(x, y); setRange({ kind: "custom", from: lo, to: hi + DAY }); setOpen(false); };
+  const m = new Date(month);
+  const first = new Date(m.getFullYear(), m.getMonth(), 1);
+  const lead = (first.getDay() + 6) % 7;
+  const days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+  const cells = [...Array(lead).fill(0), ...Array.from({ length: days }, (_, i) => new Date(m.getFullYear(), m.getMonth(), i + 1).getTime())];
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  return (
+    <div className="v2range">
+      <span className="seg">
+        {(["7", "30", "all"] as const).map((k) => <button key={k} className={range.kind === k ? "on" : ""} onClick={() => setRange({ kind: k })}>{k === "all" ? "All" : k + "d"}</button>)}
+        <button className={range.kind === "custom" ? "on" : ""} onClick={openIt}>{range.kind === "custom" ? label : "Custom"} ▾</button>
+      </span>
+      <button className="pill mono" onClick={openIt}>{label} ▾</button>
+      {open && (
+        <>
+          <div className="rshade" onClick={() => setOpen(false)} />
+          <div className="rpop">
+            <div className="rquick">
+              {quick.map(([l, x, y]) => <button key={l} onClick={() => { setA(x); setB(y); apply(x, y); }}>{l}</button>)}
+              <button onClick={() => { setRange({ kind: "all" }); setOpen(false); }}>All time</button>
             </div>
-
-            {selFlow && (
-              <aside className="panel">
-                <button className="x" onClick={() => setSel(null)}>✕</button>
-                <span className={"pill " + selFlow.status}>{selFlow.status === "live" ? "● Live now" : selFlow.status === "done" ? "Completed" : `Stopped at ${STEPS[selFlow.step]}`}</span>
-                <h3>{selFlow.uname || "Anonymous"}</h3>
-                <p className="mono dim">{selFlow.email || "no account yet"}</p>
-                <div className="meta">
-                  {([["Source", selFlow.source || "—"], ["Campaign", selFlow.campaign || "—"], ["Ad group", selFlow.content || "—"], ["Keyword", selFlow.term || "—"], ["Started", fdate(selFlow.first)], ["Last active", ago(selFlow.last)], ["Time spent", spent(selFlow)], ["Sign-up", selFlow.email ? "Google" : "not yet"], ["Device", selFlow.device || "—"], ["Country · lang", `${selFlow.country || "—"} · ${selFlow.lang || "—"}`]] as const).map(([k, v]) => (
-                    <p key={k}><em>{k}</em><span>{v}</span></p>
-                  ))}
-                </div>
-                {selFlow.brief && <><p className="lbl">Brief</p><p className="val">“{selFlow.brief}”</p></>}
-                {selFlow.feedback && <><p className="lbl">Feedback</p><p className="val">{selFlow.feedback}</p></>}
-                {selFlow.later && !selFlow.domain && <><p className="lbl">Domain</p><p className="val">Pick later (saved the name without one)</p></>}
-                {selFlow.paywall && <><p className="lbl">Paywall · €{selFlow.price || "?"}</p><p className="val">{selFlow.unlock ? "Unlocked (early access)" : "Kept the free preview"}{selFlow.why ? ` — why not: ${selFlow.why}` : ""}</p></>}
-                {(selFlow.name || selFlow.domain) && <><p className="lbl">Name &amp; domain</p><p className="val"><b>{selFlow.name || "—"}</b>{selFlow.domain && <span className="mono"> · {selFlow.domain}</span>}</p></>}
-                {!!selFlow.words.length && <><p className="lbl">Starred words</p><p className="val dim">{selFlow.words.join(" · ")}</p></>}
-                {!selFlow.name && !!selFlow.shortlist.length && <><p className="lbl">Shortlist</p><p className="val dim">{selFlow.shortlist.join(" · ")}</p></>}
-                <p className="lbl">Timeline</p>
-                <div className="tl">
-                  {selFlow.timeline.map((t) => <p key={t.step}><span className="mono">{fdate(t.at)}</span><b>{t.step}</b></p>)}
-                </div>
-                {selFlow.email && <a className="mailbtn" href={`mailto:${selFlow.email}?subject=Your name on Name Name`}>Email user</a>}
-              </aside>
-            )}
+            <div className="rcal">
+              <div className="rfromto">
+                <label className={picking === "a" ? "on" : ""} onClick={() => setPicking("a")}><span>From</span><input type="date" value={ymd(lo)} onChange={(e) => e.target.value && setA(new Date(e.target.value + "T00:00:00").getTime())} /></label>
+                <label className={picking === "b" ? "on" : ""} onClick={() => setPicking("b")}><span>To</span><input type="date" value={ymd(hi)} onChange={(e) => e.target.value && setB(new Date(e.target.value + "T00:00:00").getTime())} /></label>
+              </div>
+              <div className="rmonth">
+                <button onClick={() => setMonth(new Date(m.getFullYear(), m.getMonth() - 1, 1).getTime())}>‹</button>
+                <b>{m.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</b>
+                <button onClick={() => setMonth(new Date(m.getFullYear(), m.getMonth() + 1, 1).getTime())}>›</button>
+              </div>
+              <div className="rgrid">
+                {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => <i key={i}>{d}</i>)}
+                {cells.map((t, i) => t ? (
+                  <button key={i} disabled={t > today}
+                    className={(t === lo || t === hi ? "end" : t > lo && t < hi ? "in" : "")}
+                    onClick={() => { if (picking === "a") { setA(t); setB(t); setPicking("b"); } else { setB(t); setPicking("a"); } }}>
+                    {new Date(t).getDate()}
+                  </button>
+                ) : <span key={i} />)}
+              </div>
+              <div className="rfoot">
+                <span className="mono">{Math.round((hi - lo) / DAY) + 1} days</span>
+                <button className="ghost" onClick={() => setOpen(false)}>Cancel</button>
+                <button className="dark" onClick={() => apply()}>Apply</button>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-/* ── Admin · Users: one row per account, aggregated from the flows ── */
-interface AdminUser {
-  email: string; uname: string; first: number; last: number;
-  source: string; country: string; flows: number; names: number; role: "Owner" | "Admin" | "User";
-  theirFlows: Flow[];
-}
-function UsersView({ flows, roles, q, tab, setTab, sel, setSel, onRole }: {
-  flows: Flow[]; roles: { owners: string[]; admins: string[] } | null;
-  q: string;
-  tab: "all" | "new" | "named" | "admins"; setTab: (t: any) => void;
-  sel: string | null; setSel: (s: string | null) => void;
-  onRole: (email: string, role: "admin" | "user") => void;
+/* ── 1 · Overview ── */
+function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }: {
+  flows: Flow[]; gated: number[]; ads: AdsDay[] | null; from: number; to: number; len: number;
+  updates: Update[]; onSave: (l: Update[]) => void; loading: boolean;
 }) {
-  const by = new Map<string, AdminUser>();
-  for (const f of flows) {
-    if (!f.email) continue;
-    const u = by.get(f.email) || { email: f.email, uname: f.uname, first: f.first, last: f.last, source: f.source, country: f.country, flows: 0, names: 0, role: "User" as const, theirFlows: [] };
-    u.uname = u.uname || f.uname;
-    u.first = Math.min(u.first, f.first);
-    u.last = Math.max(u.last, f.last);
-    u.source = u.source || f.source;
-    u.country = u.country || f.country;
-    u.flows += 1;
-    if (f.name) u.names += 1;
-    u.theirFlows.push(f);
-    by.set(f.email, u);
+  const cur = statsFor(flows, gated, ads, from, to);
+  const prev = statsFor(flows, gated, ads, from - len, from);
+  const cpn = cur.chosen ? cur.spend / cur.chosen : NaN, cpnP = prev.chosen ? prev.spend / prev.chosen : NaN;
+  const kpis: [string, number, number, string, boolean?][] = [
+    ["Briefs", cur.briefs, prev.briefs, cur.briefs.toLocaleString("en-US")],
+    ["Sign-ups", cur.signed, prev.signed, cur.signed.toLocaleString("en-US")],
+    ["Names chosen", cur.chosen, prev.chosen, cur.chosen.toLocaleString("en-US")],
+    ["Paywall unlocked", cur.unlock, prev.unlock, String(cur.unlock)],
+  ];
+  // daily series for the chart
+  const days: number[] = [];
+  for (let t = dayStart(Math.max(from, LAUNCH)); t < to; t += DAY) days.push(t); // before 14 Oct: tests only
+  const series = days.map((t) => { const s = statsFor(flows, gated, ads, t, t + DAY); return { t, conv: s.briefs ? (s.chosen / s.briefs) * 100 : NaN, cost: s.chosen ? s.spend / s.chosen : NaN }; });
+  const num = (u: Update) => updates.findIndex((x) => x.id === u.id) + 1;
+  const inRange = updates.filter((u) => { const t = new Date(u.date + "T00:00:00").getTime(); return t >= dayStart(Math.max(from, LAUNCH)) && t < to; });
+  // conversion (Brief → Name chosen), 3 days after vs 3 days before each update
+  const conv3 = (a: number, b: number) => { const s = statsFor(flows, gated, ads, a, b); return s.briefs ? (s.chosen / s.briefs) * 100 : NaN; };
+  const funnel: [string, number][] = [
+    ["Brief typed", cur.briefs], ["Signed up", cur.signed], ["Words", cur.words], ["Names", cur.names],
+    ["Claim", cur.chosen], ["Brand", cur.brand], ["Paywall seen", cur.paywall], ["Unlocked", cur.unlock],
+  ];
+  const steps = funnel.map(([, n], i) => (i === 0 ? NaN : funnel[i - 1][1] ? (n / funnel[i - 1][1]) * 100 : NaN));
+  const drops = steps.map((p, i) => ({ i, p })).filter((x) => x.i > 0 && x.i < 6 && isFinite(x.p) && funnel[x.i - 1][1] >= 5).sort((a, b) => a.p - b.p).slice(0, 2).map((x) => x.i);
+  const chans = new Map<string, { spend: number; signed: number; names: number }>();
+  for (const f of flows) if (f.first >= from && f.first < to) {
+    const k = f.source || "Direct";
+    const c = chans.get(k) || { spend: 0, signed: 0, names: 0 };
+    if (f.email) c.signed++;
+    if (f.email && f.step >= 6) c.names++;
+    chans.set(k, c);
   }
-  const users = Array.from(by.values()).map((u) => ({
-    ...u,
-    role: roles?.owners.includes(u.email.toLowerCase()) ? "Owner" as const : roles?.admins.includes(u.email.toLowerCase()) ? "Admin" as const : "User" as const,
-  })).sort((a, b) => b.last - a.last);
-  const week = Date.now() - 7 * 864e5;
-  const shown = users.filter((u) => {
-    if (tab === "new" && u.first < week) return false;
-    if (tab === "named" && !u.names) return false;
-    if (tab === "admins" && u.role === "User") return false;
-    if (!hit(q, [u.email, u.uname, ...u.theirFlows.flatMap((f) => [f.name, f.brief, f.domain])])) return false;
-    return true;
-  });
-  const selU = shown.find((u) => u.email === sel) || users.find((u) => u.email === sel) || null;
+  for (const d of ads || []) if (d.date >= ymd(from) && d.date <= ymd(to - 1)) for (const r of d.rows || []) {
+    const c = chans.get(r.channel) || { spend: 0, signed: 0, names: 0 };
+    c.spend += r.cost || 0; chans.set(r.channel, c);
+  }
+  const chanRows = [...chans.entries()].sort((a, b) => b[1].spend - a[1].spend || b[1].signed - a[1].signed);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState<Update>({ id: "", title: "", date: ymd(Date.now()), step: "", note: "" });
   return (
-    <div className="wrap">
-      <div className="kpis">
-        {([["Users", users.length], ["Found a name", users.filter((u) => u.names).length], ["Came back (2+)", users.filter((u) => u.flows > 1).length], ["Admins", users.filter((u) => u.role !== "User").length]] as const).map(([l, v]) => (
-          <div key={l} className="kpi"><b>{v}</b><span>{l}</span></div>
-        ))}
+    <div className="v2wrap">
+      <div className="v2kpis">
+        {kpis.map(([l, c, p, v]) => <div key={l} className="v2kpi"><span>{l}</span><b className="mono">{loading ? "…" : v}</b><Trend cur={c} was={p} na={from - len < LAUNCH} /></div>)}
+        <div className="v2kpi main"><span>Cost per name</span><b className="mono">{loading ? "…" : eur0(cpn)}</b><Trend cur={cpn} was={cpnP} costly na={from - len < LAUNCH} /></div>
       </div>
-      <div className="toolbar">
-        <span className="tabs">
-          {([["All", "all"], ["New this week", "new"], ["With a name", "named"], ["Admins", "admins"]] as const).map(([l, v]) => (
-            <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{l}</button>
-          ))}
-        </span>
+      <div className="v2grid2">
+        <div className="v2card">
+          <div className="v2head"><h3>Conversion &amp; cost per name</h3>
+            <span className="legend"><i className="lk" />Conversion <i className="lo" />Cost / name <i className="lu" />Update</span></div>
+          <Chart series={series} updates={inRange} num={num} />
+          <div className="ulegend">{inRange.map((u) => <span key={u.id}><i>{num(u)}</i>{u.title} <em className="mono">{dmon(new Date(u.date + "T00:00:00").getTime())}</em></span>)}</div>
+        </div>
+        <div className="v2card">
+          <div className="v2head"><h3>Funnel</h3><span className="sub mono">{dmon(from)} – {dmon(to - 1)}</span></div>
+          <table className="v2fun">
+            <thead><tr><th /><th /><th className="mono">#</th><th className="mono">STEP</th><th className="mono">TOTAL</th></tr></thead>
+            <tbody>
+              {funnel.map(([l, n], i) => {
+                const tot = cur.briefs ? (n / cur.briefs) * 100 : 0;
+                const red = drops.includes(i), last = i === funnel.length - 1;
+                return (
+                  <tr key={l} className={last ? "last" : ""}>
+                    <td className="l">{l}</td>
+                    <td className="bar"><span><i className={last ? "or" : ""} style={{ width: `${Math.max(n ? 1.5 : 0, tot)}%` }} /></span></td>
+                    <td className="mono n">{n}</td>
+                    <td className={"mono p" + (red ? " red" : "")}>{i === 0 ? "—" : isFinite(steps[i]) ? Math.round(steps[i]) + "%" : "—"}</td>
+                    <td className={"mono p" + (last ? " or" : "")}>{cur.briefs ? (tot >= 10 ? Math.round(tot) : tot.toFixed(1)) + "%" : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="v2note">Biggest drops: {drops.length ? drops.map((i, k) => <Fragment key={i}>{k > 0 && " and "}<b className="red">{funnel[i - 1][0].toLowerCase()} → {funnel[i][0].toLowerCase()}</b></Fragment>) : "—"}.{cur.paywall < 30 ? " Paywall: too few yet to read." : ""}</p>
+        </div>
       </div>
-      <div className="split">
-        <div className="tbl">
-          {!shown.length && <p className="hint">No users yet (accounts appear with their first tracked flow).</p>}
-          {shown.map((u) => (
-            <button key={u.email} className={"row urow" + (sel === u.email ? " on" : "")} onClick={() => setSel(sel === u.email ? null : u.email)}>
-              <span className="user">
-                <i className="av">{(u.uname || u.email)[0].toUpperCase()}</i>
-                <span><b>{u.uname || "—"}</b><em className="mono">{u.email}</em></span>
-              </span>
-              <span className="mono dimtxt">{new Date(u.first).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-              <span className="dimtxt">{u.source || "—"}</span>
-              <span className="dimtxt">{u.country || "—"}</span>
-              <span className="mono">{u.flows}</span>
-              <span className="mono">{u.names}</span>
-              <span className="dimtxt">{ago(u.last)}</span>
-              <span className={"rolepill" + (u.role !== "User" ? " dark" : "")}>{u.role}</span>
+      <div className="v2grid2">
+        <div className="v2card">
+          <div className="v2head"><h3>Channels</h3><span className="sub">paid and free</span></div>
+          <table className="v2tbl">
+            <thead><tr><th>CHANNEL</th><th className="r">SPEND</th><th className="r">SIGN-UPS</th><th className="r">NAMES</th><th className="r">€ / NAME</th></tr></thead>
+            <tbody>
+              {chanRows.map(([k, c]) => (
+                <tr key={k}>
+                  <td><i className="cdot" style={{ background: (CHANNELS.find(([n]) => n === k) || ["", "#6a6a6a"])[1] }} />{k}</td>
+                  <td className="r mono">{c.spend ? eur0(c.spend) : "—"}</td>
+                  <td className="r mono">{c.signed}</td>
+                  <td className="r mono">{c.names}</td>
+                  <td className="r mono">{c.spend && c.names ? eur0(c.spend / c.names) : "—"}</td>
+                </tr>
+              ))}
+              {!chanRows.length && <tr><td colSpan={5} className="dim">{loading ? "Loading…" : "Nothing in this range."}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div className="v2card">
+          <div className="v2head"><h3>Main changes</h3><button className="addbtn" onClick={() => setAdding((x) => !x)}>{adding ? "Cancel" : "+ Add"}</button></div>
+          {adding && (
+            <div className="uform">
+              <input placeholder="What shipped" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+              <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+              <input placeholder="Step (e.g. 04 · Names)" value={draft.step} onChange={(e) => setDraft({ ...draft, step: e.target.value })} />
+              <input placeholder="Note (optional)" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+              <button className="dark" disabled={!draft.title.trim()} onClick={() => { onSave([...updates, { ...draft, id: "u" + Date.now().toString(36), title: draft.title.trim() }]); setAdding(false); setDraft({ id: "", title: "", date: ymd(Date.now()), step: "", note: "" }); }}>Save</button>
+            </div>
+          )}
+          <div className="ulist">
+            {[...updates].reverse().map((u) => {
+              const t = new Date(u.date + "T00:00:00").getTime();
+              const before = conv3(t - 3 * DAY, t), after = conv3(t, t + 3 * DAY);
+              const first = num(u) === 1, young = t + 3 * DAY > Date.now();
+              const d = after - before;
+              return (
+                <div key={u.id} className="urow2" title={u.note || ""}>
+                  <i className="un">{num(u)}</i>
+                  <span className="ut"><b>{u.title}</b><em className="mono">{dmon(t)} · {u.step}</em></span>
+                  <span className={"ud mono" + (first || young || !isFinite(d) ? " dim" : d >= 0 ? " up" : " down")}>
+                    {first ? "baseline" : young ? `${Math.ceil((t + 3 * DAY - Date.now()) / DAY)} d to read` : isFinite(d) ? `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)} pts` : "—"}
+                  </span>
+                  <button className="urm" title="Remove" onClick={() => { if (window.confirm(`Remove “${u.title}”?`)) onSave(updates.filter((x) => x.id !== u.id)); }}>×</button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="v2note">Conversion (brief → name chosen), 3 days after vs 3 days before</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Chart({ series, updates, num }: { series: { t: number; conv: number; cost: number }[]; updates: Update[]; num: (u: Update) => number }) {
+  const W = 760, H = 230, L = 34, R = 40, T = 24, B = 22;
+  if (series.length < 2) return <p className="hint">Not enough days in this range.</p>;
+  const cMax = Math.max(5, Math.ceil(Math.max(0, ...series.map((s) => (isFinite(s.conv) ? s.conv : 0))) / 5) * 5);
+  const eMax = Math.max(10, Math.ceil(Math.max(0, ...series.map((s) => (isFinite(s.cost) ? s.cost : 0))) / 10) * 10);
+  const x = (i: number) => L + (i / (series.length - 1)) * (W - L - R);
+  const yc = (v: number) => T + (1 - v / cMax) * (H - T - B);
+  const ye = (v: number) => T + (1 - v / eMax) * (H - T - B);
+  const path = (ys: (number | null)[]) => { let d = "", pen = false; ys.forEach((y, i) => { if (y === null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y.toFixed(1)}`; pen = true; }); return d; };
+  const convY = series.map((s) => (isFinite(s.conv) ? yc(s.conv) : null));
+  const costY = series.map((s) => (isFinite(s.cost) ? ye(s.cost) : null));
+  const area = (() => { const pts = convY.map((y, i) => (y === null ? null : `${x(i).toFixed(1)},${y.toFixed(1)}`)).filter(Boolean); if (pts.length < 2) return ""; const idx = convY.map((y, i) => (y === null ? -1 : i)).filter((i) => i >= 0); return `M${x(idx[0])},${H - B} L${pts.join(" L")} L${x(idx[idx.length - 1])},${H - B} Z`; })();
+  const t0 = series[0].t, t1 = series[series.length - 1].t;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (series.length - 1)));
+  return (
+    <svg className="v2chart" viewBox={`0 0 ${W} ${H}`}>
+      {[0, 0.5, 1].map((f) => <line key={f} x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} className="grid" />)}
+      <text x={L - 6} y={T + 4} className="ax" textAnchor="end">{cMax}%</text>
+      <text x={L - 6} y={T + (H - T - B) / 2 + 4} className="ax" textAnchor="end">{cMax / 2}%</text>
+      <text x={L - 6} y={H - B + 4} className="ax" textAnchor="end">0%</text>
+      <text x={W - R + 6} y={T + 4} className="ax or">€{eMax}</text>
+      <text x={W - R + 6} y={T + (H - T - B) / 2 + 4} className="ax or">€{eMax / 2}</text>
+      <text x={W - R + 6} y={H - B + 4} className="ax or">€0</text>
+      {area && <path d={area} className="area" />}
+      {updates.map((u) => {
+        const t = new Date(u.date + "T00:00:00").getTime();
+        const xi = L + ((t - t0) / Math.max(DAY, t1 - t0)) * (W - L - R);
+        return <g key={u.id}><line x1={xi} x2={xi} y1={T - 6} y2={H - B} className="mark" /><circle cx={xi} cy={T - 12} r={8} className="mk" /><text x={xi} y={T - 8.5} className="mkt" textAnchor="middle">{num(u)}</text></g>;
+      })}
+      <path d={path(convY)} className="lk" />
+      <path d={path(costY)} className="lo" />
+      {ticks.map((i) => <text key={i} x={x(i)} y={H - 4} className="ax" textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"}>{dmon(series[i].t)}</text>)}
+    </svg>
+  );
+}
+
+/* ── 2 · People: one row per person, their latest flow; a side panel ── */
+const STEP10 = ["Sign-up", "Brief", "Concept", "Swipe", "Words", "Names", "Claim", "Brand", "Brand book", "Socials", "Finished"];
+function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }: {
+  flows: Flow[]; items: LogItem[]; from: number; to: number; sel: string | null; setSel: (s: string | null) => void;
+  roles: { owners: string[]; admins: string[] } | null; onRole: (email: string, role: "admin" | "user") => void; loading: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const [st, setSt] = useState<"all" | "live" | "stopped" | "done">("all");
+  const [more, setMore] = useState(150);
+  const [journey, setJourney] = useState(false);
+  const base = q.trim() ? flows : flows.filter((f) => f.last >= from && f.last < to);
+  const searched = base.filter((f) => hit(q, [f.email, f.uname, f.brief, f.name, f.domain, ...f.shortlist]));
+  const cnt = (s: string) => searched.filter((f) => f.status === s).length;
+  const shown = searched.filter((f) => st === "all" || f.status === st).sort((a, b) => b.last - a.last);
+  const selF = flows.find((f) => f.id === sel) || null;
+  function exportCsv() {
+    const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
+    const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,keyword,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
+    const yn = (b: boolean) => (b ? "1" : "0");
+    const lines = shown.map((f) => [
+      esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/10)`), f.status,
+      esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), esc(f.term), f.country, esc(f.device), f.lang,
+      new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
+      yn(f.dive), yn(f.logo), yn(f.paywall), f.price || "", yn(f.unlock), esc(f.why), yn(f.buy), esc(f.feedback),
+    ].join(","));
+    download(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }), `namename-people-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+  const bar = (f: Flow) => (
+    <span className="segs10">{Array.from({ length: 10 }, (_, i) => <i key={i} className={f.status === "done" ? "g" : i < f.step - 1 ? "d" : i === f.step - 1 ? "c" : ""} />)}</span>
+  );
+  const role = (email: string) => (roles?.owners.includes(email.toLowerCase()) ? "Owner" : roles?.admins.includes(email.toLowerCase()) ? "Admin" : "User");
+  const evs = selF ? items.filter((it) => it.process === selF.id || (selF.email && String(it.input?.payload?.meta?.email || it.input?.who?.email || "").toLowerCase() === selF.email.toLowerCase())).sort((a, b) => a.at - b.at) : [];
+  return (
+    <div className={"v2people" + (selF ? " withpanel" : "")}>
+      <div className="plist">
+        <div className="ptools">
+          <input className="psearch" placeholder="Search name, email, brief…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <span className="pstat">
+            {([["All", "all", searched.length], ["Live", "live", cnt("live")], ["Stopped", "stopped", cnt("stopped")], ["Done", "done", cnt("done")]] as const).map(([l, v, n]) => (
+              <button key={v} className={st === v ? "on" : ""} onClick={() => setSt(v)}>{l} <i className="mono">{n.toLocaleString("en-US")}</i></button>
+            ))}
+          </span>
+          <button className="pcsv" onClick={exportCsv}>↓ CSV</button>
+        </div>
+        <div className="ptable">
+          <div className="phead"><span>PERSON</span><span>SOURCE</span><span>GOT TO</span><span>NAME</span><span>STATUS</span><span className="r">LAST ACTIVE</span></div>
+          {loading && !shown.length && <p className="hint">Loading the log…</p>}
+          {!loading && !shown.length && <p className="hint">Nobody in this range.</p>}
+          {shown.slice(0, more).map((f) => (
+            <button key={f.id} className={"prow" + (sel === f.id ? " on" : "")} onClick={() => { setSel(sel === f.id ? null : f.id); setJourney(false); }}>
+              <span className="who"><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "no account"}</em></span>
+              <span className="src">{f.source || "Direct"}</span>
+              <span className="got"><b>{f.status === "done" ? "Finished" : STEP10[f.step]} <i className="mono">{Math.min(10, f.step)}/10</i></b>{bar(f)}</span>
+              <span className="nm">{f.name ? <><b>{f.name}</b><em className="mono">{f.domain || ""}</em></> : <em className="none">No name yet</em>}</span>
+              <span className={"stt " + f.status}>{f.status === "live" ? <><i className="pulse" />Live</> : f.status === "done" ? "✓ Done" : "Stopped"}</span>
+              <span className="la mono">{ago(f.last)}</span>
+              <span className="msrc mono">{f.source || "Direct"} · {ago(f.last)}</span>
             </button>
           ))}
+          {shown.length > more && <button className="pmore" onClick={() => setMore(more + 150)}>Show more ({shown.length - more})</button>}
         </div>
-        {selU && (
-          <aside className="panel">
-            <button className="x" onClick={() => setSel(null)}>✕</button>
-            <h3>{selU.uname || selU.email}</h3>
-            <p className="mono dim">{selU.email}</p>
-            <div className="meta">
-              {([["Signed up", new Date(selU.first).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " · Google"], ["Source", selU.source || "—"], ["Country", selU.country || "—"], ["Last active", ago(selU.last)], ["Flows", String(selU.flows)], ["Names found", String(selU.names)]] as const).map(([k, v]) => (
-                <p key={k}><em>{k}</em><span>{v}</span></p>
-              ))}
+      </div>
+      {selF && (
+        <aside className="ppanel">
+          <button className="px" onClick={() => setSel(null)}>✕</button>
+          <div className="phd">
+            <i className="pav">{(selF.uname || selF.email || "?").split(/[\s@.]/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join("")}</i>
+            <span><b>{selF.uname || "Anonymous"}</b><em className="mono">{selF.email || "no account yet"}</em></span>
+            <span className={"stt " + selF.status}>{selF.status === "live" ? <><i className="pulse" />Live</> : selF.status === "done" ? "✓ Done" : "Stopped"}</span>
+          </div>
+          <div className="pmeta">
+            {([["Source", selF.source || "Direct"], ["Device", selF.device || "—"], ["Started", fdate(selF.first)], ["Time spent", spent(selF)], ["Country", selF.country || "—"], ["Keyword", selF.term || selF.content || "—"]] as const).map(([k, v]) => <p key={k}><em>{k}</em><span>{v}</span></p>)}
+          </div>
+          {selF.brief && <div className="pbrief"><em>BRIEF</em><p>“{selF.brief}”</p></div>}
+          <p className="plbl">WHERE THEY GOT</p>
+          <div className="psteps">
+            {selF.timeline.map((t, i) => {
+              const last = i === selF.timeline.length - 1 && selF.status !== "done";
+              return <p key={t.step} className={last ? "stop" : ""}><i />{t.step}<span className="mono">{new Date(t.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></p>;
+            })}
+            {selF.status !== "done" && <p className="stopline">{selF.status === "live" ? `Live at ${STEPS[selF.step]}` : `Stopped at ${STEPS[selF.step]}`}{selF.step === 5 && selF.shortlist.length ? ` · saw ${selF.shortlist.length}+, picked none` : ""}</p>}
+          </div>
+          {(selF.name || selF.domain || selF.later) && <p className="pkv"><em>Name</em><b>{selF.name || "—"}</b> <span className="mono">{selF.domain || (selF.later ? "domain later" : "")}</span></p>}
+          {selF.paywall && <p className="pkv"><em>Paywall · €{selF.price || 29}</em>{selF.unlock ? "Unlocked (early access)" : "Kept the free preview"}{selF.why ? ` · why not: ${selF.why}` : ""}</p>}
+          {(selF.feedback || selF.why) && (
+            <div className="pfb"><em>THEIR FEEDBACK</em>
+              {selF.feedback && <p>{selF.feedback.split(" — ")[0].split(" · ").filter(Boolean).map((r) => <i key={r}>{r}</i>)}</p>}
+              {selF.feedback.includes(" — ") && <p className="q">“{selF.feedback.split(" — ").slice(1).join(" — ")}”</p>}
             </div>
-            <p className="lbl">Their flows</p>
-            {selU.theirFlows.map((f) => (
-              <div key={f.id} className="miniflow">
-                <b>{f.name || f.brief.slice(0, 32) || f.id}</b>
-                <span className="segs">{STEPS.map((_, i) => <i key={i} className={i < f.step ? "d" : i === f.step ? "c" : ""} />)}</span>
+          )}
+          {journey && (
+            <div className="pjourney">
+              {evs.filter((e) => !e.phase.startsWith("wrap")).map((e) => {
+                const p = e.input?.payload || {};
+                return <p key={e.id}><span className="mono">{fdate(e.at)}</span><b>{e.phase === "page" ? `→ ${p.to}` : e.phase}</b><em>{p.name || p.domain || p.chip || p.reason || ""}</em></p>;
+              })}
+            </div>
+          )}
+          {selF.email && role(selF.email) !== "Owner" && (
+            <p className="prole">Role <button className={role(selF.email) === "User" ? "on" : ""} onClick={() => onRole(selF.email, "user")}>User</button><button className={role(selF.email) === "Admin" ? "on" : ""} onClick={() => onRole(selF.email, "admin")}>Admin</button></p>
+          )}
+          <div className="pacts">
+            <button className="dark" onClick={() => setJourney((j) => !j)}>{journey ? "Hide their flow" : "Open their flow"}</button>
+            {selF.email && <a className="ghost" href={`mailto:${selF.email}?subject=Your name on Name Name`}>Email {(selF.uname || "them").split(" ")[0]}</a>}
+          </div>
+        </aside>
+      )}
+    </div>
+  );
+}
+
+/* ── 5 · Emails: does email bring people back, and on which device? ── */
+const MAILS: [string, string, string][] = [
+  ["W", "Welcome", "At sign-up"],
+  ["S1", "Stopped at the words", "24 h after leaving"],
+  ["S2", "Stopped at the names", "24 h after leaving"],
+  ["S3", "Stopped at the domain", "24 h after leaving"],
+  ["S4", "Stopped at the brand", "24 h after leaving"],
+  ["S5", "Logo done · what's next", "not sent yet"],
+];
+function Emails({ items, from, to, len, unsub, loading }: { items: LogItem[]; flows: Flow[]; from: number; to: number; len: number; unsub: number | null; loading: boolean }) {
+  const calc = (a: number, b: number) => {
+    // sends: stop emails are logged ("mail"); welcome sends before 1 Nov = sign-ups after it went live
+    const sends: { kind: string; at: number; email: string; proc: string }[] = [];
+    for (const it of items) {
+      const p = it.input?.payload || {};
+      if (it.at < a || it.at >= b) continue;
+      if (it.phase === "mail") sends.push({ kind: String(p.kind || ""), at: it.at, email: String(p.email || "").toLowerCase(), proc: it.process || "" });
+      if (it.phase === "lead" && it.at >= W_LAUNCH && it.at < TRACK_AT) sends.push({ kind: "W", at: it.at, email: String(p.email || "").toLowerCase(), proc: it.process || "" });
+    }
+    const opens = new Set(items.filter((it) => it.phase === "mail_open" && it.at >= a).map((it) => `${it.process}:${it.input?.payload?.kind}`));
+    const backs = items.filter((it) => it.phase === "email_back" && it.at >= a && it.at < b + 7 * DAY);
+    const byEmail = new Map<string, LogItem[]>();
+    for (const it of items) { const em = String(it.input?.payload?.meta?.email || it.input?.who?.email || "").toLowerCase(); if (em) { if (!byEmail.has(em)) byEmail.set(em, []); byEmail.get(em)!.push(it); } }
+    const stepOf = (it: LogItem) => (it.phase === "page" ? PAGE_STEP[String(it.input?.payload?.to || "")] : ACTION_STEP[it.phase]);
+    const per = new Map<string, { sent: number; tracked: number; opened: number; clicked: number; back: number; cont: number }>();
+    let desk = 0, backN = 0;
+    for (const s of sends) {
+      const r = per.get(s.kind) || { sent: 0, tracked: 0, opened: 0, clicked: 0, back: 0, cont: 0 };
+      r.sent++;
+      if (s.at >= TRACK_AT) { r.tracked++; if (opens.has(`${s.proc}:${s.kind}`)) r.opened++; }
+      const mine = backs.filter((e) => String(e.input?.payload?.kind || "") === s.kind && e.at > s.at && (String(e.input?.payload?.meta?.email || "").toLowerCase() === s.email || e.input?.payload?.resume === s.proc));
+      if (s.at >= TRACK_AT && mine.length) { r.clicked++; backN++; if (mine[0].input?.payload?.device === "desktop") desk++; }
+      // came back: any activity by them within 7 days after the email (works before tracking too)
+      // the welcome lands mid-session: only a visit 2 h+ later counts as coming back
+      const gap = s.kind === "W" ? 2 * 3600e3 : 60000;
+      const later = (byEmail.get(s.email) || []).filter((e) => e.at > s.at + gap && e.at < s.at + 7 * DAY && !["mail", "mail_open", "lead"].includes(e.phase) && !e.phase.startsWith("wrap"));
+      if (later.length || mine.length) {
+        r.back++;
+        const before = Math.max(0, ...(byEmail.get(s.email) || []).filter((e) => e.at <= s.at).map((e) => stepOf(e) ?? 0));
+        if (later.some((e) => (stepOf(e) ?? -1) > before)) r.cont++;
+      }
+      per.set(s.kind, r);
+    }
+    const tot = [...per.values()].reduce((x, r) => ({ sent: x.sent + r.sent, tracked: x.tracked + r.tracked, opened: x.opened + r.opened, clicked: x.clicked + r.clicked, back: x.back + r.back, cont: x.cont + r.cont }), { sent: 0, tracked: 0, opened: 0, clicked: 0, back: 0, cont: 0 });
+    return { per, tot, desk, backN };
+  };
+  const cur = calc(from, to), prev = calc(from - len, from);
+  const pc = (n: number, d: number) => (d ? (n / d) * 100 : NaN);
+  const fmt = (v: number) => (isFinite(v) ? (v >= 10 ? Math.round(v) : v.toFixed(1)) + "%" : "—");
+  const k = cur.tot, kp = prev.tot;
+  const kpis: [string, string, number, number, boolean?][] = [
+    ["Emails sent", k.sent.toLocaleString("en-US"), k.sent, kp.sent],
+    ["Opened", fmt(pc(k.opened, k.tracked)), pc(k.opened, k.tracked), pc(kp.opened, kp.tracked)],
+    ["Clicked", fmt(pc(k.clicked, k.tracked)), pc(k.clicked, k.tracked), pc(kp.clicked, kp.tracked)],
+    ["Came back", fmt(pc(k.back, k.sent)), pc(k.back, k.sent), pc(kp.back, kp.sent), true],
+    ["Back on desktop", fmt(pc(cur.desk, cur.backN)), pc(cur.desk, cur.backN), pc(prev.desk, prev.backN)],
+  ];
+  const allSent = calc(0, Date.now() + DAY).tot.sent;
+  const barc = (v: number, cls = "") => <span className={"ebar " + cls}><i style={{ width: `${isFinite(v) ? Math.min(100, v) : 0}%` }} /></span>;
+  return (
+    <div className="v2wrap">
+      <div className="v2kpis">
+        {kpis.map(([l, v, c, p, main]) => <div key={l} className={"v2kpi" + (main ? " main" : "") + (l === "Opened" || l === "Came back" ? "" : " mhide")}><span>{l}</span><b className="mono">{loading ? "…" : v}</b><Trend cur={c} was={p} na={from - len < W_LAUNCH} /></div>)}
+      </div>
+      <div className="v2card">
+        <div className="v2head"><h3>Each email</h3><span className="sub">Came back = active again within 7 days · Continued = reached a further step · Opened &amp; clicked are tracked from 1 Nov</span></div>
+        <table className="v2tbl emt">
+          <thead><tr><th /><th>EMAIL</th><th className="mhide">SENT WHEN</th><th className="r">SENT</th><th>OPENED</th><th>CLICKED</th><th>CAME BACK</th><th className="mhide">CONTINUED A STEP</th></tr></thead>
+          <tbody>
+            {MAILS.map(([code, name, when]) => {
+              const r = cur.per.get(code) || { sent: 0, tracked: 0, opened: 0, clicked: 0, back: 0, cont: 0 };
+              const o = pc(r.opened, r.tracked), c = pc(r.clicked, r.tracked), b = pc(r.back, r.sent), ct = pc(r.cont, r.sent);
+              const off = code === "S5";
+              return (
+                <tr key={code} className={off ? "off" : ""}>
+                  <td><span className="ecode mono">{code === "W" ? "W" : code.replace("S", "S·")}</span></td>
+                  <td><b>{name}</b></td>
+                  <td className="mhide dim">{when}</td>
+                  <td className="r mono">{off ? "—" : r.sent}</td>
+                  <td><span className="mono">{fmt(o)}</span>{barc(o)}</td>
+                  <td><span className="mono">{fmt(c)}</span>{barc(c)}</td>
+                  <td><span className="mono or">{fmt(b)}</span>{barc(b, "or")}</td>
+                  <td className="mhide"><span className="mono">{fmt(ct)}</span> <em className="dim mono">of sent</em></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="emcards">
+          {MAILS.map(([code, name]) => {
+            const r = cur.per.get(code) || { sent: 0, tracked: 0, opened: 0, clicked: 0, back: 0, cont: 0 };
+            const o = pc(r.opened, r.tracked), c = pc(r.clicked, r.tracked), b = pc(r.back, r.sent);
+            return (
+              <div key={code} className={"emc" + (code === "S5" ? " off" : "")}>
+                <p className="h"><span className="ecode mono">{code === "W" ? "W" : code.replace("S", "S·")}</span><b>{name}</b><em className="mono">{code === "S5" ? "not sent yet" : `${r.sent} sent`}</em></p>
+                <div className="g">
+                  <span><em>Opened</em><b className="mono">{fmt(o)}</b>{barc(o)}</span>
+                  <span><em>Clicked</em><b className="mono">{fmt(c)}</b>{barc(c)}</span>
+                  <span><em>Came back</em><b className="mono or">{fmt(b)}</b>{barc(b, "or")}</span>
+                </div>
               </div>
-            ))}
-            {selU.role !== "Owner" && (
-              <>
-                <p className="lbl">Role</p>
-                <span className="roleswitch">
-                  <button className={selU.role === "User" ? "on" : ""} onClick={() => onRole(selU.email, "user")}>User</button>
-                  <button className={selU.role === "Admin" ? "on" : ""} onClick={() => onRole(selU.email, "admin")}>Admin</button>
-                </span>
-              </>
-            )}
-            <a className="mailbtn" href={`mailto:${selU.email}`}>Email user</a>
-          </aside>
-        )}
+            );
+          })}
+        </div>
+        <p className="v2note">Unsubscribed · <b>{unsub === null || !allSent ? "—" : fmt(pc(unsub, allSent))}</b> ({unsub ?? "—"} people) &nbsp; Bounced · <b>—</b> (not reported by the sender)</p>
       </div>
     </div>
   );
@@ -864,8 +1077,8 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         <h2>Channel performance</h2>
         <span className="mono sub">{chan} · last 5 {gran}s vs the 5 before</span>
         <span className="gsel">
-          <button className={gran === "week" ? "on" : ""} onClick={() => { setGran("week"); setWk(0); }}>Weeks</button>
-          <button className={gran === "day" ? "on" : ""} onClick={() => { setGran("day"); setWk(0); }}>Days</button>
+          <button className={gran === "week" ? "on" : ""} onClick={() => { setGran("week"); setWk(0); }}>By week</button>
+          <button className={gran === "day" ? "on" : ""} onClick={() => { setGran("day"); setWk(0); }}>By day</button>
         </span>
         {lastAdDay
           ? <span className="sync"><i /> Ads synced · through {lastAdDay}</span>
@@ -875,6 +1088,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         <div className="akpi"><span>Spend</span><b className="mono">{eur(spend5)}</b><Delta cur={spend5} was={spendP} /><em className="was mono">was {eur(spendP)}</em></div>
         <div className="akpi"><span>Sign-ups</span><b className="mono">{sign5.toLocaleString("en-US")}</b><Delta cur={sign5} was={signP} /><em className="was mono">was {signP}</em></div>
         <div className="akpi"><span>Names chosen</span><b className="mono">{name5.toLocaleString("en-US")}</b><Delta cur={name5} was={nameP} /><em className="was mono">was {nameP}</em></div>
+        <div className="akpi"><span>Paywall unlocked</span><b className="mono">{sum(l5, "unlock")}</b><Delta cur={sum(l5, "unlock")} was={sum(p5, "unlock")} /><em className="was mono">was {sum(p5, "unlock")}</em></div>
         <div className="akpi"><span>Cost per sign-up</span><b className="mono">{sign5 && paid ? eur(cps) : "—"}</b><Delta cur={cps} was={cpsP} costly /><em className="was mono">was {signP && paid ? eur(cpsP) : "—"}</em></div>
         <div className="akpi main"><span>Cost per name <i className="maintag">MAIN</i></span><b className="mono">{name5 && paid ? eur(cpn) : "—"}</b><Delta cur={cpn} was={cpnP} costly /><em className="was mono">was {nameP && paid ? eur(cpnP) : "—"}</em></div>
       </div>

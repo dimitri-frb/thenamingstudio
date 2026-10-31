@@ -117,6 +117,19 @@ export default {
         return json({ ok: true, lastEventMin }, env);
       }
       if (url.pathname === "/unsub") return handleUnsub(env, url);
+      // Email open pixel (admin v2 · Emails): log once per email + flow, answer a 1×1 gif.
+      if (url.pathname === "/o") {
+        const k = String(url.searchParams.get("k") || "").replace(/[^A-Z0-9]/gi, "").slice(0, 4);
+        const f = String(url.searchParams.get("f") || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
+        if (env.LOG && k && f && f !== "preview") ctx.waitUntil((async () => {
+          const seen = `open:${f}:${k}`;
+          if (await env.LOG!.get(seen)) return;
+          await env.LOG!.put(seen, "1", { expirationTtl: 60 * 60 * 24 * 120 });
+          await writeLog(env, "mail_open", f, { payload: { kind: k } }, { kind: k });
+        })());
+        const gif = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
+        return new Response(gif, { headers: { "content-type": "image/gif", "cache-control": "no-store, max-age=0" } });
+      }
       if (url.searchParams.has("log")) return readLog(env, url);
       return json({ ok: true }, env);
     }
@@ -258,6 +271,29 @@ export default {
         try { return { date: k.name.slice(4), rows: JSON.parse((await env.LOG!.get(k.name)) || "[]") }; } catch { return null; }
       }))).filter(Boolean);
       return json({ days }, env);
+    }
+    // Admin v2 · "Main changes": the shipped updates, one JSON list in KV.
+    if (phase === "admin-updates") {
+      const u = await adminUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      if (Array.isArray(body?.list)) {
+        const list = body.list.slice(0, 200).map((x: any) => ({
+          id: String(x?.id || "").slice(0, 40), title: String(x?.title || "").slice(0, 120),
+          date: String(x?.date || "").slice(0, 10), step: String(x?.step || "").slice(0, 60), note: String(x?.note || "").slice(0, 400),
+        })).filter((x: any) => x.title && /^\d{4}-\d{2}-\d{2}$/.test(x.date));
+        await env.LOG.put("admin:updates", JSON.stringify(list));
+        return json({ list }, env);
+      }
+      let list: unknown = null;
+      try { list = JSON.parse((await env.LOG.get("admin:updates")) || "null"); } catch { list = null; }
+      return json({ list }, env);
+    }
+    // Admin v2 · Emails: what only the worker knows (unsubscribes).
+    if (phase === "adminmail") {
+      const u = await adminUser(env, body?.token);
+      if (!u || !env.LOG) return json({ error: "not allowed" }, env, 403);
+      const opt = await env.LOG.list({ prefix: "optout:", limit: 1000 });
+      return json({ unsubscribed: opt.keys.length }, env);
     }
     if (phase === "admin-roles") {
       const u = await adminUser(env, body?.token);
@@ -1124,7 +1160,10 @@ async function authGoogle(env: Env, body: any, ctx?: ExecutionContext): Promise<
     const payload = { email: u.email, fromName: u.name, kind: "signup" };
     await writeLog(env, "lead", body?.process, { payload, who: body?.who }, payload);
     // W · welcome, instantly — the brief rides on the sign-in call
-    if (env.EMAIL && ctx) ctx.waitUntil(sendWelcome(env, u.email, u.name || "", String(body?.brief || "")));
+    const proc = typeof body?.process === "string" ? body.process : "";
+    if (env.EMAIL && ctx) ctx.waitUntil(sendWelcome(env, u.email, u.name || "", String(body?.brief || ""), proc).then((ok) => {
+      if (ok) return writeLog(env, "mail", proc, { payload: { kind: "W", email: u.email } }, { kind: "W" });
+    }));
   }
   return { token, user: u, searches: acct.searches || [] };
 }

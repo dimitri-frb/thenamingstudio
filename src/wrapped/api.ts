@@ -347,6 +347,18 @@ export function track(event: string, payload: Record<string, unknown> = {}): voi
   } catch { /* best effort */ }
 }
 
+// Admin v2 · Emails: someone opened the app from one of our emails. First-touch
+// attribution keeps their original source, so this event is what counts them —
+// with the email's code (w, s1…s4) and this device, whether signed in or not.
+try {
+  const q = new URLSearchParams(window.location.search);
+  if (/email|newsletter/i.test(q.get("utm_source") || "") && !/^\/test\//.test(window.location.pathname)) {
+    const ua = navigator.userAgent;
+    const device = /iPhone|iPad|Android/.test(ua) ? "mobile" : "desktop";
+    setTimeout(() => track("email_back", { kind: (q.get("utm_campaign") || "").toUpperCase().slice(0, 4), device, resume: q.get("resume") || "" }), 0);
+  }
+} catch { /* best effort */ }
+
 /* ── domains ── */
 const boardCache = new Map<string, Promise<DomainBoardData>>();
 export function fetchDomainBoard(name: string, doms?: string[], fresh = false): Promise<DomainBoardData> {
