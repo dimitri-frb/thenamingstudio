@@ -286,6 +286,7 @@ export function AdminPage() {
   const [roles, setRoles] = useState<{ owners: string[]; admins: string[] } | null>(null);
   const [updates, setUpdates] = useState<Update[] | null>(null);
   const [mailStats, setMailStats] = useState<{ unsubscribed: number } | null>(null);
+  const [logDone, setLogDone] = useState(false); // every page of the log has landed
   const pathTab = ((window.location.pathname.match(/\/admin\/(\w+)/)?.[1] || "").replace("users", "people")) as Tab;
   const [tab, setTabState] = useState<Tab>(TABS.some(([t]) => t === pathTab) ? pathTab : "overview");
   const [range, setRange] = useState<RangeSel>({ kind: "30" });
@@ -302,7 +303,7 @@ export function AdminPage() {
   }).then((r) => r.json());
 
   useEffect(() => {
-    if (demo) { setItems(DEMO_ITEMS); setAds(DEMO_ADS); setUpdates(SEED_UPDATES); setMailStats({ unsubscribed: 2 }); return; }
+    if (demo) { setItems(DEMO_ITEMS); setAds(DEMO_ADS); setUpdates(SEED_UPDATES); setMailStats({ unsubscribed: 2 }); setLogDone(true); return; }
     // The log keeps the whole history and one call may only touch ~900 keys:
     // page through with the cursor, painting as the pages land (newest first).
     let dead = false;
@@ -318,6 +319,7 @@ export function AdminPage() {
         if (!d.cursor) break;
         cursor = d.cursor;
       }
+      if (!dead) setLogDone(true);
     })().catch((e) => { if (!dead) setErr(String(e)); });
     call({ phase: "adminads" }).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => (a.date < b.date ? 1 : -1))); }).catch(() => {});
     call({ phase: "admin-updates" }).then((d) => {
@@ -390,7 +392,7 @@ export function AdminPage() {
       {tab === "people" && (
         <People flows={flows} items={items || []} from={from} to={to} sel={selPerson} setSel={setSelPerson} roles={roles}
           onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }}
-          loading={!items} />
+          loading={!items} done={logDone} />
       )}
       {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!items} />}
       {tab === "feedback" && (
@@ -687,9 +689,9 @@ function Chart({ series, updates, num }: { series: Pt[]; updates: Update[]; num:
 
 /* ── 2 · People: one row per person, their latest flow; a side panel ── */
 const STEP10 = ["Sign-up", "Brief", "Concept", "Swipe", "Words", "Names", "Name chosen", "Brand", "Brand book", "Socials", "Domain", "Finished"];
-function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }: {
+function People({ flows, items, from, to, sel, setSel, roles, onRole, loading, done }: {
   flows: Flow[]; items: LogItem[]; from: number; to: number; sel: string | null; setSel: (s: string | null) => void;
-  roles: { owners: string[]; admins: string[] } | null; onRole: (email: string, role: "admin" | "user") => void; loading: boolean;
+  roles: { owners: string[]; admins: string[] } | null; onRole: (email: string, role: "admin" | "user") => void; loading: boolean; done: boolean;
 }) {
   const [q, setQ] = useState("");
   const [st, setSt] = useState<"all" | "live" | "stopped" | "done">("all");
@@ -699,7 +701,8 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
   const searched = base.filter((f) => hit(q, [f.email, f.uname, f.brief, f.name, f.domain, ...f.shortlist]));
   const cnt = (s: string) => searched.filter((f) => f.status === s).length;
   const shown = searched.filter((f) => st === "all" || f.status === st).sort((a, b) => b.last - a.last);
-  const selF = flows.find((f) => f.id === sel) || null;
+  // a person is kept by email (their row id can change while older log pages merge in)
+  const selF = (sel?.startsWith("@") ? flows.find((f) => f.email.toLowerCase() === sel.slice(1)) : flows.find((f) => f.id === sel)) || null;
   function exportCsv() {
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
     const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,keyword,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
@@ -727,6 +730,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
               <button key={v} className={st === v ? "on" : ""} onClick={() => setSt(v)}>{l} <i className="mono">{n.toLocaleString("en-US")}</i></button>
             ))}
           </span>
+          {!done && <span className="ploading mono">Loading history… {items.length.toLocaleString("en-US")} events</span>}
           <button className="pcsv" onClick={exportCsv}>↓ CSV</button>
         </div>
         <div className="ptable">
@@ -734,7 +738,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
           {loading && !shown.length && <p className="hint">Loading the log…</p>}
           {!loading && !shown.length && <p className="hint">Nobody in this range.</p>}
           {shown.slice(0, more).map((f) => (
-            <button key={f.id} className={"prow" + (sel === f.id ? " on" : "")} onClick={() => { setSel(sel === f.id ? null : f.id); setJourney(false); }}>
+            <button key={f.id} className={"prow" + (selF?.id === f.id ? " on" : "")} onClick={() => { setSel(f.email ? "@" + f.email.toLowerCase() : f.id); setJourney(false); }}>
               <span className="who"><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "no account"}</em></span>
               <span className="src">{f.source || "Direct"}</span>
               <span className="got"><b>{f.status === "done" ? "Finished" : STEP10[f.step]} <i className="mono">{Math.min(11, f.step)}/11</i></b>{bar(f)}</span>

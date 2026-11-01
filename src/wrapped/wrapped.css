@@ -2718,6 +2718,8 @@
 .kv2 .pstat button i { font-style: normal; font-size: 11px; color: #8a8880; margin-left: 3px; }
 .kv2 .pstat button.on { background: #000; color: #fff; border-color: #000; }
 .kv2 .pstat button.on i { color: #bbb; }
+.kv2 .ploading { margin-left: auto; font-size: 11.5px; color: #8a8880; }
+.kv2 .ploading + .pcsv { margin-left: 8px; }
 .kv2 .pcsv { margin-left: auto; border: none; background: none; font: 600 13px 'Inter Tight', sans-serif; cursor: pointer; }
 .kv2 .phead, .kv2 .prow { display: grid; grid-template-columns: 1.4fr 0.8fr 1.1fr 1fr 0.6fr 0.7fr; gap: 12px; align-items: center; padding: 0 24px; }
 .kv2 .phead { font-size: 10.5px; font-weight: 600; color: #8a8880; letter-spacing: .05em; padding-bottom: 10px; border-bottom: 1px solid #ececec; }
