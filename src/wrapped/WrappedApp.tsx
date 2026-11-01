@@ -1178,12 +1178,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
     toStep("early");
   }
-  function keepFreePreview() {
-    unlockTapped.current = true; // logged here, not again on leaving
-    track("paywall_dismissed", { price, via: "keep" });
-    toStep("claim"); // the free path carries on to the last chapter: the domain
-
-  }
   const kitFail = !!fails.kit;
   useEffect(() => { // the socials + marketing copy, written once the kit is open
     if (test || !picked || kit || !brandOpen || !["early", "logodone", "book", "socials", "kit", "mkt"].includes(step)) return;
@@ -2115,7 +2109,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "unlock" && payCtx && (
         brandOpen && !test // already open: no paywall to show, just the way in
           ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} />
-          : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onKeep={keepFreePreview} onWhy={(reason) => track("why_not", { reason, price, inline: true, name: picked?.name })} />
+          : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onWhy={(reason) => track("why_not", { reason, price, inline: true, name: picked?.name })} />
       )}
       {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep(logoSel ? "logodone" : "brand")} />}
       {/* P·5a: a paid page, for a run that hasn't unlocked */}

@@ -70,7 +70,7 @@ const INSIDE: [string, string][] = [
   ["Socials kit", "avatar, banners, bios"],
   ["Marketing kit", "launch posts, ad copy, 3-week plan"],
 ];
-export function Unlock({ c, onUnlock, onKeep, onWhy }: { c: PayCtx; onUnlock: () => void; onKeep: () => void; onWhy: (reason: string) => void }) {
+export function Unlock({ c, onUnlock, onWhy }: { c: PayCtx; onUnlock: () => void; onWhy: (reason: string) => void }) {
   const p = c.pal;
   const [why, setWhy] = useState("");
   const previews: { label: string; art: React.ReactElement }[] = [
@@ -125,7 +125,6 @@ export function Unlock({ c, onUnlock, onKeep, onWhy }: { c: PayCtx; onUnlock: ()
       </div>
       <div className="wr-foot col pw2foot" style={{ gap: 6, alignItems: "center" }}>
         <button className="wr-btnor cbig" onClick={onUnlock}>Unlock {c.name}'s brand · €{c.price}</button>
-        <button className="wr-link" onClick={onKeep}>Keep my free preview</button>
         {why ? (
           <p className="whyrow done"><span className="chip on">✓ {why}</span> Thanks, noted. Your preview stays saved.</p>
         ) : (
