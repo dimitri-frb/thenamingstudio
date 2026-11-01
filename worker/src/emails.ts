@@ -121,10 +121,13 @@ export interface StopCandidate {
 
 type Stage = "S1" | "S2" | "S3" | "S4" | null;
 export function stageFor(c: StopCandidate): Stage {
-  const brandDone = c.steps?.book === "done" || c.steps?.logo === "done";
-  const domChosen = c.domStatus === "chosen" || c.steps?.domain === "done";
-  if (domChosen && c.domain) return brandDone ? null : "S4";
-  if (c.picked) return "S3";
+  // Brand first, domain last (concept D, 1 Nov): a picked name with no brand
+  // yet → S4 "{name} needs a face"; the brand done but no domain kept → S3
+  // "Don't lose {domain}" (the domain auto-kept in the background).
+  const brandDone = c.steps?.book === "done" || c.steps?.logo === "done" || !!c.logo;
+  const domChosen = c.domStatus === "chosen" || c.domStatus === "bought" || c.steps?.domain === "done";
+  if (c.picked && !brandDone) return "S4";
+  if (c.picked) return domChosen ? null : "S3";
   if (c.names?.length) return "S2";
   if (!c.starred?.length) return "S1";
   return "S2"; // starred but no names generated — the names page is still the pull
@@ -169,14 +172,15 @@ export async function sendStop(
   }
 
   if (stage === "S3") {
-    const dom = c.picked?.dom;
+    // the domain kept for them (auto, in the background) first, else the names-page one
+    const dom = c.domain ? { domain: c.domain, price: c.domPrice } : c.picked?.dom;
     if (!dom?.domain || !(await checkFree(dom.domain))) return null; // never a stale "available"
     const checked = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) + " today";
     const html = merge(T.S3, {
       ...base,
       picked_name: esc(c.picked!.name), domain: esc(dom.domain),
       domain_price: esc(dom.price || c.domPrice || ""), checked_at: checked,
-      cta_url: resume(),
+      cta_url: resume("domain"),
     });
     return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, withPixel(html, "S3", c.flowId), LU)) ? "S3" : null;
   }

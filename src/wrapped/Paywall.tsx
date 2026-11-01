@@ -79,7 +79,7 @@ export function Unlock({ c, onUnlock, onKeep, onWhy }: { c: PayCtx; onUnlock: ()
         <span className="pg"><i /><i /><i className="s" /></span>
         <span className="pg w"><i /><i /><i /><i className="s" /></span>
       </div>) },
-    { label: "Logo pack", art: (
+    { label: "Full logo personalisation", art: (
       <div className="pv pack">
         <span className="lt" dangerouslySetInnerHTML={{ __html: c.logoLight }} />
         <span className="lt" style={{ background: p.night }} dangerouslySetInnerHTML={{ __html: logoSvg(c.kitLogo.key, c.name, p, { ...c.kitLogo.opts, variant: "night", height: 60 }) }} />

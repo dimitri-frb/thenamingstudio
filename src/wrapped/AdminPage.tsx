@@ -11,21 +11,36 @@ interface LogItem { id: string; at: number; process?: string; phase: string; inp
 // One day of ad spend, pushed by the Google Ads Script (phase "adspush").
 interface AdsDay { date: string; rows: { channel: string; campaign: string; cost: number; clicks: number; impressions: number }[] }
 
-export const STEPS = ["Sign up", "Brief", "Deep-dive", "Swipe", "Words", "Names", "Domain", "Brand", "Book", "Socials", "Done"] as const;
+export const STEPS = ["Sign up", "Brief", "Deep-dive", "Swipe", "Words", "Names", "Name chosen", "Brand", "Book", "Socials", "Domain", "Done"] as const;
+// Brand first, domain last (concept D) went live here: before it, the domain
+// page (claim) sat right after the names (= "name chosen"); after it, it's the
+// last chapter, after the brand.
+const CUT_D = Date.UTC(2026, 10, 1, 19, 0);
+const domStep = (at: number) => (at >= CUT_D ? 10 : 6);
 // The landing PRE-CHARGES the concept and the words while a visitor is still
 // typing — before the gate. A wrap* phase therefore no longer proves anyone SAW
 // a step: steps come from the client's own events ("page" + explicit actions).
 const ACTION_STEP: Record<string, number> = {
   signup: 0, search: 1, brandsum: 3, wordsdone: 4, wordshuffle: 4,
   morenames: 5, pick: 5, domain: 6, godaddy: 6, taste: 7, logo: 7, logopers: 7, logopack: 7,
-  book: 8, bookpreview: 8, social: 9, done: 10,
+  book: 8, bookpreview: 8, social: 9, done: 11,
 };
 // Flows from before the "page" event existed fall back to generation phases.
 const LEGACY_STEP: Record<string, number> = { wrapchips: 1, wrapconcept: 2, wrapwords: 4, wrapnames: 5 };
 const PAGE_STEP: Record<string, number> = {
   ask: 1, brief: 1, refine: 2, brands: 3, brandsum: 3, words: 4, names: 5, claim: 6, reveal: 6,
-  domain: 6, taste: 7, logo: 7, snap: 7, unlock: 7, early: 7, logodone: 7, pers: 7, book: 8, socials: 9, kit: 9, mkt: 9, done: 10,
+  domain: 6, brand: 7, feel: 7, tcol: 7, ttype: 7, tshape: 7, taste: 7, logo: 7, snap: 7, unlock: 7, early: 7, logodone: 7, pers: 7,
+  book: 8, socials: 9, kit: 9, mkt: 9, done: 11,
 };
+// The step an event proves, with the domain moving to the end on CUT_D.
+function stepOfEvent(e: LogItem): number | undefined {
+  if (e.phase === "page") {
+    const to = String(e.input?.payload?.to || "");
+    return to === "claim" || to === "domain" ? domStep(e.at) : PAGE_STEP[to];
+  }
+  if (e.phase === "domain" || e.phase === "godaddy") return domStep(e.at);
+  return ACTION_STEP[e.phase];
+}
 
 interface Flow {
   id: string;
@@ -104,7 +119,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "unlock_clicked") { f.unlock = true; f.price = Number(p.price) || f.price; }
       if (e.phase === "why_not" && p.reason) f.why = String(p.reason);
       if (e.phase === "claim_saved") { f.saved = true; if (!p.domain) f.later = true; }
-      if (e.phase === "domain" || (e.phase === "page" && String(p.to || "") === "reveal")) f.saved = true;
+      if (e.phase === "domain" || (e.phase === "page" && String(p.to || "") === "reveal" && e.at < CUT_D)) f.saved = true;
       if (e.phase === "kit_teaser_tap") f.teaser = true;
       if (e.phase === "words_continue" && p.mode === "auto") f.autoWords = true;
       if (e.phase === "names_reaction" || e.phase === "names_more") f.reactions++; // more-names rounds (the strip's chips, then "Show 6 more")
@@ -122,9 +137,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     const hasPages = evs.some((e) => e.phase === "page");
     let anyStep = false;
     for (const e of evs) {
-      const p = e.input?.payload || {};
-      const st = e.phase === "page" ? PAGE_STEP[String(p.to || "")] :
-        ACTION_STEP[e.phase] !== undefined ? ACTION_STEP[e.phase] :
+      const st = e.phase === "page" || ACTION_STEP[e.phase] !== undefined ? stepOfEvent(e) :
         !hasPages && f.email ? LEGACY_STEP[e.phase] : undefined;
       if (st === undefined) continue;
       anyStep = true;
@@ -142,7 +155,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     if (f.gateOnly && !f.email) { if (f.brief) gated.push(f.last); continue; }
     // a signed-in flow passed Sign up by definition
     if (f.email && !f.timeline.some((t) => t.step === STEPS[0])) f.timeline.unshift({ at: f.first, step: STEPS[0] });
-    f.status = f.step >= 10 ? "done" : Date.now() - f.last < 30 * 60000 ? "live" : "stopped";
+    f.status = f.step >= 11 ? "done" : Date.now() - f.last < 30 * 60000 ? "live" : "stopped";
     flows.push(f);
   }
   // ONE PERSON = ONE ROW: everything logged under the same email folds into the
@@ -179,7 +192,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     const seen = new Set<string>();
     main.timeline = main.timeline.filter((t) => { if (seen.has(t.step)) return false; seen.add(t.step); return true; });
     main.gateOnly = false;
-    main.status = main.step >= 10 ? "done" : Date.now() - main.last < 30 * 60000 ? "live" : "stopped";
+    main.status = main.step >= 11 ? "done" : Date.now() - main.last < 30 * 60000 ? "live" : "stopped";
   }
   const merged = flows.filter((f) => !absorbed.has(f));
   return { flows: merged.sort((a, b) => b.last - a.last), gated };
@@ -227,10 +240,11 @@ const SEED_UPDATES: Update[] = [
   { id: "u6", date: "2026-10-30", title: "Words always active, kit teaser, paywall v2", step: "03 · 05·k · P·2" },
   { id: "u7", date: "2026-10-31", title: "Name picker without the strip", step: "04 · Names" },
   { id: "u8", date: "2026-10-31", title: "Domain page leads with a free domain", step: "05 · Claim" },
+  { id: "u9", date: "2026-11-01", title: "Brand first, domain last (new chapter order)", step: "05 → Ch. 2 / 3" },
 ];
 
 // The numbers every view shares, for one window.
-interface Stats { briefs: number; signed: number; words: number; names: number; chosen: number; brand: number; paywall: number; unlock: number; spend: number }
+interface Stats { briefs: number; signed: number; words: number; names: number; chosen: number; brandStart: number; brand: number; paywall: number; unlock: number; domain: number; spend: number }
 function statsFor(flows: Flow[], gated: number[], ads: AdsDay[] | null, from: number, to: number, chan?: string): Stats {
   const fl = flows.filter((f) => f.first >= from && f.first < to && (!chan || (f.source || "Direct") === chan));
   const s = fl.filter((f) => f.email);
@@ -243,7 +257,9 @@ function statsFor(flows: Flow[], gated: number[], ads: AdsDay[] | null, from: nu
     words: s.filter((f) => f.step >= 4).length,
     names: s.filter((f) => f.step >= 5).length,
     chosen: s.filter((f) => f.step >= 6).length,
-    brand: s.filter((f) => f.logo || f.step >= 7).length,
+    brandStart: s.filter((f) => f.step >= 7).length,
+    brand: s.filter((f) => f.logo || f.step >= 8).length,
+    domain: s.filter((f) => !!f.domain && f.last >= CUT_D).length,
     paywall: fl.filter((f) => f.paywall).length,
     unlock: fl.filter((f) => f.unlock).length,
     spend,
@@ -304,7 +320,14 @@ export function AdminPage() {
       }
     })().catch((e) => { if (!dead) setErr(String(e)); });
     call({ phase: "adminads" }).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => (a.date < b.date ? 1 : -1))); }).catch(() => {});
-    call({ phase: "admin-updates" }).then((d) => { if (!dead) setUpdates(Array.isArray(d?.list) && d.list.length ? d.list : SEED_UPDATES); }).catch(() => setUpdates(SEED_UPDATES));
+    call({ phase: "admin-updates" }).then((d) => {
+      if (dead) return;
+      const stored: Update[] = Array.isArray(d?.list) && d.list.length ? d.list : [];
+      if (!stored.length) { setUpdates(SEED_UPDATES); return; }
+      // updates shipped after the saved list's newest one join it (deleted ones stay deleted)
+      const newest = stored.reduce((m, u) => (u.date > m ? u.date : m), "");
+      setUpdates([...stored, ...SEED_UPDATES.filter((u) => u.date > newest && !stored.some((x) => x.id === u.id))]);
+    }).catch(() => setUpdates(SEED_UPDATES));
     call({ phase: "adminmail" }).then((d) => { if (!dead && !d.error) setMailStats(d); }).catch(() => {});
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -472,10 +495,11 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
   const conv3 = (a: number, b: number) => { const s = statsFor(flows, gated, ads, a, b); return s.briefs ? (s.chosen / s.briefs) * 100 : NaN; };
   const funnel: [string, number][] = [
     ["Brief typed", cur.briefs], ["Signed up", cur.signed], ["Words", cur.words], ["Names", cur.names],
-    ["Claim", cur.chosen], ["Brand", cur.brand], ["Paywall seen", cur.paywall], ["Unlocked", cur.unlock],
+    ["Name chosen", cur.chosen], ["Brand started", cur.brandStart], ["Paywall seen", cur.paywall], ["Unlocked", cur.unlock],
+    ["Domain kept", cur.domain],
   ];
   const steps = funnel.map(([, n], i) => (i === 0 ? NaN : funnel[i - 1][1] ? (n / funnel[i - 1][1]) * 100 : NaN));
-  const drops = steps.map((p, i) => ({ i, p })).filter((x) => x.i > 0 && x.i < 6 && isFinite(x.p) && funnel[x.i - 1][1] >= 5).sort((a, b) => a.p - b.p).slice(0, 2).map((x) => x.i);
+  const drops = steps.map((p, i) => ({ i, p })).filter((x) => x.i > 0 && x.i < 7 && isFinite(x.p) && funnel[x.i - 1][1] >= 5).sort((a, b) => a.p - b.p).slice(0, 2).map((x) => x.i);
   const chans = new Map<string, { spend: number; signed: number; names: number }>();
   for (const f of flows) if (f.first >= from && f.first < to) {
     const k = f.source || "Direct";
@@ -511,7 +535,7 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
             <tbody>
               {funnel.map(([l, n], i) => {
                 const tot = cur.briefs ? (n / cur.briefs) * 100 : 0;
-                const red = drops.includes(i), last = i === funnel.length - 1;
+                const red = drops.includes(i), last = l === "Unlocked";
                 return (
                   <tr key={l} className={last ? "last" : ""}>
                     <td className="l">{l}</td>
@@ -662,7 +686,7 @@ function Chart({ series, updates, num }: { series: Pt[]; updates: Update[]; num:
 }
 
 /* ── 2 · People: one row per person, their latest flow; a side panel ── */
-const STEP10 = ["Sign-up", "Brief", "Concept", "Swipe", "Words", "Names", "Claim", "Brand", "Brand book", "Socials", "Finished"];
+const STEP10 = ["Sign-up", "Brief", "Concept", "Swipe", "Words", "Names", "Name chosen", "Brand", "Brand book", "Socials", "Domain", "Finished"];
 function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }: {
   flows: Flow[]; items: LogItem[]; from: number; to: number; sel: string | null; setSel: (s: string | null) => void;
   roles: { owners: string[]; admins: string[] } | null; onRole: (email: string, role: "admin" | "user") => void; loading: boolean;
@@ -681,7 +705,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
     const head = "user,email,brief,step,status,name,domain,source,campaign,ad_group,keyword,country,device,lang,started,last_active,time_spent,deep_dive,logo,paywall,price,unlock,why_not,buy_click,feedback";
     const yn = (b: boolean) => (b ? "1" : "0");
     const lines = shown.map((f) => [
-      esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/10)`), f.status,
+      esc(f.uname), esc(f.email), esc(f.brief), esc(`${STEPS[f.step]} (${f.step}/11)`), f.status,
       esc(f.name), esc(f.domain), esc(f.source), esc(f.campaign), esc(f.content), esc(f.term), f.country, esc(f.device), f.lang,
       new Date(f.first).toISOString(), new Date(f.last).toISOString(), spent(f),
       yn(f.dive), yn(f.logo), yn(f.paywall), f.price || "", yn(f.unlock), esc(f.why), yn(f.buy), esc(f.feedback),
@@ -689,7 +713,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
     download(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }), `namename-people-${new Date().toISOString().slice(0, 10)}.csv`);
   }
   const bar = (f: Flow) => (
-    <span className="segs10">{Array.from({ length: 10 }, (_, i) => <i key={i} className={f.status === "done" ? "g" : i < f.step - 1 ? "d" : i === f.step - 1 ? "c" : ""} />)}</span>
+    <span className="segs10">{Array.from({ length: 11 }, (_, i) => <i key={i} className={f.status === "done" ? "g" : i < f.step - 1 ? "d" : i === f.step - 1 ? "c" : ""} />)}</span>
   );
   const role = (email: string) => (roles?.owners.includes(email.toLowerCase()) ? "Owner" : roles?.admins.includes(email.toLowerCase()) ? "Admin" : "User");
   const evs = selF ? items.filter((it) => it.process === selF.id || (selF.email && String(it.input?.payload?.meta?.email || it.input?.who?.email || "").toLowerCase() === selF.email.toLowerCase())).sort((a, b) => a.at - b.at) : [];
@@ -713,7 +737,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading }:
             <button key={f.id} className={"prow" + (sel === f.id ? " on" : "")} onClick={() => { setSel(sel === f.id ? null : f.id); setJourney(false); }}>
               <span className="who"><b>{f.uname || "Anonymous"}</b><em className="mono">{f.email || "no account"}</em></span>
               <span className="src">{f.source || "Direct"}</span>
-              <span className="got"><b>{f.status === "done" ? "Finished" : STEP10[f.step]} <i className="mono">{Math.min(10, f.step)}/10</i></b>{bar(f)}</span>
+              <span className="got"><b>{f.status === "done" ? "Finished" : STEP10[f.step]} <i className="mono">{Math.min(11, f.step)}/11</i></b>{bar(f)}</span>
               <span className="nm">{f.name ? <><b>{f.name}</b><em className="mono">{f.domain || ""}</em></> : <em className="none">No name yet</em>}</span>
               <span className={"stt " + f.status}>{f.status === "live" ? <><i className="pulse" />Live</> : f.status === "done" ? "✓ Done" : "Stopped"}</span>
               <span className="la mono">{ago(f.last)}</span>
@@ -795,7 +819,7 @@ function Emails({ items, from, to, len, unsub, loading }: { items: LogItem[]; fl
     const backs = items.filter((it) => it.phase === "email_back" && it.at >= a && it.at < b + 7 * DAY);
     const byEmail = new Map<string, LogItem[]>();
     for (const it of items) { const em = String(it.input?.payload?.meta?.email || it.input?.who?.email || "").toLowerCase(); if (em) { if (!byEmail.has(em)) byEmail.set(em, []); byEmail.get(em)!.push(it); } }
-    const stepOf = (it: LogItem) => (it.phase === "page" ? PAGE_STEP[String(it.input?.payload?.to || "")] : ACTION_STEP[it.phase]);
+    const stepOf = stepOfEvent;
     const per = new Map<string, { sent: number; tracked: number; opened: number; clicked: number; back: number; cont: number }>();
     let desk = 0, backN = 0;
     for (const s of sends) {
@@ -888,7 +912,7 @@ const CHANNELS: [string, string][] = [
   ["Organic search", "#12A36B"], ["Referral", "#F59E0B"], ["Product Hunt", "#DA552F"], ["Newsletter", "#8B5CF6"], ["Direct", "#6A6A6A"],
 ];
 const PAID = new Set(["Google Ads", "Meta Ads", "LinkedIn Ads"]);
-type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; saved: number; chose: number; brand: number; teaser: number; paywall: number; unlock: number; buy: number };
+type WeekMet = { spend: number; clicks: number; started: number; dive: number; signed: number; swiped: number; words: number; name: number; brandStart: number; chose: number; brand: number; paywall: number; unlock: number; buy: number };
 // `base`: the row a step % divides by, when it isn't the row above.
 const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean; base?: keyof WeekMet }[] = [
   { k: "clicks", t: "Clicks", s: "Clicks", d: "clicked an ad (visits for free channels)" },
@@ -897,14 +921,13 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "dive", t: "Deep-dived", s: "Deep-dive", d: "opened the brief deep-dive (02·r)" },
   { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste (step % of Sign-ups: the deep-dive is optional)", base: "signed" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
-  { k: "name", t: "Name chosen", s: "Name chosen", d: "picked a name, reached the claim", main: true },
-  { k: "saved", t: "Saved the name", s: "Saved", d: "saved it at 05, with a domain or “pick a domain later”" },
-  { k: "chose", t: "…with a domain", s: "+ domain", d: "saved it WITH a domain (step % of Saved)", base: "saved" },
-  { k: "brand", t: "Brand done", s: "Brand done", d: "picked a logo, saw the free brand snapshot (step % of Saved)", base: "saved" },
-  { k: "teaser", t: "Kit teaser tapped", s: "Teaser", d: "tapped the €29 kit on “{Name} is yours” (step % of Saved)", base: "saved" },
-  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29), after the brand or from the teaser (step % of Saved)", base: "saved" },
+  { k: "name", t: "Name chosen", s: "Name chosen", d: "continued with a name (“{Name} is yours”)", main: true },
+  { k: "brandStart", t: "Brand started", s: "Brand", d: "into chapter 2: the taste quiz (the key step since 1 Nov)" },
+  { k: "brand", t: "Logo picked", s: "Logo", d: "picked a logo, saw the free brand snapshot" },
+  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29)" },
   { k: "unlock", t: "Unlock clicked", s: "Unlock", d: "tapped Unlock: the number this test measures" },
-  { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of “Chose its domain”)", base: "chose" },
+  { k: "chose", t: "Domain kept", s: "Domain", d: "kept a domain in chapter 3 (step % of Brand started)", base: "brandStart" },
+  { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of Domain kept)", base: "chose" },
 ];
 const WMS = 7 * 864e5;
 const mondayOf = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
@@ -981,14 +1004,16 @@ function Signals({ flows, chan }: { flows: Flow[]; chan: string }) {
   const auto = toNames.filter((f) => f.autoWords).length;
   const react = fl.filter((f) => f.reactions > 0);
   const taps = fl.reduce((a, f) => a + f.reactions, 0), fails = fl.reduce((a, f) => a + f.reactFails, 0);
-  const saved = fl.filter((f) => f.saved || f.domain);
-  const later = saved.filter((f) => f.later).length;
+  const named = fl.filter((f) => f.step >= 6 && f.last >= CUT_D);
+  const toBrand = named.filter((f) => f.step >= 7).length;
+  const atDomain = fl.filter((f) => f.step >= 10 || (f.saved && f.last >= CUT_D));
+  const kept = atDomain.filter((f) => f.domain).length;
   const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) + "%" : "—");
   const rows: [string, string, string][] = [
     ["Words skipped", `${auto} of ${toNames.length}`, `${pct(auto, toNames.length)} reached names with nothing starred`],
     ["More names", `${taps} rounds · ${react.length} people`, fails ? `${fails} failed rounds` : "no failed rounds"],
-    ["Saved, domain later", `${later} of ${saved.length}`, `${pct(later, saved.length)} saved the name without a domain`],
-    ["Kit teaser", `${fl.filter((f) => f.teaser).length} taps`, `→ ${fl.filter((f) => f.teaser && f.unlock).length} unlocked`],
+    ["Name → brand started", `${toBrand} of ${named.length}`, `${pct(toBrand, named.length)} went from “{Name} is yours” into the brand (since 1 Nov)`],
+    ["Domain kept", `${kept} of ${atDomain.length}`, `${pct(kept, atDomain.length)} kept a domain at the last step`],
   ];
   return (
     <div className="paytest">
@@ -1075,10 +1100,9 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       swiped: fl.filter((f) => f.email && f.step >= 3).length,
       words: fl.filter((f) => f.email && f.step >= 5).length,
       name: fl.filter((f) => f.email && f.step >= 6).length,
-      saved: fl.filter((f) => f.email && (f.saved || !!f.domain)).length,
+      brandStart: fl.filter((f) => f.email && f.step >= 7).length,
       chose: fl.filter((f) => f.email && !!f.domain).length,
       brand: fl.filter((f) => f.email && (f.logo || f.step >= 8)).length,
-      teaser: fl.filter((f) => f.teaser).length,
       paywall: fl.filter((f) => f.paywall).length,
       unlock: fl.filter((f) => f.unlock).length,
       buy: fl.filter((f) => f.buy).length,
@@ -1194,10 +1218,10 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
 }
 
 /* ── Admin · Feedback: the "before you go" pop-up, read back (A·f / A·m·f) ── */
-const FB_STEPS = ["Brief", "Deep-dive", "Swipe", "Words", "Names", "Domain", "Brand", "Book", "Socials"] as const;
+const FB_STEPS = ["Brief", "Deep-dive", "Swipe", "Words", "Names", "Brand", "Book", "Socials", "Domain"] as const; // the domain is the last chapter since 1 Nov
 const STEP_LAB: Record<string, string> = {
   ask: "Brief", brief: "Brief", refine: "Deep-dive", brands: "Swipe", brandsum: "Swipe", words: "Words",
-  names: "Names", claim: "Domain", reveal: "Domain", domain: "Domain", taste: "Brand", logo: "Brand",
+  names: "Names", claim: "Domain", reveal: "Names", domain: "Domain", brand: "Brand", feel: "Brand", tcol: "Brand", ttype: "Brand", tshape: "Brand", snap: "Brand", unlock: "Brand", kit: "Socials", mkt: "Socials", taste: "Brand", logo: "Brand",
   logodone: "Brand", pers: "Brand", book: "Book", socials: "Socials", done: "Socials",
 };
 // The pop-up's historic option strings, folded onto the canonical reasons.

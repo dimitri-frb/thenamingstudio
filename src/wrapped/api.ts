@@ -86,7 +86,7 @@ export interface SavedSearch {
   domain?: string;          // the chosen domain
   domPrice?: string;        // its price when we checked ("$32/yr" shows on the account card)
   domCheckedAt?: number;    // when availability was last verified (the claim screen's live check)
-  domStatus?: "chosen" | "bought" | "later"; // chosen = kept in the app, not bought anywhere yet; later = no domain picked yet
+  domStatus?: "chosen" | "bought" | "later" | "suggested"; // suggested = auto-kept in the background, not confirmed yet; // chosen = kept in the app, not bought anywhere yet; later = no domain picked yet
   bought?: boolean;         // set ONLY by the user ("Mark as done") — we never verify the purchase
   brandUnlocked?: boolean;  // the paid brand kit is open (phase 1: free "early access")
   unlockSource?: string;    // "early_access" (phase 1) | "stripe" (phase 2)

@@ -29,43 +29,45 @@ type Step =
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
   | "snap" | "unlock" | "early" | "kit" | "mkt"
   | "done";
-// The product is a triptych: Name → Domain → Brand. The domain is claimed
-// right inside chapter 1 now (05 Claim), so there's no Domain chapter left.
+// The product is a triptych, brand first, domain last (handoff brand-first ·
+// concept D): 1 Name → 2 Brand → 3 Domain → All set. The top bar shows only the
+// chapter; the thin bar under it, that chapter's steps.
+const C1 = "Chapter 1 · Name", C2 = "Chapter 2 · Brand", C3 = "Chapter 3 · Domain";
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
-  brief:  { label: "Chapter 1 · Name", segs: 6, idx: 0 },
-  refine: { label: "Chapter 1 · Name", segs: 6, idx: 1 },
-  brands: { label: "Chapter 1 · Name", segs: 6, idx: 2 },
-  brandsum: { label: "Chapter 1 · Name", segs: 6, idx: 2 },
-  words:  { label: "Chapter 1 · Name", segs: 6, idx: 3 },
-  names:  { label: "Chapter 1 · Name", segs: 6, idx: 4 },
-  claim:  { label: "Claim your name", segs: 6, idx: 5 },
-  reveal: { label: "Chapter 1 · Name", segs: 6, idx: 5 },
-  brand:  { label: "Chapter 3 · Brand", segs: 0, idx: 0 },
-  feel:   { label: "Chapter 3 · Brand · Feeling", segs: 9, idx: 0 },
-  tcol:   { label: "Chapter 3 · Brand · Colours", segs: 9, idx: 1 },
-  ttype:  { label: "Chapter 3 · Brand · Type", segs: 9, idx: 2 },
-  tshape: { label: "Chapter 3 · Brand · Shape", segs: 9, idx: 3 },
-  taste:  { label: "Chapter 3 · Brand · Your taste", segs: 9, idx: 4 },
-  logo:   { label: "Chapter 3 · Brand · Logos", segs: 9, idx: 5 },
-  snap:   { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
-  unlock: { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
-  early:  { label: "Chapter 3 · Brand · Your brand", segs: 9, idx: 6 },
-  logodone: { label: "Chapter 3 · Brand · Your logo", segs: 9, idx: 6 },
-  pers:   { label: "Chapter 3 · Brand · Personalize", segs: 9, idx: 6 },
-  book:   { label: "Chapter 3 · Brand · Brand book", segs: 9, idx: 7 },
-  socials: { label: "Chapter 3 · Brand · Socials", segs: 9, idx: 8 },
-  kit:    { label: "Chapter 3 · Brand · Socials kit", segs: 9, idx: 8 },
-  mkt:    { label: "Chapter 3 · Brand · Marketing kit", segs: 9, idx: 8 },
+  brief:  { label: C1, segs: 6, idx: 0 },
+  refine: { label: C1, segs: 6, idx: 1 },
+  brands: { label: C1, segs: 6, idx: 2 },
+  brandsum: { label: C1, segs: 6, idx: 2 },
+  words:  { label: C1, segs: 6, idx: 3 },
+  names:  { label: C1, segs: 6, idx: 4 },
+  reveal: { label: C1, segs: 6, idx: 5 },
+  brand:  { label: C2, segs: 0, idx: 0 },
+  feel:   { label: C2, segs: 9, idx: 0 },
+  tcol:   { label: C2, segs: 9, idx: 1 },
+  ttype:  { label: C2, segs: 9, idx: 2 },
+  tshape: { label: C2, segs: 9, idx: 3 },
+  taste:  { label: C2, segs: 9, idx: 4 },
+  logo:   { label: C2, segs: 9, idx: 5 },
+  snap:   { label: C2, segs: 9, idx: 6 },
+  unlock: { label: C2, segs: 9, idx: 6 },
+  early:  { label: C2, segs: 9, idx: 6 },
+  logodone: { label: C2, segs: 9, idx: 6 },
+  pers:   { label: C2, segs: 9, idx: 6 },
+  book:   { label: C2, segs: 9, idx: 7 },
+  socials: { label: C2, segs: 9, idx: 8 },
+  kit:    { label: C2, segs: 9, idx: 8 },
+  mkt:    { label: C2, segs: 9, idx: 8 },
+  claim:  { label: C3, segs: 2, idx: 0 },
 };
-const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "claim", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "claim", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
 const STEP_SLUG: Record<Step, string> = {
-  land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "5-claim", reveal: "5-reveal",
+  land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "11-domain", reveal: "5-reveal",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", snap: "8-preview", unlock: "8-unlock", early: "8-early-access", logodone: "8-logo", pers: "8-personalize",
-  book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", done: "11-done",
+  book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", done: "12-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -73,6 +75,8 @@ const SLUG_STEP: Record<string, Step> = Object.fromEntries(
 // Old links and old snapshots keep working: the ask page folded into the
 // landing, and the separate Domain step folded into 05 Claim.
 SLUG_STEP["1-brief"] = "land";
+SLUG_STEP["5-claim"] = "claim"; // the domain step moved to the end (chapter 3)
+SLUG_STEP["11-done"] = "done";
 SLUG_STEP["6-domain"] = "claim";
 const LEGACY_STEP: Record<string, Step> = { ask: "land", domain: "claim" };
 const liveStep = (s: string): Step => (LEGACY_STEP[s] || s) as Step;
@@ -238,7 +242,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [poll, setPoll] = useState<null | "exit" | "idle">(null);
   const pollShown = useRef(false);
   // ── 05 Claim: the story fold, the endings sheet, the registrar sheet, 05·✓ ──
-  const [claimStory, setClaimStory] = useState(false);
+  const [, setClaimStory] = useState(false);
   const [domBought, setDomBought] = useState(false); // user-set only ("Mark as done")
   // ── V2 mobile (handoff words-names-v2): phones get the tap-5 cloud + compact names ──
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches);
@@ -397,7 +401,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       s.picked && go === "domain" ? "claim" :
       s.picked && go && ["book", "socials", "kit", "mkt", "unlock"].includes(go) ? (go as Step) :
       s.picked && go === "logo" ? (s.logo ? "logodone" : "logo") :
-      s.picked ? (s.steps?.domain ? "reveal" : "claim") :
+      s.picked ? (s.logo ? "logodone" : "reveal") :
       s.names?.length ? "names" :
       s.concept ? "words" : "brief";
     setStep(target);
@@ -925,7 +929,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setBoard(null); setDomSel(null); setLogoSel(null); setLogoSeed(0);
     setClaimStory(false); setDomBought(false);
     track("pick", { name: n.name, score: n.score, rank: (names || []).findIndex((x) => x.name === n.name) + 1 });
-    toStep("claim");
+    toStep("reveal"); // D·1: "{Name} is yours", no domain question (it comes last)
     persist({ picked: n });
   }
 
@@ -988,9 +992,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // pre-selected. The domain is optional: the primary button is never disabled.
   const [claimFail, setClaimFail] = useState(false); // check failed, or > 8 s
   const [claimTry, setClaimTry] = useState(0);
-  const [claimT0, setClaimT0] = useState(0);
+  const [, setClaimT0] = useState(0);
   const [, setClaimTick] = useState(0);
   const claimSeen = useRef(false);
+  const [domSheet, setDomSheet] = useState(false);
   const claimView = useMemo(() => {
     if (!board || !picked) return null;
     const slug = picked.name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -1017,7 +1022,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     claimView ? (!claimView.rows.length ? "nofree" : claimView.exactFree ? "exact_free" : "taken_alts") : claimFail ? "failed" : "checking";
   // The selected row: the founder's tap, else the closest match (row 0).
   const claimSel: DomainCard | null = claimView?.rows.find((d) => d.domain === domSel?.domain) || claimView?.rows[0] || null;
-  const checkTime = boardAt ? new Date(boardAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => { // 05 opens → re-verify availability, never a stale "Available now"
     if (step !== "claim" || !picked) return;
@@ -1046,16 +1050,29 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, claimTry]);
 
+  // Brand first, domain last: the best domain is found silently from D·1 and
+  // kept on the account (card + lifecycle emails) as "suggested", so someone
+  // who stops at the brand or the paywall doesn't lose it.
+  const suggestedFor = useRef("");
+  useEffect(() => {
+    if (test || !picked || steps.domain || !claimView?.rows.length || suggestedFor.current === picked.name) return;
+    suggestedFor.current = picked.name;
+    const d = claimView.rows[0];
+    persist({ domain: d.domain, domPrice: d.price || d.offerPrice || "", domCheckedAt: boardAt || undefined, domStatus: "suggested" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, picked, steps.domain, claimView]);
+
   useEffect(() => { // claim_seen: once per visit, the first settled state
     if (step !== "claim" || claimSeen.current || claimState === "checking") return;
     claimSeen.current = true;
     track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 });
+    if (claimSel) track("claim_domain_selected", { domain: claimSel.domain, position: 0, auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, claimState]);
 
   // Save the name, with the chosen domain or none ("pick a domain later"): no
   // purchase here. The funnel logs it, and the brand chapter opens.
-  function keepName(d: DomainCard | null, to: Step = "reveal") {
+  function keepName(d: DomainCard | null, to: Step = "done") {
     if (!claimSeen.current) { claimSeen.current = true; track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 }); }
     track("claim_saved", { domain: d?.domain || null, state: claimState });
     if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "", checkedAt: boardAt || undefined });
@@ -1161,23 +1178,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
     toStep("early");
   }
-  // K · the kit teaser on "{Name} is yours" opens the paywall early; the
-  // paywall then knows to send "Keep my free preview" back into the brand flow.
-  const payFrom = useRef<"reveal" | "">("");
-  function openKit(source: "card" | "link") {
-    track("kit_teaser_tap", { source });
-    payFrom.current = "reveal";
-    toStep("unlock");
-  }
-  useEffect(() => { // kit_teaser_seen: once per visit of the reveal page
-    if (step === "reveal" && picked && !brandOpen && !test) track("kit_teaser_seen", { name: picked.name });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
   function keepFreePreview() {
     unlockTapped.current = true; // logged here, not again on leaving
     track("paywall_dismissed", { price, via: "keep" });
-    const from = payFrom.current; payFrom.current = "";
-    toStep(from === "reveal" ? "brand" : "done");
+    toStep("claim"); // the free path carries on to the last chapter: the domain
+
   }
   const kitFail = !!fails.kit;
   useEffect(() => { // the socials + marketing copy, written once the kit is open
@@ -1200,7 +1205,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", claim: "names", reveal: "claim",
+    brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
+    claim: brandOpen ? "mkt" : "snap",
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
     kit: "socials", mkt: "kit",
@@ -1213,8 +1219,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "brands" ? "brandsum" :
       step === "brandsum" ? (conceptReady ? "words" : null) :
       step === "words" ? (names?.length ? "names" : null) :
-      step === "names" ? (picked ? "claim" : null) :
-      step === "claim" ? (steps.domain ? "reveal" : null) :
+      step === "names" ? (picked ? "reveal" : null) :
+      step === "claim" ? (steps.domain ? "done" : null) :
       step === "reveal" ? "brand" :
       step === "brand" ? "feel" :
       step === "feel" ? "tcol" :
@@ -1230,7 +1236,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "book" ? "socials" :
       step === "socials" ? "kit" :
       step === "kit" ? "mkt" :
-      step === "mkt" ? "done" : null;
+      step === "mkt" ? "claim" : null;
     return t;
   };
 
@@ -1625,163 +1631,115 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 05 Claim — the name first; its domain is optional (handoff claim-A) ═══ */}
-      {step === "claim" && picked && (
-        <>
-          <div className="wr-stage wr-claim2stage">
-            <div className="wr-claim2 cla">
-              <div className="hero rise">
-                <p className="kick">Your name</p>
-                <h1 className="cname pop">{picked.name}</h1>
-                <p className="story">
-                  {picked.parts?.[0] && <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</>}
-                  {!claimStory && <button className="wr-link storybtn" onClick={() => setClaimStory(true)}>Story ↓</button>}
-                </p>
-                {claimStory && (
-                  <>
-                    <div className="sgrid rise">
-                      <div>
-                        <i className="mono">Roots</i>
-                        <p>{(picked.parts || []).map((p, i) => <Fragment key={p.part}>{i > 0 && " "}<b>{p.part[0].toUpperCase() + p.part.slice(1)}</b>{`: ${p.note}.`}</Fragment>)}</p>
-                      </div>
-                      <div>
-                        <i className="mono">Why it fits</i>
-                        <p>Your brief is about {concept?.concept || "what you're building"}. {picked.name} says it in {book?.saying?.syllables?.length || picked.name.split(/[^a-z]/i).length || "a few"} soft syllables.</p>
-                      </div>
-                      {!!book?.saying?.world?.length && (
-                        <div>
-                          <i className="mono">Travels well</i>
-                          <p>Easy to say in {book.saying.world.slice(0, 4).map((w) => w.language).join(", ")}. No unwanted meanings found.</p>
-                        </div>
-                      )}
-                    </div>
-                    <button className="wr-link fold" onClick={() => setClaimStory(false)}>Show less ↑</button>
-                  </>
-                )}
-              </div>
-              <div className="pick rise">
-                <div className="krow">
-                  <p className="k mono">Its domain · optional</p>
-                  {claimState === "checking"
-                    ? <span className="ks mono"><i className="spin" />{Math.max(1, Math.round((Date.now() - claimT0) / 1000))}s</span>
-                    : claimView && claimView.rows.length > 0 ? <span className="ks mono">{claimView.rows.length} free{checkTime ? ` · checked ${checkTime}` : ""}</span> : null}
-                </div>
-                {claimState === "checking" && (
-                  <>
-                    <div className="skel" /><div className="skel" /><div className="skel short" />
-                    <p className="buynote mono">Checking .com, .io, .app and close variants. Usually under 5 seconds.</p>
-                  </>
-                )}
-                {(claimState === "failed" || claimState === "nofree") && (
-                  <>
-                    <div className="cnote">
-                      <b>⚠︎ {claimState === "failed" ? "We couldn't check domains just now." : "No free domain yet."}</b>
-                      <span>{claimState === "failed" ? "Your name is safe. We'll check again from your account." : "Your name is kept either way. We'll keep looking from your account."}</span>
-                    </div>
-                    <button className="cchip" onClick={() => { setBoard(null); setClaimTry((n) => n + 1); }}>↻ Try again</button>
-                  </>
-                )}
-                {claimView && claimView.rows.length > 0 && (
-                  <>
-                    {claimView.rows.map((d, i) => {
-                      const on = d.domain === claimSel?.domain;
-                      return (
-                        <button key={d.domain} className={"domrow" + (on ? " on" : "")}
-                          onClick={() => { setDomSel(d); track("claim_domain_selected", { domain: d.domain, position: i }); }}>
-                          <i className="radio" />
-                          <span className="dmid">
-                            <span className="d mono">{d.domain}</span>
-                            <span className="st mono">{i === 0 ? (claimView.exactFree ? "Available now · exact match" : "Available now · best match") : "Available"}</span>
-                          </span>
-                          {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
-                        </button>
-                      );
-                    })}
-                    {/* The taken .com is a quiet note under the list, never the first
-                        thing they see: lead with what they CAN have. */}
-                    {claimView.taken && (
-                      <p className="takennote">{claimView.taken.domain} is {claimView.taken.status === "negotiable" ? "registered (for sale)" : "already registered"} · most brands start on a variant</p>
-                    )}
-                    <p className="buynote mono">Price per year when you buy it · nothing to pay to us</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btnor cbig" onClick={() => keepName(claimSel)}>Save and discover your brand →</button>
-            <span className="urow">
-              <button className="wr-link" onClick={() => toStep("names")}>← Names</button>
-              <button className="wr-link" onClick={() => keepName(null)}>Pick a domain later</button>
-            </span>
-          </div>
-        </>
-      )}
-
-      {/* ═══ 05·k Kept — the commit; the brand is next, and the €29 kit is
-           previewed inside step 3 (handoff round 2 · K). The free path stays first. ═══ */}
-      {step === "reveal" && picked && (() => {
-        const handle = picked.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const later = steps.domain === "skipped";
-        const dm = domSel?.domain || picked.dom?.domain || "";
-        const teaser = (side: boolean) => (
-          <button className={"kteaser " + (side ? "side" : "in")} onClick={() => openKit("card")}>
-            {side && <span className="kup mono">Coming up in step 3</span>}
-            <KitTiles name={picked.name} handle={handle} pal={lpal} />
-            <span className="kprice">
-              <span className="kl"><b>Full brand kit · €{price}</b> one-time<small>{side ? "You see a free preview first. Nothing to pay to continue." : "Free preview first · nothing to pay to continue"}</small></span>
-              <span className="kin">{side ? "See what's inside ›" : "Inside ›"}</span>
-            </span>
-          </button>
-        );
+      {/* ═══ Chapter 3 · Domain (D·2–D·5): the last step, shown as the address
+           of the finished brand. One kept domain; "Change" opens the others. ═══ */}
+      {step === "claim" && picked && (() => {
+        const slug = picked.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const kept = claimState === "exact_free" || claimState === "taken_alts" ? claimSel : null;
+        const status = !kept ? "" : claimView?.exactFree && kept.domain === `${slug}.com` ? "Available · the exact .com"
+          : claimView?.taken ? `Available · ${claimView.taken.domain} is ${claimView.taken.status === "negotiable" ? "for sale" : "taken"}` : "Available";
+        const price = kept ? (kept.price || kept.offerPrice || "") : "";
+        const tagline = (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, "");
         return (
           <>
-            <div className="wr-stage wr-kept kept2">
-              <div className="kleft">
-                <span className="okball g pop">✓</span>
-                <h1 className="wr-h pop">{picked.name} is yours.</h1>
-                <p className="wr-lead rise">It's in your account. Here is what comes next.</p>
-                <div className="keptcard rise">
-                  <div className="krow">
-                    <i className="ic ok">✓</i>
-                    <span className="mid"><b>Name</b><small className="mono">{picked.name}</small></span>
-                  </div>
-                  {later ? (
-                    <button className="krow" onClick={() => toStep("claim")}>
-                      <i className="ic out">2</i>
-                      <span className="mid"><b>Domain · later</b><small className="mono">Pick one any time</small></span>
-                      <span className="val pickl">Pick ›</span>
-                    </button>
-                  ) : (
-                    <div className="krow">
-                      <i className="ic ok">✓</i>
-                      <span className="mid"><b>Domain</b><small className="mono">{dm || "—"} · kept</small></span>
+            <div className="wr-stage wr-dom3">
+              <div className="dcopy">
+                <p className="kick mono">Last step</p>
+                <h1 className="wr-h">Give {picked.name} a home online.</h1>
+                {kept && (
+                  <>
+                    <div className="drow">
+                      <span className="ok">✓</span>
+                      <span className="dmid"><b className="mono">{kept.domain}</b><em>{status}</em></span>
+                      <button className="chg" onClick={() => { setDomSheet(true); track("claim_change_opened", { name: picked.name }); }}>Change</button>
                     </div>
-                  )}
-                  <div className="kbrand">
-                    <button className="krow lead" onClick={() => toStep("brand")}>
-                      <i className="ic nx">3</i>
-                      <span className="mid"><b>Your brand</b><small className="mono">logo · colours · brand book</small></span>
-                      <span className="val next">NEXT</span>
-                    </button>
-                    {!brandOpen && teaser(false)}
+                    {price && <p className="dnote">{price}/yr when you buy it · nothing to pay to us</p>}
+                  </>
+                )}
+                {claimState === "checking" && <p className="dnote wait">Checking .com, your local domains and close variants. You can carry on.</p>}
+                {(claimState === "failed" || claimState === "nofree") && (
+                  <div className="dfail">
+                    <span><b>{claimState === "failed" ? "We couldn't check domains just now" : "No free domain yet"}</b>Your brand is saved. We'll check again from your account.</span>
+                    <button onClick={() => { setBoard(null); setClaimTry((n) => n + 1); }}>↻ Retry</button>
                   </div>
-                  <div className="krow dimr">
-                    <i className="ic out">4</i>
-                    <span className="mid"><b>Social accounts</b></span>
-                    <span className="val mono">~1 min</span>
-                  </div>
+                )}
+              </div>
+              <div className="dbrowser">
+                <div className="bar">
+                  <i /><i />
+                  <span className="addr mono">
+                    {kept ? <><span className="live" />{kept.domain}</> : claimState === "checking" ? <><span className="spin" />finding its address…</> : `${slug}.?`}
+                  </span>
+                </div>
+                <div className="page">
+                  {payCtx && <span className="lg" dangerouslySetInnerHTML={{ __html: payCtx.logoLight }} />}
+                  {tagline && <p>{tagline}</p>}
                 </div>
               </div>
-              {!brandOpen && <div className="kright">{teaser(true)}</div>}
             </div>
             <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-              <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => toStep("brand")}>Now, your brand →</button>
-              {!brandOpen && <button className="wr-link" onClick={() => openKit("link")}>Get the full kit · €{price}</button>}
+              <button className="wr-btnor cbig" onClick={() => keepName(kept)}>
+                {kept ? `Keep ${kept.domain} →` : claimState === "checking" ? "Keep looking in the background →" : "Finish my brand →"}
+              </button>
+              <span className="urow">
+                <button className="wr-link" onClick={() => toStep(brandOpen ? "mkt" : "snap")}>← Brand</button>
+                <button className="wr-link" onClick={() => keepName(null)}>Skip for now</button>
+              </span>
             </div>
+            {domSheet && claimView && (
+              <div className="wr-domsheet" onClick={() => setDomSheet(false)}>
+                <div className="sheet" onClick={(e) => e.stopPropagation()}>
+                  <span className="grab" />
+                  <h3>Choose its address</h3>
+                  {claimView.rows.map((d, i) => {
+                    const on = d.domain === claimSel?.domain;
+                    return (
+                      <button key={d.domain} className={"srow" + (on ? " on" : "")}
+                        onClick={() => { setDomSel(d); track("claim_domain_selected", { domain: d.domain, position: i }); }}>
+                        <i className="radio" />
+                        <span className="dmid"><b className="mono">{d.domain}</b><em>Available</em></span>
+                        {(d.price || d.offerPrice) && <span className="pr mono">{d.price || d.offerPrice}<em>/yr</em></span>}
+                      </button>
+                    );
+                  })}
+                  <p className="dnote">The price is per year, if you buy it later.</p>
+                  <button className="wr-btnor cbig" onClick={() => setDomSheet(false)}>Done</button>
+                </div>
+              </div>
+            )}
           </>
         );
       })()}
+
+      {/* ═══ D·1 · "{Name} is yours" — end of chapter 1. No domain question:
+           the best domain is found silently and kept for chapter 3. ═══ */}
+      {step === "reveal" && picked && (
+        <>
+          <div className="wr-stage wr-d1">
+            <div className="d1hero">
+              <span className="okball g pop">✓</span>
+              <p className="kick mono rise">It's yours</p>
+              <h1 className="nm pop">{picked.name}</h1>
+              <p className="story rise">
+                {picked.parts?.[0] ? <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</> : picked.tagline}
+              </p>
+            </div>
+            <div className="d1next rise">
+              <p className="k mono">Next · give it a look</p>
+              <div className="tiles">
+                <span className="t"><i className="sun" style={{ background: lpal.dawn }} /><b>Logo</b></span>
+                <span className="t"><span className="dots">{[lpal.dawn, lpal.haze, lpal.nova].map((c) => <i key={c} style={{ background: c }} />)}</span><b>Colours</b></span>
+                <span className="t"><span className="aa">Aa</span><b>Type</b></span>
+              </div>
+              <p className="note">Its domain comes at the end, once the brand is ready.</p>
+            </div>
+          </div>
+          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
+            <button className="wr-btnor cbig" onClick={() => toStep("brand")}>Now, your brand →</button>
+            <button className="wr-link" onClick={() => toStep("names")}>← Names</button>
+          </div>
+        </>
+      )}
 
       {/* ═══ Chapter 3 · Brand — opener ═══ */}
       {step === "brand" && picked && (
@@ -1790,7 +1748,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <h1 className="wr-h pop" style={{ fontSize: 58, marginBottom: 14 }}>Now, your brand.</h1>
             <p className="wr-lead rise" style={{ marginBottom: 30 }}>A minute of swiping, and we build the rest.</p>
             <button className="wr-btn rise" style={{ maxWidth: 200 }} onClick={() => toStep("feel")}>Start →</button>
-            <button className="wr-link rise" style={{ marginTop: 10 }} onClick={() => { track("brandlater", { name: picked.name }); toStep("done"); }}>Do it later</button>
+            <button className="wr-link rise" style={{ marginTop: 10 }} onClick={() => { track("brandlater", { name: picked.name }); toStep("claim"); }}>Do it later</button>
           </div>
         </>
       )}
@@ -2169,7 +2127,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <SocialsKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onNext={() => toStep("mkt")} onBack={() => toStep("socials")} />
       )}
       {step === "mkt" && payCtx && brandOpen && (
-        <MarketingKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onFinish={() => toStep("done")} onBack={() => toStep("kit")} />
+        <MarketingKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onFinish={() => toStep("claim")} onBack={() => toStep("kit")} />
       )}
 
       {/* ═══ 09 all set ═══ */}
@@ -2256,8 +2214,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {whyNot && (
         <WhyNot
-          onPick={(reason) => { track("why_not", { reason, price, name: picked?.name }); setWhyNot(false); toStep("done"); }}
-          onSkip={() => { setWhyNot(false); toStep("done"); }}
+          onPick={(reason) => { track("why_not", { reason, price, name: picked?.name }); setWhyNot(false); toStep("claim"); }}
+          onSkip={() => { setWhyNot(false); toStep("claim"); }}
         />
       )}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
@@ -2357,38 +2315,6 @@ function GenFail({ note, onRetry }: { note: string; onRetry: () => void }) {
 /* 00·s — after "Name it": one tap with Google, the brief is kept */
 const LANG_FULL: Record<string, string> = { EN: "English", LA: "Latin", IT: "Italian", FR: "French", ES: "Spanish", GR: "Greek", JP: "Japanese", AR: "Arabic", DE: "German", PT: "Portuguese", SV: "Swedish", NL: "Dutch" };
 /* ── V2·03 / 03·5 (mobile): the word cloud — tap a few, shuffle, hold for meaning ── */
-/* K · three locked kit tiles (brand book page, logo versions, social avatar),
-   drawn from the taste palette, before any logo exists. */
-function KitTiles({ name, handle, pal }: { name: string; handle: string; pal: { dawn: string; haze: string; nova: string; night: string } }) {
-  return (
-    <span className="ktiles">
-      <span className="kt">
-        <span className="art bk" style={{ background: `linear-gradient(135deg, ${pal.dawn}, ${pal.haze} 55%, ${pal.nova})` }}>
-          <i className="bt mono">BRAND BOOK</i>
-          <span className="pg"><i className="mono">01 · STORY</i><u /><u /><u className="s" /></span>
-        </span>
-        <span className="cap">Brand book · 12 p</span>
-      </span>
-      <span className="kt">
-        <span className="art lg">
-          <span className="c" style={{ background: "#F7F5F1" }}><i className="sun" style={{ background: pal.dawn }} /></span>
-          <span className="c" style={{ background: pal.night }}><b>{name}</b></span>
-          <span className="c" style={{ background: pal.dawn }} />
-          <span className="c" style={{ background: pal.haze }} />
-        </span>
-        <span className="cap">Every logo version</span>
-      </span>
-      <span className="kt">
-        <span className="art so">
-          <span className="av"><i className="sun" style={{ background: pal.dawn }} /></span>
-          <i className="hn mono">@{handle}</i>
-        </span>
-        <span className="cap">Socials kit</span>
-      </span>
-    </span>
-  );
-}
-
 /* The strongest n words: the six angles interleaved, first word of each first. */
 function strongestWords(styles: WStyle[], n: number): WWord[] {
   const out: WWord[] = []; const seen = new Set<string>();
