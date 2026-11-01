@@ -126,7 +126,7 @@ function KitRows({ s, price, resume }: { s: SavedSearch; price: number; resume: 
       ) : (
         <div className="kr lockd">
           <i>🔒</i><b>Brand kit · locked</b>
-          <a className="r unl" href={resume("unlock")} onClick={() => track("unlock_clicked", { price, variant: `eur${price}`, source: "account", name: s.picked?.name })}>Unlock €{price}</a>
+          <a className="r unl" href={resume("unlock")} onClick={() => track("unlock_clicked", { price, variant: `eur${price}`, source: "account", name: s.picked?.name, sentence: (s.sentence || "").slice(0, 300) })}>Unlock €{price}</a>
         </div>
       )}
     </div>

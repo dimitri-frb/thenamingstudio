@@ -19,7 +19,7 @@ interface KVNamespace {
 }
 interface ExecutionContext { waitUntil(promise: Promise<unknown>): void }
 
-import { handleUnsub, sendStop, sendWelcome, type StopCandidate } from "./emails";
+import { handleUnsub, sendStop, sendUnlockAlert, sendWelcome, type StopCandidate } from "./emails";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -198,6 +198,25 @@ export default {
     if (phase === "track") {
       const ev = String(body?.event || "track").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "track";
       if (env.LOG && !skipLog) ctx.waitUntil(writeLog(env, ev, body.process, { payload: body.payload, who: body.who, geo: String((req as any)?.cf?.country || "") }, body.payload || {}));
+      // Owner alert: an email to ADMIN_EMAILS each time someone taps Unlock
+      // (once per flow; never for our own runs or test runs).
+      if (ev === "unlock_clicked" && !skipLog && env.EMAIL && env.LOG) {
+        const pl = body.payload || {}, m = pl.meta || {};
+        const owners = (env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+        const me = String(m.email || "").toLowerCase();
+        const flowId = String(body.process || "").slice(0, 40);
+        if (owners.length && flowId && !owners.includes(me)) ctx.waitUntil((async () => {
+          const k = `alert:unlock:${flowId}`;
+          if (await env.LOG!.get(k)) return;
+          await env.LOG!.put(k, "1", { expirationTtl: 60 * 60 * 24 * 90 });
+          const brief = String(pl.sentence || "").slice(0, 300);
+          await sendUnlockAlert(env, owners, {
+            name: String(pl.name || ""), who: String(m.uname || ""), email: String(m.email || ""), price: Number(pl.price) || 29,
+            source: ({ paywall: "the paywall", locked_page: "a locked page", account: "their account", done: "the All set page" } as Record<string, string>)[String(pl.source || "")] || String(pl.source || ""),
+            brief, device: String(m.device || ""), country: String((req as any)?.cf?.country || ""), channel: String(m.source || ""), flowId,
+          });
+        })());
+      }
       return json({ ok: true }, env);
     }
 

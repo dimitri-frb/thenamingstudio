@@ -1171,7 +1171,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
   function unlockFrom(source: "paywall" | "locked_page" | "account" | "done") {
-    track("unlock_clicked", { price, variant: `eur${price}`, source });
+    track("unlock_clicked", { price, variant: `eur${price}`, source, name: picked?.name, sentence: sentence.trim().slice(0, 300) });
     if (source !== "paywall") { toStep("unlock"); return; }
     unlockTapped.current = true;
     setUnlocked(true);

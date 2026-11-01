@@ -191,6 +191,29 @@ export async function sendStop(
 }
 
 /* ── the unsubscribe door (GET /unsub?u=&k=) ── */
+/* ── Owner alert: someone tapped Unlock on the paywall (sent to ADMIN_EMAILS) ── */
+export async function sendUnlockAlert(env: EmailEnv, to: string[], a: {
+  name: string; who: string; email: string; price: number; source: string; brief: string;
+  device: string; country: string; channel: string; flowId: string;
+}): Promise<void> {
+  const row = (k: string, v: string) => v ? `<tr><td style="padding:4px 14px 4px 0;color:#6a6a6a;font-size:13px;">${esc(k)}</td><td style="padding:4px 0;font-size:14px;color:#111;">${esc(v)}</td></tr>` : "";
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ed;font-family:Arial,Helvetica,sans-serif;">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:24px 26px;">
+<p style="margin:0 0 4px;font-size:11px;letter-spacing:.14em;color:#ff4f1a;font-weight:700;">PAYWALL · UNLOCK TAPPED</p>
+<h1 style="margin:0 0 14px;font-size:24px;color:#111;">${esc(a.name || "A founder")} · €${a.price}</h1>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+${row("Who", [a.who, a.email].filter(Boolean).join(" · "))}${row("Tapped on", a.source)}${row("Brief", a.brief)}${row("Came from", a.channel)}${row("Device", [a.device, a.country].filter(Boolean).join(" · "))}
+</table>
+<p style="margin:18px 0 0;"><a href="${SITE}/admin/people" style="display:inline-block;background:#111;color:#fff;text-decoration:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;">Open in the admin →</a></p>
+<p style="margin:14px 0 0;font-size:11px;color:#9a9890;">Phase 1: Unlock is free ("You're early"), so this is intent, not a payment. Flow ${esc(a.flowId)}.</p>
+</div></body></html>`;
+  for (const addr of to) {
+    try {
+      await env.EMAIL?.send({ to: addr, from: FROM, subject: `Unlock tapped: ${a.name || "a founder"} (€${a.price})${a.who ? " · " + a.who : ""}`, html, text: textOf(html) });
+    } catch (e: any) { console.error("unlock alert failed", e?.message); }
+  }
+}
+
 export async function handleUnsub(env: EmailEnv, url: URL): Promise<Response> {
   try {
     const u = url.searchParams.get("u") || "";
