@@ -340,7 +340,7 @@ export function AdminPage() {
   // Clean numbers: our own runs (owners + admins), probes and scripted hits never count.
   const team = useMemo(() => new Set([...(roles?.owners || []), ...(roles?.admins || [])].map((e) => e.toLowerCase())), [roles]);
   const flows = useMemo(() => built.flows.filter((f) =>
-    f.source !== "Probe" && !/curl|bot|headless/i.test(f.device) && !(demo ? false : team.has(f.email.toLowerCase()))), [built, team, demo]);
+    f.source !== "Probe" && !/curl|bot|headless/i.test(f.device) && !/@namename\.ai$/i.test(f.email) && !(demo ? false : team.has(f.email.toLowerCase()))), [built, team, demo]);
   const firstAt = useMemo(() => Math.max(LAUNCH - 20 * DAY, Math.min(Date.now(), ...flows.map((f) => f.first))), [flows]);
   const [from, to] = ((): [number, number] => {
     const now = Date.now();
