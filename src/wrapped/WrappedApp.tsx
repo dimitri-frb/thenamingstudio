@@ -1100,7 +1100,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     if (!picked || !logoSel) return;
     const lp = tastePalette(taste);
     const pack = await buildLogoPack(picked.name, logoSel.key, logoSel.accent, logoSel.seed,
-      [{ name: "Dawn", hex: lp.dawn }, { name: "Haze", hex: lp.haze }, { name: "Nova", hex: lp.nova }, { name: "Night", hex: lp.night }],
+      [lp.dawn, lp.haze, lp.nova, lp.night].map((hex, i) => ({ name: book?.palette?.[i]?.name || ["Dawn", "Haze", "Nova", "Night"][i], hex })),
       logoSel.font, tasteShape(taste), logoSel.custom);
     download(pack.blob, pack.filename);
     track("logopack", { name: picked.name, concept: logoSel.title });

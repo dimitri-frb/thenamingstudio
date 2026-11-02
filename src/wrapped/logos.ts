@@ -531,26 +531,79 @@ export async function buildLogoPack(
   swatches?: { name: string; hex: string }[] | null, font?: LogoFont, shape?: LogoShape, custom?: CustomLogo,
 ): Promise<{ blob: Blob; filename: string }> {
   const { makeZip } = await import("./zip");
+  const { outlineSvg } = await import("./outline");
   const pal = toPalette(swatches);
-  const nm = (name || "logo").toLowerCase();
-  const svgs: Record<string, string> = {
-    [`${nm}-primary.svg`]: logoSvg(key, name, pal, { variant: "light", accent, seed, font, shape, custom }),
-    [`${nm}-reversed.svg`]: logoSvg(key, name, pal, { variant: "night", accent, seed, font, shape, custom }),
-    [`${nm}-gradient.svg`]: logoSvg(key, name, pal, { variant: "dawn", accent, seed, font, shape, custom }),
-    [`${nm}-mono.svg`]: logoSvg(key, name, pal, { variant: "mono", accent, seed, font, shape, custom }),
-    [`${nm}-appicon.svg`]: logoSvg(iconKey(key), name, pal, { variant: "icon", accent, seed, shape, custom }),
+  const nm = (name || "logo").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+  const o = { accent, seed, font, shape, custom };
+  // Lettering → vector outlines, so every file looks the same in any app.
+  const svgs = {
+    primary: await outlineSvg(logoSvg(key, name, pal, { ...o, variant: "light" })),
+    reversed: await outlineSvg(logoSvg(key, name, pal, { ...o, variant: "night" })),
+    gradient: await outlineSvg(logoSvg(key, name, pal, { ...o, variant: "dawn" })),
+    mono: await outlineSvg(logoSvg(key, name, pal, { ...o, variant: "mono" })),
+    icon: await outlineSvg(logoSvg(iconKey(key), name, pal, { ...o, variant: "icon" })),
   };
+  // One-colour versions: strip any background card, then recolour.
+  const clear = (svg: string) => svg.replace(/(<svg[^>]*>(?:<defs>.*?<\/defs>)?)<rect width="[^"]+" height="[^"]+"(?: rx="[^"]+")? fill="[^"]+"\/>/, "$1");
+  const black = (svg: string) => clear(svg).replace(/fill="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'fill="#000000"').replace(/stroke="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'stroke="#000000"');
+  const white = (svg: string) => clear(svg).replace(/fill="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'fill="#ffffff"').replace(/stroke="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'stroke="#ffffff"');
   const enc = new TextEncoder();
-  const files: { name: string; data: Uint8Array }[] = Object.entries(svgs).map(([n, svg]) => ({ name: n, data: enc.encode(svg) }));
+  const files: { name: string; data: Uint8Array }[] = [];
+  const add = (n: string, d: string | Uint8Array) => files.push({ name: `${nm}-brand/${n}`, data: typeof d === "string" ? enc.encode(d) : d });
+  add(`Logo/${nm}-logo.svg`, svgs.primary);
+  add(`Logo/${nm}-logo-reversed.svg`, svgs.reversed);
+  add(`Logo/${nm}-logo-gradient.svg`, svgs.gradient);
+  add(`Logo/${nm}-logo-black.svg`, black(svgs.mono));
+  add(`Logo/${nm}-logo-white.svg`, white(svgs.mono));
+  add(`Icon/${nm}-icon.svg`, svgs.icon);
   try {
-    files.push({ name: `${nm}-primary@1024.png`, data: await svgToPng(svgs[`${nm}-primary.svg`], 1024) });
-    files.push({ name: `${nm}-appicon@512.png`, data: await svgToPng(svgs[`${nm}-appicon.svg`], 512) });
+    add(`Logo/${nm}-logo@2x.png`, await rasterSvg(svgs.primary, 1024));
+    add(`Logo/${nm}-logo.png`, await rasterSvg(svgs.primary, 512));
+    add(`Logo/${nm}-logo-reversed@2x.png`, await rasterSvg(svgs.reversed, 1024));
+    add(`Logo/${nm}-logo-white@2x.png`, await rasterSvg(white(svgs.mono), 1024));
+    add(`Icon/${nm}-icon-1024.png`, await rasterSvg(svgs.icon, 1024));
+    add(`Icon/${nm}-icon-512.png`, await rasterSvg(svgs.icon, 512));
+    add(`Icon/apple-touch-icon.png`, await rasterSvg(svgs.icon, 180));
+    add(`Icon/favicon-32.png`, await rasterSvg(svgs.icon, 32));
+    add(`Icon/favicon.ico`, icoOf([await rasterSvg(svgs.icon, 16), await rasterSvg(svgs.icon, 32), await rasterSvg(svgs.icon, 48)], [16, 32, 48]));
   } catch { /* svg-only pack if the canvas fails */ }
+  const sw = (Array.isArray(swatches) && swatches.length >= 4 ? swatches.slice(0, 4) : [{ name: "Dawn", hex: pal.dawn }, { name: "Haze", hex: pal.haze }, { name: "Nova", hex: pal.nova }, { name: "Night", hex: pal.night }]);
+  const rgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map((c) => c + c).join("") : x.slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const cmyk = (h: string) => { const [r, g, b] = rgb(h).map((v) => v / 255); const k = 1 - Math.max(r, g, b); if (k >= 1) return [0, 0, 0, 100]; return [(1 - r - k) / (1 - k), (1 - g - k) / (1 - k), (1 - b - k) / (1 - k), k].map((v) => Math.round(v * 100)); };
+  add(`Colours/${nm}-colours.txt`, `${name} · brand colours\n\n` + sw.map((c) => `${c.name.padEnd(10)} HEX ${c.hex.toUpperCase()}   RGB ${rgb(c.hex).join(", ")}   CMYK ${cmyk(c.hex).join(" / ")}`).join("\n") + "\n");
+  add("README.txt", `${name} · your logo files\n\nWhich file do I use?\n\n` +
+    `- Website, Shopify, Squarespace, Wix: Logo/${nm}-logo.svg (or the @2x PNG if SVG isn't accepted)\n` +
+    `- Instagram, TikTok, WhatsApp profile picture: Icon/${nm}-icon-1024.png\n` +
+    `- Canva, Word, Google Docs, email signature: Logo/${nm}-logo@2x.png\n` +
+    `- On a dark or photo background: Logo/${nm}-logo-white.svg or ${nm}-logo-reversed\n` +
+    `- Printing (signs, flyers, stickers): any .svg file, send it to your printer as is\n` +
+    `- Browser tab icon (favicon): Icon/favicon.ico, plus Icon/apple-touch-icon.png for iPhones\n\n` +
+    `Tips\n- Keep space around the logo, about the height of the first letter, on every side.\n- Don't stretch it, recolour it outside your palette, or add shadows.\n- The colour codes for printers and designers are in Colours/.\n`);
   return { blob: makeZip(files), filename: `${nm}-logo-pack.zip` };
 }
 
+// A .ico holding PNG images (Windows Vista+, every browser).
+function icoOf(pngs: Uint8Array[], sizes: number[]): Uint8Array {
+  const head = 6 + 16 * pngs.length;
+  const total = head + pngs.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  dv.setUint16(2, 1, true); dv.setUint16(4, pngs.length, true);
+  let off = head;
+  pngs.forEach((p, i) => {
+    const e = 6 + i * 16, s = sizes[i] >= 256 ? 0 : sizes[i];
+    out[e] = s; out[e + 1] = s; dv.setUint16(e + 4, 1, true); dv.setUint16(e + 6, 32, true);
+    dv.setUint32(e + 8, p.length, true); dv.setUint32(e + 12, off, true);
+    out.set(p, off); off += p.length;
+  });
+  return out;
+}
+
 /* ── raster export (SVG string → PNG bytes, drawn at 2x) ── */
-export function svgToPng(svg: string, heightPx: number): Promise<Uint8Array> {
+export async function svgToPng(svg: string, heightPx: number): Promise<Uint8Array> {
+  const { outlineSvg } = await import("./outline");
+  return rasterSvg(await outlineSvg(svg), heightPx);
+}
+function rasterSvg(svg: string, heightPx: number): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const blob = new Blob([svg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);

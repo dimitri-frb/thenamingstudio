@@ -10,12 +10,16 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "jspdf": "^4.2.1",
+    "opentype.js": "^1.3.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "svg2pdf.js": "^2.9.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.45.0",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/opentype.js": "^1.3.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

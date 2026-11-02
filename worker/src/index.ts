@@ -50,6 +50,34 @@ const SYS =
   "You are warm, opinionated and precise. You ALWAYS respond with one valid, minified JSON value and nothing else: no prose, no markdown, no code fences. " +
   "Never use em dashes or en dashes (the characters — or –); use commas, periods, colons or parentheses instead.";
 
+// GET /font?f=Cormorant+Garamond&w=600&i=0 → the TTF bytes (Google Fonts),
+// so exported logos can turn their lettering into vector outlines.
+async function fontRelay(url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const fam = String(url.searchParams.get("f") || "").replace(/[^A-Za-z0-9 ]/g, "").slice(0, 60).trim();
+  const w = Math.min(900, Math.max(100, Math.round(Number(url.searchParams.get("w")) / 100) * 100 || 400));
+  const it = url.searchParams.get("i") === "1";
+  if (!fam) return json({ error: "f required" }, env, 400);
+  const cache = (caches as any).default as Cache;
+  const key = new Request(`https://font-relay.local/${encodeURIComponent(fam)}/${w}/${it ? 1 : 0}`);
+  const hit = await cache.match(key);
+  if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors(env) } });
+  // Try the weight asked for, then the nearest ones the family has.
+  const tries = [w, 400, 700, 500, 600, 800, 300, 900].filter((x, i, a) => a.indexOf(x) === i);
+  for (const tw of tries) {
+    const css = await fetch(`https://fonts.googleapis.com/css?family=${encodeURIComponent(fam).replace(/%20/g, "+")}:${tw}${it ? "i" : ""}`, { headers: { "User-Agent": "curl/8.5.0" } });
+    if (!css.ok) continue;
+    const m = (await css.text()).match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+\.ttf)\)/);
+    if (!m) continue;
+    const ttf = await fetch(m[1]);
+    if (!ttf.ok) continue;
+    const buf = await ttf.arrayBuffer();
+    const headers = { "content-type": "font/ttf", "cache-control": "public, max-age=2592000", "x-font-weight": String(tw) };
+    ctx.waitUntil(cache.put(key, new Response(buf, { headers })));
+    return new Response(buf, { headers: { ...headers, ...cors(env) } });
+  }
+  return json({ error: "font not found" }, env, 404);
+}
+
 function cors(env: Env): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
@@ -131,6 +159,9 @@ export default {
         const gif = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
         return new Response(gif, { headers: { "content-type": "image/gif", "cache-control": "no-store, max-age=0" } });
       }
+      // Font relay for exports: the TTF of a Google font (browsers only get
+      // woff2, which the client's outliner can't read). Cached at the edge.
+      if (url.pathname === "/font") return fontRelay(url, env, ctx);
       if (url.searchParams.has("log")) return readLog(env, url);
       return json({ ok: true }, env);
     }
