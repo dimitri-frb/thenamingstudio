@@ -69,6 +69,7 @@ export interface WKit {
 export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }
 export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string; local?: string[] } // local: the visitor's country extensions (uk, co.uk…)
 
+export interface WDeckSlide { title: string; head: string; points: string[]; hint: string }
 export interface WUser { sub: string; email: string; name: string; picture?: string }
 
 // One saved search, as listed on the account page and resumed from it.
@@ -92,6 +93,7 @@ export interface SavedSearch {
   unlockSource?: string;    // "early_access" (phase 1) | "stripe" (phase 2)
   priceVariant?: number;    // the price shown to this user (stable per user)
   kit?: WKit | null;        // socials + marketing copy for this run
+  deck?: WDeckSlide[] | null; // the pitch deck's AI first draft (10 slides)
   logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
   taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
@@ -159,6 +161,10 @@ export const wrapApi = {
   // The socials + marketing kit: one call, validated lengths server-side.
   kit: (payload: { name: string; sentence: string; concept: string; tagline: string; voice: string[]; domain: string }) =>
     gen<WKit>("wrapkit", payload, () => sampleKit(payload.name, payload.domain)),
+
+  // The pitch deck's first draft (strongest model; numbers stay [bracketed]).
+  deck: (payload: { name: string; sentence: string; concept: string; tagline: string; voice: string[]; domain: string; founder: string; story?: string }) =>
+    gen<{ slides: WDeckSlide[] }>("wrapdeck", payload, () => ({ slides: [] })),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
   book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {

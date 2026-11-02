@@ -5,7 +5,7 @@
 // exports as a .pptx that Google Slides and Keynote open.
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { logoSvg, type Palette } from "./logos";
+import { logoSvg, svgToPng, type Palette } from "./logos";
 import type { KitLogo } from "./kitArt";
 import { download, makeZip } from "./zip";
 import { svgPdf } from "./pdf";
@@ -160,9 +160,24 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
 
 /* ═════════ 08·p · Pitch deck ═════════ */
 export interface DeckInput { name: string; brief: string; concept: string; tagline: string; voice: string[]; domain: string; founder: string }
-interface Slide { n: number; title: string; head: string; points: string[]; hint: string }
+export interface Slide { n: number; title: string; head: string; points: string[]; hint: string }
+export interface AiSlide { title: string; head: string; points: string[]; hint: string }
 
-export function deckSlides(x: DeckInput): Slide[] {
+// The 10 slides: the AI first draft when we have it, the template otherwise
+// (and for any slide the draft left empty).
+export function deckSlides(x: DeckInput, ai?: AiSlide[] | null): Slide[] {
+  const base = templateSlides(x);
+  if (!ai || ai.length < 10) return base;
+  return base.map((t, i) => {
+    const a = ai[i] || ({} as AiSlide);
+    return {
+      n: t.n, title: a.title || t.title, head: a.head || t.head,
+      points: Array.isArray(a.points) && a.points.filter(Boolean).length ? a.points.filter(Boolean).slice(0, 3) : t.points,
+      hint: i === 0 ? "Seed deck · 2026" : i === 9 ? "" : a.hint || t.hint,
+    };
+  });
+}
+function templateSlides(x: DeckInput): Slide[] {
   const b = x.brief.replace(/\.$/, "");
   const nm = x.name;
   return [
@@ -201,24 +216,33 @@ export function slideSvg(s: Slide, l: KitLogo, w = 1600): string {
     if (s.hint) inner += `<text x="${80 * k}" y="${(820) * k}" font-family="'JetBrains Mono',monospace" font-size="${22 * k}" fill="${sub}">${esc(s.hint)}</text>`;
   } else {
     inner += `<text x="${80 * k}" y="${190 * k}" font-family="'JetBrains Mono',monospace" font-size="${22 * k}" fill="${p.nova}">${String(s.n).padStart(2, "0")} · ${esc(s.title.toUpperCase())}</text>`;
-    wrapText(s.head, 34).slice(0, 2).forEach((ln, i) => { inner += `<text x="${80 * k}" y="${(290 + i * 78) * k}" font-family="${font}" font-size="${66 * k}" font-weight="700" letter-spacing="${-1.5 * k}" fill="${ink}">${esc(ln)}</text>`; });
+    const long = s.head.length > 40, hfs = long ? 56 : 66, hper = long ? 42 : 34;
+    let hl = wrapText(s.head, hper);
+    if (hl.length > 2) { hl = hl.slice(0, 2); hl[1] = hl[1].replace(/[,.;:]?\s*\S*$/, "") + "…"; }
+    hl.forEach((ln, i) => { inner += `<text x="${80 * k}" y="${(290 + i * hfs * 1.15) * k}" font-family="${font}" font-size="${hfs * k}" font-weight="700" letter-spacing="${-1.4 * k}" fill="${ink}">${esc(ln)}</text>`; });
+    const pfs = s.points.some((pt) => pt.length > 58) ? 30 : 36;
     s.points.forEach((pt, i) => {
-      const y = (480 + i * 92) * k;
-      inner += `<rect x="${80 * k}" y="${y - 26 * k}" width="${10 * k}" height="${36 * k}" rx="${3 * k}" fill="${p.dawn}"/>`;
-      inner += `<text x="${112 * k}" y="${y}" font-family="${font}" font-size="${36 * k}" fill="${ink}">${esc(pt)}</text>`;
+      const y = (500 + i * 100) * k;
+      // a point too long for one line wraps once under itself
+      const pl = wrapText(pt, pfs === 30 ? 76 : 62).slice(0, 2);
+      inner += `<rect x="${80 * k}" y="${y - pfs * 0.75 * k}" width="${10 * k}" height="${pfs * k}" rx="${3 * k}" fill="${p.dawn}"/>`;
+      pl.forEach((ln, j) => { inner += `<text x="${112 * k}" y="${y + j * pfs * 1.2 * k}" font-family="${font}" font-size="${pfs * k}" fill="${/\[[^\]]+\]/.test(ln) ? p.nova : ink}">${esc(ln)}</text>`; });
     });
-    if (s.hint) inner += `<text x="${80 * k}" y="${840 * k}" font-family="${font}" font-size="${24 * k}" font-style="italic" fill="${sub}">${esc(s.hint)}</text>`;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${H}" width="${w}" height="${H}"><rect width="${w}" height="${H}" fill="${bg}"/>${inner}${logo}</svg>`;
 }
 
 /* ── .pptx: plain OOXML (text + backgrounds), opened by Google Slides and Keynote ── */
-export function deckPptx(slides: Slide[], x: DeckInput, pal: Palette): Blob {
+export interface DeckLogo { light: Uint8Array; night: Uint8Array; ar: number }
+export function deckPptx(slides: Slide[], x: DeckInput, pal: Palette, logo?: DeckLogo | null): Blob {
   const enc = new TextEncoder();
   const hex = (c: string) => c.replace("#", "").slice(0, 6).toUpperCase();
   const EMU = 914400, SW = 12192000, SH = 6858000; // 16:9, 13.333 × 7.5 in
   const files: { name: string; data: Uint8Array }[] = [];
   const add = (name: string, xml: string) => files.push({ name, data: enc.encode(xml) });
+  if (logo) { files.push({ name: "ppt/media/logo-light.png", data: logo.light }); files.push({ name: "ppt/media/logo-night.png", data: logo.night }); }
+  const lh = EMU * 0.5, lw = Math.min(EMU * 3.2, lh * (logo?.ar || 3));
+  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="5" name="Logo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${Math.round(EMU * 0.6)}" y="${Math.round(EMU * 0.4)}"/><a:ext cx="${Math.round(lw)}" cy="${Math.round(lh)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
   const X = (s: string) => esc(s);
   const sp = (id: number, name: string, x0: number, y0: number, cx: number, cy: number, paras: { t: string; sz: number; b?: boolean; c: string }[]) =>
     `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${name}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x0}" y="${y0}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>` +
@@ -229,18 +253,18 @@ export function deckPptx(slides: Slide[], x: DeckInput, pal: Palette): Blob {
     const dark = s.n === 1 || s.n === 10;
     const bg = dark ? hex(pal.night) : "F7F5F1", ink = dark ? "FFFFFF" : hex(pal.night), sub = dark ? "BFBFC8" : "6A6A6A";
     const shapes = [
-      sp(2, "Brand", EMU * 0.6, EMU * 0.45, EMU * 4, EMU * 0.5, [{ t: x.name, sz: 2000, b: true, c: ink }]),
+      logo ? pic : sp(2, "Brand", EMU * 0.6, EMU * 0.45, EMU * 4, EMU * 0.5, [{ t: x.name, sz: 2000, b: true, c: ink }]),
       dark
         ? sp(3, "Title", EMU * 0.6, EMU * 3.4, EMU * 11, EMU * 2, [{ t: s.head, sz: 4800, b: true, c: ink }])
         : sp(3, "Title", EMU * 0.6, EMU * 1.2, EMU * 11.5, EMU * 1.4, [{ t: `${String(s.n).padStart(2, "0")} · ${s.title.toUpperCase()}`, sz: 1400, c: hex(pal.nova) }, { t: s.head, sz: 3600, b: true, c: ink }]),
       sp(4, "Body", EMU * 0.6, dark ? EMU * 5.5 : EMU * 3.0, EMU * 11.5, EMU * 2.8,
-        [...s.points.filter(Boolean).map((t) => ({ t: dark ? t : `•  ${t}`, sz: dark ? 1800 : 2200, c: dark ? sub : ink })), ...(s.hint ? [{ t: s.hint, sz: 1400, c: sub }] : [])]),
+        [...s.points.filter(Boolean).map((t) => ({ t: dark ? t : `•  ${t}`, sz: dark ? 1800 : 2200, c: dark ? sub : /\[[^\]]+\]/.test(t) ? hex(pal.nova) : ink })), ...(s.n === 1 && s.hint ? [{ t: s.hint, sz: 1400, c: sub }] : [])]),
     ].join("");
     add(`ppt/slides/slide${i + 1}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bg}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);
-    add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`);
+    add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>${logo ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo-${dark ? "night" : "light"}.png"/>` : ""}</Relationships>`);
   });
   const n = slides.length;
-  add("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>${Array.from({ length: n }, (_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("")}</Types>`);
+  add("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>${Array.from({ length: n }, (_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("")}</Types>`);
   add("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`);
   add("ppt/presentation.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${Array.from({ length: n }, (_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 3}"/>`).join("")}</p:sldIdLst><p:sldSz cx="${SW}" cy="${SH}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`);
   add("ppt/_rels/presentation.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>${Array.from({ length: n }, (_, i) => `<Relationship Id="rId${i + 3}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`).join("")}</Relationships>`);
@@ -254,10 +278,10 @@ export function deckPptx(slides: Slide[], x: DeckInput, pal: Palette): Blob {
   return makeZip(files);
 }
 
-export function PitchDeck({ l, input, onBack, onNext, track }: {
-  l: KitLogo; input: DeckInput; onBack: () => void; onNext: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
+export function PitchDeck({ l, input, ai, aiBusy, onBack, onNext, track }: {
+  l: KitLogo; input: DeckInput; ai?: AiSlide[] | null; aiBusy?: boolean; onBack: () => void; onNext: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }) {
-  const slides = useMemo(() => deckSlides(input), [input]);
+  const slides = useMemo(() => deckSlides(input, ai), [input, ai]);
   const [target, setTarget] = useState<"slides" | "keynote" | "pdf">("slides");
   const [view, setView] = useState<number | null>(null);
   const [note, setNote] = useState("");
@@ -271,21 +295,32 @@ export function PitchDeck({ l, input, onBack, onNext, track }: {
     await savePdf(slides.map((s) => slideSvg(s, l, 1600)), 297, 167.0625, `${l.name} - Pitch deck`, "size: 297mm 167.0625mm");
     setBusy(false);
   };
-  const file = (asset: "deck_slides" | "deck_keynote") => {
-    track("kit_asset_downloaded", { asset });
-    download(deckPptx(slides, input, l.pal), `${l.name} - Pitch deck.pptx`);
+  const file = async (asset: "deck_slides" | "deck_keynote") => {
+    if (busy) return;
+    track("kit_asset_downloaded", { asset, drafted: !!ai });
+    setBusy(true);
+    let logo: DeckLogo | null = null;
+    try {
+      const lt = logoSvg(l.key, l.name, l.pal, { ...l.opts, variant: "light", height: 120 }).replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
+      const nt = logoSvg(l.key, l.name, l.pal, { ...l.opts, variant: "night", height: 120 }).replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
+      const [light, night] = await Promise.all([svgToPng(lt, 160), svgToPng(nt, 160)]);
+      const dv = new DataView(light.buffer, light.byteOffset);
+      logo = { light, night, ar: dv.getUint32(16) / Math.max(1, dv.getUint32(20)) };
+    } catch { logo = null; }
+    download(deckPptx(slides, input, l.pal, logo), `${l.name} - Pitch deck.pptx`);
+    setBusy(false);
     setNote(asset === "deck_slides"
       ? "Downloaded. In Google Slides: File → Import slides → Upload, or drop the .pptx into Google Drive and open it."
       : "Downloaded. Double-click the .pptx to open it in Keynote.");
   };
-  const open = () => (target === "pdf" ? pdf() : file(target === "slides" ? "deck_slides" : "deck_keynote"));
+  const open = () => (target === "pdf" ? pdf() : void file(target === "slides" ? "deck_slides" : "deck_keynote"));
   return (
     <>
       <div className="wr-stage wr-deck">
         <div className="dkl">
           <p className="wr-kicker">Pitch deck</p>
           <h1 className="wr-h ttl">Pitch {l.name}.</h1>
-          <p className="wr-lead sm">10 slides in your brand, with the story from your brief. Fill in your numbers.</p>
+          <p className="wr-lead sm">{ai ? <>Drafted for you from your brief, in your brand. Edit anything in Slides or Keynote, and fill in the <span className="dkph">[numbers]</span>.</> : aiBusy ? "Writing your slides from your brief… about 30 seconds." : "10 slides in your brand, with the story from your brief. Fill in your numbers."}</p>
           <button className="dkcover" onClick={() => setView(0)} dangerouslySetInnerHTML={{ __html: cover }} />
         </div>
         <div className="dkr">
@@ -319,6 +354,7 @@ export function PitchDeck({ l, input, onBack, onNext, track }: {
         <div className="wr-dkview" onClick={() => setView(null)}>
           <div className="in" onClick={(e) => e.stopPropagation()}>
             <span dangerouslySetInnerHTML={{ __html: slideSvg(slides[view], l, 1600) }} />
+            {view > 0 && slides[view].hint && <p className="tip">Tip · {slides[view].hint}</p>}
             <div className="nav">
               <button disabled={view === 0} onClick={() => setView(Math.max(0, view - 1))}>‹</button>
               <span className="mono">{view + 1} / {slides.length}</span>

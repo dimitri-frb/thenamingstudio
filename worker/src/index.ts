@@ -559,6 +559,7 @@ export default {
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "wrapnames") data = await enrichWrapNames(env, data, body?.payload?.prefs?.doms);
       if (phase === "wrapkit") data = fitKit(data);
+      if (phase === "wrapdeck") { data = fitDeck(data); if (!data) return json({ error: "deck shape" }, env, 502); }
       // Comparison no longer blocks on RDAP: the client fetches real domains
       // per-name via the "domains" phase, so the scored table appears instantly.
       // Best-effort central log (only if a KV namespace is bound, not the test flow,
@@ -1027,6 +1028,31 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- weeks: exactly 3: titles "Week 1 · Tease", "Week 2 · Launch", "Week 3 · Proof"; line = one sentence of what to do; channels = 1–2 of: Instagram, LinkedIn, TikTok, X, All socials, Google Ads, Meta Ads, Email.\n` +
     `Return ONLY minified JSON {"bioShort":"","bioLong":"","posts":[{"label":"","title":"","caption":""}],"googleHeadlines":[""],"googleDescription":"","metaPrimary":"","metaHeadline":"","weeks":[{"title":"","line":"","channels":[""]}]}` }),
 
+  // The paid pitch deck: a real first draft of all 10 slides from the run.
+  // Numbers are never invented: they're [bracketed] for the founder to fill.
+  wrapdeck: (b) => ({ model: MODEL.opus, max: 2400, prompt:
+    `You are a seed-stage pitch coach who has helped hundreds of small founders raise their first money and win their first customers.\n` + LANG_LINE +
+    `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" (${String(b.payload?.domain || "").slice(0, 60)}). Founder: "${String(b.payload?.founder || "").slice(0, 60)}".\n` +
+    `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". The name should feel like: "${String(b.payload?.concept || "").slice(0, 120)}". Tagline: "${String(b.payload?.tagline || "").slice(0, 160)}". Voice: ${JSON.stringify((b.payload?.voice || []).slice(0, 4))}.\n` +
+    (b.payload?.story ? `Their brand story: "${String(b.payload.story).slice(0, 400)}".\n` : "") +
+    `Write the FIRST DRAFT of their 10-slide deck, specific to THIS business (its customers, its place, its sector), in their voice. It must read as a real deck a founder could present tomorrow, not a template.\n` +
+    `RULES:\n- Never invent facts or numbers. Wherever a number belongs (revenue, users, market size, amount raised, prices you don't know) write a bracketed placeholder like [€X / month] or [number of customers].\n` +
+    `- Reasonable, clearly-hedged assumptions about the problem and customers are fine; write them plainly.\n- Short lines: head max 60 characters (cover head max 70), each point max 70 characters, hint max 90 characters.\n` +
+    `- Never mention Name Name. Same language as the brief throughout.\n` +
+    `SLIDES, exactly these 10 in this order (title field = these words, translated if the brief isn't English):\n` +
+    `1 Cover: head = one-sentence positioning of what it is and for whom; points = [the tagline]; hint = "Seed deck · 2026".\n` +
+    `2 Problem: head = the problem in plain words; 3 points: who has it, what it costs them, why today's options fail.\n` +
+    `3 Solution: head = what the brand does; 3 points: the core promise, the one thing done better than anyone, how it feels for the customer.\n` +
+    `4 Market: head = who it's for; 3 points: the first customers (who, where), market size with [bracketed] numbers, why now.\n` +
+    `5 Product: head = how it works; 3 points starting "1 · ", "2 · ", "3 · " (the customer's steps or the offer's parts).\n` +
+    `6 Business model: head = how it makes money; 3 points: what is sold and at what [price], who pays, how customers are reached.\n` +
+    `7 Traction: head = early proof; 3 points with [bracketed] numbers (customers, revenue, waitlist, partners).\n` +
+    `8 Team: head = why this team; 3 points: the founder (use their name if given) and why them, the next key hire, advisors or partners.\n` +
+    `9 The ask: head = what they're raising or looking for; 3 points: [amount], what it buys in 12–18 months, the milestone it reaches.\n` +
+    `10 Thank you: head = "${String(b.payload?.name || "").slice(0, 40)}."; points = [the tagline, the domain and the founder name joined by " · "].\n` +
+    `Each slide (2–9) also gets a "hint": one line of advice for the founder about that slide.\n` +
+    `Return ONLY JSON {"slides":[{"title":"Cover","head":"...","points":["..."],"hint":"..."}, ...10 items]}.` }),
+
   wrapbook: (b) => {
     const intro =
       LANG_LINE +
@@ -1049,7 +1075,10 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}`;
     const tailB = `\nPersonality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; the near-black always last.`;
     const half = b.payload?.half;
-    if (half === "a") return { model: MODEL.smart, max: 1900, prompt: intro + shapeA + `\nGive one "parts" card per component of the name (two when it blends two words), each with real etymology.` };
+    // The story/origin half is what people read first and share: the strongest
+    // model, and an honesty rule on etymology (no invented roots).
+    if (half === "a") return { model: MODEL.opus, max: 1900, prompt: intro + shapeA + `\nGive one "parts" card per component of the name (two when it blends two words), each with real etymology.` +
+      `\nETYMOLOGY MUST BE TRUE: only cite a root, language and meaning you are certain of (e.g. Latin "aurora" = dawn). If a part is coined or only evokes a word, say so plainly ("coined", "echoes the English 'pure'"), set "lang" to "Coined" and never invent a source language, a historical usage or a quote. Pronunciation guesses for other languages must be realistic.` };
     if (half === "b") return { model: MODEL.smart, max: 1700, prompt: intro + shapeB + tailB };
     return { model: MODEL.smart, max: 3400, prompt: intro + shapeA.slice(0, -1) + "," + shapeB.slice(1) + tailB };
   },
@@ -1839,6 +1868,18 @@ function hash(s: string): number {
 }
 
 // Ad platforms reject over-length copy: enforce the limits the prompt asked for.
+// The deck's 10 slides, trimmed to the template's room; null if unusable.
+function fitDeck(d: any): any {
+  const sl = Array.isArray(d?.slides) ? d.slides : [];
+  if (sl.length < 10) return null;
+  const cut = (v: unknown, n: number) => { const s = String(v ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : s; };
+  return { slides: sl.slice(0, 10).map((x: any, i: number) => ({
+    title: cut(x?.title, 24), head: cut(x?.head, i === 0 ? 90 : 72),
+    points: (Array.isArray(x?.points) ? x.points : []).slice(0, 3).map((p: unknown) => cut(p, 80)).filter(Boolean),
+    hint: cut(x?.hint, 100),
+  })) };
+}
+
 function fitKit(d: any): any {
   const cut = (t: unknown, n: number) => {
     const v = String(t || "").trim();

@@ -10,7 +10,7 @@ import {
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
-  type WName, type WStyle, type WTerritory, type WUser, type WWord,
+  type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide,
 } from "./api";
 import { buildLogoPack, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
@@ -273,6 +273,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [kit, setKit] = useState<WKit | null>(test ? sampleKit(ACTIVE().names[0].name, "") : null);
   const [whyNot, setWhyNot] = useState(false);
   const kitReq = useRef("");
+  const [deckAi, setDeckAi] = useState<WDeckSlide[] | null>(null);
+  const [deckBusy, setDeckBusy] = useState(false);
+  const deckReq = useRef("");
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
   // {price}: PAY_PRICES, one variant per user (hash of the Google email),
   // so a founder never sees the price move between runs or devices.
@@ -374,6 +377,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.bought) setDomBought(true);
         if (snap.unlocked) setUnlocked(true);
         if (snap.kit) setKit(snap.kit);
+        if (snap.deck) setDeckAi(snap.deck);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           (["brief", "words"].includes(slugStep) && snap.sentence) ||
@@ -1205,6 +1209,24 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     }).catch(() => fail("kit", true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, picked, kit, brandOpen, step, retryTick]);
+
+  useEffect(() => { // the pitch deck's first draft, written ahead while they're in the kits
+    if (test || !picked || deckAi || !brandOpen || !["kit", "mkt", "cards", "deck"].includes(step)) return;
+    const key = picked.name + "|" + retryTick;
+    if (deckReq.current === key) return;
+    deckReq.current = key;
+    const who = picked.name;
+    setDeckBusy(true);
+    wrapApi.deck({
+      name: who, sentence: sentence.trim(), concept: concept?.concept || "", tagline: (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, ""),
+      voice: book?.voice?.words || [], domain: domSel?.domain || picked.dom?.domain || "", founder: user?.name || "",
+      story: book?.story ? `${book.story.headline || ""}. ${book.story.para || ""}` : undefined,
+    }).then((d) => {
+      if (picked?.name !== who) return;
+      if (d?.slides?.length === 10) { setDeckAi(d.slides); persist({ deck: d.slides }); }
+    }).catch(() => {}).finally(() => setDeckBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, picked, deckAi, brandOpen, step, retryTick]);
 
   /* ── shared chrome ── */
   const chapter = CHAPTERS[step];
@@ -2179,7 +2201,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <BusinessCards l={payCtx.kitLogo} domain={payCtx.domain} me={user} onBack={() => toStep("mkt")} onNext={() => toStep("deck")} track={payCtx.track} />
       )}
       {step === "deck" && payCtx && brandOpen && picked && (
-        <PitchDeck l={payCtx.kitLogo} track={payCtx.track} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
+        <PitchDeck l={payCtx.kitLogo} track={payCtx.track} ai={deckAi} aiBusy={deckBusy} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
           input={{ name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, ""), voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" }} />
       )}
 

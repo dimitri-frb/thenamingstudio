@@ -3052,3 +3052,5 @@
   .kadm .pwfb .pwr .oc { grid-column: 1; }
   .kadm .pwfb .pwr i { grid-column: 2; grid-row: 1; }
 }
+.wr-deck .dkph { font-family: var(--mono); color: var(--nova); }
+.wr-dkview .tip { margin: 10px 0 0; font-size: 13px; color: var(--text2); text-align: center; }
