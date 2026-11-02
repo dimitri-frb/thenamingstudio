@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord,
 } from "./api";
-import { BRAND_TILES, buildLogoPack, ensureFonts, logoConcepts, logoSvg, whyItWorks, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { buildLogoPack, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
@@ -1244,7 +1244,18 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const lpal = tastePalette(taste);
   const lshape = tasteShape(taste);
   // Everything the paywall + kit screens draw with: the run's own logo and palette.
-  const payLogo = logoSel || (picked ? { key: BRAND_TILES[0].key, title: BRAND_TILES[0].title, accent: "dawn" as const, seed: logoSeed, font: tasteFont(taste) } : null);
+  // Logo engine v2 measures words in their real fonts: repaint as web fonts arrive.
+  const [, setFontTick] = useState(0);
+  useEffect(() => {
+    const fonts = (document as any).fonts;
+    if (!fonts?.addEventListener) return;
+    const f = () => setFontTick((n) => n + 1);
+    fonts.addEventListener("loadingdone", f);
+    return () => fonts.removeEventListener("loadingdone", f);
+  }, []);
+  // Logo engine v2: the nine logos for THIS brand (brief, sector, taste, seed).
+  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste, logoSeed) : [];
+  const payLogo = logoSel || (picked ? logoTiles[0] : null);
   const payCtx: PayCtx | null = picked && payLogo ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || picked.alt?.domain || "",
@@ -1810,18 +1821,39 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <button className="wr-link" style={{ whiteSpace: "nowrap" }} onClick={() => setLogoSeed((x) => x + 1)}>↻ Show nine more</button>
               </div>
               <div className="wr-lgrid">
-                {BRAND_TILES.map((t, i) => ({ key: t.key, title: t.title, accent: (["dawn", "haze", "nova"] as const)[(i + logoSeed) % 3], seed: logoSeed, font: tasteFont(taste), shape: lshape }))
+                {logoTiles.map((c) => ({ ...c, shape: lshape }))
                   .map((c) => {
                     const on = logoSel?.key === c.key && logoSel?.seed === c.seed && logoSel?.accent === c.accent;
                     return (
                       <button key={c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
                         {on && <span className="ck">✓</span>}
-                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key === "appicon" ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
+                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key === "appicon" || c.key.startsWith("x:icon") ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
                         <span className="ln">{c.title}</span>
                       </button>
                     );
                   })}
               </div>
+              {logoSel && (
+                <div className="wr-lctx rise">
+                  <p className="wr-kicker" style={{ margin: "0 0 8px" }}>In use</p>
+                  <div className="row">
+                    <span className="m card">
+                      <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 40 }) }} />
+                      <i /><i className="s" />
+                      <em>Business card</em>
+                    </span>
+                    <span className="m app" style={{ background: `linear-gradient(160deg, ${lpal.haze}, ${lpal.nova})` }}>
+                      <span className="ic" dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(logoSel.key), picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 54 }) }} />
+                      <b>{picked.name}</b>
+                      <em>App icon</em>
+                    </span>
+                    <span className="m sign" style={{ background: lpal.night }}>
+                      <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: "night", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 46 }) }} />
+                      <em>Shopfront</em>
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
@@ -1830,7 +1862,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </button>
             <span className="urow">
               <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
-              <button className="wr-link" onClick={() => { setLogoSel(logoSel || { key: BRAND_TILES[0].key, title: BRAND_TILES[0].title, accent: "dawn", seed: logoSeed, font: tasteFont(taste), shape: lshape }); toStep("snap"); }}>Skip the logo</button>
+              <button className="wr-link" onClick={() => { setLogoSel(logoSel || { ...logoTiles[0], shape: lshape }); toStep("snap"); }}>Skip the logo</button>
             </span>
           </div>
         </>
@@ -1848,7 +1880,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <p className="wr-lead" style={{ margin: "18px 0 0" }}>
                   {logoSel.key === "custom"
                     ? <><b style={{ color: "#fff" }}>Yours, exactly.</b> Tuned by hand on the personalize page: your symbol, your colour, your face.</>
-                    : <><b style={{ color: "#fff" }}>Why it works.</b> {whyItWorks(logoSel.key, picked.name, concept?.concept || "")}</>}
+                    : <><b style={{ color: "#fff" }}>Why it works.</b> {logoSel.key.startsWith("x:") ? whyItWorksX(logoSel.key, picked.name) : whyItWorks(logoSel.key, picked.name, concept?.concept || "")}</>}
                 </p>
               </div>
               <div className="ldr">
@@ -1866,13 +1898,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   ))}
                   <div className="wr-lver">
                     <div className="vv" style={{ background: "var(--surface3)" }}
-                      dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 56 }) }} />
+                      dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(logoSel.key), picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 56 }) }} />
                     <div className="vl">App icon</div>
                   </div>
                   <div className="wr-lver">
                     <div className="vv" style={{ background: "var(--surface3)", gap: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 32 }) }} />
-                      <span dangerouslySetInnerHTML={{ __html: logoSvg("appicon", picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 16 }) }} />
+                      <span dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(logoSel.key), picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 32 }) }} />
+                      <span dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(logoSel.key), picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 16 }) }} />
                     </div>
                     <div className="vl">Favicon · 32 & 16 px</div>
                   </div>

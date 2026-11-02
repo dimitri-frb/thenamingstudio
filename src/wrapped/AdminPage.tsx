@@ -242,6 +242,8 @@ const SEED_UPDATES: Update[] = [
   { id: "u8", date: "2026-10-31", title: "Domain page leads with a free domain", step: "05 · Claim" },
   { id: "u9", date: "2026-11-01", title: "Brand first, domain last (new chapter order)", step: "05 → Ch. 2 / 3" },
   { id: "u10", date: "2026-11-02", title: "Ads budget €25 → €50/day", step: "Google Ads" },
+  { id: "u11", date: "2026-11-02", title: "Logos v2: real fonts, 35 symbols, 9 layouts", step: "06e · Logos" },
+  { id: "u12", date: "2026-11-02", title: "Reminder emails 1 h after leaving, one-tap return", step: "Emails" },
 ];
 
 // The numbers every view shares, for one window.

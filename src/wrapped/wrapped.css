@@ -2913,3 +2913,17 @@
 .kv2 .kpart { color: #b4b1a8; }
 .kv2 .anakpis.ld .akpi b { color: #b4b1a8; }
 .kv2 .anakpis.ld .akpi b::before { content: ""; display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #e3e1dc; border-top-color: #ff4f1a; animation: cla-spin .8s linear infinite; margin-right: 8px; vertical-align: middle; }
+/* Logo page · the chosen logo in use (logo Phase 1) */
+.wr-lctx { margin-top: 16px; }
+.wr-lctx .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wr-lctx .m { position: relative; height: 104px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 10px 22px; }
+.wr-lctx .m em { position: absolute; left: 8px; bottom: 6px; font-style: normal; font-size: 10px; letter-spacing: .04em; color: rgba(255,255,255,.7); }
+.wr-lctx .card { background: #f7f5f1; align-items: flex-start; }
+.wr-lctx .card em { color: rgba(0,0,0,.45); }
+.wr-lctx .card i { display: block; height: 3px; width: 56%; border-radius: 2px; background: #d9d5cd; }
+.wr-lctx .card i.s { width: 38%; }
+.wr-lctx .lg { display: block; max-width: 100%; }
+.wr-lctx .lg svg { display: block; max-width: 100%; height: auto; max-height: 46px; }
+.wr-lctx .app .ic svg { display: block; width: 46px; height: 46px; border-radius: 11px; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.wr-lctx .app b { font-size: 10.5px; color: #fff; font-weight: 600; }
+.wr-lctx .sign .lg svg { max-height: 40px; }

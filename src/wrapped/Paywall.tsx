@@ -3,7 +3,7 @@
 // P·6 "why not now?"; 08·k socials kit; 08·m marketing kit (3 tabs).
 import React, { useMemo, useState } from "react";
 import type { WBook, WKit } from "./api";
-import { logoSvg, type Palette } from "./logos";
+import { iconKey, logoSvg, type Palette } from "./logos";
 import { avatarSvg, bannerSvg, postSvg, zipOf, type KitLogo } from "./kitArt";
 
 export interface PayCtx {
@@ -83,7 +83,7 @@ export function Unlock({ c, onUnlock, onWhy }: { c: PayCtx; onUnlock: () => void
       <div className="pv pack">
         <span className="lt" dangerouslySetInnerHTML={{ __html: c.logoLight }} />
         <span className="lt" style={{ background: p.night }} dangerouslySetInnerHTML={{ __html: logoSvg(c.kitLogo.key, c.name, p, { ...c.kitLogo.opts, variant: "night", height: 60 }) }} />
-        <span className="lt" style={{ background: p.dawn }} dangerouslySetInnerHTML={{ __html: logoSvg("appicon", c.name, p, { ...c.kitLogo.opts, custom: undefined, variant: "icon", height: 60 }) }} />
+        <span className="lt" style={{ background: p.dawn }} dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(c.kitLogo.key), c.name, p, { ...c.kitLogo.opts, custom: undefined, variant: "icon", height: 60 }) }} />
         <span className="lt" style={{ background: p.haze }} />
       </div>) },
     { label: "Socials kit", art: (

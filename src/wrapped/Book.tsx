@@ -3,7 +3,7 @@
 // (Download PDF = the browser's print-to-PDF on #bk-print).
 import { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
-import { logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
+import { iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
 
 /* The personalized accent leads the book: when the founder tuned a colour on
    the logo, every accent slot that the logo uses follows it. */
@@ -345,7 +345,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", flex: 1, gridTemplateRows: "1fr auto auto", paddingBottom: "24pt" }}>
           <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "150pt" }}>
             <div style={{ textAlign: "center" }}>
-              <div dangerouslySetInnerHTML={{ __html: logoSvg("appicon", name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, custom: ctx.logoCustom, height: 92 }) }} />
+              <div dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(ctx.logoKey), name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, custom: ctx.logoCustom, height: 92 }) }} />
               <div style={{ ...S.kick, marginTop: "8pt" }}>{T.appIcon}</div>
             </div>
           </div>
