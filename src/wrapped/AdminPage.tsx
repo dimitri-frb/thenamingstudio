@@ -1274,6 +1274,30 @@ function FeedbackView({ items, flows, from, to, loading, q, onOpenFlow }: {
     return m.uname || (m.email ? String(m.email).split("@")[0] : "") || "Anonymous";
   };
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) + "%" : "—");
+  // The paywall, read back: everyone who saw it in range, and what they did next.
+  const pw = useMemo(() => {
+    const ids = new Set(flows.filter((f) => f.paywall).map((f) => f.id));
+    const m = new Map<string, { seen: number; unlock: boolean; why: string; last: number }>();
+    for (const it of items) {
+      if (!it.process || !ids.has(it.process)) continue;
+      const r = m.get(it.process) || { seen: 0, unlock: false, why: "", last: 0 };
+      if (it.phase === "paywall_seen" && it.at >= from && it.at < to && !r.seen) r.seen = it.at;
+      if (it.phase === "unlock_clicked") r.unlock = true;
+      if (it.phase === "why_not" && it.input?.payload?.reason) r.why = String(it.input.payload.reason);
+      r.last = Math.max(r.last, it.at);
+      m.set(it.process, r);
+    }
+    return flows.filter((f) => m.get(f.id)?.seen).map((f) => ({ f, ...m.get(f.id)! }))
+      .filter((x) => hit(q, [x.f.email, x.f.uname, x.f.name, x.why]))
+      .sort((a, b) => b.seen - a.seen);
+  }, [items, flows, from, to, q]);
+  const pwUnl = pw.filter((x) => x.unlock).length, pwWhy = pw.filter((x) => !x.unlock && x.why).length;
+  const pwSilent = pw.length - pwUnl - pwWhy;
+  const wc = new Map<string, number>();
+  for (const x of pw) if (!x.unlock && x.why) wc.set(x.why, (wc.get(x.why) || 0) + 1);
+  const whyBars = Array.from(wc.entries()).sort((a, b) => b[1] - a[1]);
+  const stay = (ms: number) => (ms < 60000 ? "under 1 min" : ms < 3600000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 3600000)} h`);
+  const [pwAll, setPwAll] = useState(false);
   return (
     <div className="wrap fbview">
       <div className="fbcols">
@@ -1307,6 +1331,35 @@ function FeedbackView({ items, flows, from, to, loading, q, onOpenFlow }: {
                 </div>
               ))}
             </div>
+          </div>
+          <div className="fbcard-box pwfb">
+            <h3>Paywall: who saw it, and what they did</h3>
+            <div className="fbkpis">
+              <div className="akpi"><span>Saw the paywall</span><b className="mono">{pw.length || "—"}</b><em className="was">people in this range</em></div>
+              <div className="akpi"><span>Unlocked</span><b className="mono">{pct(pwUnl, pw.length)}</b><em className="was">{pwUnl} tapped Unlock</em></div>
+              <div className="akpi"><span>Told us why not</span><b className="mono">{pct(pwWhy, pw.length)}</b><em className="was">{pwWhy} answers</em></div>
+              <div className="akpi"><span>Left silently</span><b className="mono">{pct(pwSilent, pw.length)}</b><em className="was">{pwSilent} no unlock, no answer</em></div>
+            </div>
+            {whyBars.map(([r, n], i) => (
+              <div key={r} className="fbbar">
+                <span className="t">{r}</span>
+                <span className="track"><i className={i === 0 ? "top" : ""} style={{ width: `${Math.round((n / Math.max(1, pwWhy)) * 100)}%` }} /></span>
+                <span className="mono v">{n}</span>
+              </div>
+            ))}
+            {!pw.length && <p className="hint">{loading ? "Loading…" : "Nobody saw the paywall in this range."}</p>}
+            <div className="pwrows">
+              {(pwAll ? pw : pw.slice(0, 10)).map((x) => (
+                <button key={x.f.id} className="pwr" onClick={() => onOpenFlow(x.f.id)} title="Open this flow">
+                  <b>{x.f.uname || x.f.email.split("@")[0] || "Anonymous"}</b>
+                  <span className="nm">{x.f.name || "—"}{x.f.country ? ` · ${x.f.country}` : ""}</span>
+                  <span className={"oc " + (x.unlock ? "ok" : x.why ? "why" : "gone")}>{x.unlock ? "✓ Unlocked" : x.why ? `Why not: ${x.why}` : "Left, no answer"}</span>
+                  <span className="mono st">{x.unlock ? "" : `last active +${stay(x.last - x.seen)}`}</span>
+                  <i className="mono">{ago(x.seen)}</i>
+                </button>
+              ))}
+            </div>
+            {pw.length > 10 && !pwAll && <button className="fbmore" onClick={() => setPwAll(true)}>See all {pw.length} →</button>}
           </div>
         </div>
         <aside className="fbrail">
