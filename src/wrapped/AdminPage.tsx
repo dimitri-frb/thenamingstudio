@@ -356,10 +356,6 @@ export function AdminPage() {
   })();
   const len = Math.max(DAY, to - from);
   const sortedUpdates = useMemo(() => [...(updates || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)), [updates]);
-  async function saveUpdates(list: Update[]) {
-    setUpdates(list);
-    if (!demo) await call({ phase: "admin-updates", list }).catch(() => {});
-  }
 
   if (!me && !demo) {
     return (
@@ -391,8 +387,7 @@ export function AdminPage() {
         <AvatarMenu me={me} isAdmin current="admin" onLogout={() => { saveSession(null); window.location.assign(BASE()); }} />
       </div>
       {tab === "overview" && (
-        <Overview flows={flows} gated={built.gated} ads={ads} from={from} to={to} len={len} updates={sortedUpdates} partial={!logDone}
-          onSave={saveUpdates} loading={!items} />
+        <Overview flows={flows} gated={built.gated} ads={ads} from={from} to={to} len={len} updates={sortedUpdates} partial={!logDone} loading={!items} />
       )}
       {tab === "people" && (
         <People flows={flows} items={items || []} from={from} to={to} sel={selPerson} setSel={setSelPerson} roles={roles}
@@ -479,9 +474,9 @@ function RangeControl({ range, setRange, from, to, firstAt }: { range: RangeSel;
 }
 
 /* ── 1 · Overview ── */
-function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading, partial }: {
+function Overview({ flows, gated, ads, from, to, len, updates, loading, partial }: {
   flows: Flow[]; gated: number[]; ads: AdsDay[] | null; from: number; to: number; len: number;
-  updates: Update[]; onSave: (l: Update[]) => void; loading: boolean; partial: boolean;
+  updates: Update[]; loading: boolean; partial: boolean;
 }) {
   const cur = statsFor(flows, gated, ads, from, to);
   const prev = statsFor(flows, gated, ads, from - len, from);
@@ -520,8 +515,6 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading, 
     c.spend += r.cost || 0; chans.set(r.channel, c);
   }
   const chanRows = [...chans.entries()].sort((a, b) => b[1].spend - a[1].spend || b[1].signed - a[1].signed);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState<Update>({ id: "", title: "", date: ymd(Date.now()), step: "", note: "" });
   return (
     <div className="v2wrap">
       <div className="v2kpis">
@@ -560,16 +553,7 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading, 
       </div>
       <div className="v2grid2">
         <div className="v2card">
-          <div className="v2head"><h3>Main changes</h3><button className="addbtn" onClick={() => setAdding((x) => !x)}>{adding ? "Cancel" : "+ Add"}</button></div>
-          {adding && (
-            <div className="uform">
-              <input placeholder="What shipped" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
-              <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
-              <input placeholder="Step (e.g. 04 · Names)" value={draft.step} onChange={(e) => setDraft({ ...draft, step: e.target.value })} />
-              <input placeholder="Note (optional)" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
-              <button className="dark" disabled={!draft.title.trim()} onClick={() => { onSave([...updates, { ...draft, id: "u" + Date.now().toString(36), title: draft.title.trim() }]); setAdding(false); setDraft({ id: "", title: "", date: ymd(Date.now()), step: "", note: "" }); }}>Save</button>
-            </div>
-          )}
+          <div className="v2head"><h3>Main changes</h3><span className="sub">the updates shipped, newest first</span></div>
           <div className="ulist">
             {[...updates].reverse().map((u) => {
               const t = new Date(u.date + "T00:00:00").getTime();
@@ -583,7 +567,6 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading, 
                   <span className={"ud mono" + (first || young || !isFinite(d) ? " dim" : d >= 0 ? " up" : " down")}>
                     {first ? "baseline" : young ? `${Math.ceil((t + 3 * DAY - Date.now()) / DAY)} d to read` : isFinite(d) ? `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)} pts` : "—"}
                   </span>
-                  <button className="urm" title="Remove" onClick={() => { if (window.confirm(`Remove “${u.title}”?`)) onSave(updates.filter((x) => x.id !== u.id)); }}>×</button>
                 </div>
               );
             })}
