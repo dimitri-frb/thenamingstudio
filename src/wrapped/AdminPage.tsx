@@ -276,6 +276,11 @@ function Trend({ cur, was, costly, na }: { cur: number; was: number; costly?: bo
   const good = costly ? pct < 0 : pct > 0;
   return <em className={"tr " + (good ? "up" : "down")}>{pct > 0 ? "▲" : "▼"} {Math.abs(pct)}%</em>;
 }
+// A KPI value while the log is still paging in: a spinner and a dimmed, partial number.
+function KVal({ v, loading, partial }: { v: string; loading: boolean; partial: boolean }) {
+  if (loading) return <b className="mono kload"><i className="kspin" /></b>;
+  return <b className={"mono" + (partial ? " kpart" : "")} title={partial ? "Still loading the full history — this number will grow" : undefined}>{partial && <i className="kspin" />}{v}</b>;
+}
 const eur0 = (v: number) => (isFinite(v) && v > 0 ? "€" + (v >= 100 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v >= 10 ? 0 : 2)) : "—");
 
 export function AdminPage() {
@@ -386,7 +391,7 @@ export function AdminPage() {
         <AvatarMenu me={me} isAdmin current="admin" onLogout={() => { saveSession(null); window.location.assign(BASE()); }} />
       </div>
       {tab === "overview" && (
-        <Overview flows={flows} gated={built.gated} ads={ads} from={from} to={to} len={len} updates={sortedUpdates}
+        <Overview flows={flows} gated={built.gated} ads={ads} from={from} to={to} len={len} updates={sortedUpdates} partial={!logDone}
           onSave={saveUpdates} loading={!items} />
       )}
       {tab === "people" && (
@@ -394,12 +399,12 @@ export function AdminPage() {
           onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }}
           loading={!items} done={logDone} />
       )}
-      {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!items} />}
+      {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!logDone} />}
       {tab === "feedback" && (
         <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items} q=""
           onOpenFlow={(id) => { setRange({ kind: "all" }); setSelPerson(id); setTab("people"); }} />
       )}
-      {tab === "emails" && <Emails items={items || []} flows={flows} from={from} to={to} len={len} unsub={mailStats?.unsubscribed ?? null} loading={!items} />}
+      {tab === "emails" && <Emails items={items || []} flows={flows} from={from} to={to} len={len} unsub={mailStats?.unsubscribed ?? null} loading={!items} partial={!logDone} />}
     </div>
   );
 }
@@ -474,9 +479,9 @@ function RangeControl({ range, setRange, from, to, firstAt }: { range: RangeSel;
 }
 
 /* ── 1 · Overview ── */
-function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }: {
+function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading, partial }: {
   flows: Flow[]; gated: number[]; ads: AdsDay[] | null; from: number; to: number; len: number;
-  updates: Update[]; onSave: (l: Update[]) => void; loading: boolean;
+  updates: Update[]; onSave: (l: Update[]) => void; loading: boolean; partial: boolean;
 }) {
   const cur = statsFor(flows, gated, ads, from, to);
   const prev = statsFor(flows, gated, ads, from - len, from);
@@ -520,8 +525,8 @@ function Overview({ flows, gated, ads, from, to, len, updates, onSave, loading }
   return (
     <div className="v2wrap">
       <div className="v2kpis">
-        {kpis.map(([l, c, p, v]) => <div key={l} className="v2kpi"><span>{l}</span><b className="mono">{loading ? "…" : v}</b><Trend cur={c} was={p} na={from - len < LAUNCH} /></div>)}
-        <div className="v2kpi main"><span>Cost per name</span><b className="mono">{loading ? "…" : eur0(cpn)}</b><Trend cur={cpn} was={cpnP} costly na={from - len < LAUNCH} /></div>
+        {kpis.map(([l, c, p, v]) => <div key={l} className="v2kpi"><span>{l}</span><KVal v={v} loading={loading} partial={partial} /><Trend cur={c} was={p} na={from - len < LAUNCH} /></div>)}
+        <div className="v2kpi main"><span>Cost per name</span><KVal v={eur0(cpn)} loading={loading} partial={partial} /><Trend cur={cpn} was={cpnP} costly na={from - len < LAUNCH} /></div>
       </div>
       <div className="v2grid2">
         <div className="v2card">
@@ -809,7 +814,7 @@ const MAILS: [string, string, string][] = [
   ["S4", "Stopped at the brand", "24 h after leaving"],
   ["S5", "Logo done · what's next", "not sent yet"],
 ];
-function Emails({ items, from, to, len, unsub, loading }: { items: LogItem[]; flows: Flow[]; from: number; to: number; len: number; unsub: number | null; loading: boolean }) {
+function Emails({ items, from, to, len, unsub, loading, partial }: { items: LogItem[]; flows: Flow[]; from: number; to: number; len: number; unsub: number | null; loading: boolean; partial: boolean }) {
   const calc = (a: number, b: number) => {
     // sends: stop emails are logged ("mail"); welcome sends before 1 Nov = sign-ups after it went live
     const sends: { kind: string; at: number; email: string; proc: string }[] = [];
@@ -862,7 +867,7 @@ function Emails({ items, from, to, len, unsub, loading }: { items: LogItem[]; fl
   return (
     <div className="v2wrap">
       <div className="v2kpis">
-        {kpis.map(([l, v, c, p, main]) => <div key={l} className={"v2kpi" + (main ? " main" : "") + (l === "Opened" || l === "Came back" ? "" : " mhide")}><span>{l}</span><b className="mono">{loading ? "…" : v}</b><Trend cur={c} was={p} na={from - len < W_LAUNCH} /></div>)}
+        {kpis.map(([l, v, c, p, main]) => <div key={l} className={"v2kpi" + (main ? " main" : "") + (l === "Opened" || l === "Came back" ? "" : " mhide")}><span>{l}</span><KVal v={v} loading={loading} partial={partial} /><Trend cur={c} was={p} na={from - len < W_LAUNCH} /></div>)}
       </div>
       <div className="v2card">
         <div className="v2head"><h3>Each email</h3><span className="sub">Came back = active again within 7 days · Continued = reached a further step · Opened &amp; clicked are tracked from 1 Nov</span></div>
@@ -1157,7 +1162,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
           ? <span className="sync"><i /> Ads synced · through {lastAdDay}</span>
           : <span className="sync none">No spend data yet — paste docs/ads/ads-script.js into Google Ads → Scripts</span>}
       </div>
-      <div className="anakpis">
+      <div className={"anakpis" + (loading ? " ld" : "")} title={loading ? "Still loading the full history — these numbers will grow" : undefined}>
         <div className="akpi"><span>Spend</span><b className="mono">{eur(spend5)}</b><Delta cur={spend5} was={spendP} /><em className="was mono">was {eur(spendP)}</em></div>
         <div className="akpi"><span>Sign-ups</span><b className="mono">{sign5.toLocaleString("en-US")}</b><Delta cur={sign5} was={signP} /><em className="was mono">was {signP}</em></div>
         <div className="akpi"><span>Names chosen</span><b className="mono">{name5.toLocaleString("en-US")}</b><Delta cur={name5} was={nameP} /><em className="was mono">was {nameP}</em></div>
