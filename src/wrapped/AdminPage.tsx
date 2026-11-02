@@ -30,7 +30,7 @@ const LEGACY_STEP: Record<string, number> = { wrapchips: 1, wrapconcept: 2, wrap
 const PAGE_STEP: Record<string, number> = {
   ask: 1, brief: 1, refine: 2, brands: 3, brandsum: 3, words: 4, names: 5, claim: 6, reveal: 6,
   domain: 6, brand: 7, feel: 7, tcol: 7, ttype: 7, tshape: 7, taste: 7, logo: 7, snap: 7, unlock: 7, early: 7, logodone: 7, pers: 7,
-  book: 8, socials: 9, kit: 9, mkt: 9, done: 11,
+  book: 8, socials: 9, kit: 9, mkt: 9, cards: 9, deck: 9, done: 11,
 };
 // The step an event proves, with the domain moving to the end on CUT_D.
 function stepOfEvent(e: LogItem): number | undefined {
@@ -244,6 +244,7 @@ const SEED_UPDATES: Update[] = [
   { id: "u10", date: "2026-11-02", title: "Ads budget €25 → €50/day", step: "Google Ads" },
   { id: "u11", date: "2026-11-02", title: "Logos v2: real fonts, 35 symbols, 9 layouts", step: "06e · Logos" },
   { id: "u12", date: "2026-11-02", title: "Reminder emails 1 h after leaving, one-tap return", step: "Emails" },
+  { id: "u13", date: "2026-11-02", title: "Concept D v2: 12 logos, 6-tile paywall, business cards + pitch deck", step: "Brand" },
 ];
 
 // The numbers every view shares, for one window.
@@ -1216,7 +1217,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
 const FB_STEPS = ["Brief", "Deep-dive", "Swipe", "Words", "Names", "Brand", "Book", "Socials", "Domain"] as const; // the domain is the last chapter since 1 Nov
 const STEP_LAB: Record<string, string> = {
   ask: "Brief", brief: "Brief", refine: "Deep-dive", brands: "Swipe", brandsum: "Swipe", words: "Words",
-  names: "Names", claim: "Domain", reveal: "Names", domain: "Domain", brand: "Brand", feel: "Brand", tcol: "Brand", ttype: "Brand", tshape: "Brand", snap: "Brand", unlock: "Brand", kit: "Socials", mkt: "Socials", taste: "Brand", logo: "Brand",
+  names: "Names", claim: "Domain", reveal: "Names", domain: "Domain", brand: "Brand", feel: "Brand", tcol: "Brand", ttype: "Brand", tshape: "Brand", snap: "Brand", unlock: "Brand", kit: "Socials", mkt: "Socials", cards: "Socials", deck: "Socials", taste: "Brand", logo: "Brand",
   logodone: "Brand", pers: "Brand", book: "Book", socials: "Socials", done: "Socials",
 };
 // The pop-up's historic option strings, folded onto the canonical reasons.

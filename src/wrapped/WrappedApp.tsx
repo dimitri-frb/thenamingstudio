@@ -16,6 +16,7 @@ import { buildLogoPack, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoS
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
+import { BusinessCards, PitchDeck } from "./Kits2";
 import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
@@ -27,7 +28,7 @@ const ScaledPage = lazy(() => import("./Book").then((m) => ({ default: m.ScaledP
 type Step =
   | "land" | "how" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "claim" | "reveal"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
-  | "snap" | "unlock" | "early" | "kit" | "mkt"
+  | "snap" | "unlock" | "early" | "kit" | "mkt" | "cards" | "deck"
   | "done";
 // The product is a triptych, brand first, domain last (handoff brand-first ·
 // concept D): 1 Name → 2 Brand → 3 Domain → All set. The top bar shows only the
@@ -57,9 +58,12 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   socials: { label: C2, segs: 9, idx: 8 },
   kit:    { label: C2, segs: 9, idx: 8 },
   mkt:    { label: C2, segs: 9, idx: 8 },
+  cards:  { label: C2, segs: 9, idx: 8 },
+  deck:   { label: C2, segs: 9, idx: 8 },
   claim:  { label: C3, segs: 2, idx: 0 },
+  done:   { label: "All set", segs: 1, idx: 0 },
 };
-const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "claim", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "cards", "deck", "claim", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
@@ -67,7 +71,7 @@ const STEP_SLUG: Record<Step, string> = {
   land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "11-domain", reveal: "5-reveal",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", snap: "8-preview", unlock: "8-unlock", early: "8-early-access", logodone: "8-logo", pers: "8-personalize",
-  book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", done: "12-done",
+  book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", cards: "10-business-cards", deck: "10-pitch-deck", done: "12-done",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -232,6 +236,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [boardAt, setBoardAt] = useState(0); // when availability was really checked
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
+  const [logoBumps, setLogoBumps] = useState<Record<number, number>>({}); // per-tile "↻ More"
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
   const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number; tileKey?: string } | null>(null);
@@ -1071,7 +1076,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   useEffect(() => { // claim_seen: once per visit, the first settled state
     if (step !== "claim" || claimSeen.current || claimState === "checking") return;
     claimSeen.current = true;
-    track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 });
+    track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0, position_in_flow: "after_brand" });
     if (claimSel) track("claim_domain_selected", { domain: claimSel.domain, position: 0, auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, claimState]);
@@ -1079,7 +1084,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // Save the name, with the chosen domain or none ("pick a domain later"): no
   // purchase here. The funnel logs it, and the brand chapter opens.
   function keepName(d: DomainCard | null, to: Step = "done") {
-    if (!claimSeen.current) { claimSeen.current = true; track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0 }); }
+    if (!claimSeen.current) { claimSeen.current = true; track("claim_seen", { state: claimState, alts_count: claimView?.rows.length || 0, position_in_flow: "after_brand" }); }
     track("claim_saved", { domain: d?.domain || null, state: claimState });
     if (d) track("domain", { domain: d.domain, price: d.price || d.offerPrice || "", checkedAt: boardAt || undefined });
     setDomSel(d);
@@ -1206,10 +1211,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   const backTarget: Partial<Record<Step, Step>> = {
     brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
-    claim: brandOpen ? "mkt" : "snap",
+    claim: brandOpen ? "deck" : "snap",
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
-    kit: "socials", mkt: "kit",
+    kit: "socials", mkt: "kit", cards: "mkt", deck: "cards",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -1236,7 +1241,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "book" ? "socials" :
       step === "socials" ? "kit" :
       step === "kit" ? "mkt" :
-      step === "mkt" ? "claim" : null;
+      step === "mkt" ? "cards" :
+      step === "cards" ? "deck" :
+      step === "deck" ? "claim" : null;
     return t;
   };
 
@@ -1254,7 +1261,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return () => fonts.removeEventListener("loadingdone", f);
   }, []);
   // Logo engine v2: the nine logos for THIS brand (brief, sector, taste, seed).
-  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste, logoSeed) : [];
+  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste, logoSeed, logoBumps) : [];
   const payLogo = logoSel || (picked ? logoTiles[0] : null);
   const payCtx: PayCtx | null = picked && payLogo ? {
     name: picked.name,
@@ -1263,6 +1270,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     logoLight: logoSvg(payLogo.key, picked.name, lpal, { variant: payLogo.key === "appicon" ? "icon" : "light", accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom, height: 120 }),
     kitLogo: { key: payLogo.key, name: picked.name, pal: lpal, opts: { accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom } },
     voice: book?.voice?.words?.length ? book.voice.words : tasteVoice(taste),
+    brief: sentence.trim(),
     headFont: payLogo.custom?.family || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
     price,
     onBuyDomain: () => {
@@ -1271,7 +1279,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     },
     track: (ev, payload) => track(ev, { name: picked.name, ...payload }),
   } : null;
-  const LOCK_OF: Partial<Record<Step, LockKind>> = { logodone: "pack", pers: "pers", book: "book", socials: "socials", kit: "socials", mkt: "mkt" };
+  const LOCK_OF: Partial<Record<Step, LockKind>> = { logodone: "pack", pers: "pers", book: "book", socials: "socials", kit: "socials", mkt: "mkt", cards: "cards", deck: "deck" };
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
@@ -1693,7 +1701,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 {kept ? `Keep ${kept.domain} →` : claimState === "checking" ? "Keep looking in the background →" : "Finish my brand →"}
               </button>
               <span className="urow">
-                <button className="wr-link" onClick={() => toStep(brandOpen ? "mkt" : "snap")}>← Brand</button>
+                <button className="wr-link" onClick={() => toStep(brandOpen ? "deck" : "snap")}>← Brand</button>
                 <button className="wr-link" onClick={() => keepName(null)}>Skip for now</button>
               </span>
             </div>
@@ -1746,7 +1754,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btnor cbig" onClick={() => toStep("brand")}>Now, your brand →</button>
+            <button className="wr-btnor cbig" onClick={() => { track("name_kept", { name: picked.name }); toStep("brand"); }}>Now, your brand →</button>
             <button className="wr-link" onClick={() => toStep("names")}>← Names</button>
           </div>
         </>
@@ -1808,30 +1816,35 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ Brand · logos (nine, made from the taste) ═══ */}
+      {/* ═══ Brand · logos (twelve, made from the taste) ═══ */}
       {step === "logo" && picked && (
         <>
           <div className="wr-stage" style={{ paddingTop: 20 }}>
-            <div className="wr-lwrap">
+            <div className="wr-lwrap l12">
               <div className="lhead">
                 <div>
                   <p className="wr-kicker" style={{ marginBottom: 8 }}>Made from your taste</p>
-                  <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>Nine logos, made for {picked.name}.</h1>
+                  <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>Twelve logos, made for {picked.name}.</h1>
+                  <p className="lsub">Tap one to use it. ↻ on a logo shows another take on it.</p>
                 </div>
-                <button className="wr-link" style={{ whiteSpace: "nowrap" }} onClick={() => setLogoSeed((x) => x + 1)}>↻ Show nine more</button>
               </div>
+              <div className="lbody">
               <div className="wr-lgrid">
                 {logoTiles.map((c) => ({ ...c, shape: lshape }))
-                  .map((c) => {
+                  .map((c, i) => {
                     const on = logoSel?.key === c.key && logoSel?.seed === c.seed && logoSel?.accent === c.accent;
                     return (
-                      <button key={c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
+                      <button key={i + c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
                         {on && <span className="ck">✓</span>}
+                        <span className="more" role="button" aria-label="More like this" title="More like this"
+                          onClick={(e) => { e.stopPropagation(); setLogoBumps((b) => ({ ...b, [i]: (b[i] || 0) + 1 })); track("logo_more", { name: picked.name, tile: i, layout: c.key.split(":")[1] }); }}>↻</span>
                         <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key === "appicon" || c.key.startsWith("x:icon") ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
                         <span className="ln">{c.title}</span>
                       </button>
                     );
                   })}
+              </div>
+              <button className="wr-link lmore" onClick={() => { const b = logoSeed + 1; setLogoSeed(b); setLogoBumps({}); track("logo_batch_more", { name: picked.name, batch: b + 1 }); }}>↻ Show twelve more</button>
               </div>
               {logoSel && (
                 <div className="wr-lctx rise">
@@ -2142,11 +2155,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
       {/* ═══ P·1 snapshot · P·2 unlock · P·3 early access (handoff 19) ═══ */}
       {step === "snap" && payCtx && (
-        <Snapshot c={payCtx} unlocked={brandOpen} onNext={() => toStep(brandOpen ? "logodone" : "unlock")} />
+        <Snapshot c={payCtx} unlocked={brandOpen} onNext={() => toStep(brandOpen ? "logodone" : "unlock")} onPersonalise={() => { payCtx.track("snapshot_personalise", { unlocked: brandOpen }); toStep(brandOpen ? "pers" : "unlock"); }} />
       )}
       {step === "unlock" && payCtx && (
         brandOpen && !test // already open: no paywall to show, just the way in
-          ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} />
+          ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} onPersonalise={() => toStep("pers")} />
           : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onWhy={(reason) => track("why_not", { reason, price, inline: true, name: picked?.name })} />
       )}
       {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep(logoSel ? "logodone" : "brand")} />}
@@ -2159,7 +2172,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <SocialsKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onNext={() => toStep("mkt")} onBack={() => toStep("socials")} />
       )}
       {step === "mkt" && payCtx && brandOpen && (
-        <MarketingKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onFinish={() => toStep("claim")} onBack={() => toStep("kit")} />
+        <MarketingKit c={payCtx} kit={kit} kitFail={kitFail} onRetry={() => retry("kit")} onFinish={() => toStep("cards")} onBack={() => toStep("kit")} />
+      )}
+      {/* ═══ 08·b business cards · 08·p pitch deck ═══ */}
+      {step === "cards" && payCtx && brandOpen && (
+        <BusinessCards l={payCtx.kitLogo} domain={payCtx.domain} me={user} onBack={() => toStep("mkt")} onNext={() => toStep("deck")} track={payCtx.track} />
+      )}
+      {step === "deck" && payCtx && brandOpen && picked && (
+        <PitchDeck l={payCtx.kitLogo} track={payCtx.track} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
+          input={{ name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, ""), voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" }} />
       )}
 
       {/* ═══ 09 all set ═══ */}

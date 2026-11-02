@@ -5,6 +5,7 @@ import React, { useMemo, useState } from "react";
 import type { WBook, WKit } from "./api";
 import { iconKey, logoSvg, type Palette } from "./logos";
 import { avatarSvg, bannerSvg, postSvg, zipOf, type KitLogo } from "./kitArt";
+import { cardSvg, deckSlides, slideSvg } from "./Kits2";
 
 export interface PayCtx {
   name: string;
@@ -13,6 +14,7 @@ export interface PayCtx {
   logoLight: string;            // the picked logo, light variant (svg)
   kitLogo: KitLogo;
   voice: string[];              // three adjectives
+  brief?: string;               // the user's one-line brief (deck cover)
   headFont: string;             // the logo's typeface, as a label
   price: number;
   onBuyDomain: () => void;
@@ -23,12 +25,11 @@ const SWATCH_NAMES: (keyof Palette)[] = ["dawn", "haze", "nova", "night"];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* ── P·1 · Brand snapshot: the free payoff ── */
-export function Snapshot({ c, unlocked, onNext }: { c: PayCtx; unlocked: boolean; onNext: () => void }) {
+export function Snapshot({ c, unlocked, onNext, onPersonalise }: { c: PayCtx; unlocked: boolean; onNext: () => void; onPersonalise: () => void }) {
   const v = (c.voice.length ? c.voice.slice(0, 3) : ["warm", "clear", "confident"]).map((w) => w.toLowerCase());
   return (
     <>
       <div className="wr-stage wr-pw">
-        <p className="wr-kicker">Your free preview</p>
         <h1 className="wr-h ttl">Here's {c.name}'s first look.</h1>
         <div className="logotile" dangerouslySetInnerHTML={{ __html: c.logoLight }} />
         <div className="sw">
@@ -51,7 +52,7 @@ export function Snapshot({ c, unlocked, onNext }: { c: PayCtx; unlocked: boolean
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
         <button className="wr-btnor cbig" onClick={onNext}>{unlocked ? "Open my brand kit →" : "Get the full brand →"}</button>
-        <button className="wr-link" onClick={c.onBuyDomain}>Buy {c.domain} ↗</button>
+        <button className="wr-link" onClick={onPersonalise}>Personalise my logo</button>
       </div>
     </>
   );
@@ -63,18 +64,12 @@ export function Snapshot({ c, unlocked, onNext }: { c: PayCtx; unlocked: boolean
 // a real 14-day refund policy and Stripe live (phase 2).
 export const PAY_LIVE = false;
 const WHY_INLINE = ["Too expensive", "Just exploring", "Only needed the name", "Later"];
-const INSIDE: [string, string][] = [
-  ["12-page brand book", "story, voice, messaging"],
-  ["Logo in every version", "SVG + PNG, app icon, favicon"],
-  ["Colours & fonts", "palette, type pair, how to use them"],
-  ["Socials kit", "avatar, banners, bios"],
-  ["Marketing kit", "launch posts, ad copy, 3-week plan"],
-];
 export function Unlock({ c, onUnlock, onWhy }: { c: PayCtx; onUnlock: () => void; onWhy: (reason: string) => void }) {
   const p = c.pal;
   const [why, setWhy] = useState("");
+  const slides = useMemo(() => deckSlides({ name: c.name, brief: c.brief || "", concept: "", tagline: "", voice: c.voice, domain: c.domain, founder: "" }), [c.name, c.brief, c.voice, c.domain]);
   const previews: { label: string; art: React.ReactElement }[] = [
-    { label: "Brand book", art: (
+    { label: "Brand book · 12 pages", art: (
       <div className="pv book" style={{ background: `linear-gradient(135deg, ${p.dawn}, ${p.haze} 55%, ${p.nova})` }}>
         <span className="pg"><i /><i /><i className="s" /></span>
         <span className="pg w"><i /><i /><i /><i className="s" /></span>
@@ -87,40 +82,44 @@ export function Unlock({ c, onUnlock, onWhy }: { c: PayCtx; onUnlock: () => void
         <span className="lt" style={{ background: p.haze }} />
       </div>) },
     { label: "Socials kit", art: (
-      <div className="pv soc" style={{ background: "#141416" }}>
+      <div className="pv soc" style={{ background: `linear-gradient(160deg, ${p.haze}, ${p.night})` }}>
         <span className="av" dangerouslySetInnerHTML={{ __html: avatarSvg(c.kitLogo) }} />
+      </div>) },
+    { label: "Marketing kit", art: (
+      <div className="pv mk" style={{ background: `linear-gradient(150deg, ${p.night}, ${p.nova})` }}>
+        <span className="mono">Launch post</span>
+        <b>Meet {c.name}.</b>
+      </div>) },
+    { label: "Business cards · print-ready", art: (
+      <div className="pv bc" style={{ background: `linear-gradient(150deg, ${p.dawn}, ${p.haze})` }}>
+        <span className="cd b" dangerouslySetInnerHTML={{ __html: cardSvg("back", "dark", { name: "", role: "", email: "", phone: "" }, c.kitLogo, c.domain) }} />
+        <span className="cd" dangerouslySetInnerHTML={{ __html: cardSvg("front", "light", { name: "Your name", role: "Founder", email: "", phone: "" }, c.kitLogo, c.domain) }} />
+      </div>) },
+    { label: "Pitch deck · 10 slides", art: (
+      <div className="pv dk" style={{ background: "#141416" }}>
+        <span className="sl" dangerouslySetInnerHTML={{ __html: slideSvg(slides[0], c.kitLogo, 480) }} />
       </div>) },
   ];
   return (
     <>
-      <div className="wr-stage wr-pw pw2">
+      <div className="wr-stage wr-pw pw2 six">
         <div className="pwl">
           <p className="wr-kicker">The full brand</p>
           <h1 className="wr-h ttl">Everything {c.name} needs to launch.</h1>
-          <p className="anchor">A naming agency charges <b>€2,000+</b> for this.</p>
-          <div className="pvrow">
-            {previews.map((x) => (
-              <div key={x.label} className="pvc">
-                <div className="pvw">{x.art}<span className="fog" /></div>
-                <b>{x.label}</b>
-              </div>
-            ))}
-          </div>
         </div>
-        <div className="pwr">
-          <ul className="inside">
-            {INSIDE.map(([k, v]) => <li key={k}><i>✓</i><span><b>{k}</b> · {v}</span></li>)}
-          </ul>
-          <div className="price2">
-            <span className="pl"><span className="n mono">€{c.price}</span><span className="s">one-time · yours forever</span></span>
-            <span className="pr">
-              {PAY_LIVE ? (
-                <><b>Love it or it's free</b><span>Full refund within 14 days</span><span className="mono sec">🔒 Secure · Apple Pay · card</span></>
-              ) : (
-                <><b>Instant access</b><span>Every file unlocks in one tap</span><span className="mono sec">Saved to your account</span></>
-              )}
-            </span>
-          </div>
+        <div className="pvgrid">
+          {previews.map((x) => (
+            <div key={x.label} className="pvc">
+              <div className="pvw">{x.art}<span className="fog" /><span className="lk">🔒 Locked</span></div>
+              <b>{x.label}</b>
+            </div>
+          ))}
+        </div>
+        <div className="price2">
+          <span className="pl"><span className="n mono">€{c.price}</span><span className="s"><b>One-time, yours forever</b><br />Pay once · instant access</span></span>
+          {PAY_LIVE && (
+            <span className="pr"><b>Love it or it's free</b><span>Full refund within 14 days</span><span className="mono sec">🔒 Secure · Apple Pay · card</span></span>
+          )}
         </div>
       </div>
       <div className="wr-foot col pw2foot" style={{ gap: 6, alignItems: "center" }}>
@@ -155,7 +154,7 @@ export function Early({ c, onOpen }: { c: PayCtx; onOpen: () => void }) {
 }
 
 /* ── P·5a · Locked page (brand book, personalise, socials kit, marketing kit) ── */
-export type LockKind = "book" | "pers" | "pack" | "socials" | "mkt";
+export type LockKind = "book" | "pers" | "pack" | "socials" | "mkt" | "cards" | "deck";
 export function Locked({ c, kind, book, onUnlock, onBack }: {
   c: PayCtx; kind: LockKind; book: WBook | null; onUnlock: () => void; onBack: () => void;
 }) {
@@ -175,6 +174,10 @@ export function Locked({ c, kind, book, onUnlock, onBack }: {
       ? { kicker: "Personalise", head: `Make ${c.name}'s logo yours.`, para: "Change the symbol, the colour, the typeface and the layout, then download every version.", rows: ["Symbol · 8 shapes", "Colour · any hex", "Typeface · 1,500 fonts"], chip: "Part of the full brand", more: "Logo pack · SVG + PNG, every version, app icon" }
       : kind === "socials"
         ? { kicker: "Socials kit", head: `${c.name}, ready for every feed.`, para: "Your profile picture, banners and bios, sized for each network.", rows: ["Profile picture · 1080 × 1080", "LinkedIn + X banners", "Short and long bios"], chip: "Part of the socials kit", more: "Instagram, TikTok, X and LinkedIn" }
+        : kind === "cards"
+          ? { kicker: "Business cards", head: `Hand out ${c.name}.`, para: "Your card, front and back, in your colours and fonts, with your details: print-ready at 85 × 55 mm with bleed and crop marks.", rows: ["Front · your name, role and contacts", "Back · the logo on your colours", "Print-ready PDF · bleed + crop marks"], chip: "Part of the full brand", more: "Light, dark or gradient" }
+        : kind === "deck"
+          ? { kicker: "Pitch deck", head: `Pitch ${c.name}.`, para: "Ten slides in your brand, with the story from your brief: you fill in your numbers.", rows: ["Cover · Problem · Solution · Market · Product", "Business model · Traction · Team · The ask", "Google Slides, Keynote or PDF"], chip: "Part of the full brand", more: "10 slides, ready to edit" }
         : { kicker: "Marketing kit", head: `Launch ${c.name}.`, para: "Launch posts, ad copy and a first campaign, in your colours and voice.", rows: ["3 launch posts + stories", "Google + Meta ad copy", "A 3-week campaign plan"], chip: "Part of the marketing kit", more: "Ready to post, ready to paste" };
   return (
     <>
@@ -317,7 +320,7 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
   const primary =
     tab === 0 ? <button className="wr-btn" onClick={() => setTab(1)}>Next: ad copy →</button>
     : tab === 1 ? <button className="wr-btn" onClick={() => setTab(2)}>Next: first campaign →</button>
-    : <button className="wr-btn" onClick={onFinish}>Finish →</button>;
+    : <button className="wr-btn" onClick={onFinish}>Next: business cards →</button>;
   const links =
     tab === 0 ? <><button className="wr-link" onClick={onBack}>← Socials kit</button>{kit && <button className="wr-link" onClick={() => dl("posts_all", posts.map((svg, i) => ({ name: `${handle}-post-${i + 1}.png`, svg, h: 1080 })), `${handle}-launch-posts.zip`)}>↓ Download all</button>}</>
     : tab === 1 ? <><button className="wr-link" onClick={() => setTab(0)}>← Launch posts</button>{kit && <button className="wr-link" onClick={() => { void navigator.clipboard?.writeText(adsText); c.track("kit_copy", { block: "ads_all" }); }}>Copy all</button>}</>

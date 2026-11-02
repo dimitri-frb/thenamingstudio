@@ -703,7 +703,9 @@ const LAYOUT_TITLE: Record<string, string> = {
   swap: "Letter mark", pill: "Badge", split: "Lockup", icon: "App icon",
 };
 /** The nine logos for this brand (seed = "Show nine more"). */
-export function logoConceptsX(name: string, brief: string, taste: { type?: string; shape?: string; feeling?: string[] }, seed = 0): LogoConcept[] {
+// Twelve logos per batch (handoff concept-D v2). bumps[i] = how many times tile i's
+// "↻ More" was tapped: it keeps the layout and moves the symbol and the font on.
+export function logoConceptsX(name: string, brief: string, taste: { type?: string; shape?: string; feeling?: string[] }, seed = 0, bumps: Record<number, number> = {}): LogoConcept[] {
   const h = hashStr((name || "") + "|" + seed);
   const fam = (taste.shape === "Sharp & angular" ? "sharp" : taste.shape === "Organic" ? "organic" : taste.shape === "Geometric" ? "geometric" : "round") as SymFamily;
   // symbols: the sector's first, then the shape family's, rotated by name + seed
@@ -721,13 +723,18 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
   const caseOf = (fi: number, i: number) => (X_FONTS[fi].caps ? "u" : calm && i % 2 ? "l" : bold && i === 3 ? "u" : "n");
   const plan: [string, number, number][] = [ // layout, symbol index, font index
     ["side", 0, 0], ["stack", 1, 1], ["word", -1, 2], ["emblem", 2, 3], ["mono", 3, 4],
-    ["swap", 0, 5], ["pill", 4, 6], ["split", 5, 7], ["icon", 1, 0],
+    ["swap", 0, 5], ["pill", 4, 6], ["split", 5, 7],
+    ["side", 2, 2], ["stack", 3, 0], ["swap", 4, 1], ["icon", 1, 0],
   ];
-  const lays = rot(plan.slice(0, 8), seed % 8).concat([plan[8]]);
+  const lays = rot(plan.slice(0, 11), seed % 11).concat([plan[11]]);
+  const allF = [...new Set([...own, ...alt])];
   const ACC: Accent[] = ["dawn", "haze", "nova"];
   return lays.map(([lay, si, fi], i) => {
-    const sym = si < 0 ? "none" : syms[si % syms.length];
-    const f = pickF(fi);
+    const b = bumps[i] || 0;
+    const base = si < 0 ? "none" : syms[si % syms.length];
+    const sym = si < 0 || !b ? base : pool[(Math.max(0, pool.indexOf(base)) + b * 5) % pool.length];
+    const f0 = pickF(fi);
+    const f = b ? allF[(Math.max(0, allF.indexOf(f0)) + b) % allF.length] : f0;
     const key = `x:${lay}:${sym}:${f}:${caseOf(f, i)}`;
     const title = lay === "word" || lay === "mono" ? `${LAYOUT_TITLE[lay]} · ${X_FONTS[f].f}` : `${X_SYMS[sym]?.label || LAYOUT_TITLE[lay]} · ${LAYOUT_TITLE[lay]}`;
     return { key, title, accent: ACC[(i + seed) % 3], seed };
