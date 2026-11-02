@@ -410,6 +410,13 @@ export async function authGoogle(credential: string): Promise<{ token: string; u
   return r?.token ? r : null;
 }
 
+// A reminder email's one-tap link: signed account + run → a session, no Google step.
+export async function resumeLink(u: string, f: string, x: string, t: string): Promise<{ token: string; user: WUser; searches: SavedSearch[] } | null> {
+  const r = await post<{ token: string; user: WUser; searches: SavedSearch[] }>({ phase: "resume-link", u, f, x, t });
+  if (r?.token) saveSession({ token: r.token, user: r.user });
+  return r?.token ? r : null;
+}
+
 export async function fetchMe(): Promise<{ user: WUser | null; searches: SavedSearch[] }> {
   const s = loadSession();
   if (!s) return { user: null, searches: [] };

@@ -19,7 +19,7 @@ interface KVNamespace {
 }
 interface ExecutionContext { waitUntil(promise: Promise<unknown>): void }
 
-import { handleUnsub, sendStop, sendUnlockAlert, sendWelcome, type StopCandidate } from "./emails";
+import { handleUnsub, resumeSig, sendStop, sendUnlockAlert, sendWelcome, type StopCandidate } from "./emails";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -60,8 +60,8 @@ function cors(env: Env): Record<string, string> {
 }
 
 export default {
-  // Hourly: one stop email per flow, ~24h after the founder's last activity,
-  // matched to the furthest step (handoff 15). Max one, ever, per flow.
+  // Hourly: one stop email per flow, ~1 h after the founder's last activity
+  // (was 24 h until 2 Nov), matched to the furthest step. Max one, ever, per flow.
   async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     if (!env.LOG || !env.EMAIL) return;
     const now = Date.now();
@@ -74,13 +74,14 @@ export default {
         if (!email || !searches.length) continue;
         const latest = searches.reduce((a, b) => ((b?.updated || 0) > (a?.updated || 0) ? b : a));
         const idle = now - (latest?.updated || 0);
-        // 24–30h after the last activity: tolerant of a missed hourly run, and
-        // the stopmail marker below guarantees one email per flow, ever.
-        if (idle < 24 * 3600e3 || idle >= 30 * 3600e3) continue;
+        // 1–6 h after the last activity: the hourly run lands it 60–120 min after
+        // they leave, tolerant of a missed run; the stopmail marker below
+        // guarantees one email per flow, ever.
+        if (idle < 3600e3 || idle >= 6 * 3600e3) continue;
         if (await env.LOG.get(`optout:${email}`)) continue;
         if (await env.LOG.get(`stopmail:${latest.id}`)) continue;
         const sent = await sendStop(env, {
-          email, name: acct?.user?.name || "", flowId: latest.id, brief: latest.sentence || "",
+          email, name: acct?.user?.name || "", flowId: latest.id, brief: latest.sentence || "", sub: k.name.slice(5),
           cloud: (latest.styles || []).flatMap((st: any) => st?.words || []).map((w: any) => ({ w: w?.w, lang: w?.lang })),
           starred: latest.starred, names: latest.names, picked: latest.picked,
           domain: latest.domain, domPrice: latest.domPrice, domStatus: latest.domStatus,
@@ -357,6 +358,20 @@ export default {
     // ── Accounts (Google sign-in + saved searches, stored in the LOG KV) ──
     if (phase === "auth-google") return json(await authGoogle(env, body, ctx), env);
     if (phase === "me") return json(await whoAmI(env, body), env);
+    // One-tap return from a reminder email: a signed, 14-day link for one run.
+    // Valid → a session for that account (like a sign-in), so the run reopens.
+    if (phase === "resume-link") {
+      const sub = String(body?.u || ""), flowId = String(body?.f || ""), exp = Number(body?.x) || 0, t = String(body?.t || "");
+      if (!env.LOG || !env.ADS_KEY || !sub || !flowId || exp * 1000 < Date.now() || t !== (await resumeSig(sub, `${flowId}|${exp}`, env.ADS_KEY))) {
+        return json({ error: "link expired" }, env, 403);
+      }
+      const acct = await getAcct(env, sub);
+      if (!acct?.user) return json({ error: "no account" }, env, 404);
+      const token = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, "0")).join("");
+      await env.LOG.put(`sess:${token}`, JSON.stringify(acct.user), { expirationTtl: 60 * 60 * 24 * 90 });
+      ctx.waitUntil(writeLog(env, "resume_link", flowId, { payload: { email: acct.user.email } }, { ok: true }));
+      return json({ token, user: acct.user, searches: acct.searches || [] }, env);
+    }
     if (phase === "search-put") return json(await searchPut(env, body), env);
     if (phase === "search-del") {
       const u = await sessionUser(env, body?.token);

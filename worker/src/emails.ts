@@ -38,6 +38,13 @@ export async function unsubSig(email: string, secret: string): Promise<string> {
   return [...new Uint8Array(buf)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// One-tap return (email → their run, no sign-in): a signature over the
+// account + flow, so the link opens exactly that run for 14 days.
+export async function resumeSig(sub: string, flowId: string, secret: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`resume|${sub}|${flowId}|${secret}`));
+  return [...new Uint8Array(buf)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function unsubUrl(email: string, secret: string): Promise<string> {
   const u = btoa(email.toLowerCase()).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return `${API}/unsub?u=${u}&k=${await unsubSig(email, secret)}`;
@@ -110,6 +117,7 @@ function wordCloud(words: { w: string; lang?: string }[], total: number): string
 
 export interface StopCandidate {
   email: string; name: string; flowId: string; brief: string;
+  sub?: string;            // the account id: signs the one-tap return link
   cloud?: { w: string; lang?: string }[];
   starred?: { w: string }[];
   names?: { name: string; tagline?: string; parts?: { part: string; note: string }[]; dom?: { domain: string; free?: boolean; price?: string } | null }[];
@@ -140,7 +148,10 @@ export async function sendStop(
 ): Promise<Stage> {
   const stage = stageFor(c);
   if (!stage || !env.ADS_KEY) return null;
-  const resume = (go = "") => `${SITE}/?resume=${encodeURIComponent(c.flowId)}${go ? `&go=${go}` : ""}&utm_source=email&utm_campaign=${stage.toLowerCase()}`;
+  // the return link signs them straight back into this run (no Google step), 14 days
+  const exp = Math.floor(Date.now() / 1000) + 14 * 86400;
+  const tok = c.sub ? await resumeSig(c.sub, `${c.flowId}|${exp}`, env.ADS_KEY) : "";
+  const resume = (go = "") => `${SITE}/?resume=${encodeURIComponent(c.flowId)}${go ? `&go=${go}` : ""}${tok ? `&u=${encodeURIComponent(c.sub!)}&x=${exp}&t=${tok}` : ""}&utm_source=email&utm_campaign=${stage.toLowerCase()}`;
   const unsub = await unsubUrl(c.email, env.ADS_KEY);
   const base = { ...common(env), unsub_url: unsub, project: esc(projectPhrase(c.brief)) };
   // Gmail/Yahoo one-click unsubscribe (RFC 8058): a POST to the same signed URL
@@ -151,7 +162,7 @@ export async function sendStop(
     if (!words.length) return null; // nothing honest to show — skip rather than fake it
     const total = Math.max(words.length, c.cloud?.length || 0);
     const html = merge(T.S1, { ...base, word_count: String(total), word_cloud: wordCloud(words, total), cta_url: resume() });
-    return (await deliver(env, c.email, `${total} words are waiting for you`, withPixel(html, "S1", c.flowId), LU)) ? "S1" : null;
+    return (await deliver(env, c.email, `Your ${projectPhrase(c.brief)}: ${total} words are waiting`, withPixel(html, "S1", c.flowId), LU)) ? "S1" : null;
   }
 
   if (stage === "S2") {

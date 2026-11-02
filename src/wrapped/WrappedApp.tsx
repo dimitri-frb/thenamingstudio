@@ -6,7 +6,7 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
@@ -336,7 +336,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     }
     (async () => {
       if (resume) {
-        const me = await fetchMe();
+        let me = await fetchMe();
+        // the reminder email's one-tap link: signed in straight into their run
+        const lq = new URLSearchParams(window.location.search);
+        if (!me.user && lq.get("t") && lq.get("u")) {
+          const r = await resumeLink(lq.get("u")!, resume, lq.get("x") || "", lq.get("t")!);
+          if (r) me = { user: r.user, searches: r.searches };
+        }
         if (me.user) setUser(me.user);
         const s = me.searches.find((x) => x.id === resume);
         if (s) { hydrate(s); return; }
