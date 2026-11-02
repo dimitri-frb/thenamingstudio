@@ -8,6 +8,13 @@ import { createPortal } from "react-dom";
 import { logoSvg, type Palette } from "./logos";
 import type { KitLogo } from "./kitArt";
 import { download, makeZip } from "./zip";
+import { svgPdf } from "./pdf";
+
+// A real PDF file; the print dialog only if the PDF can't be made.
+async function savePdf(pages: string[], wMm: number, hMm: number, title: string, pageCss: string) {
+  try { download(await svgPdf(pages, wMm, hMm, title), `${title}.pdf`); }
+  catch { printPages(title, pageCss, pages); }
+}
 
 const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -88,12 +95,16 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
   const [side, setSide] = useState<"front" | "back">("front");
   const front = useMemo(() => cardSvg("front", style, d, l, domain), [style, d, l, domain]);
   const back = useMemo(() => cardSvg("back", style, d, l, domain), [style, d, l, domain]);
-  const pdf = () => {
+  const [busy, setBusy] = useState(false);
+  const pdf = async () => {
+    if (busy) return;
     track("kit_asset_downloaded", { asset: "business_cards_pdf", style });
-    printPages(`${l.name} - Business cards`, "size: 97mm 67mm", [
+    setBusy(true);
+    await savePdf([
       cardSvg("front", style, d, l, domain, { bleed: true, marks: true }),
       cardSvg("back", style, d, l, domain, { bleed: true, marks: true }),
-    ]);
+    ], 97, 67, `${l.name} - Business cards`, "size: 97mm 67mm");
+    setBusy(false);
   };
   const field = (k: keyof CardDetails, label: string, type = "text") => (
     <label className="bcf">
@@ -137,7 +148,7 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={pdf}>↓ Download print-ready PDF</button>
+        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={pdf} disabled={busy}>{busy ? "Preparing your PDF…" : "↓ Download print-ready PDF"}</button>
         <span className="urow">
           <button className="wr-link" onClick={onBack}>← Marketing kit</button>
           <button className="wr-link" onClick={onNext}>Next: pitch deck →</button>
@@ -252,9 +263,13 @@ export function PitchDeck({ l, input, onBack, onNext, track }: {
   const [note, setNote] = useState("");
   const cover = useMemo(() => slideSvg(slides[0], l, 1600), [slides, l]);
   const thumbs = useMemo(() => slides.slice(1).map((s) => slideSvg(s, l, 800)), [slides, l]);
-  const pdf = () => {
+  const [busy, setBusy] = useState(false);
+  const pdf = async () => {
+    if (busy) return;
     track("kit_asset_downloaded", { asset: "deck_pdf" });
-    printPages(`${l.name} - Pitch deck`, "size: 297mm 167.0625mm", slides.map((s) => slideSvg(s, l, 1600)));
+    setBusy(true);
+    await savePdf(slides.map((s) => slideSvg(s, l, 1600)), 297, 167.0625, `${l.name} - Pitch deck`, "size: 297mm 167.0625mm");
+    setBusy(false);
   };
   const file = (asset: "deck_slides" | "deck_keynote") => {
     track("kit_asset_downloaded", { asset });
@@ -293,7 +308,7 @@ export function PitchDeck({ l, input, onBack, onNext, track }: {
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={open}>Open my deck →</button>
+        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={open} disabled={busy}>{busy ? "Preparing your deck…" : "Open my deck →"}</button>
         <span className="urow">
           <button className="wr-link" onClick={onBack}>← Business cards</button>
           <button className="wr-link" onClick={pdf}>↓ Download PDF</button>
