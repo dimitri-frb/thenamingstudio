@@ -11,3 +11,4 @@ dist
 .env*
 !.env.example
 public/_handoff8
+visual-fixtures/

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "test:visual": "node scripts/visual-fixtures.mjs"
   },
   "dependencies": {
     "jspdf": "^4.2.1",
