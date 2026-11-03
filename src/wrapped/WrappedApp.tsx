@@ -19,6 +19,7 @@ import type { BookCtx } from "./Book";
 import { BusinessCards, PitchDeck } from "./Kits2";
 import { PersX, layoutTitle } from "./PersX";
 import { famData, famFromTaste, type Fam, type FamData } from "./families";
+import { AllSet, KitHub, PiecePage, everythingZip, type FlowCtx, type FlowState, type PieceId } from "./BrandFlow";
 import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
@@ -31,6 +32,7 @@ type Step =
   | "land" | "how" | "brief" | "refine" | "brands" | "brandsum" | "words" | "names" | "claim" | "reveal"
   | "brand" | "feel" | "tcol" | "ttype" | "tshape" | "taste" | "logo" | "logodone" | "pers" | "book" | "socials"
   | "snap" | "unlock" | "early" | "kit" | "mkt" | "cards" | "deck"
+  | "hub" | "plogo" | "pbook" | "psocials" | "pmkt" | "pcards" | "pdeck" | "allset"
   | "done";
 // The product is a triptych, brand first, domain last (handoff brand-first ·
 // concept D): 1 Name → 2 Brand → 3 Domain → All set. The top bar shows only the
@@ -62,18 +64,30 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   mkt:    { label: C2, segs: 9, idx: 8 },
   cards:  { label: C2, segs: 9, idx: 8 },
   deck:   { label: C2, segs: 9, idx: 8 },
+  // handoff 28 · the brand flow after unlock: hub → 6 pieces → all set
+  hub:    { label: C2, segs: 7, idx: 0 },
+  plogo:  { label: C2, segs: 7, idx: 1 },
+  pbook:  { label: C2, segs: 7, idx: 2 },
+  psocials: { label: C2, segs: 7, idx: 3 },
+  pmkt:   { label: C2, segs: 7, idx: 4 },
+  pcards: { label: C2, segs: 7, idx: 5 },
+  pdeck:  { label: C2, segs: 7, idx: 6 },
+  allset: { label: "All set", segs: 1, idx: 0 },
   claim:  { label: C3, segs: 2, idx: 0 },
   done:   { label: "All set", segs: 1, idx: 0 },
 };
-const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "cards", "deck", "claim", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "cards", "deck", "hub", "plogo", "pbook", "psocials", "pmkt", "pcards", "pdeck", "allset", "claim", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
+const PIECE_STEP: Record<PieceId, Step> = { logo: "plogo", book: "pbook", socials: "psocials", mkt: "pmkt", cards: "pcards", deck: "pdeck" };
+const STEP_PIECE: Partial<Record<Step, PieceId>> = Object.fromEntries(Object.entries(PIECE_STEP).map(([k, v]) => [v, k]));
 const STEP_SLUG: Record<Step, string> = {
   land: "", how: "how-it-works", brief: "2-concept", refine: "2-refine", brands: "2-brands", brandsum: "2-your-taste", words: "3-words", names: "4-names", claim: "11-domain", reveal: "5-reveal",
   brand: "7-brand", feel: "7-feeling", tcol: "7-colours", ttype: "7-type", tshape: "7-shape", taste: "7-taste",
   logo: "8-logos", snap: "8-preview", unlock: "8-unlock", early: "8-early-access", logodone: "8-logo", pers: "8-personalize",
   book: "9-brand-book", socials: "10-socials", kit: "10-socials-kit", mkt: "10-marketing", cards: "10-business-cards", deck: "10-pitch-deck", done: "12-done",
+  hub: "9-your-kit", plogo: "9-1-logo", pbook: "9-2-brand-book", psocials: "9-3-socials", pmkt: "9-4-marketing", pcards: "9-5-business-cards", pdeck: "9-6-pitch-deck", allset: "12-all-set",
 };
 const SLUG_STEP: Record<string, Step> = Object.fromEntries(
   (Object.entries(STEP_SLUG) as [Step, string][]).filter(([, v]) => v).map(([k, v]) => [v, k]),
@@ -240,6 +254,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [logoSeed, setLogoSeed] = useState(0);
   const [logoBumps, setLogoBumps] = useState<Record<number, number>>({}); // per-tile "↻ More"
   const [famPick, setFamPick] = useState<Fam | null>(null);
+  const [flowSt, setFlowSt] = useState<FlowState>({ sel: {}, dl: {} });   // handoff 28: version + format per piece
+  const [cardDet, setCardDet] = useState<{ name?: string; role: string; email?: string; phone: string; web?: string }>({ role: "Founder", phone: "" });
+  const [zipBusy, setZipBusy] = useState(false);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
   const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number; tileKey?: string } | null>(null);
@@ -382,6 +399,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.kit) setKit(snap.kit);
         if (snap.deck) setDeckAi(snap.deck);
         if (snap.fam != null) setFamPick(snap.fam as Fam);
+        if (snap.flow) setFlowSt(snap.flow as FlowState);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           (["brief", "words"].includes(slugStep) && snap.sentence) ||
@@ -1242,6 +1260,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
     logo: "taste", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
     kit: "socials", mkt: "kit", cards: "mkt", deck: "cards",
+    hub: "snap", plogo: "hub", pbook: "plogo", psocials: "pbook", pmkt: "psocials", pcards: "pmkt", pdeck: "pcards", allset: "hub",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -1262,7 +1281,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "taste" ? "logo" :
       step === "logo" ? (logoSel ? "snap" : null) :
       step === "snap" ? (brandOpen ? "logodone" : "unlock") :
-      step === "early" ? "logodone" :
+      step === "early" ? "hub" :
       step === "pers" ? "book" :
       step === "logodone" ? "book" :
       step === "book" ? "socials" :
@@ -1270,7 +1289,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "kit" ? "mkt" :
       step === "mkt" ? "cards" :
       step === "cards" ? "deck" :
-      step === "deck" ? "claim" : null;
+      step === "deck" ? "claim" :
+      step === "hub" ? "plogo" : step === "plogo" ? "pbook" : step === "pbook" ? "psocials" : step === "psocials" ? "pmkt" :
+      step === "pmkt" ? "pcards" : step === "pcards" ? "pdeck" : step === "pdeck" ? "allset" : null;
     return t;
   };
 
@@ -1315,11 +1336,27 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     },
     track: (ev, payload) => track(ev, { name: picked.name, ...payload }),
   } : null;
-  const LOCK_OF: Partial<Record<Step, LockKind>> = { logodone: "pack", pers: "pers", book: "book", socials: "socials", kit: "socials", mkt: "mkt", cards: "cards", deck: "deck" };
+  const LOCK_OF: Partial<Record<Step, LockKind>> = { logodone: "pack", pers: "pers", book: "book", socials: "socials", kit: "socials", mkt: "mkt", cards: "cards", deck: "deck",
+    hub: "pack", plogo: "pack", pbook: "book", psocials: "socials", pmkt: "mkt", pcards: "cards", pdeck: "deck", allset: "book" };
   const bookCtx: BookCtx | null = picked && book ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
     book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape, logoCustom: logoSel?.custom,
+  } : null;
+  const cardFd: FamData = { ...fd, person: cardDet.name ?? user?.name ?? "", role: cardDet.role || "Founder", email: [cardDet.email ?? user?.email ?? "", cardDet.phone].filter(Boolean).join("  ·  "), site: (cardDet.web ?? fd.site ?? "").trim() };
+  const flowCtx: FlowCtx | null = picked && payCtx ? {
+    name: picked.name, domain: payCtx.domain, pal: lpal, logo: payCtx.kitLogo, fam, fd: { ...cardFd, person: cardFd.person, email: cardFd.email },
+    kit, deckAi, deckInput: { name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: famTagline, voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" },
+    me: { name: cardFd.person, email: cardFd.email },
+    st: flowSt,
+    setSel: (p, v) => { const nx = { ...flowSt, sel: { ...flowSt.sel, [p]: v } }; setFlowSt(nx); persist({ flow: nx }); },
+    setDl: (p, f) => setFlowSt((cur) => { const nx = { ...cur, dl: { ...cur.dl, [p]: f } }; persist({ flow: nx }); return nx; }),
+    bookReady: !!bookCtx,
+    bookPdf: () => { void import("./Book").then((m) => m.printBook(`${picked.name} - Brand book`)); },
+    bookWord: async () => { if (bookCtx) await (await import("./Book")).exportBookWord(bookCtx); },
+    bookPreview: () => setBookOpen(true),
+    persBtn: () => toStep("pers"),
+    track: (ev, p) => track(ev, { name: picked.name, ...p }),
   } : null;
 
   return (
@@ -2003,11 +2040,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <PersX name={picked.name} pal={lpal} shape={lshape} brief={`${sentence} ${concept?.concept || ""} ${chips.join(" ")}`} taste={taste}
           baseKey={(logoSel || logoTiles[0]).key} baseHex={(logoSel || logoTiles[0]).custom?.accentHex}
           track={(ev, p) => track(ev, { name: picked.name, ...p })}
-          onBack={() => toStep("logodone")}
+          onBack={() => toStep("plogo")}
           onSave={(key, hex) => {
             const cur = logoSel || logoTiles[0];
             setLogoSel({ ...cur, key, shape: lshape, title: `${X_SYMS[key.split(":")[2]]?.label && !["word", "mono"].includes(key.split(":")[1]) ? X_SYMS[key.split(":")[2]].label + " · " : ""}${layoutTitle(key.split(":")[1])}`, custom: hex ? { symbol: "none", layout: "side", accentHex: hex } : undefined });
-            toStep("logodone");
+            toStep("plogo");
           }} />
       )}
       {step === "pers" && picked && persDraft && brandOpen && !(logoSel || logoTiles[0])?.key.startsWith("x:") && (
@@ -2221,14 +2258,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
       {/* ═══ P·1 snapshot · P·2 unlock · P·3 early access (handoff 19) ═══ */}
       {step === "snap" && payCtx && (
-        <Snapshot c={payCtx} unlocked={brandOpen} onNext={() => toStep(brandOpen ? "logodone" : "unlock")} onPersonalise={() => { payCtx.track("snapshot_personalise", { unlocked: brandOpen }); toStep(brandOpen ? "pers" : "unlock"); }} />
+        <Snapshot c={payCtx} unlocked={brandOpen} onNext={() => toStep(brandOpen ? "hub" : "unlock")} onPersonalise={() => { payCtx.track("snapshot_personalise", { unlocked: brandOpen }); toStep(brandOpen ? "pers" : "unlock"); }} />
       )}
       {step === "unlock" && payCtx && (
         brandOpen && !test // already open: no paywall to show, just the way in
-          ? <Snapshot c={payCtx} unlocked onNext={() => toStep("logodone")} onPersonalise={() => toStep("pers")} />
+          ? <Snapshot c={payCtx} unlocked onNext={() => toStep("hub")} onPersonalise={() => toStep("pers")} />
           : <Unlock c={payCtx} onUnlock={() => unlockFrom("paywall")} onWhy={(reason) => track("why_not", { reason, price, inline: true, name: picked?.name })} />
       )}
-      {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep(logoSel ? "logodone" : "brand")} />}
+      {step === "early" && payCtx && <Early c={payCtx} onOpen={() => toStep(logoSel ? "hub" : "brand")} />}
       {/* P·5a: a paid page, for a run that hasn't unlocked */}
       {picked && payCtx && !brandOpen && LOCK_OF[step] && (
         <Locked c={payCtx} kind={LOCK_OF[step]!} book={book} onUnlock={() => unlockFrom("locked_page")} onBack={() => toStep("snap")} />
@@ -2247,6 +2284,38 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "deck" && payCtx && brandOpen && picked && (
         <PitchDeck l={payCtx.kitLogo} track={payCtx.track} ai={deckAi} aiBusy={deckBusy} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
           input={{ name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, ""), voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" }} />
+      )}
+      {/* ═══ handoff 28 · brand flow: hub → six pieces → all set ═══ */}
+      {flowCtx && brandOpen && step === "hub" && (
+        <KitHub c={flowCtx} zipBusy={zipBusy} onOpen={(p) => toStep(PIECE_STEP[p])}
+          onZip={async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "so_far", name: picked?.name }); try { await everythingZip(flowCtx, "so_far"); } finally { setZipBusy(false); } }} />
+      )}
+      {flowCtx && brandOpen && STEP_PIECE[step] && (() => {
+        const p = STEP_PIECE[step]!;
+        const order: PieceId[] = ["logo", "book", "socials", "mkt", "cards", "deck"];
+        const nx = order[order.indexOf(p) + 1];
+        const extra = p === "book" && bookCtx ? (
+          <div className="bookpages">{[0, 3, 6, 9].map((i) => <div key={i} onClick={() => setBookOpen(true)}><Suspense fallback={null}><ScaledPage i={i} ctx={bookCtx} width={isMobile ? 76 : 120} /></Suspense></div>)}</div>
+        ) : p === "book" ? <div className="kitwait"><span className="wr-spin" /> Writing your brand book…</div>
+        : p === "cards" ? (
+          <>
+            <p className="lbl mono">Your details</p>
+            {([["name", "Name", "text"], ["role", "Role", "text"], ["email", "Email", "email"], ["phone", "Phone", "tel"], ["web", "Website", "text"]] as const).map(([k, l, t]) => (
+              <label key={k} className="bcf"><span>{l}</span>
+                <input type={t} value={(cardDet as any)[k] ?? (k === "name" ? user?.name || "" : k === "email" ? user?.email || "" : k === "web" ? fd.site : "")} placeholder={k === "phone" ? "Optional" : l}
+                  onChange={(e) => setCardDet({ ...cardDet, name: cardDet.name ?? user?.name ?? "", email: cardDet.email ?? user?.email ?? "", web: cardDet.web ?? fd.site, [k]: e.target.value })}
+                  onBlur={() => track("card_details_edited", { fields: [k] })} />
+              </label>
+            ))}
+          </>
+        ) : undefined;
+        return <PiecePage key={p} c={flowCtx} p={p} extra={extra} onHub={() => toStep("hub")} onNext={() => toStep(nx ? PIECE_STEP[nx] : "allset")} />;
+      })()}
+      {flowCtx && brandOpen && step === "allset" && (
+        <AllSet c={flowCtx} zipBusy={zipBusy} onAgain={(p) => toStep(PIECE_STEP[p])}
+          onBuy={() => { if (flowCtx.domain) { window.open(registrarUrl(flowCtx.domain), "_blank", "noopener"); track("godaddy", { domain: flowCtx.domain, from: "allset" }); } }}
+          onZip={async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "all", name: picked?.name }); try { await everythingZip(flowCtx, "all"); } finally { setZipBusy(false); } }}
+          onAccount={gotoAccount} onChangeDomain={() => toStep("claim")} />
       )}
 
       {/* ═══ 09 all set ═══ */}
