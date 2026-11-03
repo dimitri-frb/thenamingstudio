@@ -126,6 +126,10 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
         const s = svg(); const m = s.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/); const ar = m ? Number(m[1]) / Number(m[2]) : 2;
         download(await svgPdf([s], 120, 120 / ar, `${c.name} logo`), `${nm}-logo-${slug(LOGO_V[v])}.pdf`);
       } },
+      { id: "eps", label: "EPS", editable: true, best: "For print shops, sign makers and older design tools", size: "vector", run: async () => {
+        const { svgToEps } = await import("./eps");
+        download(new Blob([svgToEps(await outlineSvg(svg()), `${c.name} logo`)], { type: "application/postscript" }), `${nm}-logo-${slug(LOGO_V[v])}.eps`);
+      } },
       { id: "pack", label: "Full logo pack", best: "Every version, app icons, favicon, colours", size: ".zip", run: async () => {
         const pack = await buildLogoPack(c.name, c.logo.key, (c.logo.opts?.accent as any) || "dawn", c.logo.opts?.seed || 0,
           [{ name: "Dawn", hex: c.pal.dawn }, { name: "Haze", hex: c.pal.haze }, { name: "Nova", hex: c.pal.nova }, { name: "Night", hex: c.pal.night }],

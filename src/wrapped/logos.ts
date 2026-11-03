@@ -559,6 +559,7 @@ export async function buildLogoPack(
   add(`Logo/${Nm}-logo-white.svg`, white(svgs.mono));
   add(`Logo/${Nm}-logo-black.svg`, black(svgs.mono));
   add(`Logo/${Nm}-logo-reversed.svg`, svgs.reversed);
+  try { const { svgToEps } = await import("./eps"); add(`Logo/${Nm}-logo.eps`, svgToEps(svgs.primary, `${name} logo`)); } catch { /* EPS is a bonus */ }
   add(`Icon/app-icon.svg`, svgs.icon);
   try {
     add(`Logo/${Nm}-logo.png`, await byWidth(onPaper(svgs.primary), 2000));
