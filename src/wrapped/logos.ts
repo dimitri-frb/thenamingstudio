@@ -889,7 +889,7 @@ function measureText(t: string, fam: string, weight: number, size: number, spaci
 const TILE_BG = "#010203"; // stands for the tile's own background (a CSS variable) in the app
 
 function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVariant; accent: string; H: number; shape: LogoShape; famOverride?: string; famWeight?: number }): string {
-  const [, lay, symK, fiS, cs, scS] = key.split(":");
+  const [, lay, symK, fiS, cs, scS, spS] = key.split(":");
   const symScale = Math.min(1.35, Math.max(0.65, Number(scS) || 1)); // personalisation: symbol size
   const f = X_FONTS[Number(fiS)] || X_FONTS[9];
   const fam = o.famOverride || f.f;
@@ -904,7 +904,8 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
   const fallback = f.serif ? SERIF : FONT;
   const ff = `'${fam}',${fallback}`;
   const fs = 46;
-  const sp = (f.sp || (cs === "u" ? 0.06 : -0.015)) * fs;
+  // personalisation: letter spacing in % of the size (key part 7, e.g. "-3")
+  const sp = ((f.sp || (cs === "u" ? 0.06 : -0.015)) + Math.max(-0.08, Math.min(0.2, (Number(spS) || 0) / 100))) * fs;
   const wf = o.famOverride ? 0.6 : f.wf * (cs === "u" ? 1.12 : 1);
   const fw = o.famOverride ? o.famWeight || 600 : f.w;
   const tw = (t: string, size: number, space = sp) => Math.max(size * 0.5, measureText(t, fam, fw, size, space * (size / fs), wf));
