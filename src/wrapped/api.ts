@@ -70,6 +70,15 @@ export interface DomainCard { domain: string; tld?: string; status: "available" 
 export interface DomainBoardData { name: string; tlds: DomainCard[]; variants: DomainCard[]; source: string; local?: string[] } // local: the visitor's country extensions (uk, co.uk…)
 
 export interface WDeckSlide { title: string; head: string; points: string[]; hint: string }
+/** The deck's structured draft (handoff 27 · D): one block per slide. */
+export interface WDeck2 {
+  v: 2; cover: { head: string; sub: string };
+  problem: { head: string; cols: { t: string; d: string }[] }; solution: { head: string; cols: { t: string; d: string }[] };
+  who: { head: string; segs: { t: string; w: number }[] }; how: { head: string; steps: string[] };
+  model: { head: string; cols: { t: string; d: string }[] }; traction: { head: string; lines: string[] };
+  team: { head: string; founder: { name: string; role: string }; next: { role: string; note: string } };
+  ask: { head: string; sentence: string; uses: string[] }; thanks: { line: string };
+}
 export interface WUser { sub: string; email: string; name: string; picture?: string }
 
 // One saved search, as listed on the account page and resumed from it.
@@ -93,7 +102,7 @@ export interface SavedSearch {
   unlockSource?: string;    // "early_access" (phase 1) | "stripe" (phase 2)
   priceVariant?: number;    // the price shown to this user (stable per user)
   kit?: WKit | null;        // socials + marketing copy for this run
-  deck?: WDeckSlide[] | null; // the pitch deck's AI first draft (10 slides)
+  deck?: WDeckSlide[] | WDeck2 | null; // the pitch deck's AI first draft
   fam?: number;             // the kit's layout family, when the founder switched it
   flow?: { sel: Record<string, number>; dl: Record<string, string> }; // brand flow: version + format per piece
   logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
@@ -166,7 +175,7 @@ export const wrapApi = {
 
   // The pitch deck's first draft (strongest model; numbers stay [bracketed]).
   deck: (payload: { name: string; sentence: string; concept: string; tagline: string; voice: string[]; domain: string; founder: string; story?: string }) =>
-    gen<{ slides: WDeckSlide[] }>("wrapdeck", payload, () => ({ slides: [] })),
+    gen<WDeck2 & { slides?: WDeckSlide[] }>("wrapdeck", payload, () => ({ slides: [] } as any)),
 
   // Two parallel halves merged into one book: a single Sonnet-latency total.
   book: async (sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {

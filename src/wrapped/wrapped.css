@@ -3218,3 +3218,4 @@
 }
 .bf-piece .vers .vt.wh, .bf-hub .row .th.wh, .bf-piece .pv.logo.wh .sv { background: #fff; }
 .bf-piece .vers .vt.wh > svg, .bf-hub .row .th.wh > svg { padding: 10%; box-sizing: border-box; }
+.bf-piece .vers.deckv .vt { aspect-ratio: 16 / 9; } .bf-piece .vers.deckv button { width: 150px; }

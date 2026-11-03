@@ -10,7 +10,7 @@ import {
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
-  type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide,
+  type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
 import { X_SYMS, buildLogoPack, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
@@ -293,7 +293,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [kit, setKit] = useState<WKit | null>(test ? sampleKit(ACTIVE().names[0].name, "") : null);
   const [whyNot, setWhyNot] = useState(false);
   const kitReq = useRef("");
-  const [deckAi, setDeckAi] = useState<WDeckSlide[] | null>(null);
+  const [deckAi, setDeckAi] = useState<WDeckSlide[] | WDeck2 | null>(null);
   const [deckBusy, setDeckBusy] = useState(false);
   const deckReq = useRef("");
   const [user, setUser] = useState<WUser | null>(() => loadSession()?.user || null);
@@ -1218,7 +1218,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }
   const kitFail = !!fails.kit;
   useEffect(() => { // the socials + marketing copy, written once the kit is open
-    if (test || !picked || kit || !brandOpen || !["early", "logodone", "book", "socials", "kit", "mkt"].includes(step)) return;
+    if (test || !picked || kit || !brandOpen || !["early", "logodone", "book", "socials", "kit", "mkt", "hub", "plogo", "pbook", "psocials", "pmkt", "pcards", "pdeck", "allset"].includes(step)) return;
     const key = picked.name + "|" + retryTick;
     if (kitReq.current === key) return;
     kitReq.current = key;
@@ -1234,7 +1234,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   }, [test, picked, kit, brandOpen, step, retryTick]);
 
   useEffect(() => { // the pitch deck's first draft, written ahead while they're in the kits
-    if (test || !picked || deckAi || !brandOpen || !["kit", "mkt", "cards", "deck"].includes(step)) return;
+    if (test || !picked || deckAi || !brandOpen || !["kit", "mkt", "cards", "deck", "hub", "plogo", "pbook", "psocials", "pmkt", "pcards", "pdeck", "allset"].includes(step)) return;
     const key = picked.name + "|" + retryTick;
     if (deckReq.current === key) return;
     deckReq.current = key;
@@ -1246,7 +1246,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       story: book?.story ? `${book.story.headline || ""}. ${book.story.para || ""}` : undefined,
     }).then((d) => {
       if (picked?.name !== who) return;
-      if (d?.slides?.length === 10) { setDeckAi(d.slides); persist({ deck: d.slides }); }
+      if ((d as any)?.v === 2) { setDeckAi(d as any); persist({ deck: d as any }); }
+      else if (d?.slides?.length === 10) { setDeckAi(d.slides); persist({ deck: d.slides }); }
     }).catch(() => {}).finally(() => setDeckBusy(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, picked, deckAi, brandOpen, step, retryTick]);
@@ -2282,7 +2283,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <BusinessCards l={payCtx.kitLogo} domain={payCtx.domain} me={user} fam={payCtx.fam} setFam={payCtx.setFam} fd={payCtx.fd} onBack={() => toStep("mkt")} onNext={() => toStep("deck")} track={payCtx.track} />
       )}
       {step === "deck" && payCtx && brandOpen && picked && (
-        <PitchDeck l={payCtx.kitLogo} track={payCtx.track} ai={deckAi} aiBusy={deckBusy} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
+        <PitchDeck l={payCtx.kitLogo} track={payCtx.track} ai={Array.isArray(deckAi) ? deckAi : null} aiBusy={deckBusy} onBack={() => toStep("cards")} onNext={() => toStep("claim")}
           input={{ name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: (book?.tagline || picked.tagline || "").replace(/^\*|\*$/g, ""), voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" }} />
       )}
       {/* ═══ handoff 28 · brand flow: hub → six pieces → all set ═══ */}

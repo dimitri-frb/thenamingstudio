@@ -10,9 +10,10 @@ import { outlineSvg } from "./outline";
 import { svgPdf } from "./pdf";
 import { download, makeZip } from "./zip";
 import { FAM_SHORT, avatar, banner, cardBack, cardFront, post, type Fam, type FamData } from "./families";
-import { deckPptx, deckSlides, slideSvg, type AiSlide, type DeckInput, type DeckLogo } from "./Kits2";
+import type { DeckInput } from "./Kits2";
+import { THEMES, deckContent, deckPptx2, deckScenes, sceneSvg, type DeckBrand, type Theme } from "./deck2";
 import type { KitLogo } from "./kitArt";
-import type { WKit } from "./api";
+import type { WDeck2, WDeckSlide, WKit } from "./api";
 
 export type PieceId = "logo" | "book" | "socials" | "mkt" | "cards" | "deck";
 export const PIECES: { id: PieceId; label: string }[] = [
@@ -22,7 +23,7 @@ export const PIECES: { id: PieceId; label: string }[] = [
 export interface FlowState { sel: Partial<Record<PieceId, number>>; dl: Partial<Record<PieceId, string>> }
 export interface FlowCtx {
   name: string; domain: string; pal: Palette; logo: KitLogo; fam: Fam; fd: FamData;
-  kit: WKit | null; deckInput: DeckInput; deckAi: AiSlide[] | null;
+  kit: WKit | null; deckInput: DeckInput; deckAi: WDeck2 | WDeckSlide[] | null;
   me: { name?: string; email?: string } | null;
   st: FlowState; setSel: (p: PieceId, v: number) => void; setDl: (p: PieceId, f: string) => void;
   bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookPreview: () => void;
@@ -30,7 +31,7 @@ export interface FlowCtx {
 }
 const LOGO_V = ["Primary", "Reversed", "Mono", "On colour"];
 const BOOK_V = ["Standard"]; // Night / Editorial / Colour arrive with the book redesign
-const DECK_V = ["Night"];    // Night / Paper / Colour arrive with the deck redesign
+const DECK_V = [...THEMES];
 export const versionsOf = (p: PieceId): string[] => (p === "logo" ? LOGO_V : p === "book" ? BOOK_V : p === "deck" ? DECK_V : [...FAM_SHORT]);
 const defaultSel = (p: PieceId, c: FlowCtx) => (p === "socials" || p === "mkt" || p === "cards" ? c.fam : 0);
 export const selOf = (p: PieceId, c: FlowCtx) => c.st.sel[p] ?? defaultSel(p, c);
@@ -38,6 +39,8 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(
 const sv = (svg: string) => <span className="sv" dangerouslySetInnerHTML={{ __html: svg }} />;
 const dayOf = (label: string, i: number) => label.match(/Day\s*\d+/i)?.[0] || `Day ${[1, 3, 7][i] || i + 1}`;
 const enc = new TextEncoder();
+const deckBrand = (c: FlowCtx): DeckBrand => ({ name: c.name, sym: c.fd.sym, font: c.fd.font, pal: c.pal, site: c.domain, email: c.me?.email || "", founder: c.me?.name || c.deckInput.founder, brief: c.deckInput.brief, tagline: c.deckInput.tagline, concept: c.deckInput.concept });
+const scenesOf = (c: FlowCtx, t: Theme) => { const b = deckBrand(c); return deckScenes(t, b, deckContent(b, c.deckAi)); };
 const blobBytes = async (b: Blob) => new Uint8Array(await b.arrayBuffer());
 
 /* ── the visuals of each piece ── */
@@ -57,7 +60,7 @@ export function thumbOf(p: PieceId, c: FlowCtx): string {
   if (p === "socials") return avatar(v, c.fd, 200);
   if (p === "mkt") return posts(c, v)[1] || avatar(v, c.fd, 200);
   if (p === "cards") return cardFront(v, "A", { ...c.fd, person: c.me?.name || "Your name" });
-  return slideSvg(deckSlides(c.deckInput, c.deckAi)[0], c.logo, 480);
+  return sceneSvg(scenesOf(c, v as Theme)[0], 480);
 }
 
 /* ── formats: what each piece downloads as ── */
@@ -94,14 +97,6 @@ function copyBlocks(c: FlowCtx): { h?: string; p?: string }[] {
     { h: "Meta Ads · Instagram & Facebook", p: `Primary text: ${k.metaPrimary}\nHeadline: ${k.metaHeadline}` },
     ...k.weeks.map((w, i) => ({ h: `Week ${i + 1} · ${w.title}`, p: `${w.line}\nChannels: ${w.channels.join(", ")}` })),
   ];
-}
-async function deckLogo(c: FlowCtx): Promise<DeckLogo | null> {
-  try {
-    const strip = (s: string) => s.replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
-    const [light, night] = await Promise.all([svgToPng(strip(logoVariant(c, 0, 120)), 160), svgToPng(strip(logoVariant(c, 1, 120)), 160)]);
-    const dv = new DataView(light.buffer, light.byteOffset);
-    return { light, night, ar: dv.getUint32(16) / Math.max(1, dv.getUint32(20)) };
-  } catch { return null; }
 }
 export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
   const nm = slug(c.name), v = selOf(p, c) as Fam;
@@ -178,10 +173,10 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
       { id: "png", label: "PNG", best: "Ready to upload to an online printer", size: "2 files", run: () => zipSvgs([{ name: `${nm}-card-front.png`, svg: cardFront(v, "A", cd), h: 1100, png: true }, { name: `${nm}-card-back.png`, svg: cardBack(v, cd, true), h: 1100, png: true }], `${nm}-business-cards-png.zip`) },
     ];
   }
-  const slides = deckSlides(c.deckInput, c.deckAi);
-  const pptx = async () => download(deckPptx(slides, c.deckInput, c.pal, await deckLogo(c)), `${c.name} - Pitch deck.pptx`);
+  const sc = scenesOf(c, v as Theme);
+  const pptx = async () => download(await deckPptx2(sc, `${c.name} pitch deck`), `${c.name} - Pitch deck.pptx`);
   return [
-    { id: "pdf", label: "PDF", best: "Share, print, present", size: "10 slides", run: async () => download(await svgPdf(slides.map((s) => slideSvg(s, c.logo, 1600)), 297, 167.0625, `${c.name} pitch deck`), `${c.name} - Pitch deck.pdf`) },
+    { id: "pdf", label: "PDF", best: "Share, print, present", size: "10 slides", run: async () => download(await svgPdf(sc.map((s) => sceneSvg(s, 1600)), 297, 167.0625, `${c.name} pitch deck`), `${c.name} - Pitch deck.pdf`) },
     { id: "pptx", label: "PowerPoint", editable: true, best: "Edit in PowerPoint", size: ".pptx", run: pptx },
     { id: "key", label: "Keynote", editable: true, best: "Opens in Keynote on Mac", size: ".pptx", help: "Double-click the file: Keynote opens it and keeps every text box editable.", run: pptx },
     { id: "gslides", label: "Google Slides", editable: true, best: "Edit in your Google Drive", size: ".pptx", help: "In Google Slides: File → Import slides → Upload, or drop the file into Google Drive and open it.", run: pptx },
@@ -281,7 +276,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
     if (p === "mkt") return posts(c, k as Fam)[0];
     if (p === "cards") return cardFront(k as Fam, "A", { ...c.fd, person: c.me?.name || "Your name" });
     if (p === "book") return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: "night", height: 120 });
-    return slideSvg(deckSlides(c.deckInput, c.deckAi)[0], c.logo, 480);
+    return sceneSvg(scenesOf(c, k as Theme)[0], 480);
   };
   const grid = p === "logo" || p === "cards";
   const preview: ReactNode = (() => {
@@ -291,8 +286,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
     if (p === "mkt") return <div className="pv mk">{posts(c, f).map((s, k) => <span key={k}>{sv(s)}<em className="mono">Day {[1, 3, 7][k]}</em></span>)}</div>;
     if (p === "cards") { const cd = { ...c.fd, person: c.me?.name || "Your name", email: c.me?.email || c.fd.email }; return <div className="pv cards">{sv(cardFront(f, "A", cd))}{sv(cardBack(f, cd, true))}</div>; }
     if (p === "book") return <div className="pv book">{extra}</div>;
-    const sl = deckSlides(c.deckInput, c.deckAi);
-    return <div className="pv deck">{sl.map((s, k) => <span key={k}>{sv(slideSvg(s, c.logo, 480))}</span>)}</div>;
+    return <div className="pv deck">{scenesOf(c, v as Theme).map((s, k) => <span key={k}>{sv(sceneSvg(s, k ? 480 : 960))}</span>)}</div>;
   })();
   const secondary = p === "logo" ? { l: "✎ Personalise", f: c.persBtn }
     : p === "book" ? { l: "Preview", f: c.bookPreview }
@@ -308,7 +302,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
           <p className="wr-kicker">{i + 1} of 6 · {PIECES[i].label}</p>
           <h1 className="wr-h ttl">{KICK[p]}</h1>
           <p className="lbl mono">Versions</p>
-          <div className={"vers" + (grid ? " grid" : "") + (p === "socials" ? " wide" : "")}>
+          <div className={"vers" + (grid ? " grid" : "") + (p === "socials" ? " wide" : "") + (p === "deck" ? " deckv" : "")}>
             {vs.map((label, k) => (
               <button key={label} className={k === v ? "on" : ""} onClick={() => { if (k !== v) { c.setSel(p, k); c.track("version_selected", { piece: p, version: label, was_default: false }); } }}>
                 <span className={"vt" + (p === "logo" && (k === 0 || k === 2) ? " wh" : "")} dangerouslySetInnerHTML={{ __html: vthumb(k) }} />
@@ -411,9 +405,9 @@ export async function everythingZip(c: FlowCtx, scope: "so_far" | "all"): Promis
     out.push({ name: `${nm}-brand-kit/5-business-cards/${nm}-business-cards-print.pdf`, data: await blobBytes(await svgPdf([cardFront(f, "A", cd, { bleed: true, marks: true }), cardBack(f, cd, true, { bleed: true, marks: true })], 97, 67, `${c.name} business cards`)) });
   }
   if (want("deck")) {
-    const sl = deckSlides(c.deckInput, c.deckAi);
-    out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pdf`, data: await blobBytes(await svgPdf(sl.map((s) => slideSvg(s, c.logo, 1600)), 297, 167.0625, `${c.name} pitch deck`)) });
-    out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pptx`, data: await blobBytes(deckPptx(sl, c.deckInput, c.pal, await deckLogo(c))) });
+    const sc = scenesOf(c, selOf("deck", c) as Theme);
+    out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pdf`, data: await blobBytes(await svgPdf(sc.map((s) => sceneSvg(s, 1600)), 297, 167.0625, `${c.name} pitch deck`)) });
+    out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pptx`, data: await blobBytes(await deckPptx2(sc, `${c.name} pitch deck`)) });
   }
   out.push({ name: `${nm}-brand-kit/README.txt`, data: enc.encode(`${c.name} · your brand kit\n\n1-logo: the full logo pack (open the zip)\n3-socials: profile picture, banners, bios\n4-marketing: launch posts and all the copy (Word)\n5-business-cards: print-ready PDF\n6-pitch-deck: PDF and PowerPoint (opens in Keynote and Google Slides)\n\nThe brand book downloads from its own page (PDF or Word).\n`) });
   download(makeZip(out), `${nm}-brand-kit.zip`);

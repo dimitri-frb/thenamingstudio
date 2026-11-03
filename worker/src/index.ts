@@ -1040,28 +1040,25 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   // The paid pitch deck: a real first draft of all 10 slides from the run.
   // Numbers are never invented: they're [bracketed] for the founder to fill.
-  wrapdeck: (b) => ({ model: MODEL.opus, max: 2400, prompt:
+  wrapdeck: (b) => ({ model: MODEL.opus, max: 2600, prompt:
     `You are a seed-stage pitch coach who has helped hundreds of small founders raise their first money and win their first customers.\n` + LANG_LINE +
     `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" (${String(b.payload?.domain || "").slice(0, 60)}). Founder: "${String(b.payload?.founder || "").slice(0, 60)}".\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". The name should feel like: "${String(b.payload?.concept || "").slice(0, 120)}". Tagline: "${String(b.payload?.tagline || "").slice(0, 160)}". Voice: ${JSON.stringify((b.payload?.voice || []).slice(0, 4))}.\n` +
     (b.payload?.story ? `Their brand story: "${String(b.payload.story).slice(0, 400)}".\n` : "") +
-    `Write the FIRST DRAFT of their 10-slide deck, specific to THIS business (its customers, its place, its sector), in their voice. It must read as a real deck a founder could present tomorrow, not a template.\n` +
-    `RULES:\n- Never invent facts or numbers. Wherever a number belongs (revenue, users, market size, amount raised, prices you don't know) write a bracketed placeholder like [€X / month] or [number of customers].\n` +
-    `- Reasonable, clearly-hedged assumptions about the problem and customers are fine; write them plainly.\n- Short lines: head max 60 characters (cover head max 70), each point max 70 characters, hint max 90 characters.\n` +
-    `- Never mention Name Name. Same language as the brief throughout.\n` +
-    `SLIDES, exactly these 10 in this order (title field = these words, translated if the brief isn't English):\n` +
-    `1 Cover: head = one-sentence positioning of what it is and for whom; points = [the tagline]; hint = "Seed deck · 2026".\n` +
-    `2 Problem: head = the problem in plain words; 3 points: who has it, what it costs them, why today's options fail.\n` +
-    `3 Solution: head = what the brand does; 3 points: the core promise, the one thing done better than anyone, how it feels for the customer.\n` +
-    `4 Market: head = who it's for; 3 points: the first customers (who, where), market size with [bracketed] numbers, why now.\n` +
-    `5 Product: head = how it works; 3 points starting "1 · ", "2 · ", "3 · " (the customer's steps or the offer's parts).\n` +
-    `6 Business model: head = how it makes money; 3 points: what is sold and at what [price], who pays, how customers are reached.\n` +
-    `7 Traction: head = early proof; 3 points with [bracketed] numbers (customers, revenue, waitlist, partners).\n` +
-    `8 Team: head = why this team; 3 points: the founder (use their name if given) and why them, the next key hire, advisors or partners.\n` +
-    `9 The ask: head = what they're raising or looking for; 3 points: [amount], what it buys in 12–18 months, the milestone it reaches.\n` +
-    `10 Thank you: head = "${String(b.payload?.name || "").slice(0, 40)}."; points = [the tagline, the domain and the founder name joined by " · "].\n` +
-    `Each slide (2–9) also gets a "hint": one line of advice for the founder about that slide.\n` +
-    `Return ONLY JSON {"slides":[{"title":"Cover","head":"...","points":["..."],"hint":"..."}, ...10 items]}.` }),
+    `Write the FIRST DRAFT of their 10-slide deck, specific to THIS business (its customers, its place, its sector), in their voice. It must read like a real deck a founder could present tomorrow, not a template.\n` +
+    `RULES:\n- Never invent facts or numbers. Where a number belongs, write a bracketed placeholder: [amount], [number], [year], [date], [%], [price]. Only Traction and The ask use them.\n` +
+    `- Respect EVERY length limit below; count characters. Short, concrete, no jargon. Never mention Name Name.\n` +
+    `Return ONLY JSON with exactly this shape:\n` +
+    `{"cover":{"head":"what it is and for whom, max 50 chars","sub":"one supporting line, max 70"},` +
+    `"problem":{"head":"the problem as one sentence, max 55","cols":[{"t":"max 22 chars","d":"max 60 chars"},{"t":"…","d":"…"},{"t":"…","d":"…"}]},` +
+    `"solution":{"head":"what the brand does, max 55","cols":[3 × {"t","d"} same limits]},` +
+    `"who":{"head":"who it's for, max 55","segs":[{"t":"first customer group, max 24","w":3},{"t":"second, max 24","w":2},{"t":"third, max 24","w":1}]},` +
+    `"how":{"head":"how it works, max 55","steps":["step 1, max 22 chars","step 2","step 3"]},` +
+    `"model":{"head":"how it makes money, max 55","cols":[3 × {"t","d"} revenue lines]},` +
+    `"traction":{"head":"early proof, max 55","lines":["[number] … max 50 chars","…","…"]},` +
+    `"team":{"head":"why this team, max 40","founder":{"name":"the founder's name","role":"role · what they bring, max 40"},"next":{"role":"the next key hire, max 24","note":"why, max 30"}},` +
+    `"ask":{"head":"what they're raising for, max 50","sentence":"Raising [amount] to … by [year], max 90 chars","uses":["use of funds 1, max 18","2","3"]},` +
+    `"thanks":{"line":"a closing line in their voice, max 40"}}` }),
 
   wrapbook: (b) => {
     const intro =
@@ -1880,14 +1877,23 @@ function hash(s: string): number {
 // Ad platforms reject over-length copy: enforce the limits the prompt asked for.
 // The deck's 10 slides, trimmed to the template's room; null if unusable.
 function fitDeck(d: any): any {
-  const sl = Array.isArray(d?.slides) ? d.slides : [];
-  if (sl.length < 10) return null;
-  const cut = (v: unknown, n: number) => { const s = String(v ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : s; };
-  return { slides: sl.slice(0, 10).map((x: any, i: number) => ({
-    title: cut(x?.title, 24), head: cut(x?.head, i === 0 ? 90 : 72),
-    points: (Array.isArray(x?.points) ? x.points : []).slice(0, 3).map((p: unknown) => cut(p, 80)).filter(Boolean),
-    hint: cut(x?.hint, 100),
-  })) };
+  // Never cut by character count (the slides shrink to fit); only absurd lengths are capped.
+  const S = (v: unknown, n: number) => { const t = String(v ?? "").replace(/\s+/g, " ").trim(); return t.length > n * 1.6 ? t.slice(0, Math.round(n * 1.6)).replace(/\s+\S*$/, "") : t; };
+  const cols = (x: any) => (Array.isArray(x) ? x : []).slice(0, 3).map((c: any) => ({ t: S(c?.t, 30), d: S(c?.d, 80) }));
+  if (!d?.cover?.head || !d?.problem?.head || !Array.isArray(d?.how?.steps)) return null;
+  return {
+    v: 2,
+    cover: { head: S(d.cover.head, 70), sub: S(d.cover.sub, 90) },
+    problem: { head: S(d.problem.head, 70), cols: cols(d.problem.cols) },
+    solution: { head: S(d.solution?.head, 70), cols: cols(d.solution?.cols) },
+    who: { head: S(d.who?.head, 70), segs: (Array.isArray(d.who?.segs) ? d.who.segs : []).slice(0, 3).map((x: any, i: number) => ({ t: S(x?.t, 30), w: Math.min(3, Math.max(1, Number(x?.w) || 3 - i)) })) },
+    how: { head: S(d.how.head, 70), steps: d.how.steps.slice(0, 3).map((x: unknown) => S(x, 30)) },
+    model: { head: S(d.model?.head, 70), cols: cols(d.model?.cols) },
+    traction: { head: S(d.traction?.head, 70), lines: (Array.isArray(d.traction?.lines) ? d.traction.lines : []).slice(0, 3).map((x: unknown) => S(x, 70)) },
+    team: { head: S(d.team?.head, 50), founder: { name: S(d.team?.founder?.name, 40), role: S(d.team?.founder?.role, 60) }, next: { role: S(d.team?.next?.role, 30), note: S(d.team?.next?.note, 40) } },
+    ask: { head: S(d.ask?.head, 70), sentence: S(d.ask?.sentence, 110), uses: (Array.isArray(d.ask?.uses) ? d.ask.uses : []).slice(0, 3).map((x: unknown) => S(x, 24)) },
+    thanks: { line: S(d.thanks?.line, 50) },
+  };
 }
 
 function fitKit(d: any): any {
