@@ -3099,3 +3099,20 @@
 .wr-shprev .card .url { font-size: 11px; color: #888; margin-top: 4px; }
 .wr-shprev .note { font-size: 12.5px; color: var(--text2); margin: 2px 0 4px; line-height: 1.45; }
 .wr-shprev .wr-btn { width: 100%; }
+.fampick { display: flex; align-items: center; gap: 6px; margin: 12px 0 2px; flex-wrap: nowrap; overflow-x: auto; }
+.fampick .mono { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); margin-right: 4px; }
+.fampick button { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text2); background: none; border: 1px solid var(--hairline2); border-radius: 999px; padding: 6px 13px; cursor: pointer; white-space: nowrap; }
+.fampick button.on { background: #fff; color: #111; border-color: #fff; }
+.wr-bc .bcfam { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.wr-bc .bcfam button { padding: 0; border: 0; background: none; cursor: pointer; text-align: center; color: var(--text3); min-width: 0; }
+.wr-bc .bcfam button > svg { display: block; width: 100%; height: auto; border-radius: 5px; box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
+.wr-bc .bcfam button.on > svg { box-shadow: 0 0 0 2px #fff; }
+.wr-bc .bcfam button em { display: block; font-style: normal; font-size: 11px; margin-top: 5px; white-space: nowrap; }
+.wr-bc .bcfam button.on em { color: #fff; }
+.wr-bc .bcopts { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 10px 0 4px; flex-wrap: wrap; }
+.wr-bc .seg2 { display: inline-flex; background: var(--surface2); border: 1px solid var(--hairline); border-radius: 999px; padding: 3px; }
+.wr-bc .seg2 button { font: inherit; font-size: 12px; font-weight: 700; color: var(--text2); background: none; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
+.wr-bc .seg2 button.on { background: #fff; color: #111; }
+.wr-bc .qrt { font-size: 12.5px; color: var(--text2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.wr-pw.kit > *, .wr-pw.kit .fampick { flex-shrink: 0; }
+.wr-pw.kit .post .k { position: static; display: block; margin-top: 5px; color: var(--text3); font-size: 10px; } .wr-pw.kit .post { overflow: visible; } .wr-pw.kit .post .img { border-radius: 10px; overflow: hidden; }

@@ -4,7 +4,8 @@
 import React, { useMemo, useState } from "react";
 import type { WBook, WKit } from "./api";
 import { iconKey, logoSvg, type Palette } from "./logos";
-import { avatarSvg, bannerSvg, postSvg, zipOf, type KitLogo } from "./kitArt";
+import { avatarSvg, zipOf, type KitLogo } from "./kitArt";
+import { FAM_SHORT, avatar, banner, post, type Fam, type FamData } from "./families";
 import { cardSvg, deckSlides, slideSvg } from "./Kits2";
 
 export interface PayCtx {
@@ -17,6 +18,9 @@ export interface PayCtx {
   brief?: string;               // the user's one-line brief (deck cover)
   headFont: string;             // the logo's typeface, as a label
   price: number;
+  fam: Fam;                     // the layout family (taste picks it; switchable)
+  setFam: (f: Fam) => void;
+  fd: FamData;                  // what the families draw from (name, mark, palette, tagline, person)
   onBuyDomain: () => void;
   track: (ev: string, payload?: Record<string, unknown>) => void;
 }
@@ -237,16 +241,30 @@ function KitWait({ fail, onRetry, what }: { fail: boolean; onRetry: () => void; 
     : <div className="kitwait"><span className="wr-spin" /> Writing {what}…</div>;
 }
 
+/* The four layout families (handoff 27 · V): taste picks one, any can be tried. */
+export function FamPick({ c }: { c: PayCtx }) {
+  return (
+    <div className="fampick">
+      <span className="mono">Style</span>
+      {FAM_SHORT.map((l, i) => (
+        <button key={l} className={c.fam === i ? "on" : ""} onClick={() => { if (c.fam !== i) { c.setFam(i as Fam); c.track("family_changed", { family: l }); } }}>{l}</button>
+      ))}
+    </div>
+  );
+}
+const dayOf = (label: string, i: number) => (label.match(/Day\s*\d+/i)?.[0] || `Day ${[1, 3, 7][i] || i + 1}`);
+
 /* ── 08·k · Socials kit ── */
 export function SocialsKit({ c, kit, kitFail, onRetry, onNext, onBack }: {
   c: PayCtx; kit: WKit | null; kitFail: boolean; onRetry: () => void; onNext: () => void; onBack: () => void;
 }) {
   const handle = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const av = useMemo(() => avatarSvg(c.kitLogo), [c.kitLogo]);
-  const tagline = kit?.bioShort?.replace(/\s*\S+\.\S+\s*$/, "") || "";
-  const li = useMemo(() => bannerSvg(c.kitLogo, 1584, 396, tagline), [c.kitLogo, tagline]);
-  const xb = useMemo(() => bannerSvg(c.kitLogo, 1500, 500, tagline), [c.kitLogo, tagline]);
-  const posts = useMemo(() => (kit?.posts || []).map((p, i) => postSvg(c.kitLogo, i, p.title)), [c.kitLogo, kit]);
+  const av = useMemo(() => avatar(c.fam, c.fd, 1080), [c.fam, c.fd]);
+  const tagline = c.fd.tagline || kit?.bioShort?.replace(/\s*\S+\.\S+\s*$/, "") || c.name;
+  const bd = useMemo(() => ({ ...c.fd, tagline }), [c.fd, tagline]);
+  const li = useMemo(() => banner(c.fam, bd, 1584, 396), [c.fam, bd]);
+  const xb = useMemo(() => banner(c.fam, bd, 1500, 500), [c.fam, bd]);
+  const posts = useMemo(() => (kit?.posts || []).map((p, i) => post(c.fam, c.fd, p.title, dayOf(p.label || "", i))), [c.fam, c.fd, kit]);
   const dl = (asset: string, files: Parameters<typeof zipOf>[0], name: string) => { c.track("kit_asset_downloaded", { asset }); void zipOf(files, name); };
   const all = () => dl("socials_all", [
     { name: `${handle}-profile-1080.png`, svg: av, h: 1080 },
@@ -260,6 +278,7 @@ export function SocialsKit({ c, kit, kitFail, onRetry, onNext, onBack }: {
         <p className="wr-kicker">Socials kit</p>
         <h1 className="wr-h ttl">{c.name}, ready for every feed.</h1>
         <p className="wr-lead sub">Your profile picture, banners and bios, sized for each network.</p>
+        <FamPick c={c} />
 
         <p className="lbl mono">Profile picture</p>
         <div className="card avs">
@@ -312,8 +331,8 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
 }) {
   const [tab, setTab] = useState<0 | 1 | 2>(0);
   const handle = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const posts = useMemo(() => (kit?.posts || []).map((p, i) => postSvg(c.kitLogo, i, p.title)), [c.kitLogo, kit]);
-  const stories = useMemo(() => (kit?.posts || []).map((p, i) => postSvg(c.kitLogo, i, p.title, 1080, 1920)), [c.kitLogo, kit]);
+  const posts = useMemo(() => (kit?.posts || []).map((p, i) => post(c.fam, c.fd, p.title, dayOf(p.label || "", i))), [c.fam, c.fd, kit]);
+  const stories = useMemo(() => (kit?.posts || []).map((p, i) => post(c.fam, c.fd, p.title, dayOf(p.label || "", i), 1080, 1920)), [c.fam, c.fd, kit]);
   const dl = (asset: string, files: Parameters<typeof zipOf>[0], name: string) => { c.track("kit_asset_downloaded", { asset }); void zipOf(files, name); };
   const adsText = kit ? `GOOGLE ADS · SEARCH\nHeadlines:\n${kit.googleHeadlines.join("\n")}\n\nDescription:\n${kit.googleDescription}\n\nMETA · INSTAGRAM & FACEBOOK\nPrimary text:\n${kit.metaPrimary}\n\nHeadline:\n${kit.metaHeadline}\n` : "";
   const planText = kit ? kit.weeks.map((w) => `${w.title}\n${w.line}\nChannels: ${w.channels.join(", ")}\n`).join("\n") : "";
@@ -331,6 +350,7 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
         <p className="wr-kicker">Marketing kit</p>
         <h1 className="wr-h ttl">Launch {c.name}.</h1>
         <p className="wr-lead sub">Posts, ad copy and a first campaign, all in {c.name}'s colours and voice.</p>
+        <FamPick c={c} />
         <div className="seg">
           {["Launch posts", "Ad copy", "First campaign"].map((t, i) => (
             <button key={t} className={tab === i ? "on" : ""} onClick={() => setTab(i as 0 | 1 | 2)}>{t}</button>

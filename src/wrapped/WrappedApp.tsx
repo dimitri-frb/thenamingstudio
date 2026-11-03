@@ -18,6 +18,7 @@ import { download } from "./zip";
 import type { BookCtx } from "./Book";
 import { BusinessCards, PitchDeck } from "./Kits2";
 import { PersX, layoutTitle } from "./PersX";
+import { famData, famFromTaste, type Fam, type FamData } from "./families";
 import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
@@ -238,6 +239,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
   const [logoBumps, setLogoBumps] = useState<Record<number, number>>({}); // per-tile "↻ More"
+  const [famPick, setFamPick] = useState<Fam | null>(null);
   const [taste, setTaste] = useState<Taste>(TASTE_DEFAULT);
   const [logoSel, setLogoSel] = useState<LogoConcept | null>(null);
   const [persDraft, setPersDraft] = useState<{ symbol: CustomSymbol; layout: "stacked" | "side" | "symbol"; accentHex: string; font: LogoFont; scale: number; family?: string; famWeight?: number; sseed?: number; tileKey?: string } | null>(null);
@@ -379,6 +381,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.unlocked) setUnlocked(true);
         if (snap.kit) setKit(snap.kit);
         if (snap.deck) setDeckAi(snap.deck);
+        if (snap.fam != null) setFamPick(snap.fam as Fam);
         const slugStep = SLUG_STEP[pathSlug()];
         const okSlug = slugStep && (
           (["brief", "words"].includes(slugStep) && snap.sentence) ||
@@ -1287,6 +1290,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // Logo engine v2: the nine logos for THIS brand (brief, sector, taste, seed).
   const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste, logoSeed, logoBumps) : [];
   const payLogo = logoSel || (picked ? logoTiles[0] : null);
+  // Handoff 27 · the kit's layout family: the taste picks it, the founder can switch.
+  const fam: Fam = famPick ?? famFromTaste(taste);
+  const famTagline = (book?.tagline || picked?.tagline || "").replace(/^\*|\*$/g, "");
+  const famSite = domSel?.domain || picked?.dom?.domain || picked?.alt?.domain || "";
+  const fd = useMemo<FamData>(() => famData(payLogo?.key || "", picked?.name || "", lpal, {
+    tagline: famTagline, person: user?.name || "", role: "Founder", email: user?.email || "", site: famSite,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [payLogo?.key, picked?.name, lpal.dawn, lpal.haze, lpal.nova, lpal.night, famTagline, user?.name, user?.email, famSite]);
   const payCtx: PayCtx | null = picked && payLogo ? {
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || picked.alt?.domain || "",
@@ -1297,6 +1308,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     brief: sentence.trim(),
     headFont: payLogo.custom?.family || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
     price,
+    fam, setFam: (f) => { setFamPick(f); persist({ fam: f }); }, fd,
     onBuyDomain: () => {
       const dm = domSel?.domain || picked.dom?.domain || picked.alt?.domain || "";
       if (dm) { window.open(registrarUrl(dm), "_blank", "noopener"); track("godaddy", { domain: dm, from: step }); }
@@ -2230,7 +2242,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {/* ═══ 08·b business cards · 08·p pitch deck ═══ */}
       {step === "cards" && payCtx && brandOpen && (
-        <BusinessCards l={payCtx.kitLogo} domain={payCtx.domain} me={user} onBack={() => toStep("mkt")} onNext={() => toStep("deck")} track={payCtx.track} />
+        <BusinessCards l={payCtx.kitLogo} domain={payCtx.domain} me={user} fam={payCtx.fam} setFam={payCtx.setFam} fd={payCtx.fd} onBack={() => toStep("mkt")} onNext={() => toStep("deck")} track={payCtx.track} />
       )}
       {step === "deck" && payCtx && brandOpen && picked && (
         <PitchDeck l={payCtx.kitLogo} track={payCtx.track} ai={deckAi} aiBusy={deckBusy} onBack={() => toStep("cards")} onNext={() => toStep("claim")}

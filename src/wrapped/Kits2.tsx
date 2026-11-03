@@ -9,6 +9,7 @@ import { logoSvg, svgToPng, type Palette } from "./logos";
 import type { KitLogo } from "./kitArt";
 import { download, makeZip } from "./zip";
 import { svgPdf } from "./pdf";
+import { FAM_SHORT, cardBack, cardFront, type Fam, type FamData } from "./families";
 
 // A real PDF file; the print dialog only if the PDF can't be made.
 async function savePdf(pages: string[], wMm: number, hMm: number, title: string, pageCss: string) {
@@ -87,24 +88,25 @@ export function cardSvg(side: "front" | "back", style: CardStyle, d: CardDetails
     `<rect x="${M}" y="${M}" width="${W - M * 2}" height="${H - M * 2}" rx="${radius}" fill="${bg}"/>` + inner + marks + `</svg>`;
 }
 
-export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
+export function BusinessCards({ l, domain, me, fam, setFam, fd, onBack, onNext, track }: {
   l: KitLogo; domain: string; me: { name?: string; email?: string } | null;
+  fam: Fam; setFam: (f: Fam) => void; fd: FamData;
   onBack: () => void; onNext: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }) {
   const [d, setD] = useState<CardDetails>({ name: me?.name || "", role: "Founder", email: me?.email || "", phone: "", web: domain });
-  const [style, setStyle] = useState<CardStyle>("light");
+  const [lay, setLay] = useState<"A" | "B">("A");
+  const [qr, setQr] = useState(true);
   const [side, setSide] = useState<"front" | "back">("front");
-  const front = useMemo(() => cardSvg("front", style, d, l, domain), [style, d, l, domain]);
-  const back = useMemo(() => cardSvg("back", style, d, l, domain), [style, d, l, domain]);
+  const cd: FamData = useMemo(() => ({ ...fd, person: d.name, role: d.role, email: [d.email, d.phone].filter(Boolean).join("  ·  "), site: (d.web ?? domain).trim() }), [fd, d, domain]);
+  const front = useMemo(() => cardFront(fam, lay, cd), [fam, lay, cd]);
+  const back = useMemo(() => cardBack(fam, cd, qr), [fam, cd, qr]);
   const [busy, setBusy] = useState(false);
   const pdf = async () => {
     if (busy) return;
-    track("kit_asset_downloaded", { asset: "business_cards_pdf", style });
+    track("kit_asset_downloaded", { asset: "business_cards_pdf", family: FAM_SHORT[fam], layout: lay, qr });
     setBusy(true);
-    await savePdf([
-      cardSvg("front", style, d, l, domain, { bleed: true, marks: true }),
-      cardSvg("back", style, d, l, domain, { bleed: true, marks: true }),
-    ], 97, 67, `${l.name} - Business cards`, "size: 97mm 67mm");
+    await savePdf([cardFront(fam, lay, cd, { bleed: true, marks: true }), cardBack(fam, cd, qr, { bleed: true, marks: true })],
+      97, 67, `${l.name} - Business cards`, "size: 97mm 67mm");
     setBusy(false);
   };
   const field = (k: keyof CardDetails, label: string, type = "text", ph = label) => (
@@ -133,6 +135,17 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
           </div>
         </div>
         <div className="bcr">
+          <p className="k mono">Style</p>
+          <div className="bcfam">
+            {FAM_SHORT.map((t, i) => (
+              <button key={t} className={fam === i ? "on" : ""} onClick={() => { if (fam !== i) { setFam(i as Fam); track("family_changed", { family: t, from: "cards" }); } }}
+                dangerouslySetInnerHTML={{ __html: cardFront(i as Fam, lay, cd) + `<em>${t}</em>` }} />
+            ))}
+          </div>
+          <div className="bcopts">
+            <span className="seg2">{(["A", "B"] as const).map((x) => <button key={x} className={lay === x ? "on" : ""} onClick={() => setLay(x)}>Layout {x}</button>)}</span>
+            <label className="qrt"><input type="checkbox" checked={qr} onChange={(e) => setQr(e.target.checked)} /> QR code on the back</label>
+          </div>
           <p className="k mono">Your details · tap any line to edit</p>
           {field("name", "Name")}
           {field("role", "Role", "text", "Founder, Owner, Director…")}
@@ -140,14 +153,6 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
           {field("phone", "Phone", "tel", "Optional")}
           {field("web", "Website", "text", "yourname.com")}
           <p className="bchint">{domain ? "Domain not bought yet? Change it here any time, or leave it empty." : "No domain yet? Add one later, or leave it empty."}</p>
-          <p className="k mono">Style</p>
-          <div className="bcstyle">
-            {(["light", "dark", "gradient"] as const).map((s) => (
-              <button key={s} className={(style === s ? "on " : "") + s} style={s === "dark" ? { background: l.pal.night } : s === "gradient" ? { background: `linear-gradient(120deg, ${l.pal.dawn}, ${l.pal.haze}, ${l.pal.nova})` } : undefined} onClick={() => setStyle(s)}>
-                {l.name}
-              </button>
-            ))}
-          </div>
           <p className="spec mono">85 × 55 mm · 3 mm bleed · crop marks</p>
         </div>
       </div>

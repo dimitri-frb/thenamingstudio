@@ -94,6 +94,7 @@ export interface SavedSearch {
   priceVariant?: number;    // the price shown to this user (stable per user)
   kit?: WKit | null;        // socials + marketing copy for this run
   deck?: WDeckSlide[] | null; // the pitch deck's AI first draft (10 slides)
+  fam?: number;             // the kit's layout family, when the founder switched it
   logo?: { key: string; title: string; seed: number; accent?: string; font?: string; custom?: unknown } | null;
   taste?: unknown;          // the Brand chapter's taste picks
   palette?: { name: string; hex: string }[]; // brand colours once the book exists
