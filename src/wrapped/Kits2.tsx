@@ -43,12 +43,13 @@ function printPages(title: string, pageCss: string, pages: string[], done?: () =
 }
 
 /* ═════════ 08·b · Business cards ═════════ */
-export interface CardDetails { name: string; role: string; email: string; phone: string }
+export interface CardDetails { name: string; role: string; email: string; phone: string; web?: string }
 type CardStyle = "light" | "dark" | "gradient";
 
 // One card face as SVG in millimetres (85 × 55). bleed adds 3 mm of
 // background on every side; marks adds crop marks in a 3 mm margin beyond it.
-export function cardSvg(side: "front" | "back", style: CardStyle, d: CardDetails, l: KitLogo, domain: string, opts: { bleed?: boolean; marks?: boolean } = {}): string {
+export function cardSvg(side: "front" | "back", style: CardStyle, d: CardDetails, l: KitLogo, domain0: string, opts: { bleed?: boolean; marks?: boolean } = {}): string {
+  const domain = d.web != null ? d.web.trim() : domain0;
   const p: Palette = l.pal;
   const B = opts.bleed ? 3 : 0, M = opts.marks ? 3 : 0, off = B + M;
   const W = 85 + off * 2, H = 55 + off * 2;
@@ -90,7 +91,7 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
   l: KitLogo; domain: string; me: { name?: string; email?: string } | null;
   onBack: () => void; onNext: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }) {
-  const [d, setD] = useState<CardDetails>({ name: me?.name || "", role: "Founder", email: me?.email || "", phone: "" });
+  const [d, setD] = useState<CardDetails>({ name: me?.name || "", role: "Founder", email: me?.email || "", phone: "", web: domain });
   const [style, setStyle] = useState<CardStyle>("light");
   const [side, setSide] = useState<"front" | "back">("front");
   const front = useMemo(() => cardSvg("front", style, d, l, domain), [style, d, l, domain]);
@@ -106,10 +107,11 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
     ], 97, 67, `${l.name} - Business cards`, "size: 97mm 67mm");
     setBusy(false);
   };
-  const field = (k: keyof CardDetails, label: string, type = "text") => (
+  const field = (k: keyof CardDetails, label: string, type = "text", ph = label) => (
     <label className="bcf">
       <span>{label}</span>
-      <input type={type} value={d[k]} placeholder={label} onChange={(e) => setD({ ...d, [k]: e.target.value })} />
+      <input type={type} value={d[k] || ""} placeholder={ph} onChange={(e) => setD({ ...d, [k]: e.target.value })} />
+      <i aria-hidden>✎</i>
     </label>
   );
   return (
@@ -131,11 +133,13 @@ export function BusinessCards({ l, domain, me, onBack, onNext, track }: {
           </div>
         </div>
         <div className="bcr">
-          <p className="k mono">Your details</p>
+          <p className="k mono">Your details · tap any line to edit</p>
           {field("name", "Name")}
-          {field("role", "Role")}
+          {field("role", "Role", "text", "Founder, Owner, Director…")}
           {field("email", "Email", "email")}
-          {field("phone", "Phone", "tel")}
+          {field("phone", "Phone", "tel", "Optional")}
+          {field("web", "Website", "text", "yourname.com")}
+          <p className="bchint">{domain ? "Domain not bought yet? Change it here any time, or leave it empty." : "No domain yet? Add one later, or leave it empty."}</p>
           <p className="k mono">Style</p>
           <div className="bcstyle">
             {(["light", "dark", "gradient"] as const).map((s) => (

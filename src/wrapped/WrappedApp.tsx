@@ -1111,6 +1111,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     track("logopack", { name: picked.name, concept: logoSel.title });
   }
 
+  const [sharePrev, setSharePrev] = useState(false);
   function share() {
     const nm = picked?.name || "My new name";
     const base = "https://namename.ai/";
@@ -1447,24 +1448,34 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               Your name should feel like <i className="wr-cgrad">{concept?.concept || "…"}</i>.
             </h1>
             <Grow value={sentence} onChange={setSentence} onEnter={() => conceptReady && toStep("brands")} placeholder="What are you building?" boxed />
+            <p className="pmulti">Pick as many as you like in each row.</p>
             <div className="prows">
               <div className="prow">
                 <span className="plbl">Feels like</span>
                 <div className="opts">
-                  {feelOpts.map((k) => (
-                    <button key={k} className={"wr-opt" + (concept?.concept === k ? " on" : "")}
-                      onClick={() => setConcept((c) => (c ? { ...c, concept: k } : c))}>{concept?.concept === k ? "✓ " : ""}{k}</button>
-                  ))}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { setFeelOpts((f) => [...f.filter((x) => x !== w), w]); setConcept((c) => (c ? { ...c, concept: w } : c)); }} />
+                  {feelOpts.map((k) => {
+                    // several feelings can be picked; they read as one line ("a + b")
+                    const cur = (concept?.concept || "").split(" + ").filter(Boolean);
+                    const on = cur.includes(k);
+                    return (
+                      <button key={k} className={"wr-opt" + (on ? " on" : "")}
+                        onClick={() => setConcept((c) => {
+                          if (!c) return c;
+                          const nx = on ? cur.filter((x) => x !== k) : [...cur.filter((x) => feelOpts.includes(x)), k];
+                          return nx.length ? { ...c, concept: nx.slice(-3).join(" + ") } : c; // at least one stays
+                        })}>{on ? "✓ " : ""}{k}</button>
+                    );
+                  })}
+                  <AvoidAdd label="＋ add" onAdd={(w) => { setFeelOpts((f) => [...f.filter((x) => x !== w), w]); setConcept((c) => (c ? { ...c, concept: [...(c.concept || "").split(" + ").filter(Boolean), w].slice(-3).join(" + ") } : c)); }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Tone</span>
                 <div className="opts">
                   {["Friendly", "Balanced", "Serious", "Playful"].map((t) => {
-                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone[0] === t;
+                    const on = t === "Balanced" ? !prefs.tone.length : prefs.tone.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : [t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, tone: t === "Balanced" ? [] : on ? prefs.tone.filter((x) => x !== t) : [...prefs.tone, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
                 </div>
               </div>
@@ -1472,9 +1483,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                 <span className="plbl">Name style</span>
                 <div className="opts">
                   {["Invented", "Real word", "Compound", "Any"].map((t) => {
-                    const on = t === "Any" ? !prefs.style.length : prefs.style[0] === t;
+                    const on = t === "Any" ? !prefs.style.length : prefs.style.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : [t] })}>{on ? "✓ " : ""}{t}</button>;
+                      onClick={() => setPrefs({ ...prefs, style: t === "Any" ? [] : on ? prefs.style.filter((x) => x !== t) : [...prefs.style, t] })}>{on ? "✓ " : ""}{t}</button>;
                   })}
                 </div>
               </div>
@@ -1494,19 +1505,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                   {["French", "English", "Spanish", ...prefs.langs.filter((x) => !["French", "English", "Spanish"].includes(x))].map((t) => {
                     const on = prefs.langs.includes(t);
                     return <button key={t} className={"wr-opt" + (on ? " on" : "")}
-                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [t] })}>{on ? "✓ " : ""}{t === "French" ? "FR" : t === "English" ? "EN" : t === "Spanish" ? "ES" : t}</button>;
+                      onClick={() => setPrefs({ ...prefs, langs: on ? prefs.langs.filter((x) => x !== t) : [...prefs.langs, t] })}>{on ? "✓ " : ""}{t === "French" ? "FR" : t === "English" ? "EN" : t === "Spanish" ? "ES" : t}</button>;
                   })}
-                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.langs.includes(w)) setPrefs({ ...prefs, langs: [w] }); }} />
+                  <AvoidAdd label="＋ add" onAdd={(w) => { if (!prefs.langs.includes(w)) setPrefs({ ...prefs, langs: [...prefs.langs, w] }); }} />
                 </div>
               </div>
               <div className="prow">
                 <span className="plbl">Domain</span>
                 <div className="opts">
                   {["com", "ai", "io", "app"].map((d) => {
-                    const on = prefs.doms[0] === d;
+                    const on = prefs.doms.includes(d);
                     return (
                       <button key={d} className={"wr-opt" + (on ? " on" : "")}
-                        onClick={() => { setPrefs({ ...prefs, doms: on ? [] : [d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
+                        onClick={() => { setPrefs({ ...prefs, doms: on ? prefs.doms.filter((x) => x !== d) : [...prefs.doms, d] }); setNames(null); namesPre.current = null; morePre.current = null; }}>
                         {on ? "✓ " : ""}.{d}
                       </button>
                     );
@@ -2276,7 +2287,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={share}>Share the news</button>
+            <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => { setSharePrev(true); track("share_preview", { name: picked.name }); }}>Share {picked.name} with a friend</button>
             <button className="wr-btn2" onClick={restart}>Name something else</button>
             <button className="wr-link" onClick={gotoAccount}>Everything is saved to your account</button>
           </div>
@@ -2284,6 +2295,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
 
       {/* overlays */}
+      {sharePrev && picked && createPortal(
+        <div className="wr-shprev" onClick={() => setSharePrev(false)}>
+          <div className="in" onClick={(e) => e.stopPropagation()}>
+            <p className="wr-kicker" style={{ margin: "0 0 10px" }}>What your friend will see</p>
+            <div className="card">
+              <div className="lg" dangerouslySetInnerHTML={{ __html: logoSvg((logoSel || logoTiles[0])?.key || "sunrise", picked.name, lpal, { variant: "light", height: 70, accent: (logoSel || logoTiles[0])?.accent, shape: lshape, custom: (logoSel || logoTiles[0])?.custom }) }} />
+              {(picked.tagline || book?.tagline) && <p>{String(book?.tagline || picked.tagline).replace(/^\*|\*$/g, "")}</p>}
+              <span className="mono url">namename.ai/s/{picked.name.toLowerCase().replace(/[^a-z0-9]/g, "")}…</span>
+            </div>
+            <p className="note">A page with your new name, what it means, how to say it, your logo and colours. Your brand kit files stay private.</p>
+            <button className="wr-btn" onClick={() => { setSharePrev(false); share(); }}>Share it →</button>
+            <button className="wr-link" onClick={() => setSharePrev(false)}>Not now</button>
+          </div>
+        </div>, document.body)}
       {poll && (
         <NamePoll
           variant={poll}
@@ -2573,10 +2598,18 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
   mobile: boolean; pick: WName; others: WName[]; newestBatch: number; batchOf: (n: WName) => number;
   sel: string | null; onSel: (name: string) => void; moreBusy: boolean; moreFail: boolean; onRetry: () => void; say: string;
 }) {
+  // Tester (3 Nov): the big card read as "the selection" of the list on the
+  // right. Now the big card IS the current choice: tap any option and it
+  // moves in; our pick joins the list, still marked ★.
+  const ourPick = pick;
+  const chosen = (sel && others.find((n) => n.name === sel)) || pick;
+  pick = chosen;
+  others = chosen === ourPick ? others : [ourPick, ...others.filter((n) => n.name !== chosen.name)];
+  const total = others.length + 1;
   const pickOn = sel === pick.name;
   const domOf = (n: WName) => (n.dom?.free ? n.dom : n.alt || null);
   const pd = domOf(pick);
-  const isNew = (n: WName) => newestBatch > 0 && batchOf(n) === newestBatch;
+  const isNew = (n: WName) => n !== ourPick && newestBatch > 0 && batchOf(n) === newestBatch;
   const fresh = others.filter(isNew);
   const earlier = others.filter((n) => !isNew(n));
   // S·2/S·3/S·4 on phones: the pick shrinks to one line so the new batch (or
@@ -2587,14 +2620,14 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
     <button className={"pick slim" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
       <span className="ck">{pickOn ? "✓" : ""}</span>
       <b className="nm">{pick.name}</b>
-      <span className="tag mono">★ OUR PICK</span>
+      <span className="tag mono">{pick === ourPick ? "★ OUR PICK" : "✓ YOUR CHOICE"}</span>
       <span className="fit mono">{pick.score}% fit</span>
     </button>
   ) : (
     <button className={"pick" + (pickOn ? " on" : "")} onClick={() => onSel(pick.name)}>
       <span className="glow" aria-hidden />
       <span className="top">
-        <span className="tag mono">★ OUR PICK FOR YOU</span>
+        <span className="tag mono">{pick === ourPick ? `★ OUR PICK FOR YOU · 1 OF ${total}` : `✓ YOUR CHOICE · 1 OF ${total}`}</span>
         {pickOn && !mobile && <span className="ck">✓</span>}
       </span>
       <b className="nm">{pick.name}</b>
@@ -2614,7 +2647,7 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
       <button key={n.name} className={"blk" + (on ? " on" : "") + (nw ? " new" : "")} onClick={() => onSel(n.name)}>
         <span className="hd">
           <b className="nm">{n.name}</b>
-          <span className="fit mono">{on ? "✓" : `${n.score}%`}</span>
+          <span className="fit mono">{n === ourPick ? "★ pick" : on ? "✓" : `${n.score}%`}</span>
         </span>
         <span className="vibe">{n.tagline || n.roots}</span>
         <span className="dm mono">{d ? <><i className="dot" />{d.domain}</> : "checking…"}</span>
@@ -2643,7 +2676,7 @@ function NamesPicker({ mobile, pick, others, newestBatch, batchOf, sel, onSel, m
         </>
       ) : (
         <>
-          <p className="lbl mono">Or choose another</p>
+          <p className="lbl mono">{others.length} other options · tap one to choose it</p>
           <div className="grid">{others.map((n) => card(n))}</div>
         </>
       )}

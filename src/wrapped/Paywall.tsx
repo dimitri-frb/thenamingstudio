@@ -336,6 +336,16 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
             <button key={t} className={tab === i ? "on" : ""} onClick={() => setTab(i as 0 | 1 | 2)}>{t}</button>
           ))}
         </div>
+        {/* Tester (3 Nov): "I'm a bit lost, what is it for, should I store it?" */}
+        <div className="how">
+          <b>{tab === 0 ? "For your first week on Instagram, LinkedIn or Facebook." : tab === 1 ? "For when you're ready to advertise." : "Your plan for the first three weeks after launch."}</b>
+          <span>{tab === 0
+            ? "Post the teaser on day 1, the launch on day 3 and the story on day 7. Download the images, copy the captions."
+            : tab === 1
+              ? "Paste these into Google Ads (search) or Meta Ads (Instagram, Facebook) when you set up a campaign. Lengths already fit their limits."
+              : "What to post, where, and when, using the posts and ads in this kit. Follow it week by week, or download it as a checklist."}</span>
+          <em className="mono">Saved in your account · nothing to store</em>
+        </div>
         {!kit ? <KitWait fail={kitFail} onRetry={onRetry} what="the marketing kit" /> : tab === 0 ? (
           <>
             <p className="lbl mono">3 launch posts · 1080 × 1080</p>
