@@ -10,6 +10,7 @@ import { outlineSvg } from "./outline";
 import { svgPdf } from "./pdf";
 import { download, makeZip } from "./zip";
 import { nest } from "./bookArt";
+import { openInGoogle, prepareGoogle } from "./gdrive";
 import { FAM_SHORT, avatar, banner, cardBack, cardFront, post, type Fam, type FamData } from "./families";
 import type { DeckInput } from "./Kits2";
 import { THEMES, deckContent, deckPptx2, deckScenes, sceneSvg, type DeckBrand, type Theme } from "./deck2";
@@ -27,7 +28,7 @@ export interface FlowCtx {
   kit: WKit | null; deckInput: DeckInput; deckAi: WDeck2 | WDeckSlide[] | null;
   me: { name?: string; email?: string } | null;
   st: FlowState; setSel: (p: PieceId, v: number) => void; setDl: (p: PieceId, f: string) => void;
-  bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookPreview: () => void;
+  bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookHtml: () => Promise<{ html: string; filename: string }>; bookPreview: () => void;
   persBtn: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }
 const LOGO_V = ["Primary", "Reversed", "Mono", "On colour"];
@@ -73,7 +74,7 @@ export function thumbOf(p: PieceId, c: FlowCtx): string {
 }
 
 /* ── formats: what each piece downloads as ── */
-export interface Format { id: string; label: string; editable?: boolean; best: string; size: string; help?: string; run: () => Promise<void> }
+export interface Format { id: string; label: string; editable?: boolean; best: string; size: string; help?: string; run: () => Promise<void | string> }
 function docx(title: string, blocks: { h?: string; p?: string }[]): Blob {
   const x = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const para = (t: string, bold = false, size = 22) => `<w:p><w:r><w:rPr>${bold ? "<w:b/>" : ""}<w:sz w:val="${size}"/></w:rPr><w:t xml:space="preserve">${x(t)}</w:t></w:r></w:p>`;
@@ -140,7 +141,8 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
   }
   if (p === "book") return [
     { id: "pdf", label: "PDF", best: "Share, print, present", size: "12 pages", run: async () => c.bookPdf() },
-    { id: "word", label: "Word", editable: true, best: "Edit the text in Word, Pages or Google Docs", size: ".doc", help: "Google Docs: upload the file to Google Drive, then Open with Google Docs.", run: () => c.bookWord() },
+    { id: "word", label: "Word", editable: true, best: "Edit the text in Word or Pages", size: ".doc", run: () => c.bookWord() },
+    { id: "gdocs", label: "Google Docs", editable: true, best: "Opens a copy in your Google Drive", size: "opens Drive", help: "We ask Google once for permission to add this file to your Drive. If that's not possible, the Word file downloads instead.", run: () => openInGoogle(async () => { const r = await c.bookHtml(); return { blob: new Blob([r.html], { type: "text/html" }), name: r.filename, mime: "text/html", fallbackName: `${r.filename}.doc` }; }, "document") },
   ];
   if (p === "socials") {
     const bd = bannerData(c);
@@ -173,7 +175,7 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
       { id: "svg", label: "SVG", editable: true, best: "Edit the posts in Figma or Illustrator", size: "6 files", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-svg.zip`) },
       { id: "canva", label: "Canva", editable: true, best: "Edit the posts online in Canva", size: "upload-ready", help: "In Canva: Create a design → Uploads → upload these files.", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-for-canva.zip`) },
       { id: "word", label: "Word · captions, ads, plan", editable: true, best: "Edit every caption, ad and the 3-week plan", size: ".docx", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
-      { id: "gdocs", label: "Google Docs · captions, ads, plan", editable: true, best: "The same copy, in Google Docs", size: ".docx", help: "Upload the file to Google Drive, then Open with Google Docs.", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
+      { id: "gdocs", label: "Google Docs · captions, ads, plan", editable: true, best: "Opens a copy in your Google Drive", size: "opens Drive", help: "We ask Google once for permission to add this file to your Drive. If that's not possible, the .docx downloads instead.", run: () => openInGoogle(async () => ({ blob: docx(`${c.name} · launch copy`, blocks), name: `${c.name} · Launch copy`, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fallbackName: `${nm}-launch-copy.docx` }), "document") },
       { id: "pdf", label: "PDF · captions, ads, plan", best: "Read and share", size: "A4", run: async () => download(await textPdf(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.pdf`) },
     ];
   }
@@ -192,7 +194,7 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     { id: "pdf", label: "PDF", best: "Share, print, present", size: "10 slides", run: async () => download(await svgPdf(sc.map((s) => sceneSvg(s, 1600)), 297, 167.0625, `${c.name} pitch deck`), `${c.name} - Pitch deck.pdf`) },
     { id: "pptx", label: "PowerPoint", editable: true, best: "Edit in PowerPoint", size: ".pptx", run: pptx },
     { id: "key", label: "Keynote", editable: true, best: "Opens in Keynote on Mac", size: ".pptx", help: "Double-click the file: Keynote opens it and keeps every text box editable.", run: pptx },
-    { id: "gslides", label: "Google Slides", editable: true, best: "Edit in your Google Drive", size: ".pptx", help: "In Google Slides: File → Import slides → Upload, or drop the file into Google Drive and open it.", run: pptx },
+    { id: "gslides", label: "Google Slides", editable: true, best: "Opens a copy in your Google Drive", size: "opens Drive", help: "We ask Google once for permission to add this file to your Drive. If that's not possible, the .pptx downloads: in Google Slides, File → Import slides.", run: () => openInGoogle(async () => ({ blob: await deckPptx2(sc, `${c.name} pitch deck`), name: `${c.name} · Pitch deck`, mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation", fallbackName: `${c.name} - Pitch deck.pptx` }), "presentation") },
   ];
 }
 
@@ -234,20 +236,24 @@ export function KitHub({ c, onOpen, onZip, zipBusy }: { c: FlowCtx; onOpen: (p: 
 }
 
 /* ═════ the download sheet ═════ */
+const ICON: Record<string, string> = { pdf: "PDF", pptx: "PPTX", key: "KEY", gslides: "G", gdocs: "G", word: "DOC", svg: "SVG", png: "PNG", eps: "EPS", pack: "ZIP", canva: "C" };
 function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; formats: Format[]; onClose: () => void }) {
   const [f, setF] = useState(formats.find((x) => x.id === c.st.dl[p])?.id || formats[0].id);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [opened, setOpened] = useState("");
+  useEffect(() => { prepareGoogle(); }, []);
   const cur = formats.find((x) => x.id === f) || formats[0];
   const v = selOf(p, c);
   const go = async () => {
     if (busy) return;
     setBusy(true); setErr("");
     try {
-      await cur.run();
+      const res = await cur.run();
+      if (typeof res === "string" && res) setOpened(res);
       c.setDl(p, cur.id);
       c.track("piece_downloaded", { piece: p, version: versionsOf(p)[v], format: cur.id });
-      if (!cur.help) onClose();
+      if (!cur.help && !(typeof res === "string" && res)) onClose();
     } catch { setErr("That didn't work. Try again, or pick another format."); }
     setBusy(false);
   };
@@ -260,15 +266,15 @@ function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; for
         <div className="fmts">
           {formats.map((x) => (
             <button key={x.id} className={x.id === f ? "on" : ""} onClick={() => { setF(x.id); c.track("format_selected", { piece: p, format: x.id }); }}>
-              <span className="ic mono">{x.label.split(" ")[0].slice(0, 4).toUpperCase()}</span>
+              <span className="ic mono">{ICON[x.id] || x.label.slice(0, 3).toUpperCase()}</span>
               <span className="tx"><b>{x.label}{x.editable && <i className="mono">EDITABLE</i>}</b><em>{x.best}</em></span>
               <span className="sz mono">{x.size}</span>
             </button>
           ))}
         </div>
-        {cur.help && <p className="help">{cur.help}</p>}
+        {opened ? <p className="help ok">✓ It's in your Google Drive. <a href={opened} target="_blank" rel="noopener">Open it ↗</a></p> : cur.help && <p className="help">{cur.help}</p>}
         {err && <p className="help err">{err}</p>}
-        <button className="wr-btn" onClick={go} disabled={busy}>{busy ? "Preparing…" : `↓ Download ${cur.label.split(" · ")[0]}`}</button>
+        <button className="wr-btn" onClick={go} disabled={busy}>{busy ? "Preparing…" : cur.id === "gslides" || cur.id === "gdocs" ? `Open in ${cur.label.split(" · ")[0]} ↗` : `↓ Download ${cur.label.split(" · ")[0]}`}</button>
         <button className="wr-link" onClick={onClose}>{c.st.dl[p] ? "Done" : "Cancel"}</button>
       </div>
     </div>, document.body);

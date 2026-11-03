@@ -457,7 +457,7 @@ export function BookPrint({ ctx }: { ctx: BookCtx }) {
 
 // "↓ Word": the whole book as a Word document (MSO-flavoured HTML in a .doc,
 // which Word, Pages and Google Docs all open), logo embedded as PNG.
-export async function exportBookWord(ctx: BookCtx): Promise<void> {
+export async function exportBookWord(ctx: BookCtx, only = false): Promise<{ html: string; filename: string } | void> {
   const { name, domain, book } = ctx;
   const fr = (book.lang || "en").startsWith("fr");
   const L = fr
@@ -516,6 +516,7 @@ export async function exportBookWord(ctx: BookCtx): Promise<void> {
 
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(name)} - ${esc(L.book)}</title></head>` +
     `<body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a;max-width:460pt;margin:auto">${body}</body></html>`;
+  if (only) return { html, filename: `${name} - ${L.book}` };
   const blob = new Blob(["﻿" + html], { type: "application/msword" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);

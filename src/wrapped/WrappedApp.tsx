@@ -1357,6 +1357,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     bookReady: !!bookCtx,
     bookPdf: () => { void import("./Book").then((m) => m.printBook(`${picked.name} - Brand book`)); },
     bookWord: async () => { if (bookCtx) await (await import("./Book")).exportBookWord(bookCtx); },
+    bookHtml: async () => { const r = bookCtx ? await (await import("./Book")).exportBookWord(bookCtx, true) : null; return r || { html: "", filename: `${picked.name} - Brand book` }; },
     bookPreview: () => setBookOpen(true),
     persBtn: () => toStep("pers"),
     track: (ev, p) => track(ev, { name: picked.name, ...p }),

@@ -3257,3 +3257,4 @@
 .bk-page.t-night { background: var(--bk-night, #0f0d24); color: #fff; }
 .bk-page.t-colour { background: color-mix(in srgb, var(--bk-tint, #c9b6ff) 26%, #fff); }
 .bf-piece .vers.grid button .vt:has(> svg[viewBox="0 0 210 297"]) { aspect-ratio: 210 / 297; }
+.bf-sheet .help.ok a { color: #fff; font-weight: 700; } .bf-sheet .help.ok { color: #9fe3c1; }
