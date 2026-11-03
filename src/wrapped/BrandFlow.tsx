@@ -121,7 +121,7 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
   if (p === "logo") {
     const svg = () => logoVariant(c, v, 400);
     return [
-      { id: "svg", label: "SVG", editable: true, best: "Edit in Figma, Illustrator, Canva", size: "1 file", run: async () => { download(new Blob([await outlineSvg(svg())], { type: "image/svg+xml" }), `${nm}-logo-${slug(LOGO_V[v])}.svg`); } },
+      { id: "svg", label: "SVG", editable: true, best: "Edit in Figma or Illustrator", size: "1 file", run: async () => { download(new Blob([await outlineSvg(svg())], { type: "image/svg+xml" }), `${nm}-logo-${slug(LOGO_V[v])}.svg`); } },
       { id: "png", label: "PNG", best: "Website, social, documents", size: "2000 px", run: async () => { download(new Blob([(await svgToPng(svg(), 2000)) as Uint8Array<ArrayBuffer>], { type: "image/png" }), `${nm}-logo-${slug(LOGO_V[v])}.png`); } },
       { id: "pdf", label: "PDF", best: "Send to a printer", size: "vector", run: async () => {
         const s = svg(); const m = s.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/); const ar = m ? Number(m[1]) / Number(m[2]) : 2;
@@ -160,7 +160,6 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     return [
       { id: "png", label: "PNG", best: "Upload straight to each network", size: "3 images + bios", run: () => z(true, `${nm}-socials-kit.zip`) },
       { id: "svg", label: "SVG", editable: true, best: "Edit in Figma or Illustrator", size: "3 files + bios", run: () => z(false, `${nm}-socials-kit-svg.zip`) },
-      { id: "canva", label: "Canva", editable: true, best: "Edit online in Canva", size: "upload-ready", help: "In Canva: Create a design → Uploads → upload these files, then drag them onto your design.", run: () => z(false, `${nm}-socials-kit-for-canva.zip`) },
     ];
   }
   if (p === "mkt") {
@@ -173,7 +172,6 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     return [
       { id: "png", label: "PNG", best: "Posts and stories, ready to post", size: "6 images", run: () => zipSvgs(imgs(true), `${nm}-launch-posts.zip`) },
       { id: "svg", label: "SVG", editable: true, best: "Edit the posts in Figma or Illustrator", size: "6 files", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-svg.zip`) },
-      { id: "canva", label: "Canva", editable: true, best: "Edit the posts online in Canva", size: "upload-ready", help: "In Canva: Create a design → Uploads → upload these files.", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-for-canva.zip`) },
       { id: "word", label: "Word · captions, ads, plan", editable: true, best: "Edit every caption, ad and the 3-week plan", size: ".docx", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
       { id: "gdocs", label: "Google Docs · captions, ads, plan", editable: true, best: "Opens a copy in your Google Drive", size: "opens Drive", help: "We ask Google once for permission to add this file to your Drive. If that's not possible, the .docx downloads instead.", run: () => openInGoogle(async () => ({ blob: docx(`${c.name} · launch copy`, blocks), name: `${c.name} · Launch copy`, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fallbackName: `${nm}-launch-copy.docx` }), "document") },
       { id: "pdf", label: "PDF · captions, ads, plan", best: "Read and share", size: "A4", run: async () => download(await textPdf(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.pdf`) },
@@ -184,7 +182,6 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     return [
       { id: "pdf", label: "PDF print", best: "3 mm bleed + crop marks, any print shop", size: "front + back", run: async () => download(await svgPdf([cardFront(v, "A", cd, { bleed: true, marks: true }), cardBack(v, cd, true, { bleed: true, marks: true })], 97, 67, `${c.name} business cards`), `${nm}-business-cards-print.pdf`) },
       { id: "svg", label: "SVG", editable: true, best: "Edit in Figma or Illustrator", size: "2 files", run: () => zipSvgs([{ name: `${nm}-card-front.svg`, svg: cardFront(v, "A", cd) }, { name: `${nm}-card-back.svg`, svg: cardBack(v, cd, true) }], `${nm}-business-cards-svg.zip`) },
-      { id: "canva", label: "Canva", editable: true, best: "Edit online in Canva", size: "upload-ready", help: "In Canva: create a Business card design → Uploads → upload both files.", run: () => zipSvgs([{ name: `${nm}-card-front.svg`, svg: cardFront(v, "A", cd) }, { name: `${nm}-card-back.svg`, svg: cardBack(v, cd, true) }], `${nm}-business-cards-for-canva.zip`) },
       { id: "png", label: "PNG", best: "Ready to upload to an online printer", size: "2 files", run: () => zipSvgs([{ name: `${nm}-card-front.png`, svg: cardFront(v, "A", cd), h: 1100, png: true }, { name: `${nm}-card-back.png`, svg: cardBack(v, cd, true), h: 1100, png: true }], `${nm}-business-cards-png.zip`) },
     ];
   }
@@ -236,7 +233,7 @@ export function KitHub({ c, onOpen, onZip, zipBusy }: { c: FlowCtx; onOpen: (p: 
 }
 
 /* ═════ the download sheet ═════ */
-const ICON: Record<string, string> = { pdf: "PDF", pptx: "PPTX", key: "KEY", gslides: "G", gdocs: "G", word: "DOC", svg: "SVG", png: "PNG", eps: "EPS", pack: "ZIP", canva: "C" };
+const ICON: Record<string, string> = { pdf: "PDF", pptx: "PPTX", key: "KEY", gslides: "G", gdocs: "G", word: "DOC", svg: "SVG", png: "PNG", eps: "EPS", pack: "ZIP" };
 function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; formats: Format[]; onClose: () => void }) {
   const [f, setF] = useState(formats.find((x) => x.id === c.st.dl[p])?.id || formats[0].id);
   const [busy, setBusy] = useState(false);
