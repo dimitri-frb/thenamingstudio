@@ -9,6 +9,7 @@ import { buildLogoPack, logoSvg, svgToPng, type Palette } from "./logos";
 import { outlineSvg } from "./outline";
 import { svgPdf } from "./pdf";
 import { download, makeZip } from "./zip";
+import { nest } from "./bookArt";
 import { FAM_SHORT, avatar, banner, cardBack, cardFront, post, type Fam, type FamData } from "./families";
 import type { DeckInput } from "./Kits2";
 import { THEMES, deckContent, deckPptx2, deckScenes, sceneSvg, type DeckBrand, type Theme } from "./deck2";
@@ -30,7 +31,7 @@ export interface FlowCtx {
   persBtn: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }
 const LOGO_V = ["Primary", "Reversed", "Mono", "On colour"];
-const BOOK_V = ["Standard"]; // Night / Editorial / Colour arrive with the book redesign
+const BOOK_V = ["Night", "Editorial", "Colour"];
 const DECK_V = [...THEMES];
 export const versionsOf = (p: PieceId): string[] => (p === "logo" ? LOGO_V : p === "book" ? BOOK_V : p === "deck" ? DECK_V : [...FAM_SHORT]);
 const defaultSel = (p: PieceId, c: FlowCtx) => (p === "socials" || p === "mkt" || p === "cards" ? c.fam : 0);
@@ -53,10 +54,18 @@ function posts(c: FlowCtx, f: Fam, story = false): string[] {
   return ps.slice(0, 3).map((p, i) => post(f, c.fd, p.title, dayOf(p.label || "", i), 1080, story ? 1920 : 1080));
 }
 const bannerData = (c: FlowCtx) => ({ ...c.fd, tagline: c.fd.tagline || c.kit?.bioShort?.replace(/\s*\S+\.\S+\s*$/, "") || c.name });
+/** A book cover in a given style, small (for version tiles and the hub). */
+function bookThumb(c: FlowCtx, k: number): string {
+  const bg = k === 0 ? c.pal.night : k === 1 ? "#f4f2ee" : c.pal.dawn;
+  const lg = logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: k === 0 ? "night" : "light", height: 120 }).replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210" height="297"><rect width="210" height="297" fill="${bg}"/>` +
+    (k === 0 ? `<radialGradient id="bt" cx="50%" cy="105%" r="60%"><stop offset="0" stop-color="${c.pal.dawn}" stop-opacity=".5"/><stop offset="1" stop-color="${c.pal.dawn}" stop-opacity="0"/></radialGradient><rect width="210" height="297" fill="url(#bt)"/>` : "") +
+    nest(lg, 30, 110, 150, 60) + `<rect x="24" y="250" width="162" height="1" fill="${k === 0 ? "#fff" : "#000"}" opacity=".25"/></svg>`;
+}
 export function thumbOf(p: PieceId, c: FlowCtx): string {
   const v = selOf(p, c) as Fam;
   if (p === "logo") return logoVariant(c, v, 80);
-  if (p === "book") return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: "night", height: 80 });
+  if (p === "book") return bookThumb(c, selOf("book", c));
   if (p === "socials") return avatar(v, c.fd, 200);
   if (p === "mkt") return posts(c, v)[1] || avatar(v, c.fd, 200);
   if (p === "cards") return cardFront(v, "A", { ...c.fd, person: c.me?.name || "Your name" });
@@ -275,10 +284,10 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
     if (p === "socials") return banner(k as Fam, bannerData(c), 1584, 396);
     if (p === "mkt") return posts(c, k as Fam)[0];
     if (p === "cards") return cardFront(k as Fam, "A", { ...c.fd, person: c.me?.name || "Your name" });
-    if (p === "book") return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: "night", height: 120 });
+    if (p === "book") return bookThumb(c, k);
     return sceneSvg(scenesOf(c, k as Theme)[0], 480);
   };
-  const grid = p === "logo" || p === "cards";
+  const grid = p === "logo" || p === "cards" || p === "book";
   const preview: ReactNode = (() => {
     const f = v as Fam;
     if (p === "logo") return <div className={"pv logo" + (v === 0 || v === 2 ? " wh" : "")}>{sv(logoVariant(c, v, 260))}<p className="fine">Every version comes in the pack, plus the symbol on its own, app icons and a favicon.</p></div>;

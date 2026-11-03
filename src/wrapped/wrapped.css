@@ -3253,3 +3253,7 @@
 .wr-pers.px .askres .k { background: #fff; color: #111; border: 0; }
 .wr-pers.px .ask input { font-size: 16px; }
 @media (max-width: 720px) { .wr-pers.px .minis { display: none; } }
+/* handoff 28 · brand book versions */
+.bk-page.t-night { background: var(--bk-night, #0f0d24); color: #fff; }
+.bk-page.t-colour { background: color-mix(in srgb, var(--bk-tint, #c9b6ff) 26%, #fff); }
+.bf-piece .vers.grid button .vt:has(> svg[viewBox="0 0 210 297"]) { aspect-ratio: 210 / 297; }

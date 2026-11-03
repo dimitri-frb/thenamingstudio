@@ -1,10 +1,11 @@
 // The brand book: ten A4 pages generated from the chosen name, concept and logo.
 // Rendered small (page previews), large (07b preview overlay) and to print
 // (Download PDF = the browser's print-to-PDF on #bk-print).
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
 import { X_FONTS, X_SYMS, iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
 import { MOOD_DEFAULT, inUseSet, inUseSvg, moodSvg } from "./bookArt";
+import { on } from "./families";
 
 /* The personalized accent leads the book: when the founder tuned a colour on
    the logo, every accent slot that the logo uses follows it. */
@@ -27,7 +28,9 @@ export interface BookCtx {
   logoCustom?: CustomLogo; // the personalized lockup, when the founder tuned one
   brief?: string;          // picks the "in use" set (retail or service)
   founder?: string;        // "Prepared for" on the cover
+  theme?: 0 | 1 | 2;       // handoff 28 · book versions: 0 Night · 1 Editorial · 2 Colour
 }
+export const BOOK_THEMES = ["Night", "Editorial", "Colour"] as const;
 
 // The book's structural labels follow the language of its copy.
 const BK_EN = {
@@ -80,6 +83,9 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   const mark = (variant: "light" | "night" | "dawn" | "mono", h = 60) =>
     ({ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant, accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: h }) });
 
+  const th = ctx.theme ?? 1;
+  const pc = "bk-page" + (th === 0 ? " t-night" : th === 2 ? " t-colour" : "");
+  const pv = { ["--bk-night" as any]: pal.night, ["--bk-tint" as any]: pal.haze, ["--bk-line" as any]: th === 0 ? "rgba(255,255,255,.18)" : "rgba(0,0,0,.12)" } as React.CSSProperties;
   const foot = i > 0 ? (
     <div className="bk-foot">
       <span>{name} · {T.brandbook}</span>
@@ -99,12 +105,12 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       const [, lay, sym, fi] = (ctx.logoKey || "").split(":");
       const symK = sym && X_SYMS[sym] ? sym : "rise";
       const xf = X_FONTS[Number(fi)] || null;
-      const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160"><defs><linearGradient id="cvG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal.dawn}"/><stop offset=".5" stop-color="${pal.haze}"/><stop offset="1" stop-color="${pal.nova}"/></linearGradient></defs>${X_SYMS[symK].draw(120, 80, 70, "url(#cvG)", pal.night)}<rect x="10" y="${symK === "rise" ? 112 : 152}" width="220" height="1.5" fill="#fff" opacity=".35"/></svg>`;
+      const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160"><defs><linearGradient id="cvG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal.dawn}"/><stop offset=".5" stop-color="${pal.haze}"/><stop offset="1" stop-color="${pal.nova}"/></linearGradient></defs>${X_SYMS[symK].draw(120, 80, 70, "url(#cvG)", pal.night)}<rect x="10" y="${symK === "rise" ? 112 : 152}" width="220" height="1.5" fill="${th === 0 ? "#fff" : "#14121f"}" opacity=".35"/></svg>`;
       void lay;
       const titles = ((book.lang || "en").toLowerCase().startsWith("fr") ? PAGE_TITLES_FR : PAGE_TITLES).slice(1);
       const month = new Date().toLocaleDateString(book.lang?.startsWith("fr") ? "fr-FR" : "en-GB", { month: "long", year: "numeric" });
       return (
-        <div className="bk-page dark" style={{ ["--bk-night" as any]: pal.night, background: `radial-gradient(70% 38% at 50% 108%, ${pal.dawn}55, transparent 70%), ${pal.night}`, color: "#fff" }}>
+        <div className="bk-page dark" style={{ ["--bk-night" as any]: pal.night, background: th === 0 ? `radial-gradient(70% 38% at 50% 108%, ${pal.dawn}55, transparent 70%), ${pal.night}` : th === 1 ? "#f4f2ee" : pal.dawn, color: th === 0 ? "#fff" : on(th === 1 ? "#f4f2ee" : pal.dawn) }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--mono, monospace)", fontSize: "8.5pt", letterSpacing: "0.22em", textTransform: "uppercase", opacity: 0.7 }}>
             <span>{T.brandbook}</span><span style={{ letterSpacing: "0.06em", textTransform: "none" }}>Edition 01</span>
           </div>
@@ -113,7 +119,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
             <div style={{ fontFamily: xf ? `'${xf.f}', var(--sans)` : "var(--sans)", fontWeight: xf ? xf.w : 800, fontSize: name.length > 12 ? "40pt" : "56pt", lineHeight: 1, letterSpacing: "-0.03em" }}>{xf?.caps ? name.toUpperCase() : name}</div>
             <div style={{ ...S.h, fontStyle: "italic", fontSize: "14pt", opacity: 0.9, marginTop: 8 }}>{book.tagline}</div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,.25)", paddingTop: "12pt", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "5pt 12pt", fontFamily: "var(--mono, monospace)", fontSize: "7.5pt", opacity: 0.8, marginBottom: 14 }}>
+          <div style={{ borderTop: `1px solid ${th === 0 ? "rgba(255,255,255,.25)" : "rgba(0,0,0,.2)"}`, paddingTop: "12pt", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "5pt 12pt", fontFamily: "var(--mono, monospace)", fontSize: "7.5pt", opacity: 0.8, marginBottom: 14 }}>
             {titles.map((t) => <span key={t} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t}</span>)}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8.5pt", opacity: 0.75 }}>
@@ -123,13 +129,13 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       );
     }
     case 1: return ( // The story
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.story}</div>
         <h2 style={{ ...S.h, fontSize: "26pt", margin: "16pt 0 14pt" }}>{book.story.headline}</h2>
         <p style={{ ...S.body, maxWidth: "80%" }}>{book.story.para}</p>
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "12pt", paddingBottom: "24pt" }}>
           {[[T.oneSentence, book.story.oneSentence], [T.believe, book.story.believe], [T.wedo, book.story.wedo], [T.whofor, book.story.whofor]].map(([k, v]) => (
-            <div key={k} style={{ borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt", display: "flex", gap: "14pt" }}>
+            <div key={k} style={{ borderTop: "1px solid var(--bk-line)", paddingTop: "8pt", display: "flex", gap: "14pt" }}>
               <b style={{ ...S.kick, flex: "0 0 110pt", opacity: 0.45 }}>{k}</b>
               <span style={S.body}>{v}</span>
             </div>
@@ -139,7 +145,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 2: return ( // The name
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.theName}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 6pt" }}>{book.origin.headline}</h2>
         <div style={{ ...S.h, fontSize: "15pt", opacity: 0.6, marginBottom: "16pt" }}>
@@ -157,7 +163,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div style={{ ...S.kick, margin: "18pt 0 8pt" }}>{T.carries}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8pt 16pt" }}>
           {book.origin.carries.map((c) => (
-            <div key={c.word} style={{ borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "6pt" }}>
+            <div key={c.word} style={{ borderTop: "1px solid var(--bk-line)", paddingTop: "6pt" }}>
               <b style={{ fontSize: "10.5pt" }}>{c.word}</b>
               <div style={S.small}>{c.note}</div>
             </div>
@@ -168,7 +174,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 3: return ( // Saying it
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.saying}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 14pt" }}>
           {T.syllables(book.saying.syllables.length)}{book.saying.syllables.some((s) => s.stress) ? T.stressOn(book.saying.syllables.find((s) => s.stress)?.s || "") : ""}
@@ -184,9 +190,9 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           <tbody>
             {book.saying.world.map((w) => (
               <tr key={w.language}>
-                <td style={{ padding: "6pt 0", borderTop: "1px solid rgba(0,0,0,.12)", width: "26%", fontWeight: 600 }}>{w.language}</td>
-                <td style={{ padding: "6pt 0", borderTop: "1px solid rgba(0,0,0,.12)", width: "28%", fontFamily: "var(--mono)", fontSize: "8.5pt" }}>{w.sounds}</td>
-                <td style={{ padding: "6pt 0", borderTop: "1px solid rgba(0,0,0,.12)", opacity: 0.65 }}>{w.note}</td>
+                <td style={{ padding: "6pt 0", borderTop: "1px solid var(--bk-line)", width: "26%", fontWeight: 600 }}>{w.language}</td>
+                <td style={{ padding: "6pt 0", borderTop: "1px solid var(--bk-line)", width: "28%", fontFamily: "var(--mono)", fontSize: "8.5pt" }}>{w.sounds}</td>
+                <td style={{ padding: "6pt 0", borderTop: "1px solid var(--bk-line)", opacity: 0.65 }}>{w.note}</td>
               </tr>
             ))}
           </tbody>
@@ -205,11 +211,11 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 4: return ( // Who we are
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.who}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{T.mvv}</h2>
         {[[T.mission, book.who.mission], [T.vision, book.who.vision]].map(([k, v]) => (
-          <div key={k} style={{ borderTop: "1px solid rgba(0,0,0,.12)", padding: "8pt 0", display: "flex", gap: "14pt" }}>
+          <div key={k} style={{ borderTop: "1px solid var(--bk-line)", padding: "8pt 0", display: "flex", gap: "14pt" }}>
             <b style={{ ...S.kick, flex: "0 0 90pt", opacity: 0.45 }}>{k}</b>
             <span style={{ ...S.body, fontSize: "11.5pt" }}>{v}</span>
           </div>
@@ -228,8 +234,8 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           {book.who.personality.map((p) => (
             <div key={p.left} style={{ display: "flex", alignItems: "center", gap: "10pt", fontSize: "9pt" }}>
               <span style={{ flex: "0 0 60pt" }}>{p.left}</span>
-              <div style={{ flex: 1, height: 3, background: "rgba(0,0,0,.1)", borderRadius: 2, position: "relative" }}>
-                <i style={{ position: "absolute", top: -3.5, left: `${Math.min(97, Math.max(2, p.pos))}%`, width: 10, height: 10, borderRadius: "50%", background: "#1a1823" }} />
+              <div style={{ flex: 1, height: 3, background: "var(--bk-line)", borderRadius: 2, position: "relative" }}>
+                <i style={{ position: "absolute", top: -3.5, left: `${Math.min(97, Math.max(2, p.pos))}%`, width: 10, height: 10, borderRadius: "50%", background: "currentColor" }} />
               </div>
               <span style={{ flex: "0 0 60pt", textAlign: "right" }}>{p.right}</span>
             </div>
@@ -239,14 +245,14 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 5: return ( // The wordmark
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.wordmark}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 14pt" }}>{T.setWithCare}</h2>
-        <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "10pt", display: "grid", placeItems: "center", padding: "34pt 10pt", marginBottom: "12pt" }} dangerouslySetInnerHTML={mark("light", 78)} />
+        <div style={{ border: "1px solid var(--bk-line)", borderRadius: "10pt", display: "grid", placeItems: "center", padding: "34pt 10pt", marginBottom: "12pt" }} dangerouslySetInnerHTML={mark(th === 0 ? "night" : "light", 78)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", marginBottom: "16pt" }}>
           {([["night", pal.night, T.onNight], ["mono", grad, T.oneColour], ["light", "#f4f2ee", T.onPaper]] as const).map(([v, bg, label]) => (
             <div key={label}>
-              <div style={{ background: bg, borderRadius: "8pt", display: "grid", placeItems: "center", padding: "20pt 6pt", border: "1px solid rgba(0,0,0,.06)" }} dangerouslySetInnerHTML={mark(v, 34)} />
+              <div style={{ background: bg, borderRadius: "8pt", display: "grid", placeItems: "center", padding: "20pt 6pt", border: "1px solid var(--bk-line)" }} dangerouslySetInnerHTML={mark(v, 34)} />
               <div style={{ ...S.kick, marginTop: "5pt", letterSpacing: "0.1em" }}>{label}</div>
             </div>
           ))}
@@ -262,11 +268,11 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: "16pt", marginTop: "auto", paddingBottom: "24pt" }}>
-          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+          <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
             <div style={{ ...S.kick, marginBottom: "4pt" }}>{T.minSize}</div>
             <p style={{ ...S.small, margin: 0 }}>{T.minSizeTxt}</p>
           </div>
-          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+          <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
             <div style={{ ...S.kick, marginBottom: "4pt" }}>{T.files}</div>
             <p style={{ ...S.small, margin: 0 }}>{T.filesTxt}</p>
           </div>
@@ -275,13 +281,13 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 6: return ( // Colour & type
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.colour}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{T.fromTo((book.palette[0]?.name || "dawn").toLowerCase(), (book.palette[book.palette.length - 1]?.name || "night").toLowerCase())}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10pt", marginBottom: "12pt" }}>
           {book.palette.map((c) => (
             <div key={c.name}>
-              <div style={{ height: "70pt", borderRadius: "8pt", background: c.hex, border: "1px solid rgba(0,0,0,.08)" }} />
+              <div style={{ height: "70pt", borderRadius: "8pt", background: c.hex, border: "1px solid var(--bk-line)" }} />
               <b style={{ fontSize: "9.5pt", display: "block", marginTop: "5pt" }}>{c.name}</b>
               <span style={{ fontFamily: "var(--mono)", fontSize: "8pt", opacity: 0.6 }}>{c.hex.toUpperCase()}</span>
             </div>
@@ -290,12 +296,12 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <p style={{ ...S.small, maxWidth: "88%" }}>{book.colourNote}</p>
         <div style={{ ...S.kick, margin: "16pt 0 8pt" }}>{T.type}</div>
         <div style={{ display: "flex", gap: "16pt", paddingBottom: "24pt" }}>
-          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+          <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
             <span style={{ fontSize: "26pt", fontWeight: 800, letterSpacing: "-0.03em" }}>Aa</span>
             <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>SF Pro Display · Heavy</div>
             <div style={S.small}>{T.headlines}</div>
           </div>
-          <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt" }}>
+          <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
             <span style={{ fontSize: "26pt", fontWeight: 400 }}>Aa</span>
             <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>SF Pro Text · Regular</div>
             <div style={S.small}>{T.body}</div>
@@ -305,12 +311,12 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 7: return ( // Voice
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.voice}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{book.voice.words.join(". ")}.</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: "10pt" }}>
           {book.voice.lines.map((l) => (
-            <div key={l.word} style={{ borderTop: "1px solid rgba(0,0,0,.12)", paddingTop: "8pt", display: "flex", gap: "14pt" }}>
+            <div key={l.word} style={{ borderTop: "1px solid var(--bk-line)", paddingTop: "8pt", display: "flex", gap: "14pt" }}>
               <b style={{ flex: "0 0 90pt", fontSize: "10.5pt" }}>{l.word}</b>
               <span style={S.body}>{l.note}</span>
             </div>
@@ -322,7 +328,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
             <b style={{ ...S.kick, opacity: 0.45 }}>{T.yes}</b>
             <div style={{ ...S.h, fontStyle: "italic", fontSize: "13pt", marginTop: "4pt" }}>“{book.voice.yes}”</div>
           </div>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", opacity: 0.6 }}>
+          <div style={{ border: "1px solid var(--bk-line)", borderRadius: "8pt", padding: "12pt", opacity: 0.6 }}>
             <b style={{ ...S.kick }}>{T.not}</b>
             <div style={{ fontSize: "11pt", marginTop: "4pt", textDecoration: "line-through" }}>“{book.voice.not}”</div>
           </div>
@@ -331,11 +337,11 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       </div>
     );
     case 8: return ( // Messaging
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.messaging}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{T.everyLength}</h2>
         {[[T.tagline, book.tagline], [T.oneLiner, book.messaging.oneLiner], [T.pitch, book.messaging.pitch], [T.boiler, book.messaging.boilerplate]].map(([k, v]) => (
-          <div key={k} style={{ borderTop: "1px solid rgba(0,0,0,.12)", padding: "8pt 0" }}>
+          <div key={k} style={{ borderTop: "1px solid var(--bk-line)", padding: "8pt 0" }}>
             <b style={{ ...S.kick, opacity: 0.45 }}>{k}</b>
             <p style={{ ...S.body, margin: "4pt 0 0", fontSize: k === T.tagline ? "13pt" : "10pt" }}>{v}</p>
           </div>
@@ -380,7 +386,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
           <div style={S.kick}>{T.mood}</div>
           <h2 style={{ ...S.h, fontSize: "24pt", margin: "14pt 0 14pt" }}>{T.moodT}</h2>
           <div dangerouslySetInnerHTML={{ __html: moodSvg(pal, tiles).replace(/width="700" height="560"/, 'width="100%" height="auto"') }} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", borderTop: "1px solid rgba(0,0,0,.1)", paddingTop: "10pt", marginTop: "8pt", marginBottom: "auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", borderTop: "1px solid var(--bk-line)", paddingTop: "10pt", marginTop: "8pt", marginBottom: "auto" }}>
             {rule(true, T.photoThis, m?.yes || "real moments, real people, the place itself.")}
             {rule(true, T.keepIt, m?.warm || `in ${name}'s colours: warm light, honest detail.`)}
             {rule(false, T.notThis, m?.not || "stock smiles, flash, empty logos on white.")}
@@ -390,18 +396,18 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       );
     }
     default: return ( // Applications
-      <div className="bk-page">
+      <div className={pc} style={pv}>
         <div style={S.kick}>{T.inUse}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{T.outThere(name)}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", flex: 1, gridTemplateRows: "1fr auto auto", paddingBottom: "24pt" }}>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "150pt" }}>
+          <div style={{ border: "1px solid var(--bk-line)", borderRadius: "8pt", padding: "12pt", display: "grid", placeItems: "center", minHeight: "150pt" }}>
             <div style={{ textAlign: "center" }}>
               <div dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(ctx.logoKey), name, pal, { variant: "icon", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, shape: ctx.logoShape, custom: ctx.logoCustom, height: 92 }) }} />
               <div style={{ ...S.kick, marginTop: "8pt" }}>{T.appIcon}</div>
             </div>
           </div>
-          <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "16pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
-            <div dangerouslySetInnerHTML={mark("light", 34)} />
+          <div style={{ border: "1px solid var(--bk-line)", borderRadius: "8pt", padding: "16pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
+            <div dangerouslySetInnerHTML={mark(th === 0 ? "night" : "light", 34)} />
             <div style={{ fontSize: "10pt", fontWeight: 600, marginTop: "10pt" }}>Camille Martin</div>
             <div style={{ ...S.small }}>{T.founder} · camille@{ctx.domain}</div>
             <div style={{ ...S.kick, marginTop: "8pt", opacity: 0.4 }}>{T.bizCard}</div>
@@ -416,7 +422,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
             <div style={{ fontFamily: "var(--bookserif)", fontSize: "19pt", fontWeight: 500 }}>{book.tagline}</div>
             <div style={{ fontSize: "8.5pt", marginTop: "6pt", opacity: 0.7 }}>{T.webHeader}</div>
           </div>
-          <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(0,0,0,.12)", borderRadius: "8pt", padding: "13pt", fontSize: "9.5pt", opacity: 0.85 }}>
+          <div style={{ gridColumn: "1 / -1", border: "1px solid var(--bk-line)", borderRadius: "8pt", padding: "13pt", fontSize: "9.5pt", opacity: 0.85 }}>
             Camille Martin · {T.founder}<br />
             <b>{name}</b> · {ctx.domain} · {book.tagline}
             <div style={{ ...S.kick, marginTop: "6pt", opacity: 0.4 }}>{T.emailSig}</div>
