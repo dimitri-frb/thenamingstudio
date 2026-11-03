@@ -3054,3 +3054,6 @@
 }
 .wr-deck .dkph { font-family: var(--mono); color: var(--nova); }
 .wr-dkview .tip { margin: 10px 0 0; font-size: 13px; color: var(--text2); text-align: center; }
+.wr-lwrap.l12 .lmorerow { display: flex; justify-content: center; align-items: center; gap: 4px; margin: 12px 0 0; white-space: nowrap; }
+.wr-lwrap.l12 .lmorerow .lmore { margin: 0; }
+.wr-lwrap.l12 .lseen { font-size: 11px; color: var(--text3); }

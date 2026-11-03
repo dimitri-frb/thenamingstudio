@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide,
 } from "./api";
-import { buildLogoPack, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { buildLogoPack, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
@@ -1866,7 +1866,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
                     );
                   })}
               </div>
-              <button className="wr-link lmore" onClick={() => { const b = logoSeed + 1; setLogoSeed(b); setLogoBumps({}); track("logo_batch_more", { name: picked.name, batch: b + 1 }); }}>↻ Show twelve more</button>
+              {(() => {
+                const total = logoBatches(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste);
+                const seenAll = logoSeed + 1 >= total;
+                return (
+                  <p className="lmorerow">
+                    {seenAll && <span className="mono lseen">You've seen all {total * 12} · </span>}
+                    <button className="wr-link lmore" onClick={() => { const b = logoSeed + 1; setLogoSeed(b); setLogoBumps({}); track("logo_batch_more", { name: picked.name, batch: b + 1 }); }}>{seenAll ? "↻ Mix them again" : `↻ Show twelve more · ${logoSeed + 1}/${total}`}</button>
+                  </p>
+                );
+              })()}
               </div>
               {logoSel && (
                 <div className="wr-lctx rise">

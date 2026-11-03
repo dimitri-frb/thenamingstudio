@@ -666,10 +666,13 @@ const TYPE_FONTS: Record<string, number[]> = {
   "Geometric sans": [12, 13, 14], "Grotesque": [15, 16, 17], "Strong caps": [18, 19, 20], "Rounded": [21, 22, 23],
   "Technical mono": [24, 25, 26], "Script": [27, 28, 29],
 };
-// A second voice per type pick, for range (serif briefs also see a sans, etc.).
-const TYPE_ALT: Record<string, number[]> = {
-  "Elegant serif": [9, 12], "Modern serif": [15, 9], "Slab serif": [17, 10], "Clean sans": [3, 15], "Geometric sans": [0, 18],
-  "Grotesque": [4, 24], "Strong caps": [15, 3], "Rounded": [12, 27], "Technical mono": [15, 9], "Script": [1, 12],
+// The broad family of each type pick: the only fonts its logos may use.
+const SANS_ALL = [9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23];
+const TYPE_FAMILY: Record<string, number[]> = {
+  "Elegant serif": [0, 1, 2, 3, 4, 5], "Modern serif": [3, 4, 5, 0, 1, 2], "Slab serif": [6, 7, 8, 3, 5],
+  "Clean sans": SANS_ALL, "Geometric sans": [12, 13, 14, 9, 10, 11, 21, 22], "Grotesque": [15, 16, 17, 9, 10, 11, 18],
+  "Strong caps": [18, 19, 20, 17, 15], "Rounded": [21, 22, 23, 12, 14, 10], "Technical mono": [24, 25, 26, 15, 9],
+  "Script": [27, 28, 29],
 };
 
 type SymFamily = "round" | "sharp" | "geometric" | "organic";
@@ -723,27 +726,60 @@ export const X_SYMS: Record<string, XSym> = {
   book: { fam: "organic", label: "Pages", why: "an open book: knowledge, a story", draw: (x, y, r, c) => P(`M${n2(x)} ${n2(y - r * 0.55)}C${n2(x - r * 0.35)} ${n2(y - r * 0.8)} ${n2(x - r * 0.75)} ${n2(y - r * 0.8)} ${n2(x - r)} ${n2(y - r * 0.65)}V${n2(y + r * 0.75)}C${n2(x - r * 0.7)} ${n2(y + r * 0.6)} ${n2(x - r * 0.3)} ${n2(y + r * 0.62)} ${n2(x)} ${n2(y + r * 0.85)}Z`, c) + P(`M${n2(x)} ${n2(y - r * 0.55)}C${n2(x + r * 0.35)} ${n2(y - r * 0.8)} ${n2(x + r * 0.75)} ${n2(y - r * 0.8)} ${n2(x + r)} ${n2(y - r * 0.65)}V${n2(y + r * 0.75)}C${n2(x + r * 0.7)} ${n2(y + r * 0.6)} ${n2(x + r * 0.3)} ${n2(y + r * 0.62)} ${n2(x)} ${n2(y + r * 0.85)}Z`, c).replace(`fill="${c}"`, `fill="${c}" opacity=".7"`) },
   pin: { fam: "organic", label: "Place", why: "a pin: a place, found", draw: (x, y, r, c, bg) => P(`M${n2(x)} ${n2(y + r)}C${n2(x - r * 0.25)} ${n2(y + r * 0.55)} ${n2(x - r * 0.75)} ${n2(y + r * 0.1)} ${n2(x - r * 0.75)} ${n2(y - r * 0.3)}A${n2(r * 0.75)} ${n2(r * 0.75)} 0 0 1 ${n2(x + r * 0.75)} ${n2(y - r * 0.3)}C${n2(x + r * 0.75)} ${n2(y + r * 0.1)} ${n2(x + r * 0.25)} ${n2(y + r * 0.55)} ${n2(x)} ${n2(y + r)}Z`, c) + `<circle cx="${n2(x)}" cy="${n2(y - r * 0.3)}" r="${n2(r * 0.28)}" fill="${bg}"/>` },
   heart: { fam: "organic", label: "Care", why: "a heart, drawn simply: care", draw: (x, y, r, c) => P(`M${n2(x)} ${n2(y + r * 0.9)}C${n2(x - r * 1.2)} ${n2(y)} ${n2(x - r * 0.95)} ${n2(y - r * 1.05)} ${n2(x)} ${n2(y - r * 0.4)}C${n2(x + r * 0.95)} ${n2(y - r * 1.05)} ${n2(x + r * 1.2)} ${n2(y)} ${n2(x)} ${n2(y + r * 0.9)}Z`, c) },
+  // ── added 3 Nov (tester: "the choice of symbols is very limited")
+  sunburst: { fam: "round", label: "Sunburst", why: "a sun with its rays: warmth, optimism", draw: (x, y, r, c) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.42)}" fill="${c}"/>` + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<rect x="${n2(x - r * 0.07)}" y="${n2(y - r)}" width="${n2(r * 0.14)}" height="${n2(r * 0.3)}" rx="${n2(r * 0.07)}" fill="${c}" transform="rotate(${a} ${n2(x)} ${n2(y)})"/>`).join("") },
+  ring: { fam: "round", label: "Ring", why: "a single bold ring: whole, complete", draw: (x, y, r, c) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.74)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.34)}"/>` },
+  trio: { fam: "round", label: "Trio", why: "three dots together: a small team, a community", draw: (x, y, r, c) => [[0, -0.5], [-0.52, 0.4], [0.52, 0.4]].map(([a, b]) => `<circle cx="${n2(x + a * r)}" cy="${n2(y + b * r)}" r="${n2(r * 0.4)}" fill="${c}"/>`).join("") },
+  eye: { fam: "round", label: "Vision", why: "an open eye: insight, seeing clearly", draw: (x, y, r, c, bg) => P(`M${n2(x - r)} ${n2(y)}Q${n2(x)} ${n2(y - r * 1.05)} ${n2(x + r)} ${n2(y)}Q${n2(x)} ${n2(y + r * 1.05)} ${n2(x - r)} ${n2(y)}Z`, c) + `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.34)}" fill="${bg}"/><circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.16)}" fill="${c}"/>` },
+  bridge: { fam: "round", label: "Bridge", why: "a bridge: connecting two sides", draw: (x, y, r, c) => S(`M${n2(x - r)} ${n2(y + r * 0.55)}H${n2(x + r)}`, c, r * 0.16) + S(`M${n2(x - r * 0.8)} ${n2(y + r * 0.55)}V${n2(y)}A${n2(r * 0.8)} ${n2(r * 0.8)} 0 0 1 ${n2(x + r * 0.8)} ${n2(y)}V${n2(y + r * 0.55)}`, c, r * 0.16) + S(`M${n2(x)} ${n2(y - r * 0.8)}V${n2(y + r * 0.55)}`, c, r * 0.12) },
+  dial: { fam: "round", label: "Dial", why: "a dial: time, measure, control", draw: (x, y, r, c) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.86)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.15)}"/>` + S(`M${n2(x)} ${n2(y)}V${n2(y - r * 0.5)}M${n2(x)} ${n2(y)}L${n2(x + r * 0.35)} ${n2(y + r * 0.2)}`, c, r * 0.15) },
+  cloud: { fam: "round", label: "Cloud", why: "a soft cloud: light, always there", draw: (x, y, r, c) => P(`M${n2(x - r * 0.62)} ${n2(y + r * 0.5)}A${n2(r * 0.4)} ${n2(r * 0.4)} 0 0 1 ${n2(x - r * 0.58)} ${n2(y - r * 0.28)}A${n2(r * 0.55)} ${n2(r * 0.55)} 0 0 1 ${n2(x + r * 0.42)} ${n2(y - r * 0.3)}A${n2(r * 0.42)} ${n2(r * 0.42)} 0 0 1 ${n2(x + r * 0.6)} ${n2(y + r * 0.5)}Z`, c) },
+  star: { fam: "sharp", label: "Star", why: "a five-point star: excellence", draw: (x, y, r, c) => { let d = ""; for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2 - Math.PI / 2; const rr = i % 2 ? r * 0.42 : r; d += `${i ? "L" : "M"}${n2(x + Math.cos(a) * rr)} ${n2(y + Math.sin(a) * rr)}`; } return P(d + "Z", c); } },
+  north: { fam: "sharp", label: "North", why: "a compass star: direction, guidance", draw: (x, y, r, c) => { let d = ""; for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2 - Math.PI / 2; const rr = i % 2 ? r * 0.2 : i % 4 === 0 ? r : r * 0.55; d += `${i ? "L" : "M"}${n2(x + Math.cos(a) * rr)} ${n2(y + Math.sin(a) * rr)}`; } return P(d + "Z", c); } },
+  play: { fam: "sharp", label: "Play", why: "a play button: press start", draw: (x, y, r, c) => P(`M${n2(x - r * 0.55)} ${n2(y - r * 0.85)}L${n2(x + r * 0.85)} ${n2(y)}L${n2(x - r * 0.55)} ${n2(y + r * 0.85)}Z`, c) },
+  crown: { fam: "sharp", label: "Crown", why: "a crown: the best of its kind", draw: (x, y, r, c) => P(`M${n2(x - r)} ${n2(y - r * 0.55)}L${n2(x - r * 0.5)} ${n2(y + r * 0.05)}L${n2(x)} ${n2(y - r * 0.75)}L${n2(x + r * 0.5)} ${n2(y + r * 0.05)}L${n2(x + r)} ${n2(y - r * 0.55)}V${n2(y + r * 0.45)}H${n2(x - r)}Z`, c) + `<rect x="${n2(x - r)}" y="${n2(y + r * 0.6)}" width="${n2(r * 2)}" height="${n2(r * 0.22)}" rx="${n2(r * 0.08)}" fill="${c}"/>` },
+  gem: { fam: "sharp", label: "Gem", why: "a cut gem: rare and precious", draw: (x, y, r, c, bg) => P(`M${n2(x - r * 0.55)} ${n2(y - r * 0.7)}H${n2(x + r * 0.55)}L${n2(x + r)} ${n2(y - r * 0.2)}L${n2(x)} ${n2(y + r * 0.9)}L${n2(x - r)} ${n2(y - r * 0.2)}Z`, c) + S(`M${n2(x - r)} ${n2(y - r * 0.2)}H${n2(x + r)}M${n2(x - r * 0.3)} ${n2(y - r * 0.2)}L${n2(x)} ${n2(y + r * 0.85)}L${n2(x + r * 0.3)} ${n2(y - r * 0.2)}`, bg, r * 0.07) },
+  pulse: { fam: "sharp", label: "Pulse", why: "a heartbeat line: alive, measured", draw: (x, y, r, c) => S(`M${n2(x - r)} ${n2(y + r * 0.1)}H${n2(x - r * 0.45)}L${n2(x - r * 0.2)} ${n2(y - r * 0.7)}L${n2(x + r * 0.15)} ${n2(y + r * 0.75)}L${n2(x + r * 0.4)} ${n2(y + r * 0.1)}H${n2(x + r)}`, c, r * 0.17) },
+  arrow: { fam: "sharp", label: "Go", why: "an arrow out of a circle: going further", draw: (x, y, r, c) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.88)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.14)}"/>` + S(`M${n2(x - r * 0.35)} ${n2(y + r * 0.35)}L${n2(x + r * 0.35)} ${n2(y - r * 0.35)}M${n2(x - r * 0.15)} ${n2(y - r * 0.38)}H${n2(x + r * 0.38)}V${n2(y + r * 0.15)}`, c, r * 0.16) },
+  kite: { fam: "sharp", label: "Kite", why: "a kite in the wind: lift, lightness", draw: (x, y, r, c, bg) => P(`M${n2(x)} ${n2(y - r)}L${n2(x + r * 0.62)} ${n2(y - r * 0.15)}L${n2(x)} ${n2(y + r)}L${n2(x - r * 0.62)} ${n2(y - r * 0.15)}Z`, c) + S(`M${n2(x)} ${n2(y - r)}V${n2(y + r)}M${n2(x - r * 0.62)} ${n2(y - r * 0.15)}H${n2(x + r * 0.62)}`, bg, r * 0.07) },
+  hex: { fam: "geometric", label: "Hex", why: "a hexagon: strong, efficient structure", draw: (x, y, r, c, bg) => { let d = ""; for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 - Math.PI / 2; d += `${i ? "L" : "M"}${n2(x + Math.cos(a) * r)} ${n2(y + Math.sin(a) * r)}`; } return P(d + "Z", c) + `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.3)}" fill="${bg}"/>`; } },
+  plus: { fam: "geometric", label: "Plus", why: "a plus: care added, something more", draw: (x, y, r, c) => P(`M${n2(x - r * 0.3)} ${n2(y - r)}H${n2(x + r * 0.3)}V${n2(y - r * 0.3)}H${n2(x + r)}V${n2(y + r * 0.3)}H${n2(x + r * 0.3)}V${n2(y + r)}H${n2(x - r * 0.3)}V${n2(y + r * 0.3)}H${n2(x - r)}V${n2(y - r * 0.3)}H${n2(x - r * 0.3)}Z`, c) },
+  house: { fam: "geometric", label: "Home", why: "a simple house: home, belonging", draw: (x, y, r, c, bg) => P(`M${n2(x)} ${n2(y - r)}L${n2(x + r * 0.9)} ${n2(y - r * 0.15)}V${n2(y + r * 0.9)}H${n2(x - r * 0.9)}V${n2(y - r * 0.15)}Z`, c) + `<rect x="${n2(x - r * 0.22)}" y="${n2(y + r * 0.3)}" width="${n2(r * 0.44)}" height="${n2(r * 0.6)}" rx="${n2(r * 0.08)}" fill="${bg}"/>` },
+  window: { fam: "geometric", label: "Window", why: "four panes: a view onto something", draw: (x, y, r, c) => [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => `<rect x="${n2(x + (a < 0 ? -r : r * 0.08))}" y="${n2(y + (b < 0 ? -r : r * 0.08))}" width="${n2(r * 0.92)}" height="${n2(r * 0.92)}" rx="${n2(r * 0.12)}" fill="${c}"/>`).join("") },
+  quarter: { fam: "geometric", label: "Quarters", why: "four quarter-circles: modular, playful order", draw: (x, y, r, c) => P(`M${n2(x - r)} ${n2(y)}A${n2(r)} ${n2(r)} 0 0 1 ${n2(x)} ${n2(y - r)}V${n2(y)}Z M${n2(x + r)} ${n2(y)}A${n2(r)} ${n2(r)} 0 0 1 ${n2(x)} ${n2(y + r)}V${n2(y)}Z`, c) + P(`M${n2(x + r * 0.08)} ${n2(y - r * 0.08)}V${n2(y - r)}H${n2(x + r)}V${n2(y - r * 0.08)}Z M${n2(x - r * 0.08)} ${n2(y + r * 0.08)}V${n2(y + r)}H${n2(x - r)}V${n2(y + r * 0.08)}Z`, c).replace(`fill="${c}"`, `fill="${c}" opacity=".45"`) },
+  stripes: { fam: "geometric", label: "Stripes", why: "three bold stripes: rhythm and pace", draw: (x, y, r, c) => [-0.62, 0, 0.62].map((o) => `<rect x="${n2(x + o * r - r * 0.18)}" y="${n2(y - r)}" width="${n2(r * 0.36)}" height="${n2(r * 2)}" rx="${n2(r * 0.18)}" fill="${c}" transform="rotate(20 ${n2(x)} ${n2(y)})"/>`).join("") },
+  node: { fam: "geometric", label: "Network", why: "connected nodes: a network that links people and data", draw: (x, y, r, c) => S(`M${n2(x - r * 0.65)} ${n2(y + r * 0.5)}L${n2(x)} ${n2(y - r * 0.55)}L${n2(x + r * 0.65)} ${n2(y + r * 0.5)}Z`, c, r * 0.12) + [[-0.65, 0.5], [0, -0.55], [0.65, 0.5]].map(([a, b]) => `<circle cx="${n2(x + a * r)}" cy="${n2(y + b * r)}" r="${n2(r * 0.3)}" fill="${c}"/>`).join("") },
+  keyhole: { fam: "geometric", label: "Keyhole", why: "a keyhole: access, something kept safe", draw: (x, y, r, c, bg) => `<rect x="${n2(x - r * 0.85)}" y="${n2(y - r * 0.85)}" width="${n2(r * 1.7)}" height="${n2(r * 1.7)}" rx="${n2(r * 0.4)}" fill="${c}"/><circle cx="${n2(x)}" cy="${n2(y - r * 0.15)}" r="${n2(r * 0.26)}" fill="${bg}"/>` + P(`M${n2(x - r * 0.12)} ${n2(y)}H${n2(x + r * 0.12)}L${n2(x + r * 0.2)} ${n2(y + r * 0.45)}H${n2(x - r * 0.2)}Z`, bg) },
+  pine: { fam: "organic", label: "Pine", why: "an evergreen: steady, lasting growth", draw: (x, y, r, c) => P(`M${n2(x)} ${n2(y - r)}L${n2(x + r * 0.55)} ${n2(y - r * 0.25)}H${n2(x + r * 0.3)}L${n2(x + r * 0.8)} ${n2(y + r * 0.5)}H${n2(x - r * 0.8)}L${n2(x - r * 0.3)} ${n2(y - r * 0.25)}H${n2(x - r * 0.55)}Z`, c) + `<rect x="${n2(x - r * 0.1)}" y="${n2(y + r * 0.5)}" width="${n2(r * 0.2)}" height="${n2(r * 0.45)}" fill="${c}"/>` },
+  spiral: { fam: "organic", label: "Spiral", why: "a spiral shell: natural growth, depth", draw: (x, y, r, c) => { let d = ""; for (let i = 0; i <= 60; i++) { const t = (i / 60) * Math.PI * 4.2; const rr = r * 0.08 + (r * 0.84 * i) / 60; d += `${i ? "L" : "M"}${n2(x + Math.cos(t) * rr)} ${n2(y + Math.sin(t) * rr)}`; } return S(d, c, r * 0.15); } },
+  cup: { fam: "organic", label: "Cup", why: "a warm cup: a pause, hospitality", draw: (x, y, r, c) => P(`M${n2(x - r * 0.8)} ${n2(y - r * 0.35)}H${n2(x + r * 0.5)}V${n2(y + r * 0.3)}A${n2(r * 0.55)} ${n2(r * 0.55)} 0 0 1 ${n2(x - r * 0.25)} ${n2(y + r * 0.85)}H${n2(x - r * 0.05)}A${n2(r * 0.75)} ${n2(r * 0.55)} 0 0 1 ${n2(x - r * 0.8)} ${n2(y + r * 0.3)}Z`, c) + S(`M${n2(x + r * 0.5)} ${n2(y - r * 0.15)}H${n2(x + r * 0.7)}A${n2(r * 0.25)} ${n2(r * 0.25)} 0 0 1 ${n2(x + r * 0.7)} ${n2(y + r * 0.35)}H${n2(x + r * 0.45)}`, c, r * 0.13) + S(`M${n2(x - r * 0.4)} ${n2(y - r * 0.6)}q${n2(r * 0.12)} ${n2(-r * 0.2)} 0 ${n2(-r * 0.38)}M${n2(x)} ${n2(y - r * 0.6)}q${n2(r * 0.12)} ${n2(-r * 0.2)} 0 ${n2(-r * 0.38)}`, c, r * 0.1) },
+  anchor: { fam: "organic", label: "Anchor", why: "an anchor: steady, dependable", draw: (x, y, r, c) => `<circle cx="${n2(x)}" cy="${n2(y - r * 0.7)}" r="${n2(r * 0.2)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.12)}"/>` + S(`M${n2(x)} ${n2(y - r * 0.5)}V${n2(y + r * 0.9)}M${n2(x - r * 0.4)} ${n2(y - r * 0.2)}H${n2(x + r * 0.4)}M${n2(x - r * 0.85)} ${n2(y + r * 0.25)}Q${n2(x - r * 0.75)} ${n2(y + r * 0.9)} ${n2(x)} ${n2(y + r * 0.9)}Q${n2(x + r * 0.75)} ${n2(y + r * 0.9)} ${n2(x + r * 0.85)} ${n2(y + r * 0.25)}`, c, r * 0.14) },
+  feather: { fam: "organic", label: "Feather", why: "a feather: light touch, freedom", draw: (x, y, r, c, bg) => P(`M${n2(x + r * 0.75)} ${n2(y - r)}C${n2(x - r * 0.2)} ${n2(y - r * 0.8)} ${n2(x - r * 0.85)} ${n2(y)} ${n2(x - r * 0.6)} ${n2(y + r * 0.6)}C${n2(x)} ${n2(y + r * 0.5)} ${n2(x + r * 0.7)} ${n2(y)} ${n2(x + r * 0.75)} ${n2(y - r)}Z`, c) + S(`M${n2(x - r * 0.85)} ${n2(y + r)}L${n2(x + r * 0.5)} ${n2(y - r * 0.6)}`, bg, r * 0.08) + S(`M${n2(x - r * 0.85)} ${n2(y + r)}L${n2(x - r * 0.55)} ${n2(y + r * 0.62)}`, c, r * 0.1) },
+  hand: { fam: "organic", label: "Hands", why: "two cupped hands: holding something with care", draw: (x, y, r, c) => P(`M${n2(x - r)} ${n2(y - r * 0.1)}C${n2(x - r)} ${n2(y + r * 0.7)} ${n2(x - r * 0.4)} ${n2(y + r * 0.9)} ${n2(x - r * 0.06)} ${n2(y + r * 0.9)}V${n2(y + r * 0.35)}C${n2(x - r * 0.5)} ${n2(y + r * 0.35)} ${n2(x - r * 0.72)} ${n2(y + r * 0.1)} ${n2(x - r * 0.72)} ${n2(y - r * 0.1)}Z`, c) + P(`M${n2(x + r)} ${n2(y - r * 0.1)}C${n2(x + r)} ${n2(y + r * 0.7)} ${n2(x + r * 0.4)} ${n2(y + r * 0.9)} ${n2(x + r * 0.06)} ${n2(y + r * 0.9)}V${n2(y + r * 0.35)}C${n2(x + r * 0.5)} ${n2(y + r * 0.35)} ${n2(x + r * 0.72)} ${n2(y + r * 0.1)} ${n2(x + r * 0.72)} ${n2(y - r * 0.1)}Z`, c) + `<circle cx="${n2(x)}" cy="${n2(y - r * 0.4)}" r="${n2(r * 0.32)}" fill="${c}"/>` },
 };
 
 // The brief's sector → the marks that speak it (first match wins a head start).
 const SECTOR_SYMS: [RegExp, string[]][] = [
-  [/verif|trust|certif|compliance|legal|law|notar|audit|attest|insur|secur|safe|guard|protect/i, ["seal", "shield", "prism", "frame"]],
-  [/bank|financ|pay|fintech|invest|account|money|wealth|capital|fund|crypto|tax/i, ["bars", "split", "stairs", "shield"]],
-  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital/i, ["spark", "grid", "orbit", "pixel"]],
-  [/restaurant|food|caf[eé]|coffee|bak|kitchen|chef|dining|bistro|bar\b|wine|brew|cater|pizza|seafood|deli/i, ["vessel", "flame", "leaf", "pebble"]],
-  [/ceramic|pottery|craft|handmade|studio|atelier|maker|design|art|furniture/i, ["vessel", "pebble", "arch", "frame"]],
-  [/health|care|clinic|wellness|therapy|medic|fitness|yoga|mental|nutrition|spa/i, ["heart", "leaf", "drop", "bloom"]],
-  [/beauty|skin|cosmet|fashion|jewel|salon|perfume|luxury/i, ["bloom", "diamond", "drop", "crescent"]],
-  [/eco|green|garden|plant|farm|organic|sustain|nature|climate|solar/i, ["leaf", "sprout", "rise", "drop"]],
-  [/energy|power|electric|battery|charge|fast|speed/i, ["bolt", "spark", "ascent", "rise"]],
-  [/travel|tour|trip|hotel|holiday|outdoor|adventure|hike|mountain|surf/i, ["peak", "pin", "wave", "orbit"]],
-  [/sea|ocean|water|marine|boat|sail|beach|swim|fish/i, ["wave", "drop", "crescent", "rise"]],
-  [/home|house|real estate|property|interior|architect|build|construct/i, ["arch", "frame", "blocks", "cube"]],
-  [/learn|school|educat|course|tutor|teach|book|publish|library/i, ["book", "stairs", "spark", "bubble"]],
-  [/community|social|dating|friend|network|event|club|meet/i, ["venn", "bubble", "heart", "loop"]],
-  [/logistic|deliver|ship|transport|move|courier|supply/i, ["chevron", "cube", "ascent", "loop"]],
-  [/market|agency|brand|media|creative|content|ads|growth/i, ["target", "spark", "chevron", "ascent"]],
-  [/kid|child|toy|game|play/i, ["bloom", "pixel", "sprout", "bubble"]],
+  [/verif|trust|certif|compliance|legal|law|notar|audit|attest|insur|secur|safe|guard|protect/i, ["seal", "shield", "keyhole", "prism", "frame", "eye"]],
+  [/bank|financ|pay|fintech|invest|account|money|wealth|capital|fund|crypto|tax/i, ["bars", "split", "stairs", "shield", "dial", "hex"]],
+  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital/i, ["node", "spark", "grid", "pulse", "orbit", "pixel", "hex", "cloud"]],
+  [/restaurant|food|caf[eé]|coffee|bak|kitchen|chef|dining|bistro|bar\b|wine|brew|cater|pizza|seafood|deli/i, ["cup", "vessel", "flame", "leaf", "sunburst", "pebble"]],
+  [/ceramic|pottery|craft|handmade|studio|atelier|maker|design|art|furniture/i, ["vessel", "pebble", "arch", "spiral", "hand", "frame"]],
+  [/health|care|clinic|wellness|therapy|medic|fitness|yoga|mental|nutrition|spa/i, ["plus", "pulse", "heart", "hand", "leaf", "drop", "bloom"]],
+  [/beauty|skin|cosmet|fashion|jewel|salon|perfume|luxury/i, ["gem", "bloom", "diamond", "drop", "crescent", "feather", "crown"]],
+  [/eco|green|garden|plant|farm|organic|sustain|nature|climate|solar/i, ["leaf", "sprout", "pine", "sunburst", "rise", "drop"]],
+  [/energy|power|electric|battery|charge|fast|speed/i, ["bolt", "sunburst", "spark", "ascent", "pulse", "rise"]],
+  [/travel|tour|trip|hotel|holiday|outdoor|adventure|hike|mountain|surf/i, ["peak", "north", "pin", "kite", "wave", "pine", "orbit"]],
+  [/sea|ocean|water|marine|boat|sail|beach|swim|fish/i, ["wave", "anchor", "drop", "spiral", "crescent", "rise"]],
+  [/home|house|real estate|property|interior|architect|build|construct/i, ["house", "keyhole", "window", "arch", "frame", "blocks", "cube"]],
+  [/learn|school|educat|course|tutor|teach|book|publish|library/i, ["book", "stairs", "feather", "spark", "bubble", "star"]],
+  [/community|social|dating|friend|network|event|club|meet/i, ["trio", "venn", "bubble", "bridge", "heart", "loop"]],
+  [/logistic|deliver|ship|transport|move|courier|supply/i, ["chevron", "arrow", "cube", "ascent", "north", "loop"]],
+  [/market|agency|brand|media|creative|content|ads|growth/i, ["target", "play", "star", "spark", "chevron", "ascent", "eye"]],
+  [/film|cinema|video|music|audio|stream|podcast|media|photo|camera|studio/i, ["play", "eye", "star", "wave", "dial"]],
+  [/clean|wash|laundry|soap|bath|candle|hygien/i, ["drop", "wave", "sunburst", "bloom", "cloud", "spiral"]],
+  [/hair|barber|lash|nail|brow/i, ["feather", "gem", "crown", "bloom", "crescent"]],
+  [/kid|child|toy|game|play/i, ["star", "bloom", "kite", "pixel", "sprout", "bubble"]],
 ];
 const FAM_ORDER: Record<string, SymFamily[]> = {
   round: ["round", "organic", "geometric", "sharp"], sharp: ["sharp", "geometric", "round", "organic"],
@@ -759,39 +795,55 @@ const LAYOUT_TITLE: Record<string, string> = {
 // Twelve logos per batch (handoff concept-D v2). bumps[i] = how many times tile i's
 // "↻ More" was tapped: it keeps the layout and moves the symbol and the font on.
 export function logoConceptsX(name: string, brief: string, taste: { type?: string; shape?: string; feeling?: string[] }, seed = 0, bumps: Record<number, number> = {}): LogoConcept[] {
-  const h = hashStr((name || "") + "|" + seed);
-  const fam = (taste.shape === "Sharp & angular" ? "sharp" : taste.shape === "Organic" ? "organic" : taste.shape === "Geometric" ? "geometric" : "round") as SymFamily;
-  // symbols: the sector's first, then the shape family's, rotated by name + seed
-  const sector = SECTOR_SYMS.find(([re]) => re.test(brief || ""))?.[1] || [];
-  const byFam = FAM_ORDER[fam].flatMap((f) => Object.keys(X_SYMS).filter((k) => X_SYMS[k].fam === f));
-  const rot = <T,>(arr: T[], k: number): T[] => arr.map((_, i) => arr[(i + k) % arr.length]);
-  const pool = [...new Set([...rot(sector, seed % Math.max(1, sector.length)), ...rot(byFam.slice(0, 12), h % 12), ...byFam])];
-  const syms = pool.slice((seed * 4) % Math.max(1, pool.length - 6)).concat(pool).slice(0, 6);
-  // fonts: three from the type pick, two for range
+  const h = hashStr((name || "") + "|" + brief.slice(0, 40));
+  const pool = symbolPool(name, brief, taste);
+  // Each batch takes the next 10 symbols not yet shown: no repeats inside a
+  // batch, nothing reshown until every symbol has had its turn.
+  const per = 10, batches = Math.max(1, Math.floor(pool.length / per));
+  const bi = seed % batches, lap = Math.floor(seed / batches);
+  const syms = pool.slice(bi * per, bi * per + per);
+  // Fonts: only the chosen family. The pick's own 3 lead; the rest of the
+  // family (same broad style) gives range without leaving it.
   const own = TYPE_FONTS[taste.type || ""] || TYPE_FONTS["Clean sans"];
-  const alt = TYPE_ALT[taste.type || ""] || [3, 15];
-  const fonts = rot(own, seed % 3);
-  const pickF = (i: number) => (i < 6 ? fonts[i % 3] : alt[(i + seed) % 2]);
+  const fam = [...new Set([...own, ...(TYPE_FAMILY[taste.type || ""] || TYPE_FAMILY["Clean sans"])])];
+  const fOrder = [...own, ...fam.filter((f) => !own.includes(f))];
+  const fShift = (seed * 5 + (h % 3)) % fOrder.length;
+  const fontAt = (k: number) => fOrder[(k + fShift) % fOrder.length];
   const calm = (taste.feeling || []).includes("Calm & minimal"), bold = (taste.feeling || []).some((f) => f === "Bold & bright" || f === "Playful");
-  const caseOf = (fi: number, i: number) => (X_FONTS[fi].caps ? "u" : calm && i % 2 ? "l" : bold && i === 3 ? "u" : "n");
-  const plan: [string, number, number][] = [ // layout, symbol index, font index
-    ["side", 0, 0], ["stack", 1, 1], ["word", -1, 2], ["emblem", 2, 3], ["mono", 3, 4],
-    ["swap", 0, 5], ["pill", 4, 6], ["split", 5, 7],
-    ["side", 2, 2], ["stack", 3, 0], ["swap", 4, 1], ["icon", 1, 0],
+  const caseOf = (fi: number, i: number) => (X_FONTS[fi].caps ? "u" : calm && i % 3 === 1 ? "l" : bold && i % 4 === 3 ? "u" : "n");
+  // 12 tiles: 10 with a symbol (each a different one), a wordmark and a
+  // monogram. The letter-swap layout is gone (testers found it odd).
+  const plan: [string, number][] = [ // layout, symbol slot (-1 = none)
+    ["side", 0], ["stack", 1], ["word", -1], ["emblem", 2], ["pill", 3], ["split", 4],
+    ["mono", -1], ["side", 5], ["stack", 6], ["split", 7], ["side", 8], ["icon", 9],
   ];
-  const lays = rot(plan.slice(0, 11), seed % 11).concat([plan[11]]);
-  const allF = [...new Set([...own, ...alt])];
+  const lays = [...plan.slice(0, 11).map((_, i, a) => a[(i + seed + lap) % 11]), plan[11]];
   const ACC: Accent[] = ["dawn", "haze", "nova"];
-  return lays.map(([lay, si, fi], i) => {
+  return lays.map(([lay, si], i) => {
     const b = bumps[i] || 0;
-    const base = si < 0 ? "none" : syms[si % syms.length];
-    const sym = si < 0 || !b ? base : pool[(Math.max(0, pool.indexOf(base)) + b * 5) % pool.length];
-    const f0 = pickF(fi);
-    const f = b ? allF[(Math.max(0, allF.indexOf(f0)) + b) % allF.length] : f0;
+    // "↻ More" on a tile: same layout, a symbol from outside this batch, the next font.
+    const base = si < 0 ? "none" : syms[si % syms.length] || pool[si % pool.length];
+    const sym = si < 0 || !b ? base : pool[(pool.indexOf(base) + per * b + i) % pool.length];
+    const f = fontAt(i + b * 3 + lap);
     const key = `x:${lay}:${sym}:${f}:${caseOf(f, i)}`;
     const title = lay === "word" || lay === "mono" ? `${LAYOUT_TITLE[lay]} · ${X_FONTS[f].f}` : `${X_SYMS[sym]?.label || LAYOUT_TITLE[lay]} · ${LAYOUT_TITLE[lay]}`;
     return { key, title, accent: ACC[(i + seed) % 3], seed };
   });
+}
+/** Every symbol, in this brand's order: the sector's marks, then the shape
+ *  family's, then the rest (each list rotated by the name, so two brands in
+ *  the same sector don't open on the same marks). */
+export function symbolPool(name: string, brief: string, taste: { shape?: string }): string[] {
+  const h = hashStr((name || "") + "|" + (brief || "").slice(0, 40));
+  const fam = (taste.shape === "Sharp & angular" ? "sharp" : taste.shape === "Organic" ? "organic" : taste.shape === "Geometric" ? "geometric" : "round") as SymFamily;
+  const sector = [...new Set(SECTOR_SYMS.filter(([re]) => re.test(brief || "")).flatMap(([, l]) => l))];
+  const rot = <T,>(arr: T[], k: number): T[] => arr.map((_, i) => arr[(i + k) % arr.length]);
+  const byFam = FAM_ORDER[fam].map((f) => { const l = Object.keys(X_SYMS).filter((k) => X_SYMS[k].fam === f); return rot(l, h % Math.max(1, l.length)); });
+  return [...new Set([...rot(sector, h % Math.max(1, sector.length)), ...byFam[0], ...byFam[1], ...byFam[2], ...byFam[3]])];
+}
+/** How many fresh batches of twelve this brand has before they repeat. */
+export function logoBatches(name: string, brief: string, taste: { shape?: string }): number {
+  return Math.max(1, Math.floor(symbolPool(name, brief, taste).length / 10));
 }
 export function whyItWorksX(key: string, name: string): string {
   const [, lay, sym, fi] = key.split(":");
