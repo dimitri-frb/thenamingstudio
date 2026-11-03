@@ -2299,7 +2299,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         const order: PieceId[] = ["logo", "book", "socials", "mkt", "cards", "deck"];
         const nx = order[order.indexOf(p) + 1];
         const extra = p === "book" && bookCtx ? (
-          <div className="bookpages">{[0, 3, 6, 9].map((i) => <div key={i} onClick={() => setBookOpen(true)}><Suspense fallback={null}><ScaledPage i={i} ctx={bookCtx} width={isMobile ? 76 : 120} /></Suspense></div>)}</div>
+          <div className="bookpages">{[0, 3, 6, 9].map((i) => <div key={i} onClick={() => setBookOpen(true)}><Suspense fallback={null}><ScaledPage i={i} ctx={bookCtx} /></Suspense></div>)}</div>
         ) : p === "book" ? <div className="kitwait"><span className="wr-spin" /> Writing your brand book…</div>
         : p === "cards" ? (
           <>

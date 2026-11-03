@@ -435,13 +435,24 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
 }
 
 /* ── scaled page (fits parent width) ── */
-export function ScaledPage({ i, ctx, width }: { i: number; ctx: BookCtx; width: number }) {
-  const s = width / PAGE_W;
+// width: fixed px; omit it to fill the parent's width (re-measured on resize).
+export function ScaledPage({ i, ctx, width }: { i: number; ctx: BookCtx; width?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fw, setFw] = useState(0);
+  useEffect(() => {
+    if (width || !ref.current) return;
+    const el = ref.current;
+    const ro = new ResizeObserver(() => setFw(el.clientWidth));
+    ro.observe(el); setFw(el.clientWidth);
+    return () => ro.disconnect();
+  }, [width]);
+  const w = width || fw;
+  const s = w / PAGE_W;
   return (
-    <div style={{ width, height: PAGE_H * s, overflow: "hidden", borderRadius: 8, boxShadow: "0 18px 50px -20px rgba(0,0,0,.7)", flex: "0 0 auto" }}>
-      <div style={{ width: PAGE_W, height: PAGE_H, transform: `scale(${s})`, transformOrigin: "top left" }}>
+    <div ref={ref} style={{ width: width ?? "100%", height: w ? PAGE_H * s : undefined, aspectRatio: w ? undefined : `${PAGE_W} / ${PAGE_H}`, overflow: "hidden", borderRadius: 8, boxShadow: "0 18px 50px -20px rgba(0,0,0,.7)", flex: "0 0 auto" }}>
+      {w > 0 && <div style={{ width: PAGE_W, height: PAGE_H, transform: `scale(${s})`, transformOrigin: "top left" }}>
         <BookPage i={i} ctx={ctx} />
-      </div>
+      </div>}
     </div>
   );
 }

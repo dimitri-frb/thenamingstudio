@@ -3166,7 +3166,7 @@
 .bf-piece .pv.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .bf-piece .pv.deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .bf-piece .pv.deck span:first-child { grid-column: 1 / -1; }
-.bf-piece .pv.book .bookpages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; cursor: zoom-in; }
+.bf-piece .pv.book .bookpages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; cursor: zoom-in; }
 .bf-piece .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .bf-piece .chips button { font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: none; border: 1px solid var(--hairline2); border-radius: 999px; padding: 7px 14px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .bf-piece .chips button.on { background: #fff; color: #111; }
@@ -3258,3 +3258,5 @@
 .bk-page.t-colour { background: color-mix(in srgb, var(--bk-tint, #c9b6ff) 26%, #fff); }
 .bf-piece .vers.grid button .vt:has(> svg[viewBox="0 0 210 297"]) { aspect-ratio: 210 / 297; }
 .bf-sheet .help.ok a { color: #fff; font-weight: 700; } .bf-sheet .help.ok { color: #9fe3c1; }
+/* three versions (brand book): one row of three instead of 2 + 1 */
+.bf-piece .vers.grid:has(> button:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
