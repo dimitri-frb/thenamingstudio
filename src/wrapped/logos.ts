@@ -535,7 +535,6 @@ export async function buildLogoPack(
   const { makeZip } = await import("./zip");
   const { outlineSvg } = await import("./outline");
   const pal = toPalette(swatches);
-  const nm = (name || "logo").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
   const o = { accent, seed, font, shape, custom };
   // Lettering → vector outlines, so every file looks the same in any app.
   const svgs = {
@@ -551,37 +550,46 @@ export async function buildLogoPack(
   const white = (svg: string) => clear(svg).replace(/fill="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'fill="#ffffff"').replace(/stroke="#(?:[0-9a-fA-F]{3}){1,2}"/g, 'stroke="#ffffff"');
   const enc = new TextEncoder();
   const files: { name: string; data: Uint8Array }[] = [];
-  const add = (n: string, d: string | Uint8Array) => files.push({ name: `${nm}-brand/${n}`, data: typeof d === "string" ? enc.encode(d) : d });
-  add(`Logo/${nm}-logo.svg`, svgs.primary);
-  add(`Logo/${nm}-logo-reversed.svg`, svgs.reversed);
-  add(`Logo/${nm}-logo-gradient.svg`, svgs.gradient);
-  add(`Logo/${nm}-logo-black.svg`, black(svgs.mono));
-  add(`Logo/${nm}-logo-white.svg`, white(svgs.mono));
-  add(`Icon/${nm}-icon.svg`, svgs.icon);
+  const Nm = (name || "Logo").replace(/[^A-Za-z0-9-]+/g, "-");
+  // Handoff 27 · P·2: {Name}-logo-pack/ Logo · Icon · Colours · Logo guide.pdf · README.txt
+  const add = (n: string, d: string | Uint8Array) => files.push({ name: `${Nm}-logo-pack/${n}`, data: typeof d === "string" ? enc.encode(d) : d });
+  const byWidth = (svg: string, w: number) => { const m = svg.match(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/); const ar = m ? Number(m[1]) / Number(m[2]) : 2; return rasterSvg(svg, Math.round(w / ar)); };
+  const onPaper = (svg: string) => svg.replace(/(<svg[^>]*>)/, `$1<rect x="-10000" y="-10000" width="20000" height="20000" fill="#ffffff"/>`);
+  add(`Logo/${Nm}-logo.svg`, svgs.primary);
+  add(`Logo/${Nm}-logo-white.svg`, white(svgs.mono));
+  add(`Logo/${Nm}-logo-black.svg`, black(svgs.mono));
+  add(`Logo/${Nm}-logo-reversed.svg`, svgs.reversed);
+  add(`Icon/app-icon.svg`, svgs.icon);
   try {
-    add(`Logo/${nm}-logo@2x.png`, await rasterSvg(svgs.primary, 1024));
-    add(`Logo/${nm}-logo.png`, await rasterSvg(svgs.primary, 512));
-    add(`Logo/${nm}-logo-reversed@2x.png`, await rasterSvg(svgs.reversed, 1024));
-    add(`Logo/${nm}-logo-white@2x.png`, await rasterSvg(white(svgs.mono), 1024));
-    add(`Icon/${nm}-icon-1024.png`, await rasterSvg(svgs.icon, 1024));
-    add(`Icon/${nm}-icon-512.png`, await rasterSvg(svgs.icon, 512));
-    add(`Icon/apple-touch-icon.png`, await rasterSvg(svgs.icon, 180));
+    add(`Logo/${Nm}-logo.png`, await byWidth(onPaper(svgs.primary), 2000));
+    add(`Logo/${Nm}-logo@2x.png`, await byWidth(onPaper(svgs.primary), 4000));
+    add(`Logo/${Nm}-logo-transparent.png`, await byWidth(clear(svgs.primary), 2000));
+    add(`Logo/${Nm}-logo-white.png`, await byWidth(white(svgs.mono), 2000));
+    add(`Icon/app-icon-1024.png`, await rasterSvg(svgs.icon, 1024));
+    add(`Icon/app-icon-512.png`, await rasterSvg(svgs.icon, 512));
+    add(`Icon/app-icon-180.png`, await rasterSvg(svgs.icon, 180));
     add(`Icon/favicon-32.png`, await rasterSvg(svgs.icon, 32));
     add(`Icon/favicon.ico`, icoOf([await rasterSvg(svgs.icon, 16), await rasterSvg(svgs.icon, 32), await rasterSvg(svgs.icon, 48)], [16, 32, 48]));
   } catch { /* svg-only pack if the canvas fails */ }
   const sw = (Array.isArray(swatches) && swatches.length >= 4 ? swatches.slice(0, 4) : [{ name: "Dawn", hex: pal.dawn }, { name: "Haze", hex: pal.haze }, { name: "Nova", hex: pal.nova }, { name: "Night", hex: pal.night }]);
-  const rgb = (h: string) => { const x = h.replace("#", ""); const n = parseInt(x.length === 3 ? x.split("").map((c) => c + c).join("") : x.slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-  const cmyk = (h: string) => { const [r, g, b] = rgb(h).map((v) => v / 255); const k = 1 - Math.max(r, g, b); if (k >= 1) return [0, 0, 0, 100]; return [(1 - r - k) / (1 - k), (1 - g - k) / (1 - k), (1 - b - k) / (1 - k), k].map((v) => Math.round(v * 100)); };
-  add(`Colours/${nm}-colours.txt`, `${name} · brand colours\n\n` + sw.map((c) => `${c.name.padEnd(10)} HEX ${c.hex.toUpperCase()}   RGB ${rgb(c.hex).join(", ")}   CMYK ${cmyk(c.hex).join(" / ")}`).join("\n") + "\n");
+  const G = await import("./logoGuide");
+  add(`Colours/${Nm}-colours.ase`, G.aseOf(sw));
+  add(`Colours/${Nm}-colours.txt`, `${name} · brand colours\n\n` + sw.map((c) => `${c.name.padEnd(10)} HEX ${c.hex.toUpperCase()}   RGB ${G.rgbOf(c.hex).join(", ")}   CMYK ${G.cmykOf(c.hex).join(" / ")}`).join("\n") + "\n");
+  try {
+    const { svgPdf } = await import("./pdf");
+    const guide = await svgPdf([G.logoGuideSvg(name, key, pal, { accent, seed, font, shape, custom }, sw)], 297, 210, `${name} · Logo guide`);
+    add("Logo guide.pdf", new Uint8Array(await guide.arrayBuffer()));
+  } catch { /* the pack ships without the guide if the PDF can't be made */ }
   add("README.txt", `${name} · your logo files\n\nWhich file do I use?\n\n` +
-    `- Website, Shopify, Squarespace, Wix: Logo/${nm}-logo.svg (or the @2x PNG if SVG isn't accepted)\n` +
-    `- Instagram, TikTok, WhatsApp profile picture: Icon/${nm}-icon-1024.png\n` +
-    `- Canva, Word, Google Docs, email signature: Logo/${nm}-logo@2x.png\n` +
-    `- On a dark or photo background: Logo/${nm}-logo-white.svg or ${nm}-logo-reversed\n` +
-    `- Printing (signs, flyers, stickers): any .svg file, send it to your printer as is\n` +
-    `- Browser tab icon (favicon): Icon/favicon.ico, plus Icon/apple-touch-icon.png for iPhones\n\n` +
-    `Tips\n- Keep space around the logo, about the height of the first letter, on every side.\n- Don't stretch it, recolour it outside your palette, or add shadows.\n- The colour codes for printers and designers are in Colours/.\n`);
-  return { blob: makeZip(files), filename: `${nm}-logo-pack.zip` };
+    `Website            → Logo/${Nm}-logo.svg\n` +
+    `Instagram, Canva   → Logo/${Nm}-logo.png\n` +
+    `On a dark photo    → Logo/${Nm}-logo-white.svg\n` +
+    `Print (cards,      → Logo guide.pdf, or the SVG\n  signs, flyers)\n` +
+    `Browser tab        → Icon/favicon.ico\n` +
+    `App / home screen  → Icon/app-icon-1024.png\n` +
+    `Colours            → Colours/${Nm}-colours.txt (Adobe apps: the .ase)\n\n` +
+    `Every file uses vector lettering, so it looks the same on every device.\nPNGs are 2000 px wide (@2x: 4000 px). The transparent PNG has no background.\n\nMade with Name Name · namename.ai\n`);
+  return { blob: makeZip(files), filename: `${Nm}-logo-pack.zip` };
 }
 
 // A .ico holding PNG images (Windows Vista+, every browser).
