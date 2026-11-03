@@ -12,11 +12,12 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide,
 } from "./api";
-import { buildLogoPack, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { X_SYMS, buildLogoPack, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
 import { BusinessCards, PitchDeck } from "./Kits2";
+import { PersX, layoutTitle } from "./PersX";
 import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
@@ -339,7 +340,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   useEffect(() => {
     if (test) { // sample data is all seeded, so any step URL works directly
       const t = SLUG_STEP[pathSlug()];
-      if (t) { if (STEPS_ALL.indexOf(t) > STEPS_ALL.indexOf("logo")) setLogoSel(logoConcepts(0)[0]); setStep(t); }
+      if (t) { if (STEPS_ALL.indexOf(t) > STEPS_ALL.indexOf("logo")) setLogoSel(logoConceptsX(ACTIVE().names[0].name, "a rooftop cinema club", { type: "Clean sans", shape: "Round" }, 0)[0]); setStep(t); }
       return;
     }
     (async () => {
@@ -1974,8 +1975,19 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ 06f·b personalize the logo ═══ */}
-      {step === "pers" && picked && persDraft && brandOpen && (
+      {/* ═══ 06f·b personalize the logo (engine v2: edits the picked logo itself) ═══ */}
+      {step === "pers" && picked && brandOpen && (logoSel || logoTiles[0])?.key.startsWith("x:") && (
+        <PersX name={picked.name} pal={lpal} shape={lshape} brief={`${sentence} ${concept?.concept || ""} ${chips.join(" ")}`} taste={taste}
+          baseKey={(logoSel || logoTiles[0]).key} baseHex={(logoSel || logoTiles[0]).custom?.accentHex}
+          track={(ev, p) => track(ev, { name: picked.name, ...p })}
+          onBack={() => toStep("logodone")}
+          onSave={(key, hex) => {
+            const cur = logoSel || logoTiles[0];
+            setLogoSel({ ...cur, key, shape: lshape, title: `${X_SYMS[key.split(":")[2]]?.label && !["word", "mono"].includes(key.split(":")[1]) ? X_SYMS[key.split(":")[2]].label + " · " : ""}${layoutTitle(key.split(":")[1])}`, custom: hex ? { symbol: "none", layout: "side", accentHex: hex } : undefined });
+            toStep("logodone");
+          }} />
+      )}
+      {step === "pers" && picked && persDraft && brandOpen && !(logoSel || logoTiles[0])?.key.startsWith("x:") && (
         <>
           <div className="wr-stage" style={{ paddingTop: 18 }}>
             <div className="wr-lwrap wr-pers">
@@ -2326,7 +2338,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           {STEPS_ALL.map((s, i) => (
             <button
               key={s} className={s === step ? "on" : ""} title={s}
-              onClick={() => { if (s === "logodone" && !logoSel) setLogoSel(logoConcepts(0)[0]); toStep(s); }}
+              onClick={() => { if (s === "logodone" && !logoSel) setLogoSel(logoTiles[0] || logoConcepts(0)[0]); toStep(s); }}
             >{i}</button>
           ))}
         </div>

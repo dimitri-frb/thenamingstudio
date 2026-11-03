@@ -438,6 +438,9 @@ export function putSearch(search: SavedSearch): void {
 }
 
 /* ── personalize: "or just ask" + public share pages ── */
+export async function logoTweakX(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  return post<Record<string, unknown>>({ phase: "logotweakx", process: processId(), payload });
+}
 export async function logoTweak(params: Record<string, unknown>, ask: string): Promise<Record<string, unknown> | null> {
   return post<Record<string, unknown>>({ phase: "logotweak", process: processId(), payload: { params, ask } });
 }

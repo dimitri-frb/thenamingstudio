@@ -118,7 +118,9 @@ const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 
 export function logoSvg(key: string, rawName: string, pal: Palette, opts: { variant?: LogoVariant; accent?: keyof Palette; accentHex?: string; height?: number; seed?: number; font?: LogoFont; shape?: LogoShape; family?: string; famWeight?: number; custom?: CustomLogo } = {}): string {
   const variant = opts.variant || "light";
-  const accent = opts.accentHex && variant !== "mono" ? opts.accentHex : pal[opts.accent || "dawn"];
+  // A personalised colour rides on custom.accentHex for v2 logos too.
+  const hexAcc = opts.accentHex || (key.startsWith("x:") ? opts.custom?.accentHex : undefined);
+  const accent = hexAcc && variant !== "mono" ? hexAcc : pal[opts.accent || "dawn"];
   // Logo engine v2 (2 Nov): the key carries layout, symbol, font and case.
   if (key.startsWith("x:")) {
     return renderX(key, cap((rawName || "Name").trim()), pal, { variant, accent, H: opts.height || 220, shape: opts.shape || "round", famOverride: opts.family || opts.custom?.family, famWeight: opts.famWeight || opts.custom?.famWeight });
@@ -661,14 +663,14 @@ export const X_FONTS: XFont[] = [
   // 27–29 Script
   { f: "Pacifico", w: 400, wf: 0.62 }, { f: "Dancing Script", w: 700, wf: 0.5 }, { f: "Caveat", w: 700, wf: 0.46 },
 ];
-const TYPE_FONTS: Record<string, number[]> = {
+export const TYPE_FONTS: Record<string, number[]> = {
   "Elegant serif": [0, 1, 2], "Modern serif": [3, 4, 5], "Slab serif": [6, 7, 8], "Clean sans": [9, 10, 11],
   "Geometric sans": [12, 13, 14], "Grotesque": [15, 16, 17], "Strong caps": [18, 19, 20], "Rounded": [21, 22, 23],
   "Technical mono": [24, 25, 26], "Script": [27, 28, 29],
 };
 // The broad family of each type pick: the only fonts its logos may use.
 const SANS_ALL = [9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23];
-const TYPE_FAMILY: Record<string, number[]> = {
+export const TYPE_FAMILY: Record<string, number[]> = {
   "Elegant serif": [0, 1, 2, 3, 4, 5], "Modern serif": [3, 4, 5, 0, 1, 2], "Slab serif": [6, 7, 8, 3, 5],
   "Clean sans": SANS_ALL, "Geometric sans": [12, 13, 14, 9, 10, 11, 21, 22], "Grotesque": [15, 16, 17, 9, 10, 11, 18],
   "Strong caps": [18, 19, 20, 17, 15], "Rounded": [21, 22, 23, 12, 14, 10], "Technical mono": [24, 25, 26, 15, 9],
@@ -787,7 +789,7 @@ const FAM_ORDER: Record<string, SymFamily[]> = {
 };
 const hashStr = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
-const LAYOUT_TITLE: Record<string, string> = {
+export const LAYOUT_TITLE: Record<string, string> = {
   side: "Mark & name", stack: "Stacked", word: "Wordmark", emblem: "Emblem", mono: "Monogram",
   swap: "Letter mark", pill: "Badge", split: "Lockup", icon: "App icon",
 };
@@ -879,7 +881,8 @@ function measureText(t: string, fam: string, weight: number, size: number, spaci
 const TILE_BG = "#010203"; // stands for the tile's own background (a CSS variable) in the app
 
 function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVariant; accent: string; H: number; shape: LogoShape; famOverride?: string; famWeight?: number }): string {
-  const [, lay, symK, fiS, cs] = key.split(":");
+  const [, lay, symK, fiS, cs, scS] = key.split(":");
+  const symScale = Math.min(1.35, Math.max(0.65, Number(scS) || 1)); // personalisation: symbol size
   const f = X_FONTS[Number(fiS)] || X_FONTS[9];
   const fam = o.famOverride || f.f;
   ensureFonts([{ family: fam, weight: o.famOverride ? o.famWeight || 600 : f.w }]);
@@ -904,7 +907,7 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
   const wrap = (w: number, h: number, inner: string) => tileFix(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(w)} ${n2(h)}" width="${n2((w / h) * o.H)}" height="${o.H}">${defs}` +
     (v === "night" ? `<rect width="${n2(w)}" height="${n2(h)}" fill="${pal.night}"/>` : v === "dawn" ? `<rect width="${n2(w)}" height="${n2(h)}" rx="18" fill="url(#dg)"/>` : "") + inner + `</svg>`);
-  const mark = (cx: number, cy: number, r: number, c = acc, bg = bgCol) => (sym ? sym.draw(cx, cy, r, c, bg) : "");
+  const mark = (cx: number, cy: number, r: number, c = acc, bg = bgCol) => (sym ? sym.draw(cx, cy, r * symScale, c, bg) : "");
   const pad = 30;
   const rxf = o.shape === "sharp" ? 0.08 : o.shape === "geometric" ? 0.14 : o.shape === "organic" ? 0.32 : 0.24;
 

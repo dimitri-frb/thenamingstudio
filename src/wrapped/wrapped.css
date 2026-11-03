@@ -3057,3 +3057,27 @@
 .wr-lwrap.l12 .lmorerow { display: flex; justify-content: center; align-items: center; gap: 4px; margin: 12px 0 0; white-space: nowrap; }
 .wr-lwrap.l12 .lmorerow .lmore { margin: 0; }
 .wr-lwrap.l12 .lseen { font-size: 11px; color: var(--text3); }
+
+/* 06f·b personalisation v2 */
+.wr-pers.px .minis figure { flex: 1; margin: 0; min-width: 0; }
+.wr-pers.px .minis figcaption { font-size: 11px; color: var(--text3); text-align: center; margin-top: 5px; white-space: nowrap; }
+.wr-pers.px .minis .m { display: grid; }
+.wr-pers.px .minis .m.icon { background: var(--surface3); }
+.wr-pers.px .seg button { padding: 8px 12px; font-size: 13px; }
+.wr-pers.px .seg button.on { background: #fff; color: #000; border-color: #fff; }
+.wr-pers.px .seg.sm { gap: 4px; }
+.wr-pers.px .seg.sm button { padding: 5px 10px; font-size: 12px; }
+.wr-pers.px .symgrid.sx { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+.wr-pers.px .symgrid.sx button { padding: 9px 0; color: var(--text2); }
+.wr-pers.px .symgrid.sx button svg { margin: 0 auto; }
+.wr-pers.px .pmini.more { display: block; margin-top: 6px; text-decoration: underline; text-underline-offset: 3px; }
+.wr-pers.px .range { width: 100%; accent-color: #fff; }
+.wr-pers.px .fontgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
+.wr-pers.px .fontgrid button { background: none; border: 1px solid var(--hairline2); border-radius: 10px; color: var(--text); padding: 9px 10px 7px; cursor: pointer; text-align: left; min-width: 0; }
+.wr-pers.px .fontgrid button span { display: block; font-size: 19px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-pers.px .fontgrid button em { display: block; font-style: normal; font-size: 10.5px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-pers.px .fontgrid button.on { background: #fff; color: #000; border-color: #fff; }
+.wr-pers.px .fontgrid button.on em { color: #555; }
+.wr-pers.px .fontrow { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 8px; }
+.wr-pers.px .fontrow .pmini.more { margin: 0; }
+.wr-pers.px .asknote { font-size: 12.5px; color: var(--text2); margin: 8px 0 0; }

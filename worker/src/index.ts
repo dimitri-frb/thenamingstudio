@@ -872,6 +872,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   /* ---------------- Wrapped flow (the live app) ---------------- */
   // 01 The ask: parse the sentence into 3 editable chips (industry, reach, audience).
   // Personalize page "or just ask": map an instruction onto the lockup params.
+  // Logo engine v2: the founder's logo is a key (layout · symbol · font · case ·
+  // size); the ask moves only the parts it names, within the real catalogue.
+  logotweakx: (b) => ({ model: MODEL.smart, max: 260, prompt:
+    `A founder is editing their logo. Current logo: ${JSON.stringify(b.payload?.current || {})}.\n` +
+    `Allowed values:\n- layout: ${JSON.stringify(b.payload?.layouts || [])}\n- symbol: one of ${JSON.stringify(b.payload?.symbols || [])} or "none"\n` +
+    `- font: one of ${JSON.stringify(b.payload?.fonts || [])}\n- case: "n" (as typed) | "u" (UPPERCASE) | "l" (lowercase)\n- colour: a CSS hex\n- size: symbol size 0.65-1.35 (1 = default)\n` +
+    `Their instruction: "${String(b.payload?.ask || "").slice(0, 200)}".\n` +
+    `Apply it: change ONLY what the instruction asks, keep everything else exactly as it is. Interpret loosely ("more premium" may mean a serif font; "friendlier" a rounded font or a round symbol; "a bit smaller" size -0.15; "in green" a green hex; "no icon" symbol none; "just the name" layout word).\n` +
+    `Return ONLY JSON {"layout":"...","symbol":"...","font":"...","case":"n","colour":"#......","size":1.0,"note":"what you changed, max 8 words"}.` }),
+
   logotweak: (b) => ({ model: MODEL.fast, max: 220, prompt:
     `A founder is editing their logo. Current parameters: ${JSON.stringify(b.payload?.params || {})}.\n` +
     `Fields: symbol one of "half"|"full"|"ring"|"horizon"|"rays"|"arc"|"monogram"|"none"; layout one of "stacked"|"side"|"symbol"; accentHex a CSS hex colour; font one of "bold"|"serif"|"light"; scale a number 0.5-1.6 (symbol size).\n` +
