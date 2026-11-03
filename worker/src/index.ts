@@ -1079,15 +1079,16 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
       `{"who":{"mission":"one line","vision":"one line","values":[{"name":"two words","note":"one line"},{"name":"...","note":"..."},{"name":"...","note":"..."}],"personality":[{"left":"Playful","right":"Serious","pos":30},{"left":"Warm","right":"Cool","pos":20},{"left":"Classic","right":"Modern","pos":75},{"left":"Quiet","right":"Loud","pos":35}]},` +
       `"palette":[{"name":"Dawn","hex":"#FF9E7A"},{"name":"Haze","hex":"#C9B6FF"},{"name":"Nova","hex":"#7C9CFF"},{"name":"Night","hex":"#0F0D24"}],"colourNote":"2 sentences on the palette's logic",` +
       `"voice":{"words":["Clear","Warm","Confident"],"lines":[{"word":"Clear","note":"one line"},{"word":"Warm","note":"one line"},{"word":"Confident","note":"one line"}],"yes":"a sample on-brand sentence","not":"a sample off-brand jargon sentence"},` +
-      `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]}}`;
+      `"messaging":{"oneLiner":"one line","pitch":"3-4 sentence elevator pitch","boilerplate":"2-3 sentence press boilerplate ending with the domain","use":["4 words"],"avoid":["4 words"]},` +
+      `"mood":{"tiles":[{"t":"a photo subject for THIS brand, max 30 chars","how":"treatment, max 26 chars, e.g. Colour wash · Dawn 30%"}, 6 items in total: 1 outdoor/golden light, 2 light and shadow, 3 real people, 4 the place, 5 close-up of the product or service, 6 after dark],"yes":"Photograph this: …, max 60 chars","warm":"Keep it …, max 60 chars","not":"Not this: …, max 60 chars (no 'Not this:' prefix)"}}`;
     const tailB = `\nPersonality "pos" is 0-100 (0 = fully the left word). Palette: reinvent the 4 colours (keep the roles: a warm accent, a soft mid, a cool accent, a near-black) so they fit THIS brand; keep names one word; the near-black always last.`;
     const half = b.payload?.half;
     // The story/origin half is what people read first and share: the strongest
     // model, and an honesty rule on etymology (no invented roots).
     if (half === "a") return { model: MODEL.opus, max: 1900, prompt: intro + shapeA + `\nGive one "parts" card per component of the name (two when it blends two words), each with real etymology.` +
       `\nETYMOLOGY MUST BE TRUE: only cite a root, language and meaning you are certain of (e.g. Latin "aurora" = dawn). If a part is coined or only evokes a word, say so plainly ("coined", "echoes the English 'pure'"), set "lang" to "Coined" and never invent a source language, a historical usage or a quote. Pronunciation guesses for other languages must be realistic.` };
-    if (half === "b") return { model: MODEL.smart, max: 1700, prompt: intro + shapeB + tailB };
-    return { model: MODEL.smart, max: 3400, prompt: intro + shapeA.slice(0, -1) + "," + shapeB.slice(1) + tailB };
+    if (half === "b") return { model: MODEL.smart, max: 2300, prompt: intro + shapeB + tailB };
+    return { model: MODEL.smart, max: 4000, prompt: intro + shapeA.slice(0, -1) + "," + shapeB.slice(1) + tailB };
   },
 
   /* ---------------- v2 (studioApi) ---------------- */

@@ -3,7 +3,8 @@
 // (Download PDF = the browser's print-to-PDF on #bk-print).
 import { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
-import { iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
+import { X_FONTS, X_SYMS, iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
+import { MOOD_DEFAULT, inUseSet, inUseSvg, moodSvg } from "./bookArt";
 
 /* The personalized accent leads the book: when the founder tuned a colour on
    the logo, every accent slot that the logo uses follows it. */
@@ -24,6 +25,8 @@ export interface BookCtx {
   logoFont?: LogoFont;     // explicit font pick from the logo page
   logoShape?: LogoShape;   // shape language from the taste quiz
   logoCustom?: CustomLogo; // the personalized lockup, when the founder tuned one
+  brief?: string;          // picks the "in use" set (retail or service)
+  founder?: string;        // "Prepared for" on the cover
 }
 
 // The book's structural labels follow the language of its copy.
@@ -38,7 +41,7 @@ const BK_EN = {
   colour: "06 · Colour & type", fromTo: (a: string, b: string) => `From ${a} to ${b}`, type: "Type", headlines: "Headlines, tight tracking", body: "Body, generous line height",
   voice: "07 · Voice", sayLike: "Say it like this", yes: "Yes", not: "Not",
   messaging: "08 · Messaging", everyLength: "What we say, at every length", tagline: "Tagline", oneLiner: "One-liner", pitch: "Elevator pitch", boiler: "Boilerplate", use: "Words we use", avoid: "Words we avoid",
-  inUse: "09 · In use", outThere: (n: string) => `${n}, out in the world`, appIcon: "App icon", bizCard: "Business card", webHeader: "Website header", emailSig: "Email signature", founder: "Founder",
+  inUse: "09 · Applications", outThere: (n: string) => `${n}, out in the world`, worldK: "10 · In the world", inUseT: (n: string) => `${n} in use`, retail: "Retail / product", service: "Service / local business", mood: "11 · Mood & imagery", moodT: "Mood and imagery", photoThis: "Photograph this:", keepIt: "Keep it:", notThis: "Not this:", prepared: "Prepared for", by: "by Name Name", appIcon: "App icon", bizCard: "Business card", webHeader: "Website header", emailSig: "Email signature", founder: "Founder",
 };
 const BK_FR: typeof BK_EN = {
   edition: "Brand book · Édition 1", brandbook: "Brand book", builtBy: "Créé par Name Name",
@@ -51,7 +54,7 @@ const BK_FR: typeof BK_EN = {
   colour: "06 · Couleur & typo", fromTo: (a: string, b: string) => `De ${a} à ${b}`, type: "Typographie", headlines: "Titres, interlettrage serré", body: "Texte courant, interligne généreux",
   voice: "07 · La voix", sayLike: "Le dire comme ça", yes: "Oui", not: "Non",
   messaging: "08 · Les messages", everyLength: "Ce que nous disons, à chaque format", tagline: "Tagline", oneLiner: "En une ligne", pitch: "Pitch", boiler: "Boilerplate", use: "Mots que nous utilisons", avoid: "Mots que nous évitons",
-  inUse: "09 · En usage", outThere: (n: string) => `${n}, dans le monde`, appIcon: "Icône d'app", bizCard: "Carte de visite", webHeader: "En-tête du site", emailSig: "Signature d'e-mail", founder: "Fondatrice/Fondateur",
+  inUse: "09 · Applications", outThere: (n: string) => `${n}, dans le monde`, worldK: "10 · Dans le monde", inUseT: (n: string) => `${n} en situation`, retail: "Commerce / produit", service: "Service / entreprise locale", mood: "11 · Ambiance & images", moodT: "Ambiance et images", photoThis: "Photographier :", keepIt: "Garder :", notThis: "Éviter :", prepared: "Préparé pour", by: "par Name Name", appIcon: "Icône d'app", bizCard: "Carte de visite", webHeader: "En-tête du site", emailSig: "Signature d'e-mail", founder: "Fondatrice/Fondateur",
 };
 
 const PAGE_W = 794;  // 210mm @96dpi
@@ -59,11 +62,13 @@ const PAGE_H = 1119; // 296mm @96dpi
 
 export const PAGE_TITLES = [
   "Cover", "01 · The story", "02 · The name", "03 · Saying it", "04 · Who we are",
-  "05 · The wordmark", "06 · Colour & type", "07 · Voice", "08 · Messaging", "09 · In use",
+  "05 · The wordmark", "06 · Colour & type", "07 · Voice", "08 · Messaging", "09 · Applications",
+  "10 · In the world", "11 · Mood & imagery",
 ];
 const PAGE_TITLES_FR = [
   "Couverture", "01 · L'histoire", "02 · Le nom", "03 · Le prononcer", "04 · Qui nous sommes",
-  "05 · Le logotype", "06 · Couleur & typo", "07 · La voix", "08 · Les messages", "09 · En usage",
+  "05 · Le logotype", "06 · Couleur & typo", "07 · La voix", "08 · Les messages", "09 · Applications",
+  "10 · Dans le monde", "11 · Ambiance & images",
 ];
 
 /* ── one page ── */
@@ -90,23 +95,33 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   };
 
   switch (i) {
-    case 0: return ( // Cover — Night, gradient sun, contents
-      <div className="bk-page dark" style={{ ["--bk-night" as any]: pal.night, background: pal.night }}>
-        <div style={S.kick}>{T.edition}</div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", gap: 18 }}>
-          <div dangerouslySetInnerHTML={{ __html: logoSvg(ctx.logoKey || "sunrise", name, pal, { variant: "tile", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: 64 }) }} />
-          <div style={{ ...S.h, fontSize: "44pt", lineHeight: 1 }}>{name}</div>
-          <div style={{ ...S.h, fontStyle: "italic", fontSize: "13pt", opacity: 0.85 }}>{book.tagline}</div>
-          <div style={{ ...S.kick, marginTop: 10 }}>{book.saying.plain} · {book.saying.ipa}</div>
+    case 0: { // Cover v2 (handoff 27 · B·3): the brand's mark in the gradient, contents, prepared for
+      const [, lay, sym, fi] = (ctx.logoKey || "").split(":");
+      const symK = sym && X_SYMS[sym] ? sym : "rise";
+      const xf = X_FONTS[Number(fi)] || null;
+      const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160"><defs><linearGradient id="cvG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal.dawn}"/><stop offset=".5" stop-color="${pal.haze}"/><stop offset="1" stop-color="${pal.nova}"/></linearGradient></defs>${X_SYMS[symK].draw(120, 80, 70, "url(#cvG)", pal.night)}<rect x="10" y="${symK === "rise" ? 112 : 152}" width="220" height="1.5" fill="#fff" opacity=".35"/></svg>`;
+      void lay;
+      const titles = ((book.lang || "en").toLowerCase().startsWith("fr") ? PAGE_TITLES_FR : PAGE_TITLES).slice(1);
+      const month = new Date().toLocaleDateString(book.lang?.startsWith("fr") ? "fr-FR" : "en-GB", { month: "long", year: "numeric" });
+      return (
+        <div className="bk-page dark" style={{ ["--bk-night" as any]: pal.night, background: `radial-gradient(70% 38% at 50% 108%, ${pal.dawn}55, transparent 70%), ${pal.night}`, color: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--mono, monospace)", fontSize: "8.5pt", letterSpacing: "0.22em", textTransform: "uppercase", opacity: 0.7 }}>
+            <span>{T.brandbook}</span><span style={{ letterSpacing: "0.06em", textTransform: "none" }}>Edition 01</span>
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", gap: 10 }}>
+            <div dangerouslySetInnerHTML={{ __html: markSvg }} />
+            <div style={{ fontFamily: xf ? `'${xf.f}', var(--sans)` : "var(--sans)", fontWeight: xf ? xf.w : 800, fontSize: name.length > 12 ? "40pt" : "56pt", lineHeight: 1, letterSpacing: "-0.03em" }}>{xf?.caps ? name.toUpperCase() : name}</div>
+            <div style={{ ...S.h, fontStyle: "italic", fontSize: "14pt", opacity: 0.9, marginTop: 8 }}>{book.tagline}</div>
+          </div>
+          <div style={{ borderTop: "1px solid rgba(255,255,255,.25)", paddingTop: "12pt", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "5pt 12pt", fontFamily: "var(--mono, monospace)", fontSize: "7.5pt", opacity: 0.8, marginBottom: 14 }}>
+            {titles.map((t) => <span key={t} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t}</span>)}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8.5pt", opacity: 0.75 }}>
+            <span>{ctx.founder ? `${T.prepared} ${ctx.founder}` : ctx.domain}</span><span>{T.by} · {month}</span>
+          </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6pt 14pt", fontSize: "8.5pt", opacity: 0.75, marginBottom: 26 }}>
-          {((book.lang || "en").toLowerCase().startsWith("fr") ? PAGE_TITLES_FR : PAGE_TITLES).slice(1).map((t) => <span key={t}>{t}</span>)}
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8pt", opacity: 0.55 }}>
-          <span>{ctx.domain}</span><span>{T.builtBy}</span>
-        </div>
-      </div>
-    );
+      );
+    }
     case 1: return ( // The story
       <div className="bk-page">
         <div style={S.kick}>{T.story}</div>
@@ -338,7 +353,43 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         {foot}
       </div>
     );
-    default: return ( // In use
+    case 10: { // In the world (handoff 27 · B·1): mock-ups, retail or service set
+      const set = inUseSet(ctx.brief || book.story?.whofor || "");
+      const L = logoSvg(ctx.logoKey || "sunrise", name, pal, { variant: "light", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: 80 });
+      const N = logoSvg(ctx.logoKey || "sunrise", name, pal, { variant: "night", accent: ctx.logoAccent, seed: ctx.logoSeed || 0, font: ctx.logoFont, shape: ctx.logoShape, custom: ctx.logoCustom, height: 80 });
+      return (
+        <div className="bk-page">
+          <div style={{ display: "flex", justifyContent: "space-between" }}><div style={S.kick}>{set === "A" ? T.retail : T.service}</div><div style={S.kick}>{T.worldK}</div></div>
+          <h2 style={{ ...S.h, fontSize: "24pt", margin: "14pt 0 14pt" }}>{T.inUseT(name)}</h2>
+          <div style={{ marginBottom: "auto" }} dangerouslySetInnerHTML={{ __html: inUseSvg(set, pal, L, N, name, book.tagline || "", ctx.domain, ctx.founder || "").replace(/width="700" height="620"/, 'width="100%" height="auto"') }} />
+          {foot}
+        </div>
+      );
+    }
+    case 11: { // Mood and imagery (handoff 27 · B·2): photo direction
+      const m = book.mood;
+      const tiles = m?.tiles?.length === 6 ? m.tiles : MOOD_DEFAULT;
+      const rule = (ok: boolean, h: string, t: string) => (
+        <div style={{ display: "flex", gap: "6pt", alignItems: "flex-start", fontSize: "8.5pt", lineHeight: 1.45 }}>
+          <span style={{ flex: "0 0 auto", width: "13pt", height: "13pt", borderRadius: "50%", background: ok ? "#1f9d55" : "#e5482e", color: "#fff", display: "grid", placeItems: "center", fontSize: "7pt", fontWeight: 800 }}>{ok ? "✓" : "✕"}</span>
+          <span><b>{h}</b> {t}</span>
+        </div>
+      );
+      return (
+        <div className="bk-page">
+          <div style={S.kick}>{T.mood}</div>
+          <h2 style={{ ...S.h, fontSize: "24pt", margin: "14pt 0 14pt" }}>{T.moodT}</h2>
+          <div dangerouslySetInnerHTML={{ __html: moodSvg(pal, tiles).replace(/width="700" height="560"/, 'width="100%" height="auto"') }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", borderTop: "1px solid rgba(0,0,0,.1)", paddingTop: "10pt", marginTop: "8pt", marginBottom: "auto" }}>
+            {rule(true, T.photoThis, m?.yes || "real moments, real people, the place itself.")}
+            {rule(true, T.keepIt, m?.warm || `in ${name}'s colours: warm light, honest detail.`)}
+            {rule(false, T.notThis, m?.not || "stock smiles, flash, empty logos on white.")}
+          </div>
+          {foot}
+        </div>
+      );
+    }
+    default: return ( // Applications
       <div className="bk-page">
         <div style={S.kick}>{T.inUse}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 16pt" }}>{T.outThere(name)}</h2>

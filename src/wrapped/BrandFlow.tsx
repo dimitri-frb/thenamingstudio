@@ -126,7 +126,7 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     ];
   }
   if (p === "book") return [
-    { id: "pdf", label: "PDF", best: "Share, print, present", size: "14 pages", run: async () => c.bookPdf() },
+    { id: "pdf", label: "PDF", best: "Share, print, present", size: "12 pages", run: async () => c.bookPdf() },
     { id: "word", label: "Word", editable: true, best: "Edit the text in Word, Pages or Google Docs", size: ".doc", help: "Google Docs: upload the file to Google Drive, then Open with Google Docs.", run: () => c.bookWord() },
   ];
   if (p === "socials") {

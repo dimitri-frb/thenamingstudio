@@ -52,6 +52,7 @@ export interface WBook {
   colourNote: string;
   voice: { words: string[]; lines: { word: string; note: string }[]; yes: string; not: string };
   messaging: { oneLiner: string; pitch: string; boilerplate: string; use: string[]; avoid: string[] };
+  mood?: { tiles: { t: string; how: string }[]; yes: string; warm: string; not: string }; // photo direction (handoff 27 · B·2)
 }
 
 // The paid kit's words (handoff 19): socials + marketing, generated per run.

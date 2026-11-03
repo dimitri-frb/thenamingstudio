@@ -1343,6 +1343,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     name: picked.name,
     domain: domSel?.domain || picked.dom?.domain || `${picked.name.toLowerCase()}.com`,
     book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape, logoCustom: logoSel?.custom,
+    brief: sentence.trim(), founder: user?.name || "",
   } : null;
   const cardFd: FamData = { ...fd, person: cardDet.name ?? user?.name ?? "", role: cardDet.role || "Founder", email: [cardDet.email ?? user?.email ?? "", cardDet.phone].filter(Boolean).join("  ·  "), site: (cardDet.web ?? fd.site ?? "").trim() };
   const flowCtx: FlowCtx | null = picked && payCtx ? {
