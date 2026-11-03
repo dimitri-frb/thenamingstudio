@@ -915,23 +915,49 @@ export function tillerBook(): WBook {
   };
 }
 
+// Test-mode kit (live users always get the AI's). Generic and about the
+// founder's own brand: never Name Name's own slogans.
 export function sampleKit(name: string, domain: string): WKit {
+  if (FIXTURE === "tiller") return tillerKit(domain || "tiller.com");
+  const site = domain || `${name.toLowerCase()}.com`;
   return {
-    bioShort: `Names for what comes next ✶ ${domain}`,
-    bioLong: `${name} helps founders find the one name that feels like them, with its domain and a brand ready to launch, in minutes.`,
+    bioShort: `${name}. Opening soon ✶ ${site}`,
+    bioLong: `${name} is getting ready to open its doors. Follow along for the first look, the first customers and what we learn on the way.`,
     posts: [
-      { label: "Day 1 · Teaser", title: "Something new is rising.", caption: `Something new is rising. ${name}, soon.` },
-      { label: "Day 3 · Launch", title: `Meet ${name}. Names for what comes next.`, caption: `Meet ${name} ✶ Names for what comes next. We help founders find the one name that feels like them, in minutes. Link in bio.` },
-      { label: "Day 7 · Story", title: "Why we started.", caption: `A week in. Here is why we started ${name}, and what we learned.` },
+      { label: "Day 1 · Teaser", title: `Something new is coming: ${name}.`, caption: `Something new is coming. ${name}, very soon. Follow along.` },
+      { label: "Day 3 · Launch", title: `${name} is open.`, caption: `${name} is open. Come and see what we've been building. Link in bio.` },
+      { label: "Day 7 · Story", title: `Why we started ${name}.`, caption: `A week in. Here is why we started ${name}, and what we learned.` },
     ],
-    googleHeadlines: ["Find your brand name, fast", "Names for what comes next", "A name you'll be known as"],
-    googleDescription: `${name} finds a clear, ownable name and its free domain in minutes. Try it free.`,
-    metaPrimary: `Starting something? Your name is the first thing people meet. ${name} finds yours in minutes.`,
-    metaHeadline: "Meet your name.",
+    googleHeadlines: [`${name}`.slice(0, 30), "Opening now", "See what's new"],
+    googleDescription: `${name} is open. See what we've built and get started today.`.slice(0, 90),
+    metaPrimary: `${name} is open. See what we've been building.`,
+    metaHeadline: `Meet ${name}.`,
     weeks: [
       { title: "Week 1 · Tease", line: "Two teaser posts and a waitlist link in every bio.", channels: ["Instagram", "LinkedIn"] },
       { title: "Week 2 · Launch", line: "The launch post, a founder story, and the first search ads go live.", channels: ["All socials", "Google Ads"] },
       { title: "Week 3 · Proof", line: "Share one result or first customer, then retarget site visitors.", channels: ["Instagram", "Meta Ads"] },
+    ],
+  };
+}
+
+// The Tiller fixture's kit (mirrors what wrapkit returns for that brief).
+export function tillerKit(site: string): WKit {
+  return {
+    bioShort: `Your whole restaurant on one iPad ✶ ${site}`,
+    bioLong: "Tiller puts orders, payments, stock and staff on one iPad, so owners close the night with the count already done.",
+    posts: [
+      { label: "Day 1 · Teaser", title: "Friday, 8pm. Full room. Calm counter.", caption: "Friday, 8pm. Full room, calm counter. Something new for restaurant owners is coming. Tiller, soon." },
+      { label: "Day 3 · Launch", title: "Meet Tiller: your whole service on one iPad.", caption: "Meet Tiller. Orders, payments, stock and staff on one iPad, built for the busiest night of the week. Link in bio." },
+      { label: "Day 7 · Story", title: "Close the night with the count already done.", caption: "A week in. We built Tiller because owners deserve to close the night with the count already done. Here's what we heard from our first restaurants." },
+    ],
+    googleHeadlines: ["Restaurant POS on one iPad", "Orders, stock, staff, one app", "Close with the count done"],
+    googleDescription: "Tiller runs your restaurant's orders, payments and stock on one iPad. Try it free.",
+    metaPrimary: "Running a restaurant is a hundred decisions a minute. Tiller puts them all on one iPad.",
+    metaHeadline: "Your whole service, one iPad.",
+    weeks: [
+      { title: "Week 1 · Tease", line: "Two teaser posts aimed at owners, and a demo waitlist link in every bio.", channels: ["Instagram", "LinkedIn"] },
+      { title: "Week 2 · Launch", line: "The launch post, a founder story, and search ads on \"restaurant POS\".", channels: ["All socials", "Google Ads"] },
+      { title: "Week 3 · Proof", line: "Share the first restaurant's Friday night, then retarget site visitors.", channels: ["Instagram", "Meta Ads"] },
     ],
   };
 }

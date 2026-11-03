@@ -22,7 +22,10 @@ export function deckContent(b: DeckBrand, ai?: WDeck2 | WDeckSlide[] | null): WD
   const brief = (b.brief || "").replace(/\.$/, "");
   return {
     v: 2,
-    cover: { head: brief ? brief[0].toUpperCase() + brief.slice(1) + "." : `${b.name}.`, sub: b.tagline || "" },
+    // the tagline leads; the plain description supports it
+    cover: b.tagline
+      ? { head: b.tagline, sub: brief ? brief[0].toUpperCase() + brief.slice(1) + "." : "" }
+      : { head: brief ? brief[0].toUpperCase() + brief.slice(1) + "." : `${b.name}.`, sub: "" },
     problem: { head: old?.[1].head || "What's broken today", cols: cols3(old?.[1].points, ["Who has the problem", "What it costs them", "Why today's options fail"]) },
     solution: { head: old?.[2].head || `${b.name}: ${b.concept || "the better way"}`, cols: cols3(old?.[2].points, ["The promise", "Done better", "How it feels"]) },
     who: { head: old?.[3].head || "Who it's for", segs: (old?.[3].points || ["First customers", "Next group", "Later"]).slice(0, 3).map((t, i) => ({ t, w: 3 - i })) },
