@@ -1023,7 +1023,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // 07 The brand book: generated as TWO parallel halves (half:"a" = tagline,
   // story, origin, saying; half:"b" = who, palette, voice, messaging) so the
   // whole book lands in one Sonnet-latency, not two.
-  // Paid kit (handoff 19): socials bios + launch posts + ads + a 3-week plan.
+  // Paid kit (handoff 19): socials bios + launch posts + ads (the 3-week plan was dropped: too vague).
   wrapkit: (b) => ({ model: MODEL.smart, max: 1800, prompt:
     `You are the launch strategist at a world-class branding studio.\n` + LANG_LINE +
     `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" — domain ${String(b.payload?.domain || "").slice(0, 60)}.\n` +
@@ -1032,11 +1032,11 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `- bioShort: an Instagram/TikTok/X bio, max 150 characters, may end with the domain.\n` +
     `- bioLong: a LinkedIn "about", 2 short sentences.\n` +
     `- posts: exactly 3 square launch posts: label "Day 1 · Teaser", "Day 3 · Launch", "Day 7 · Story". title = the words ON the image (max 8 words); caption = the post caption (1–3 sentences).\n` +
+    `  EVERY post title must say what the business does or who it's for, in concrete words from the brief (the product, the customer, the moment it's used). A line that would fit any brand ("Something new is coming", "Why we started", "The future is here") is a failure. The Day 1 teaser may hold back the name, never the subject.\n` +
     `- googleHeadlines: exactly 3 Google search ad headlines, EACH MAX 30 CHARACTERS including spaces.\n` +
     `- googleDescription: one search ad description, MAX 90 CHARACTERS.\n` +
     `- metaPrimary: a Meta ad primary text, 1–2 sentences. metaHeadline: max 40 characters.\n` +
-    `- weeks: exactly 3: titles "Week 1 · Tease", "Week 2 · Launch", "Week 3 · Proof"; line = one sentence of what to do; channels = 1–2 of: Instagram, LinkedIn, TikTok, X, All socials, Google Ads, Meta Ads, Email.\n` +
-    `Return ONLY minified JSON {"bioShort":"","bioLong":"","posts":[{"label":"","title":"","caption":""}],"googleHeadlines":[""],"googleDescription":"","metaPrimary":"","metaHeadline":"","weeks":[{"title":"","line":"","channels":[""]}]}` }),
+    `Return ONLY minified JSON {"bioShort":"","bioLong":"","posts":[{"label":"","title":"","caption":""}],"googleHeadlines":[""],"googleDescription":"","metaPrimary":"","metaHeadline":""}` }),
 
   // The paid pitch deck: a real first draft of all 10 slides from the run.
   // Numbers are never invented: they're [bracketed] for the founder to fill.
@@ -1912,7 +1912,6 @@ function fitKit(d: any): any {
     googleDescription: cut(d?.googleDescription, 90),
     metaHeadline: cut(d?.metaHeadline, 40),
     posts: (Array.isArray(d?.posts) ? d.posts : []).slice(0, 3),
-    weeks: (Array.isArray(d?.weeks) ? d.weeks : []).slice(0, 3),
   };
 }
 

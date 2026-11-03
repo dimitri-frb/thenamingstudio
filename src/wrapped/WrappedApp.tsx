@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
-import { X_SYMS, buildLogoPack, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { FEEL_SHAPE, X_FONTS, X_SYMS, buildLogoPack, shapeOfSym, typeOfFont, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
@@ -47,32 +47,33 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   names:  { label: C1, segs: 6, idx: 4 },
   reveal: { label: C1, segs: 6, idx: 5 },
   brand:  { label: C2, segs: 0, idx: 0 },
-  feel:   { label: C2, segs: 9, idx: 0 },
-  tcol:   { label: C2, segs: 9, idx: 1 },
-  ttype:  { label: C2, segs: 9, idx: 2 },
-  tshape: { label: C2, segs: 9, idx: 3 },
-  taste:  { label: C2, segs: 9, idx: 4 },
-  logo:   { label: C2, segs: 9, idx: 5 },
-  snap:   { label: C2, segs: 9, idx: 6 },
-  unlock: { label: C2, segs: 9, idx: 6 },
-  early:  { label: C2, segs: 9, idx: 6 },
-  logodone: { label: C2, segs: 9, idx: 6 },
-  pers:   { label: C2, segs: 9, idx: 6 },
-  book:   { label: C2, segs: 9, idx: 7 },
-  socials: { label: C2, segs: 9, idx: 8 },
-  kit:    { label: C2, segs: 9, idx: 8 },
-  mkt:    { label: C2, segs: 9, idx: 8 },
-  cards:  { label: C2, segs: 9, idx: 8 },
-  deck:   { label: C2, segs: 9, idx: 8 },
-  // handoff 28 · the brand flow after unlock: hub → 6 pieces → all set
-  hub:    { label: C2, segs: 7, idx: 0 },
-  plogo:  { label: C2, segs: 7, idx: 1 },
-  pbook:  { label: C2, segs: 7, idx: 2 },
-  psocials: { label: C2, segs: 7, idx: 3 },
-  pmkt:   { label: C2, segs: 7, idx: 4 },
-  pcards: { label: C2, segs: 7, idx: 5 },
-  pdeck:  { label: C2, segs: 7, idx: 6 },
-  allset: { label: "All set", segs: 1, idx: 0 },
+  feel:   { label: C2, segs: 6, idx: 0 },
+  tcol:   { label: C2, segs: 6, idx: 1 },
+  ttype:  { label: C2, segs: 6, idx: 1 },   // older runs only: type and shape now come from the logo pick
+  tshape: { label: C2, segs: 6, idx: 1 },
+  taste:  { label: C2, segs: 6, idx: 1 },
+  logo:   { label: C2, segs: 6, idx: 2 },
+  snap:   { label: C2, segs: 6, idx: 3 },
+  unlock: { label: C2, segs: 6, idx: 3 },
+  early:  { label: C2, segs: 6, idx: 3 },
+  logodone: { label: C2, segs: 6, idx: 3 },
+  pers:   { label: C2, segs: 6, idx: 3 },
+  book:   { label: C2, segs: 6, idx: 4 },
+  socials: { label: C2, segs: 6, idx: 5 },
+  kit:    { label: C2, segs: 6, idx: 5 },
+  mkt:    { label: C2, segs: 6, idx: 5 },
+  cards:  { label: C2, segs: 6, idx: 5 },
+  deck:   { label: C2, segs: 6, idx: 5 },
+  // handoff 28 · the brand flow after unlock: one segment per piece, so
+  // "2 of 6" lights two; the hub lights none, All set lights all six.
+  hub:    { label: C2, segs: 6, idx: -1 },
+  plogo:  { label: C2, segs: 6, idx: 0 },
+  pbook:  { label: C2, segs: 6, idx: 1 },
+  psocials: { label: C2, segs: 6, idx: 2 },
+  pmkt:   { label: C2, segs: 6, idx: 3 },
+  pcards: { label: C2, segs: 6, idx: 4 },
+  pdeck:  { label: C2, segs: 6, idx: 5 },
+  allset: { label: "All set", segs: 6, idx: 5 },
   claim:  { label: C3, segs: 2, idx: 0 },
   done:   { label: "All set", segs: 1, idx: 0 },
 };
@@ -1259,7 +1260,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
     claim: brandOpen ? "deck" : "snap",
     brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
-    logo: "taste", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
+    logo: "tcol", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
     kit: "socials", mkt: "kit", cards: "mkt", deck: "cards",
     hub: "snap", plogo: "hub", pbook: "plogo", psocials: "pbook", pmkt: "psocials", pcards: "pmkt", pdeck: "pcards", allset: "hub",
   };
@@ -1276,7 +1277,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "reveal" ? "brand" :
       step === "brand" ? "feel" :
       step === "feel" ? "tcol" :
-      step === "tcol" ? "ttype" :
+      step === "tcol" ? "logo" :
       step === "ttype" ? "tshape" :
       step === "tshape" ? "taste" :
       step === "taste" ? "logo" :
@@ -1310,12 +1311,18 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return () => fonts.removeEventListener("loadingdone", f);
   }, []);
   // Logo engine v2: the nine logos for THIS brand (brief, sector, taste, seed).
-  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste, logoSeed, logoBumps) : [];
+  // Two taste questions (feel + colours): the 12 logos carry the type and the
+  // shape choice, so they're generated from the feel alone (picking one then
+  // records its type and shape in the taste).
+  const logoTaste = { feeling: taste.feeling, shape: FEEL_SHAPE[taste.feeling[0]] || "Round & soft" };
+  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, logoTaste, logoSeed, logoBumps) : [];
   const payLogo = logoSel || (picked ? logoTiles[0] : null);
   // Handoff 27 · the kit's layout family: the taste picks it, the founder can switch.
   const fam: Fam = famPick ?? famFromTaste(taste);
   const famTagline = (book?.tagline || picked?.tagline || "").replace(/^\*|\*$/g, "");
-  const famSite = domSel?.domain || picked?.dom?.domain || picked?.alt?.domain || "";
+  // The chosen domain, else the recommended one (best pick, found silently
+  // before the domain chapter), never a taken one when a free one exists.
+  const famSite = domSel?.domain || (picked?.dom?.free ? picked.dom.domain : picked?.alt?.domain) || picked?.dom?.domain || "";
   const fd = useMemo<FamData>(() => famData(payLogo?.key || "", picked?.name || "", lpal, {
     tagline: famTagline, person: user?.name || "", role: "Founder", email: user?.email || "", site: famSite,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1328,7 +1335,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     kitLogo: { key: payLogo.key, name: picked.name, pal: lpal, opts: { accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom } },
     voice: book?.voice?.words?.length ? book.voice.words : tasteVoice(taste),
     brief: sentence.trim(),
-    headFont: payLogo.custom?.family || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
+    headFont: payLogo.custom?.family || (payLogo.key.startsWith("x:") ? X_FONTS[Number(payLogo.key.split(":")[3])]?.f || "Inter Tight" : null) || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
     price,
     fam, setFam: (f) => { setFamPick(f); persist({ fam: f }); }, fd,
     onBuyDomain: () => {
@@ -1346,11 +1353,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     brief: sentence.trim(), founder: user?.name || "",
     theme: ((flowSt.sel.book ?? 0) as 0 | 1 | 2),
   } : null;
-  const cardFd: FamData = { ...fd, person: cardDet.name ?? user?.name ?? "", role: cardDet.role || "Founder", email: [cardDet.email ?? user?.email ?? "", cardDet.phone].filter(Boolean).join("  ·  "), site: (cardDet.web ?? fd.site ?? "").trim() };
+  // A card for tiller.com should say dimi@tiller.com, not a Gmail address:
+  // suggest first-name@the-brand's-domain (editable on the cards page).
+  const sugMail = (() => {
+    const site = (fd.site || "").replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase();
+    const em = user?.email || "";
+    if (!site) return em;
+    if (em.toLowerCase().endsWith("@" + site)) return em;
+    const first = ((user?.name || "").trim().split(/\s+/)[0] || em.split("@")[0] || "hello").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9.-]/g, "");
+    return `${first || "hello"}@${site}`;
+  })();
+  const cardFd: FamData = { ...fd, person: cardDet.name ?? user?.name ?? "", role: cardDet.role || "Founder", email: [cardDet.email ?? sugMail, cardDet.phone].filter(Boolean).join("  ·  "), site: (cardDet.web ?? fd.site ?? "").trim() };
   const flowCtx: FlowCtx | null = picked && payCtx ? {
     name: picked.name, domain: payCtx.domain, pal: lpal, logo: payCtx.kitLogo, fam, fd: { ...cardFd, person: cardFd.person, email: cardFd.email },
     kit, deckAi, deckInput: { name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: famTagline, voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" },
     me: { name: cardFd.person, email: cardFd.email },
+    account: user?.email || null,
     st: flowSt,
     setSel: (p, v) => { const nx = { ...flowSt, sel: { ...flowSt.sel, [p]: v } }; setFlowSt(nx); persist({ flow: nx }); },
     setDl: (p, f) => setFlowSt((cur) => { const nx = { ...cur, dl: { ...cur.dl, [p]: f } }; persist({ flow: nx }); return nx; }),
@@ -1598,7 +1616,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
           <button className="wr-btn" style={{ maxWidth: 320 }} disabled={!conceptReady}
             onClick={() => { if (wordsReq.current !== wordsKey()) { setStyles(null); setNames(null); namesPre.current = null; morePre.current = null; } toStep("brands"); }}>
-            Show me the words →
+            Next: swipe a few names →
           </button>
           <button className="wr-link" onClick={() => toStep("brief")}>← Back</button>
         </div>
@@ -1833,9 +1851,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <div className="d1next rise">
               <p className="k mono">Next · give it a look</p>
               <div className="tiles">
-                <span className="t"><i className="sun" style={{ background: lpal.dawn }} /><b>Logo</b></span>
+                <span className="t"><span className="aa">✶</span><b>Feel</b></span>
                 <span className="t"><span className="dots">{[lpal.dawn, lpal.haze, lpal.nova].map((c) => <i key={c} style={{ background: c }} />)}</span><b>Colours</b></span>
-                <span className="t"><span className="aa">Aa</span><b>Type</b></span>
+                <span className="t"><span className="aa">{picked.name[0]?.toUpperCase()}</span><b>Logo</b></span>
               </div>
               <p className="note">Its domain comes at the end, once the brand is ready.</p>
             </div>
@@ -1865,7 +1883,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           step={step} name={picked.name} taste={taste}
           onChange={(t) => setTaste(t)}
           onBack={() => toStep(backTarget[step]!)}
-          onNext={() => toStep(fwdTarget() || "taste")}
+          onNext={() => { if (step === "tcol") { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); } toStep(fwdTarget() || "logo"); }}
         />
       )}
 
@@ -1966,11 +1984,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => { track("logo", { name: picked.name, concept: logoSel?.title }); toStep("snap"); }}>
+            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => {
+              track("logo", { name: picked.name, concept: logoSel?.title });
+              const [x, , sy, fi] = (logoSel?.key || "").split(":");
+              if (x === "x") {
+                const t2: Taste = { ...taste, type: typeOfFont(Number(fi)), shape: sy && X_SYMS[sy] ? shapeOfSym(sy) : taste.shape };
+                const t3 = { ...t2, sliders: seedSliders(t2) };
+                if (t3.type !== taste.type || t3.shape !== taste.shape) { setTaste(t3); refreshBookForTaste(t3); }
+              }
+              toStep("snap");
+            }}>
               Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
             </button>
             <span className="urow">
-              <button className="wr-link" onClick={() => toStep("taste")}>← My taste</button>
+              <button className="wr-link" onClick={() => toStep("tcol")}>← Colours</button>
               <button className="wr-link" onClick={() => { setLogoSel(logoSel || { ...logoTiles[0], shape: lshape }); toStep("snap"); }}>Skip the logo</button>
             </span>
           </div>
@@ -2306,8 +2333,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <p className="lbl mono">Your details</p>
             {([["name", "Name", "text"], ["role", "Role", "text"], ["email", "Email", "email"], ["phone", "Phone", "tel"], ["web", "Website", "text"]] as const).map(([k, l, t]) => (
               <label key={k} className="bcf"><span>{l}</span>
-                <input type={t} value={(cardDet as any)[k] ?? (k === "name" ? user?.name || "" : k === "email" ? user?.email || "" : k === "web" ? fd.site : "")} placeholder={k === "phone" ? "Optional" : l}
-                  onChange={(e) => setCardDet({ ...cardDet, name: cardDet.name ?? user?.name ?? "", email: cardDet.email ?? user?.email ?? "", web: cardDet.web ?? fd.site, [k]: e.target.value })}
+                <input type={t} value={(cardDet as any)[k] ?? (k === "name" ? user?.name || "" : k === "email" ? sugMail : k === "web" ? fd.site : "")} placeholder={k === "phone" ? "Optional" : l}
+                  onChange={(e) => setCardDet({ ...cardDet, name: cardDet.name ?? user?.name ?? "", email: cardDet.email ?? sugMail, web: cardDet.web ?? fd.site, [k]: e.target.value })}
                   onBlur={() => track("card_details_edited", { fields: [k] })} />
               </label>
             ))}
@@ -3232,7 +3259,7 @@ function BrandSwipe({ deck, liked, disliked, onJudge, onSkip, onNext }: {
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 320 }} onClick={onNext}>Show me the words →</button>
+        <button className="wr-btn" style={{ maxWidth: 320 }} onClick={onNext}>Next: your taste →</button>
         <button className="wr-link" onClick={onSkip}>Skip this step</button>
       </div>
     </>
@@ -3450,7 +3477,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
         </div>
       </div>
       <div className="wr-foot col wr-tfoot" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 220 }} onClick={onNext}>Next →</button>
+        <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onNext}>{step === "feel" ? "Next: colours →" : step === "tcol" ? "Show me my logos →" : "Next →"}</button>
         <span className="urow">
           <button className="wr-link" onClick={onBack}>← Back</button>
           <button className="wr-link" onClick={onNext}>Skip</button>

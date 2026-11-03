@@ -64,7 +64,7 @@ export interface WKit {
   googleDescription: string;        // ≤ 90 characters
   metaPrimary: string;
   metaHeadline: string;
-  weeks: { title: string; line: string; channels: string[] }[]; // Tease · Launch · Proof
+  weeks?: { title: string; line: string; channels: string[] }[]; // dropped from the kit (too vague); old saved runs may still carry it
 }
 
 export interface DomainCard { domain: string; tld?: string; status: "available" | "negotiable" | "taken" | "unknown"; price?: string; renewal?: string; premium?: boolean; offerPrice?: string; offerUrl?: string }

@@ -28,6 +28,7 @@ const BRANDS = [
   { name: "Oko", pal: ["#10221c", "#2f8f6b", "#9fe3c1", "#f2fbf6"], sym: "drop", font: 12, tagline: "Clinics, simplified.", post: "Oko is open for bookings.", person: "Ana Ruiz", role: "Co-founder", email: "ana@oko.health", site: "oko.health" },
   { name: "Northbridge Analytics", pal: ["#0b132b", "#1c2541", "#3a506b", "#5bc0be"], sym: "bars", font: 10, tagline: "Forecasting and pricing tools for regional retailers and their teams.", post: "Northbridge is here: forecasts every store team can actually read.", person: "Tomasz Wiśniewski-Hart", role: "Head of Partnerships", email: "tomasz@northbridge.io", site: "northbridge.io" },
   { name: "Mila", pal: ["#e8cfc4", "#f3e4da", "#d9e3dc", "#fbf8f4"], sym: "leaf", font: 1, tagline: "Slow mornings, good bread, baked before you wake.", post: "Mila opens Saturday morning.", person: "Inès Laurent", role: "Head baker", email: "ines@mila.bakery", site: "mila.bakery" },
+  { name: "Tiller", pal: ["#0f0d24", "#7c9cff", "#ff9e7a", "#c9b6ff"], sym: "", font: 2, tagline: "Every great service runs on a steady hand.", post: "Meet Tiller: your whole service on one iPad.", person: "Dimitri Farber", role: "Founder", email: "dimitri@tiller.com", site: "tiller.com" },
   { name: "Veracta", pal: ["#15171c", "#3d434f", "#8b93a1", "#e6e8ec"], sym: "ring", font: 11, tagline: "Health data training built on real precision.", post: "Veracta is live for hospitals.", person: "Lena Moreau", role: "Founder", email: "lena@veracta.com", site: "veracta.com" },
 ];
 
@@ -64,7 +65,7 @@ const report = await page.evaluate(async (BRANDS) => {
     const vb = svg.viewBox.baseVal;
     // texts hanging off the canvas on purpose would be a design bug too: check every <text>
     for (const t of svg.querySelectorAll("text")) {
-      if (t.closest("clipPath")) continue;
+      if (t.closest("clipPath") || t.getAttribute("data-deco")) continue; // decorative initial (bleeds like a symbol)
       const bb = t.getBBox();
       const ctm = t.getCTM(), root = svg.getCTM();
       // map the box into the root viewBox (handles rotate / translate groups)

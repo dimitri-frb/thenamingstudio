@@ -679,6 +679,21 @@ export const TYPE_FONTS: Record<string, number[]> = {
 };
 // The broad family of each type pick: the only fonts its logos may use.
 const SANS_ALL = [9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23];
+// Without a type question, the feel picks the four type families to show.
+export const FEEL_TYPES: Record<string, string[]> = {
+  "Soft & warm": ["Elegant serif", "Rounded", "Modern serif", "Clean sans"],
+  "Bold & bright": ["Strong caps", "Geometric sans", "Grotesque", "Slab serif"],
+  "Calm & minimal": ["Clean sans", "Modern serif", "Geometric sans", "Technical mono"],
+  "Playful": ["Rounded", "Geometric sans", "Script", "Slab serif"],
+};
+/** The type family a logo font belongs to (for the book, sliders, kit). */
+export const typeOfFont = (fi: number): string => Object.keys(TYPE_FONTS).find((t) => TYPE_FONTS[t].includes(fi)) || "Clean sans";
+/** The shape family of a symbol, as the taste names it. */
+export const shapeOfSym = (sym: string): string => {
+  const f = X_SYMS[sym]?.fam;
+  return f === "sharp" ? "Sharp & angular" : f === "organic" ? "Organic" : f === "geometric" ? "Geometric" : "Round & soft";
+};
+export const FEEL_SHAPE: Record<string, string> = { "Soft & warm": "Round & soft", "Bold & bright": "Sharp & angular", "Calm & minimal": "Geometric", "Playful": "Organic" };
 export const TYPE_FAMILY: Record<string, number[]> = {
   "Elegant serif": [0, 1, 2, 3, 4, 5], "Modern serif": [3, 4, 5, 0, 1, 2], "Slab serif": [6, 7, 8, 3, 5],
   "Clean sans": SANS_ALL, "Geometric sans": [12, 13, 14, 9, 10, 11, 21, 22], "Grotesque": [15, 16, 17, 9, 10, 11, 18],
@@ -773,7 +788,7 @@ export const X_SYMS: Record<string, XSym> = {
 const SECTOR_SYMS: [RegExp, string[]][] = [
   [/verif|trust|certif|compliance|legal|law|notar|audit|attest|insur|secur|safe|guard|protect/i, ["seal", "shield", "keyhole", "prism", "frame", "eye"]],
   [/bank|financ|pay|fintech|invest|account|money|wealth|capital|fund|crypto|tax/i, ["bars", "split", "stairs", "shield", "dial", "hex"]],
-  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital/i, ["node", "spark", "grid", "pulse", "orbit", "pixel", "hex", "cloud"]],
+  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital|\bpos\b|point of sale|ipad|tool/i, ["node", "spark", "grid", "pulse", "orbit", "pixel", "hex", "cloud"]],
   [/restaurant|food|caf[eé]|coffee|bak|kitchen|chef|dining|bistro|bar\b|wine|brew|cater|pizza|seafood|deli/i, ["cup", "vessel", "flame", "leaf", "sunburst", "pebble"]],
   [/ceramic|pottery|craft|handmade|studio|atelier|maker|design|art|furniture/i, ["vessel", "pebble", "arch", "spiral", "hand", "frame"]],
   [/health|care|clinic|wellness|therapy|medic|fitness|yoga|mental|nutrition|spa/i, ["plus", "pulse", "heart", "hand", "leaf", "drop", "bloom"]],
@@ -792,6 +807,8 @@ const SECTOR_SYMS: [RegExp, string[]][] = [
   [/hair|barber|lash|nail|brow/i, ["feather", "gem", "crown", "bloom", "crescent"]],
   [/kid|child|toy|game|play/i, ["star", "bloom", "kite", "pixel", "sprout", "bubble"]],
 ];
+// Symbols that picture a real object: shown only when the brief is in their sector.
+const LITERAL = new Set(["cup", "vessel", "flame", "leaf", "sprout", "pine", "house", "window", "keyhole", "book", "anchor", "crown", "gem", "plus", "heart", "drop", "feather", "hand", "pin", "play", "cloud", "bolt", "shield", "seal"]);
 const FAM_ORDER: Record<string, SymFamily[]> = {
   round: ["round", "organic", "geometric", "sharp"], sharp: ["sharp", "geometric", "round", "organic"],
   geometric: ["geometric", "sharp", "round", "organic"], organic: ["organic", "round", "geometric", "sharp"],
@@ -813,11 +830,19 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
   const per = 10, batches = Math.max(1, Math.floor(pool.length / per));
   const bi = seed % batches, lap = Math.floor(seed / batches);
   const syms = pool.slice(bi * per, bi * per + per);
-  // Fonts: only the chosen family. The pick's own 3 lead; the rest of the
-  // family (same broad style) gives range without leaving it.
-  const own = TYPE_FONTS[taste.type || ""] || TYPE_FONTS["Clean sans"];
-  const fam = [...new Set([...own, ...(TYPE_FAMILY[taste.type || ""] || TYPE_FAMILY["Clean sans"])])];
-  const fOrder = [...own, ...fam.filter((f) => !own.includes(f))];
+  // Fonts: with a type pick, only that family (its own 3 lead). Without one
+  // (the taste is just feel + colours), the 12 tiles ARE the type choice:
+  // the four type families that suit the feel, interleaved.
+  let fOrder: number[];
+  if (taste.type) {
+    const own = TYPE_FONTS[taste.type] || TYPE_FONTS["Clean sans"];
+    const fam = [...new Set([...own, ...(TYPE_FAMILY[taste.type] || TYPE_FAMILY["Clean sans"])])];
+    fOrder = [...own, ...fam.filter((f) => !own.includes(f))];
+  } else {
+    const types = FEEL_TYPES[(taste.feeling || [])[0] || ""] || FEEL_TYPES["Soft & warm"];
+    const lists = types.map((t) => TYPE_FONTS[t]);
+    fOrder = [0, 1, 2].flatMap((k) => lists.map((l) => l[k]));
+  }
   const fShift = (seed * 5 + (h % 3)) % fOrder.length;
   const fontAt = (k: number) => fOrder[(k + fShift) % fOrder.length];
   const calm = (taste.feeling || []).includes("Calm & minimal"), bold = (taste.feeling || []).some((f) => f === "Bold & bright" || f === "Playful");
@@ -837,7 +862,8 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
     const sym = si < 0 || !b ? base : pool[(pool.indexOf(base) + per * b + i) % pool.length];
     const f = fontAt(i + b * 3 + lap);
     const key = `x:${lay}:${sym}:${f}:${caseOf(f, i)}`;
-    const title = lay === "word" || lay === "mono" ? `${LAYOUT_TITLE[lay]} · ${X_FONTS[f].f}` : `${X_SYMS[sym]?.label || LAYOUT_TITLE[lay]} · ${LAYOUT_TITLE[lay]}`;
+    // one pattern for every tile: what the mark is · how it's laid out
+    const title = lay === "word" ? "Name only · Wordmark" : lay === "mono" ? "Initial · Monogram" : `${X_SYMS[sym]?.label || "Mark"} · ${LAYOUT_TITLE[lay]}`;
     return { key, title, accent: ACC[(i + seed) % 3], seed };
   });
 }
@@ -847,9 +873,16 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
 export function symbolPool(name: string, brief: string, taste: { shape?: string }): string[] {
   const h = hashStr((name || "") + "|" + (brief || "").slice(0, 40));
   const fam = (taste.shape === "Sharp & angular" ? "sharp" : taste.shape === "Organic" ? "organic" : taste.shape === "Geometric" ? "geometric" : "round") as SymFamily;
-  const sector = [...new Set(SECTOR_SYMS.filter(([re]) => re.test(brief || "")).flatMap(([, l]) => l))];
+  const hits = SECTOR_SYMS.filter(([re]) => re.test(brief || ""));
+  // A tool FOR a sector (software, a POS, an app) isn't that sector: its own
+  // marks lead, the sector's literal objects (a cup for a restaurant POS) don't.
+  const tool = hits.find(([, l]) => l.includes("node"));
+  const own = tool ? tool[1] : [...new Set(hits.flatMap(([, l]) => l))];
+  const allowed = new Set(tool ? own : hits.flatMap(([, l]) => l));
+  const sector = own;
   const rot = <T,>(arr: T[], k: number): T[] => arr.map((_, i) => arr[(i + k) % arr.length]);
-  const byFam = FAM_ORDER[fam].map((f) => { const l = Object.keys(X_SYMS).filter((k) => X_SYMS[k].fam === f); return rot(l, h % Math.max(1, l.length)); });
+  // Literal objects only ever appear for a brief in their own sector.
+  const byFam = FAM_ORDER[fam].map((f) => { const l = Object.keys(X_SYMS).filter((k) => X_SYMS[k].fam === f && (!LITERAL.has(k) || allowed.has(k))); return rot(l, h % Math.max(1, l.length)); });
   return [...new Set([...rot(sector, h % Math.max(1, sector.length)), ...byFam[0], ...byFam[1], ...byFam[2], ...byFam[3]])];
 }
 /** How many fresh batches of twelve this brand has before they repeat. */

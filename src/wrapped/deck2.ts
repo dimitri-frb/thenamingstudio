@@ -65,10 +65,11 @@ export function deckScenes(theme: Theme, b: DeckBrand, c: WDeck2): Scene[] {
   const lf = X_FONTS[b.font] || X_FONTS[9];
   const lock = (x: number, y: number, fs: number, align: "l" | "c" | "r" = "l"): Prim[] => {
     const name = lf.caps ? b.name.toUpperCase() : b.name;
-    const tw = measure(name, lf.f, lf.w, fs), s = fs * 0.95, gap = fs * 0.32, wTot = s + gap + tw;
+    // a wordmark / monogram logo has no symbol: the name alone, never an invented one
+    const tw = measure(name, lf.f, lf.w, fs), s = fs * 0.95, gap = fs * 0.32, lead = b.sym ? s + gap : 0, wTot = lead + tw;
     const x0 = align === "r" ? x - wTot : align === "c" ? x - wTot / 2 : x;
-    return [{ k: "mark", sym: b.sym, cx: x0 + s / 2, cy: y + fs * 0.5, size: s, color: theme === 2 ? fg : acc, bg },
-      { k: "text", x: x0 + s + gap, y: y - fs * 0.05, w: tw + 20, lines: [name], size: fs, weight: lf.w, color: fg, font: lf.f, lh: fs * 1.1 }];
+    return [...(b.sym ? [{ k: "mark", sym: b.sym, cx: x0 + s / 2, cy: y + fs * 0.5, size: s, color: theme === 2 ? fg : acc, bg } as Prim] : []),
+      { k: "text", x: x0 + lead, y: y - fs * 0.05, w: tw + 20, lines: [name], size: fs, weight: lf.w, color: fg, font: lf.f, lh: fs * 1.1 }];
   };
   const top = (n: string, title: string): Prim[] => [T(P, 66, 700, `${n} · ${title}`, 26, acc, { font: MONO, max: 1 }), ...lock(W - P, 62, 30, "r")];
   const h2 = (t: string): Prim => T(P, 150, 1300, t, t.length <= 35 ? 76 : 60, fg, { weight: 600, max: 2, lh: 1.1, ls: -1.5 });
@@ -80,12 +81,15 @@ export function deckScenes(theme: Theme, b: DeckBrand, c: WDeck2): Scene[] {
     });
   };
   const coverArt = (): Prim[] => theme === 0 ? [{ k: "glow", c1: Dc(R.mid, bg), c2: Dc(R.deep, bg) }]
-    : [{ k: "mark", sym: b.sym, cx: W - 260, cy: H / 2 + 120, size: 760, color: theme === 1 ? Dc(R.mid, bg) : Dc(R.paper, bg), bg }];
+    : b.sym
+      // kept to the right third so it never crowds the title
+      ? [{ k: "mark", sym: b.sym, cx: W - 190, cy: H / 2 + 150, size: 600, color: theme === 1 ? Dc(R.mid, bg) : Dc(R.paper, bg), bg }]
+      : [{ k: "text", x: W - 560, y: H / 2 - 330, w: 520, lines: [(b.name.trim()[0] || "").toUpperCase()], size: 700, weight: lf.w, color: theme === 1 ? Dc(R.mid, bg) : Dc(R.paper, bg), font: lf.f, italic: !!lf.italic, align: "c", lh: 700 }];
   const S: Scene[] = [];
   // 01 cover
   const n = b.name.length;
   S.push({ bg, label: "Cover", prims: [...coverArt(), ...lock(P, 66, 34), T(W - P - 520, 70, 520, "Seed round · 2026", 24, muted, { font: MONO, align: "r", max: 1 }),
-    T(P, 380, theme === 0 ? 1200 : 900, c.cover.head, n <= 8 ? 96 : 84, fg, { weight: 600, max: 3, lh: 1.02, ls: -3 }),
+    T(P, 380, theme === 0 ? 1200 : 860, c.cover.head, n <= 8 ? 96 : 84, fg, { weight: 600, max: 3, lh: 1.02, ls: -3 }),
     T(P, 700, 1000, c.cover.sub, 36, mix(fg, bg, 0.2), { max: 2, lh: 1.3 })] });
   // 02 problem · 03 solution
   S.push({ bg, label: "Problem", prims: [...top("02", "Problem"), h2(c.problem.head), ...cols3(c.problem.cols)] });

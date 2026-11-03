@@ -26,6 +26,7 @@ export interface FlowCtx {
   name: string; domain: string; pal: Palette; logo: KitLogo; fam: Fam; fd: FamData;
   kit: WKit | null; deckInput: DeckInput; deckAi: WDeck2 | WDeckSlide[] | null;
   me: { name?: string; email?: string } | null;
+  account: string | null;          // the signed-in email the run is saved to (null = not signed in)
   st: FlowState; setSel: (p: PieceId, v: number) => void; setDl: (p: PieceId, f: string) => void;
   bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookHtml: () => Promise<{ html: string; filename: string }>; bookPreview: () => void;
   persBtn: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
@@ -47,7 +48,8 @@ const blobBytes = async (b: Blob) => new Uint8Array(await b.arrayBuffer());
 /* ── the visuals of each piece ── */
 function logoVariant(c: FlowCtx, v: number, h = 220): string {
   const variant = v === 1 ? "night" : v === 2 ? "mono" : v === 3 ? "dawn" : "light";
-  return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant, height: h });
+  // fill the tile with the logo's own ground (no dark frame round a coloured logo)
+  return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant, height: h }).replace("<svg ", '<svg preserveAspectRatio="xMidYMid slice" ');
 }
 function posts(c: FlowCtx, f: Fam, story = false): string[] {
   const ps = c.kit?.posts?.length ? c.kit.posts : [{ title: `Something new is coming: ${c.name}.`, label: "Day 1" }, { title: `${c.name} is here.`, label: "Day 3" }, { title: c.fd.tagline || `Why we started ${c.name}.`, label: "Day 7" }];
@@ -57,7 +59,7 @@ const bannerData = (c: FlowCtx) => ({ ...c.fd, tagline: c.fd.tagline || c.kit?.b
 /** A book cover in a given style, small (for version tiles and the hub). */
 function bookThumb(c: FlowCtx, k: number): string {
   const bg = k === 0 ? c.pal.night : k === 1 ? "#f4f2ee" : c.pal.dawn;
-  const lg = logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: k === 0 ? "night" : "light", height: 120 }).replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
+  const lg = logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant: k === 0 ? "night" : k === 2 ? "mono" : "light", height: 120 }).replace(/<rect width="[^"]+" height="[^"]+" fill="[^"]+"\/>/, "");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210" height="297"><rect width="210" height="297" fill="${bg}"/>` +
     (k === 0 ? `<radialGradient id="bt" cx="50%" cy="105%" r="60%"><stop offset="0" stop-color="${c.pal.dawn}" stop-opacity=".5"/><stop offset="1" stop-color="${c.pal.dawn}" stop-opacity="0"/></radialGradient><rect width="210" height="297" fill="url(#bt)"/>` : "") +
     nest(lg, 30, 110, 150, 60) + `<rect x="24" y="250" width="162" height="1" fill="${k === 0 ? "#fff" : "#000"}" opacity=".25"/></svg>`;
@@ -73,7 +75,7 @@ export function thumbOf(p: PieceId, c: FlowCtx): string {
 }
 
 /* ── formats: what each piece downloads as ── */
-export interface Format { id: string; label: string; editable?: boolean; best: string; size: string; help?: string; run: () => Promise<void | string> }
+export interface Format { id: string; label: string; group?: string; editable?: boolean; best: string; size: string; help?: string; run: () => Promise<void | string> }
 function docx(title: string, blocks: { h?: string; p?: string }[]): Blob {
   const x = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const para = (t: string, bold = false, size = 22) => `<w:p><w:r><w:rPr>${bold ? "<w:b/>" : ""}<w:sz w:val="${size}"/></w:rPr><w:t xml:space="preserve">${x(t)}</w:t></w:r></w:p>`;
@@ -104,7 +106,6 @@ function copyBlocks(c: FlowCtx): { h?: string; p?: string }[] {
     ...k.posts.map((p) => ({ h: `${p.label} · launch post`, p: `On the image: ${p.title}\nCaption: ${p.caption}` })),
     { h: "Google Ads · search", p: `Headlines:\n${k.googleHeadlines.join("\n")}\nDescription: ${k.googleDescription}` },
     { h: "Meta Ads · Instagram & Facebook", p: `Primary text: ${k.metaPrimary}\nHeadline: ${k.metaHeadline}` },
-    ...k.weeks.map((w, i) => ({ h: `Week ${i + 1} · ${w.title}`, p: `${w.line}\nChannels: ${w.channels.join(", ")}` })),
   ];
 }
 export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
@@ -169,11 +170,11 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     ];
     const blocks = copyBlocks(c);
     return [
-      { id: "png", label: "PNG", best: "Posts and stories, ready to post", size: "6 images", run: () => zipSvgs(imgs(true), `${nm}-launch-posts.zip`) },
-      { id: "svg", label: "SVG", editable: true, best: "Edit the posts in Figma or Illustrator", size: "6 files", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-svg.zip`) },
-      { id: "word", label: "Word · captions, ads, plan", editable: true, best: "Edit every caption, ad and the 3-week plan", size: ".docx", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
-      { id: "gdocs", label: "Google Docs · captions, ads, plan", editable: true, best: "Edit every caption, ad and the plan in Google Docs", size: ".docx", help: "In Google Drive: New → File upload, then double-click the file and choose Open with Google Docs.", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
-      { id: "pdf", label: "PDF · captions, ads, plan", best: "Read and share", size: "A4", run: async () => download(await textPdf(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.pdf`) },
+      { id: "png", label: "PNG", group: "Posts & stories", best: "Posts and stories, ready to post", size: "6 images", run: () => zipSvgs(imgs(true), `${nm}-launch-posts.zip`) },
+      { id: "svg", label: "SVG", group: "Posts & stories", editable: true, best: "Edit the posts in Figma or Illustrator", size: "6 files", run: () => zipSvgs(imgs(false), `${nm}-launch-posts-svg.zip`) },
+      { id: "word", label: "Word", group: "Captions & ads", editable: true, best: "Edit every caption and ad", size: ".docx", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
+      { id: "gdocs", label: "Google Docs", group: "Captions & ads", editable: true, best: "Edit every caption and ad in Google Docs", size: ".docx", help: "In Google Drive: New → File upload, then double-click the file and choose Open with Google Docs.", run: async () => download(docx(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.docx`) },
+      { id: "pdf", label: "PDF", group: "Captions & ads", best: "Read and share", size: "A4", run: async () => download(await textPdf(`${c.name} · launch copy`, blocks), `${nm}-launch-copy.pdf`) },
     ];
   }
   if (p === "cards") {
@@ -211,12 +212,11 @@ export function KitHub({ c, onOpen, onZip, zipBusy }: { c: FlowCtx; onOpen: (p: 
         <div className="rows">
           {PIECES.map((p, i) => {
             const isDone = !!c.st.dl[p.id], isNext = p.id === next.id && !isDone;
-            const sel = c.st.sel[p.id];
             return (
               <button key={p.id} className={"row" + (isNext ? " next" : "") + (isDone ? " done" : "")} onClick={() => onOpen(p.id)}>
                 <span className="n mono">{i + 1}</span>
                 <span className={"th" + (p.id === "logo" && (selOf("logo", c) === 0 || selOf("logo", c) === 2) ? " wh" : "")} dangerouslySetInnerHTML={{ __html: thumbOf(p.id, c) }} />
-                <span className="tx"><b>{p.label}</b><em>{sel != null || isDone ? `Version ${"ABCD"[selOf(p.id, c)]} · ${versionsOf(p.id)[selOf(p.id, c)]}` : "Choose a version"}</em></span>
+                <span className="tx"><b>{p.label}</b><em>{`Version ${"ABCD"[selOf(p.id, c)]} · ${versionsOf(p.id)[selOf(p.id, c)]}`}</em></span>
                 {isDone ? <span className="ok">✓</span> : isNext ? <span className="go">Next →</span> : <span className="ch">›</span>}
               </button>
             );
@@ -232,6 +232,12 @@ export function KitHub({ c, onOpen, onZip, zipBusy }: { c: FlowCtx; onOpen: (p: 
 }
 
 /* ═════ the download sheet ═════ */
+/** Formats in their groups, in first-seen order ("" = ungrouped). */
+const groupsOf = (fs: Format[]): [string, Format[]][] => {
+  const m = new Map<string, Format[]>();
+  for (const f of fs) { const g = f.group || ""; m.set(g, [...(m.get(g) || []), f]); }
+  return [...m.entries()];
+};
 const ICON: Record<string, string> = { pdf: "PDF", pptx: "PPTX", key: "KEY", gslides: "G", gdocs: "G", word: "DOC", svg: "SVG", png: "PNG", eps: "EPS", pack: "ZIP" };
 function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; formats: Format[]; onClose: () => void }) {
   const [f, setF] = useState(formats.find((x) => x.id === c.st.dl[p])?.id || formats[0].id);
@@ -259,17 +265,17 @@ function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; for
         <h3>Download {PIECES.find((x) => x.id === p)!.label.toLowerCase()}</h3>
         <p className="sub">Version {"ABCD"[v]} · {versionsOf(p)[v]}</p>
         <div className="fmts">
-          {formats.map((x) => (
+          {groupsOf(formats).map(([g, fs]) => [g ? <p key={"g" + g} className="fg mono">{g}</p> : null, ...fs.map((x) => (
             <button key={x.id} className={x.id === f ? "on" : ""} onClick={() => { setF(x.id); c.track("format_selected", { piece: p, format: x.id }); }}>
               <span className="ic mono">{ICON[x.id] || x.label.slice(0, 3).toUpperCase()}</span>
               <span className="tx"><b>{x.label}{x.editable && <i className="mono">EDITABLE</i>}</b><em>{x.best}</em></span>
               <span className="sz mono">{x.size}</span>
             </button>
-          ))}
+          ))])}
         </div>
         {opened ? <p className="help ok">✓ It's in your Google Drive. <a href={opened} target="_blank" rel="noopener">Open it ↗</a></p> : cur.help && <p className="help">{cur.help}</p>}
         {err && <p className="help err">{err}</p>}
-        <button className="wr-btn" onClick={go} disabled={busy}>{busy ? "Preparing…" : `↓ Download ${cur.label.split(" · ")[0]}`}</button>
+        <button className="wr-btn" onClick={go} disabled={busy}>{busy ? "Preparing…" : `↓ Download ${cur.group ? `${cur.group.toLowerCase()} · ` : ""}${cur.label.split(" · ")[0]}`}</button>
         <button className="wr-link" onClick={onClose}>{c.st.dl[p] ? "Done" : "Cancel"}</button>
       </div>
     </div>, document.body);
@@ -326,6 +332,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
             ))}
           </div>
           {vs.length === 1 && <p className="fine soon">More styles for this piece are on the way.</p>}
+          {p === "cards" && <div className="cardfields">{extra}</div>}
         </div>
         <div className="pm">
           <p className="lbl mono">Version {"ABCD"[v]} · what you get</p>
@@ -333,10 +340,14 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
         </div>
         <div className="pr">
           <p className="lbl mono">Formats</p>
-          <div className="chips">
-            {formats.map((x) => <button key={x.id} className={c.st.dl[p] === x.id ? "on" : ""} onClick={() => setSheet(true)}>{x.label.split(" · ")[0]}{x.editable && <i className="mono">EDIT</i>}</button>)}
-          </div>
-          {p === "cards" && <div className="cardfields">{extra}</div>}
+          {groupsOf(formats).map(([g, fs]) => (
+            <div key={g || "all"} className="fgroup">
+              {g && <p className="fg mono">{g}</p>}
+              <div className="chips">
+                {fs.map((x) => <button key={x.id} className={c.st.dl[p] === x.id ? "on" : ""} onClick={() => setSheet(true)}>{x.label.split(" · ")[0]}{x.editable && <i className="mono">EDIT</i>}</button>)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
@@ -362,16 +373,18 @@ export function AllSet({ c, onAgain, onBuy, onZip, onAccount, onChangeDomain, zi
       <div className="wr-stage bf-all">
         <span className="okbig">✓</span>
         <h1 className="wr-h ttl">{c.name}'s brand is ready.</h1>
-        <p className="wr-lead sub">Change a version or download another format whenever you like. It's all in your account.</p>
+        <p className="wr-lead sub">{c.account
+          ? <>Saved to your account ({c.account}): come back any time to change a version or download another format.</>
+          : <>Sign in to keep it: without an account, closing this page loses your kit.</>}</p>
         <div className="list">
           {PIECES.map((p) => {
             const v = selOf(p.id, c), f = c.st.dl[p.id];
             return (
-              <div key={p.id} className="li">
-                <i className={f ? "ok" : "todo"}>{f ? "✓" : "·"}</i>
-                <span><b>{p.label}</b><em className="mono">{"ABCD"[v]} · {versionsOf(p.id)[v]}{f ? ` · ${formatsOf(p.id, c).find((x) => x.id === f)?.label.split(" · ")[0] || f}` : " · not downloaded yet"}</em></span>
-                <button className="wr-link" onClick={() => onAgain(p.id)}>{f ? "↓ Again" : "Open"}</button>
-              </div>
+              <button key={p.id} className="li" onClick={() => onAgain(p.id)}>
+                <span className={"th" + (p.id === "logo" && (v === 0 || v === 2) ? " wh" : "")} dangerouslySetInnerHTML={{ __html: thumbOf(p.id, c) }} />
+                <span className="tx"><b>{p.label}</b><em className="mono">{f ? "✓ Downloaded" : "Ready"} · {"ABCD"[v]} · {versionsOf(p.id)[v]}</em></span>
+                <span className="open">{f ? "Again" : "Open"} ›</span>
+              </button>
             );
           })}
         </div>
@@ -383,7 +396,7 @@ export function AllSet({ c, onAgain, onBuy, onZip, onAccount, onChangeDomain, zi
         <span className="urow">
           <button className="wr-link" onClick={onZip} disabled={zipBusy}>{zipBusy ? "Preparing…" : "↓ Everything (.zip)"}</button>
           {c.domain && <button className="wr-link" onClick={onChangeDomain}>Change domain</button>}
-          <button className="wr-link" onClick={onAccount}>Go to my account</button>
+          <button className="wr-link" onClick={onAccount}>{c.account ? "Go to my account" : "Sign in to save it"}</button>
         </span>
       </div>
     </>

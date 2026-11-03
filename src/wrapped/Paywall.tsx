@@ -182,7 +182,7 @@ export function Locked({ c, kind, book, onUnlock, onBack }: {
           ? { kicker: "Business cards", head: `Hand out ${c.name}.`, para: "Your card, front and back, in your colours and fonts, with your details: print-ready at 85 × 55 mm with bleed and crop marks.", rows: ["Front · your name, role and contacts", "Back · the logo on your colours", "Print-ready PDF · bleed + crop marks"], chip: "Part of the full brand", more: "Light, dark or gradient" }
         : kind === "deck"
           ? { kicker: "Pitch deck", head: `Pitch ${c.name}.`, para: "Ten slides in your brand, with the story from your brief: you fill in your numbers.", rows: ["Cover · Problem · Solution · Market · Product", "Business model · Traction · Team · The ask", "Google Slides, Keynote or PDF"], chip: "Part of the full brand", more: "10 slides, ready to edit" }
-        : { kicker: "Marketing kit", head: `Launch ${c.name}.`, para: "Launch posts, ad copy and a first campaign, in your colours and voice.", rows: ["3 launch posts + stories", "Google + Meta ad copy", "A 3-week campaign plan"], chip: "Part of the marketing kit", more: "Ready to post, ready to paste" };
+        : { kicker: "Marketing kit", head: `Launch ${c.name}.`, para: "Launch posts, stories and ad copy, in your colours and voice.", rows: ["3 launch posts + stories", "Captions for each post", "Google + Meta ad copy"], chip: "Part of the marketing kit", more: "Ready to post, ready to paste" };
   return (
     <>
       <div className="wr-stage wr-pw">
@@ -329,41 +329,36 @@ export function SocialsKit({ c, kit, kitFail, onRetry, onNext, onBack }: {
 export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
   c: PayCtx; kit: WKit | null; kitFail: boolean; onRetry: () => void; onFinish: () => void; onBack: () => void;
 }) {
-  const [tab, setTab] = useState<0 | 1 | 2>(0);
+  const [tab, setTab] = useState<0 | 1>(0);
   const handle = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
   const posts = useMemo(() => (kit?.posts || []).map((p, i) => post(c.fam, c.fd, p.title, dayOf(p.label || "", i))), [c.fam, c.fd, kit]);
   const stories = useMemo(() => (kit?.posts || []).map((p, i) => post(c.fam, c.fd, p.title, dayOf(p.label || "", i), 1080, 1920)), [c.fam, c.fd, kit]);
   const dl = (asset: string, files: Parameters<typeof zipOf>[0], name: string) => { c.track("kit_asset_downloaded", { asset }); void zipOf(files, name); };
   const adsText = kit ? `GOOGLE ADS · SEARCH\nHeadlines:\n${kit.googleHeadlines.join("\n")}\n\nDescription:\n${kit.googleDescription}\n\nMETA · INSTAGRAM & FACEBOOK\nPrimary text:\n${kit.metaPrimary}\n\nHeadline:\n${kit.metaHeadline}\n` : "";
-  const planText = kit ? kit.weeks.map((w) => `${w.title}\n${w.line}\nChannels: ${w.channels.join(", ")}\n`).join("\n") : "";
   const primary =
     tab === 0 ? <button className="wr-btn" onClick={() => setTab(1)}>Next: ad copy →</button>
-    : tab === 1 ? <button className="wr-btn" onClick={() => setTab(2)}>Next: first campaign →</button>
     : <button className="wr-btn" onClick={onFinish}>Next: business cards →</button>;
   const links =
     tab === 0 ? <><button className="wr-link" onClick={onBack}>← Socials kit</button>{kit && <button className="wr-link" onClick={() => dl("posts_all", posts.map((svg, i) => ({ name: `${handle}-post-${i + 1}.png`, svg, h: 1080 })), `${handle}-launch-posts.zip`)}>↓ Download all</button>}</>
-    : tab === 1 ? <><button className="wr-link" onClick={() => setTab(0)}>← Launch posts</button>{kit && <button className="wr-link" onClick={() => { void navigator.clipboard?.writeText(adsText); c.track("kit_copy", { block: "ads_all" }); }}>Copy all</button>}</>
-    : <><button className="wr-link" onClick={() => setTab(1)}>← Ad copy</button>{kit && <button className="wr-link" onClick={() => dl("plan", [{ name: `${handle}-first-campaign.txt`, text: planText }], `${handle}-first-campaign.zip`)}>↓ Download the plan</button>}</>;
+    : <><button className="wr-link" onClick={() => setTab(0)}>← Launch posts</button>{kit && <button className="wr-link" onClick={() => { void navigator.clipboard?.writeText(adsText); c.track("kit_copy", { block: "ads_all" }); }}>Copy all</button>}</>;
   return (
     <>
       <div className="wr-stage wr-pw kit">
         <p className="wr-kicker">Marketing kit</p>
         <h1 className="wr-h ttl">Launch {c.name}.</h1>
-        <p className="wr-lead sub">Posts, ad copy and a first campaign, all in {c.name}'s colours and voice.</p>
+        <p className="wr-lead sub">Launch posts and ad copy, all in {c.name}'s colours and voice.</p>
         <FamPick c={c} />
         <div className="seg">
-          {["Launch posts", "Ad copy", "First campaign"].map((t, i) => (
-            <button key={t} className={tab === i ? "on" : ""} onClick={() => setTab(i as 0 | 1 | 2)}>{t}</button>
+          {["Launch posts", "Ad copy"].map((t, i) => (
+            <button key={t} className={tab === i ? "on" : ""} onClick={() => setTab(i as 0 | 1)}>{t}</button>
           ))}
         </div>
         {/* Tester (3 Nov): "I'm a bit lost, what is it for, should I store it?" */}
         <div className="how">
-          <b>{tab === 0 ? "For your first week on Instagram, LinkedIn or Facebook." : tab === 1 ? "For when you're ready to advertise." : "Your plan for the first three weeks after launch."}</b>
+          <b>{tab === 0 ? "For your first week on Instagram, LinkedIn or Facebook." : "For when you're ready to advertise."}</b>
           <span>{tab === 0
             ? "Post the teaser on day 1, the launch on day 3 and the story on day 7. Download the images, copy the captions."
-            : tab === 1
-              ? "Paste these into Google Ads (search) or Meta Ads (Instagram, Facebook) when you set up a campaign. Lengths already fit their limits."
-              : "What to post, where, and when, using the posts and ads in this kit. Follow it week by week, or download it as a checklist."}</span>
+            : "Paste these into Google Ads (search) or Meta Ads (Instagram, Facebook) when you set up a campaign. Lengths already fit their limits."}</span>
           <em className="mono">Saved in your account · nothing to store</em>
         </div>
         {!kit ? <KitWait fail={kitFail} onRetry={onRetry} what="the marketing kit" /> : tab === 0 ? (
@@ -384,7 +379,7 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
               <button className="dl" onClick={() => dl("stories", stories.map((svg, i) => ({ name: `${handle}-story-${i + 1}-1080x1920.png`, svg, h: 1920 })), `${handle}-stories.zip`)}>↓ Stories 1080 × 1920</button>
             </div>
           </>
-        ) : tab === 1 ? (
+        ) : (
           <>
             <p className="lbl mono">Google Ads · search</p>
             <div className="card txt"><span className="k mono">Headlines · max 30</span><Copy text={kit.googleHeadlines.join("\n")} block="google_headlines" track={c.track} /><p className="mono pre">{kit.googleHeadlines.join("\n")}</p></div>
@@ -392,19 +387,6 @@ export function MarketingKit({ c, kit, kitFail, onRetry, onFinish, onBack }: {
             <p className="lbl mono">Meta · Instagram &amp; Facebook</p>
             <div className="card txt"><span className="k mono">Primary text</span><Copy text={kit.metaPrimary} block="meta_primary" track={c.track} /><p>{kit.metaPrimary}</p></div>
             <div className="card txt"><span className="k mono">Headline</span><Copy text={kit.metaHeadline} block="meta_headline" track={c.track} /><p>{kit.metaHeadline}</p></div>
-          </>
-        ) : (
-          <>
-            <p className="lbl mono">Your first three weeks</p>
-            <div className="weeks">
-              {kit.weeks.map((w, i) => (
-                <div key={w.title} className="wk">
-                  <span className="n">{i + 1}</span>
-                  <div><b>{w.title}</b><p>{w.line}</p><span className="chs">{w.channels.map((ch) => <i key={ch}>{ch}</i>)}</span></div>
-                </div>
-              ))}
-            </div>
-            <div className="card note"><b>Every asset is in the kit.</b> Posts, captions and ads above are matched to each week.</div>
           </>
         )}
       </div>

@@ -103,10 +103,15 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
   switch (i) {
     case 0: { // Cover v2 (handoff 27 · B·3): the brand's mark in the gradient, contents, prepared for
       const [, lay, sym, fi] = (ctx.logoKey || "").split(":");
+      // A wordmark / monogram has no symbol: the cover shows the initial in the
+      // logo's font, never an invented mark.
+      const noSym = (ctx.logoKey || "").startsWith("x:") && (lay === "word" || lay === "mono");
       const symK = sym && X_SYMS[sym] ? sym : "rise";
       const xf = X_FONTS[Number(fi)] || null;
-      const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160"><defs><linearGradient id="cvG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal.dawn}"/><stop offset=".5" stop-color="${pal.haze}"/><stop offset="1" stop-color="${pal.nova}"/></linearGradient></defs>${X_SYMS[symK].draw(120, 80, 70, "url(#cvG)", pal.night)}<rect x="10" y="${symK === "rise" ? 112 : 152}" width="220" height="1.5" fill="${th === 0 ? "#fff" : "#14121f"}" opacity=".35"/></svg>`;
-      void lay;
+      const art = noSym
+        ? `<text x="120" y="128" text-anchor="middle" font-family="'${xf?.f || "Inter Tight"}',serif" font-size="150" font-weight="${xf?.w || 600}"${xf?.italic ? ` font-style="italic"` : ""} fill="url(#cvG)">${(name.trim()[0] || "").toUpperCase()}</text>`
+        : X_SYMS[symK].draw(120, 80, 70, "url(#cvG)", pal.night);
+      const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160"><defs><linearGradient id="cvG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal.dawn}"/><stop offset=".5" stop-color="${pal.haze}"/><stop offset="1" stop-color="${pal.nova}"/></linearGradient></defs>${art}<rect x="10" y="${symK === "rise" && !noSym ? 112 : 152}" width="220" height="1.5" fill="${th === 0 ? "#fff" : "#14121f"}" opacity=".35"/></svg>`;
       const titles = ((book.lang || "en").toLowerCase().startsWith("fr") ? PAGE_TITLES_FR : PAGE_TITLES).slice(1);
       const month = new Date().toLocaleDateString(book.lang?.startsWith("fr") ? "fr-FR" : "en-GB", { month: "long", year: "numeric" });
       return (
@@ -248,7 +253,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       <div className={pc} style={pv}>
         <div style={S.kick}>{T.wordmark}</div>
         <h2 style={{ ...S.h, fontSize: "24pt", margin: "16pt 0 14pt" }}>{T.setWithCare}</h2>
-        <div style={{ border: "1px solid var(--bk-line)", borderRadius: "10pt", display: "grid", placeItems: "center", padding: "34pt 10pt", marginBottom: "12pt" }} dangerouslySetInnerHTML={mark(th === 0 ? "night" : "light", 78)} />
+        <div style={{ border: "1px solid var(--bk-line)", borderRadius: "10pt", display: "grid", placeItems: "center", padding: "34pt 10pt", marginBottom: "12pt" }} dangerouslySetInnerHTML={mark(th === 0 ? "night" : th === 2 ? "mono" : "light", 78)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", marginBottom: "16pt" }}>
           {([["night", pal.night, T.onNight], ["mono", grad, T.oneColour], ["light", "#f4f2ee", T.onPaper]] as const).map(([v, bg, label]) => (
             <div key={label}>
@@ -407,7 +412,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
             </div>
           </div>
           <div style={{ border: "1px solid var(--bk-line)", borderRadius: "8pt", padding: "16pt", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4pt" }}>
-            <div dangerouslySetInnerHTML={mark(th === 0 ? "night" : "light", 34)} />
+            <div dangerouslySetInnerHTML={mark(th === 0 ? "night" : th === 2 ? "mono" : "light", 34)} />
             <div style={{ fontSize: "10pt", fontWeight: 600, marginTop: "10pt" }}>Camille Martin</div>
             <div style={{ ...S.small }}>{T.founder} · camille@{ctx.domain}</div>
             <div style={{ ...S.kick, marginTop: "8pt", opacity: 0.4 }}>{T.bizCard}</div>

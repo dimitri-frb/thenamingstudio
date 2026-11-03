@@ -706,8 +706,8 @@
 .wr-v2w .chip.on .lg { opacity: 0.5; }
 .wr-v2w .endnote { width: 100%; text-align: center; font-size: 12px; color: var(--text3); margin: 14px 0 4px; }
 .wr-v2w .dock { position: sticky; bottom: 0; margin-top: auto; padding-bottom: 12px; background: var(--bg, #000); }
-.wr-v2w .dock .fade { position: absolute; left: -20px; right: -20px; top: -90px; height: 90px; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, 0), #000); display: flex; align-items: flex-end; justify-content: center; }
-.wr-v2w .dock .fade span { font-size: 12px; color: rgba(255, 255, 255, 0.6); padding-bottom: 2px; }
+.wr-v2w .dock .fade { position: absolute; left: -20px; right: -20px; top: -90px; height: 90px; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, 0), #000 72%); display: flex; align-items: flex-end; justify-content: center; }
+.wr-v2w .dock .fade span { font-size: 12px; color: rgba(255, 255, 255, 0.7); padding: 3px 12px; background: #000; border-radius: 999px; }
 .wr-v2teaser {
   display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border-radius: 980px;
   margin-bottom: 10px; font-family: var(--mono); font-size: 12.5px; color: rgba(255, 255, 255, 0.92);
@@ -3260,3 +3260,24 @@
 .bf-sheet .help.ok a { color: #fff; font-weight: 700; } .bf-sheet .help.ok { color: #9fe3c1; }
 /* three versions (brand book): one row of three instead of 2 + 1 */
 .bf-piece .vers.grid:has(> button:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* formats in groups (marketing kit: posts vs captions & ads) */
+.bf-piece .fgroup + .fgroup { margin-top: 12px; }
+.bf-piece .fg, .bf-sheet .fg { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); margin: 0 0 6px; }
+.bf-sheet .fmts .fg { margin: 8px 0 0; }
+
+/* All set: each piece with its thumbnail, status and a real button */
+.bf-all .list { padding-bottom: 8px; }
+.bf-all button.li { grid-template-columns: 52px 1fr auto; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+.bf-all .li .th { width: 52px; height: 52px; border-radius: 9px; overflow: hidden; background: var(--surface3); display: grid; place-items: center; }
+.bf-all .li .th.wh { background: #fff; }
+.bf-all .li .th > svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+.bf-all .li .tx { display: flex; flex-direction: column; min-width: 0; }
+.bf-all .li .open { font-size: 13px; font-weight: 700; color: #111; background: #fff; border-radius: 999px; padding: 7px 14px; white-space: nowrap; }
+/* test mode: keep the footer's links clear of the step bar */
+body:has(.wr-testbar) .wr-foot { padding-bottom: 64px; }
+
+/* H · sideways version rows show there's more (fade at the right edge) */
+.bf-piece .vers:not(.grid) { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+@media (min-width: 900px) { .bf-piece .vers:not(.grid) { -webkit-mask-image: none; mask-image: none; } }
+@media (min-width: 900px) { .bf-piece .vers.deckv button { width: auto; } }

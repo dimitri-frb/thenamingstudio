@@ -56,8 +56,10 @@ export interface FamData {
 }
 /** The data a family needs, from a v2 logo key + the palette. */
 export function famData(key: string, name: string, pal: { dawn: string; haze: string; nova: string; night: string }, more: Partial<FamData> = {}): FamData {
-  const [, lay, sym, f] = (key || "").split(":");
-  const symOk = sym && X_SYMS[sym] && lay !== "mono" ? sym : sym && X_SYMS[sym] ? sym : "rise";
+  const [x, lay, sym, f] = (key || "").split(":");
+  // Wordmarks and monograms have no symbol: the kit then never invents one
+  // (sym "" = the name alone, and the first letter wherever a mark is drawn).
+  const symOk = x === "x" && (lay === "word" || lay === "mono") ? "" : sym && X_SYMS[sym] ? sym : "rise";
   return { name, sym: symOk, font: Number(f) || 9, pal: [pal.night, pal.nova, pal.dawn, pal.haze], tagline: "", ...more };
 }
 
@@ -110,6 +112,13 @@ export function mark(sym: string, cx: number, cy: number, size: number, c: strin
   const s = X_SYMS[sym] || X_SYMS.rise;
   return s.draw(cx, cy, size / 2, c, bg);
 }
+/** The brand's mark: its symbol, or its initial in the logo font when the logo has none. */
+export function markD(d: FamData, cx: number, cy: number, size: number, c: string, bg: string): string {
+  if (d.sym) return mark(d.sym, cx, cy, size, c, bg);
+  const f = X_FONTS[d.font] || X_FONTS[9];
+  const ch = (d.name.trim()[0] || "").toUpperCase();
+  return `<text x="${n1(cx)}" y="${n1(cy + size * 0.34)}" font-family="${stack(f.f)}" font-size="${n1(size * 0.95)}" font-weight="${f.w}"${f.italic ? ` font-style="italic"` : ""} text-anchor="middle" fill="${c}" data-deco="1">${esc(ch)}</text>`;
+}
 /** Symbol + name in the brand's logo font. y = optical centre line. Returns svg + width. */
 export function lockup(d: FamData, x: number, y: number, fs0: number, fg: string, symC: string, bg: string, anchor: "start" | "middle" = "start"): { svg: string; w: number } {
   const f = X_FONTS[d.font] || X_FONTS[9];
@@ -117,12 +126,13 @@ export function lockup(d: FamData, x: number, y: number, fs0: number, fg: string
   const s = fs * 0.95, gap = fs * 0.32;
   const name = f.caps ? d.name.toUpperCase() : d.name;
   const tw = measure(name, f.f, f.w, fs, !!f.italic);
-  const w = s + gap + tw;
+  const lead = d.sym ? s + gap : 0;
+  const w = lead + tw;
   const x0 = anchor === "middle" ? x - w / 2 : x;
   return {
     w,
-    svg: mark(d.sym, x0 + s / 2, y, s, symC, bg) +
-      `<text x="${n1(x0 + s + gap)}" y="${n1(y + fs * 0.35)}" font-family="${stack(f.f)}" font-size="${n1(fs)}" font-weight="${f.w}"${f.italic ? ` font-style="italic"` : ""} letter-spacing="${n1(-fs * 0.02)}" fill="${fg}">${esc(name)}</text>`,
+    svg: (d.sym ? markD(d, x0 + s / 2, y, s, symC, bg) : "") +
+      `<text x="${n1(x0 + lead)}" y="${n1(y + fs * 0.35)}" font-family="${stack(f.f)}" font-size="${n1(fs)}" font-weight="${f.w}"${f.italic ? ` font-style="italic"` : ""} letter-spacing="${n1(-fs * 0.02)}" fill="${fg}">${esc(name)}</text>`,
   };
 }
 const svgOf = (W: number, H: number, bg: string, inner: string, vb?: string) =>
@@ -139,14 +149,14 @@ export function banner(f: Fam, d: FamData, W = 1584, H = 396): string {
     const lk = lockup(d, L, H * 0.16 + H * 0.0375, Math.round(H * 0.075), fg, sc, bg);
     const ft = fit(t, cw, UI, 600, fs, 3);
     const lh = ft.size * 1.08;
-    return svgOf(W, H, bg, mark(d.sym, L * 0.5, H * 0.5, H * 0.42, sc, bg) +
+    return svgOf(W, H, bg, markD(d, L * 0.5, H * 0.5, H * 0.42, sc, bg) +
       `<rect x="${L - 44}" y="${H * 0.25}" width="2" height="${H * 0.5}" fill="${Dc(mix(fg, bg, 0.82), bg)}"/>` + lk.svg +
       txt(ft.lines, L, H * 0.84 - (ft.lines.length - 1) * lh - ft.size * 0.18, ft.size, lh, fg, { weight: 600, ls: -ft.size * 0.03 }));
   }
   if (f === 1) {
     const bg = R.mid, fg = on(bg), big = Dc(R.paper, bg);
     const ft = fit(t, cw * 0.66, UI, 800, Math.round(fs * 1.12), 3);
-    return svgOf(W, H, bg, mark(d.sym, W - H * 0.62 + H * 0.05, H * 0.35 + H * 0.62, H * 1.25, big, bg) +
+    return svgOf(W, H, bg, markD(d, W - H * 0.62 + H * 0.05, H * 0.35 + H * 0.62, H * 1.25, big, bg) +
       txt(ft.lines, L, H * 0.14 + ft.size * 0.82, ft.size, ft.size, fg, { weight: 800, ls: -ft.size * 0.045 }) +
       lockup(d, L, H * 0.86 - H * 0.033, Math.round(H * 0.065), fg, fg, bg).svg);
   }
@@ -178,14 +188,14 @@ export function post(f: Fam, d: FamData, title: string, day: string, W = 1080, H
     const ft = fit(t, W - 2 * P, UI, 600, fs, 3);
     const lh = ft.size * 1.05, last = H - P - ft.size * 0.25;
     const y0 = last - (ft.lines.length - 1) * lh;
-    return svgOf(W, H, bg, mark(d.sym, W - P - 60, P + 60, 120, sc, bg) + lockup(d, P, P + 20, 40, fg, sc, bg).svg +
-      `<rect x="${P}" y="${y0 - ft.size - 36}" width="90" height="6" fill="${fg}"/>` + txt(ft.lines, P, y0, ft.size, lh, fg, { weight: 600, ls: -ft.size * 0.035 }));
+    return svgOf(W, H, bg, markD(d, W - P - 60, P + 60, 120, sc, bg) + lockup(d, P, P + 20, 40, fg, sc, bg).svg +
+      txt(ft.lines, P, y0, ft.size, lh, fg, { weight: 600, ls: -ft.size * 0.035 }));
   }
   if (f === 1) {
     const bg = R.mid, fg = on(bg);
     const ft = fit(t, W - 2 * P - 60, UI, 800, Math.round(fs * 1.15), 4);
     const big = story ? 1100 : 860;
-    return svgOf(W, H, bg, mark(d.sym, 380 + big / 2, (story ? H - 700 : 520) + big / 2, big, Dc(R.paper, bg), bg) +
+    return svgOf(W, H, bg, markD(d, 380 + big / 2, (story ? H - 700 : 520) + big / 2, big, Dc(R.paper, bg), bg) +
       txt(ft.lines, P, P + ft.size * 0.82, ft.size, ft.size * 0.98, fg, { weight: 800, ls: -ft.size * 0.05 }) +
       lockup(d, P, H - P - 20, 36, fg, fg, bg).svg);
   }
@@ -194,9 +204,9 @@ export function post(f: Fam, d: FamData, title: string, day: string, W = 1080, H
     const ft = fit(t, W - 240, SERIF, 500, Math.round(fs * 0.95), 4, true);
     const lh = ft.size * 1.12, mid = H / 2;
     return svgOf(W, H, bg, `<rect x="44" y="44" width="${W - 88}" height="${H - 88}" fill="none" stroke="${fg}" stroke-opacity=".3" stroke-width="3"/>` +
-      txt([d.name], W / 2, 150, d.name.length > 12 ? 18 : 24, 0, A(R.mid, bg), { fam: MONO, anchor: "middle", ls: 7.5, upper: true }) +
+      lockup(d, W / 2, 150, 44, fg, A(R.mid, bg), bg, "middle").svg +
       txt(ft.lines, W / 2, mid - ((ft.lines.length - 1) * lh) / 2 + ft.size * 0.3, ft.size, lh, fg, { fam: SERIF, weight: 500, italic: true, anchor: "middle" }) +
-      mark(d.sym, W / 2, H - 160, 72, A(R.mid, bg), bg));
+      markD(d, W / 2, H - 160, 72, A(R.mid, bg), bg));
   }
   const bg = R.soft, fg = on(bg), pb = A(R.ink, bg);
   const ft = fit(t, W - 2 * P - 40, UI, 800, Math.round(fs * 1.02), 4);
@@ -247,7 +257,7 @@ export function cardFront(f: Fam, layout: "A" | "B", d: FamData, o: CardOpts = {
     if (layout === "A") {
       const bg = R.mid, fg = on(bg);
       const nm = d.name.length > 12 ? 44 : 64;
-      return cardWrap(bg, mark(d.sym, 470 + 250, (d.sym === "rise" ? 330 : 250) + 250, 500, Dc(R.paper, bg), bg) + txt([d.name], 64, 64 + nm * 0.8, nm, 0, fg, { fam: X_FONTS[d.font]?.f || UI, weight: 800, ls: -nm * 0.045 }) + info(d, 64, H - 64, fg), o);
+      return cardWrap(bg, markD(d, 470 + 250, (d.sym === "rise" ? 330 : d.sym ? 250 : 300) + 250, 500, Dc(R.paper, bg), bg) + lockup(d, 64, 64 + nm * 0.45, nm, fg, fg, bg).svg + info(d, 64, H - 64, fg), o);
     }
     const bg = R.deep, fg = on(bg);
     const pn = person.length > 18 ? 40 : 52;
@@ -270,9 +280,8 @@ export function cardFront(f: Fam, layout: "A" | "B", d: FamData, o: CardOpts = {
   if (layout === "A") {
     const bg = R.soft, fg = on(bg), pb = A(R.ink, bg);
     const nm = d.name.length > 12 ? 34 : 48;
-    const pw = measure(d.name, UI, 800, nm) + 48;
-    return cardWrap(bg, circ(630, -90, 300, Dc(R.mid, bg)) + circ(W - 130, H - 130, 70, Dc(R.deep, bg)) +
-      `<g transform="rotate(-4 ${64 + pw / 2} ${64 + nm * 0.6})"><rect x="64" y="64" width="${pw}" height="${nm * 1.3}" rx="${nm * 0.65}" fill="${pb}"/>${txt([d.name], 64 + pw / 2, 64 + nm * 0.95, nm, 0, on(pb), { weight: 800, anchor: "middle", ls: -nm * 0.04 })}</g>` +
+    return cardWrap(bg, circ(630, -90, 300, Dc(R.mid, bg)) +
+      `<g transform="rotate(-4 64 ${64 + nm * 0.5})">${lockup(d, 64, 64 + nm * 0.5, nm, fg, pb, bg).svg}</g>` +
       info(d, 64, H - 64, fg), o);
   }
   const bg = R.mid, fg = on(bg);
@@ -297,13 +306,13 @@ export function cardBack(f: Fam, d: FamData, withQr: boolean, o: CardOpts = {}):
   }
   if (f === 1) {
     const bg = R.ink, fg = on(bg);
-    if (!qr) return cardWrap(bg, mark(d.sym, W / 2, H / 2 - 30, 160, Dc(R.mid, bg), bg) + txt([site || d.name], W / 2, H / 2 + 110, 38, 0, fg, { weight: 800, anchor: "middle" }), o);
+    if (!qr) return cardWrap(bg, markD(d, W / 2, H / 2 - 30, 160, Dc(R.mid, bg), bg) + txt([site || d.name], W / 2, H / 2 + 110, 38, 0, fg, { weight: 800, anchor: "middle" }), o);
     return cardWrap(bg, qrSvg(url, 90, 125, 300, DK, "#ffffff") + txt([site], 450, 290, site.length > 16 ? 30 : 38, 0, fg, { weight: 800 }), o);
   }
   if (f === 2) {
     const bg = R.ink, fg = on(bg);
     const fr = `<rect x="26" y="26" width="${W - 52}" height="${H - 52}" fill="none" stroke="${fg}" stroke-opacity=".35" stroke-width="2"/>`;
-    if (!qr) return cardWrap(bg, fr + mark(d.sym, W / 2, H / 2 - 30, 90, A(R.mid, bg), bg) + txt([site || d.name], W / 2, H / 2 + 70, 34, 0, fg, { fam: SERIF, italic: true, anchor: "middle" }), o);
+    if (!qr) return cardWrap(bg, fr + markD(d, W / 2, H / 2 - 30, 90, A(R.mid, bg), bg) + txt([site || d.name], W / 2, H / 2 + 70, 34, 0, fg, { fam: SERIF, italic: true, anchor: "middle" }), o);
     return cardWrap(bg, fr + qrSvg(url, 120, 130, 290, DK, "#ffffff") + txt([site], 460, 290, site.length > 16 ? 30 : 36, 0, fg, { fam: SERIF, italic: true }), o);
   }
   const bg = R.soft, fg = on(bg), pb = A(R.ink, bg);
@@ -317,5 +326,5 @@ export function avatar(f: Fam, d: FamData, S = 400): string {
   const R = roles(d.pal);
   const bg = f === 0 ? R.paper : f === 1 ? R.mid : f === 2 ? R.ink : R.soft;
   const c = f === 0 ? Dc(R.mid, bg) : f === 1 ? Dc(R.paper, bg) : f === 2 ? A(R.mid, bg) : A(R.ink, bg);
-  return svgOf(S, S, bg, mark(d.sym, S / 2, S / 2, S * 0.5, c, bg));
+  return svgOf(S, S, bg, markD(d, S / 2, S / 2, S * 0.5, c, bg));
 }
