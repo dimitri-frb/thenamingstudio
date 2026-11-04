@@ -29,6 +29,8 @@ export interface BookCtx {
   brief?: string;          // picks the "in use" set (retail or service)
   founder?: string;        // "Prepared for" on the cover
   theme?: 0 | 1 | 2;       // handoff 28 · book versions: 0 Night · 1 Editorial · 2 Colour
+  headFont?: string;       // the logo's typeface: the brand's headline face
+  techy?: boolean;         // software briefs pair it with a mono
 }
 export const BOOK_THEMES = ["Night", "Editorial", "Colour"] as const;
 
@@ -302,13 +304,13 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div style={{ ...S.kick, margin: "16pt 0 8pt" }}>{T.type}</div>
         <div style={{ display: "flex", gap: "16pt", paddingBottom: "24pt" }}>
           <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
-            <span style={{ fontSize: "26pt", fontWeight: 800, letterSpacing: "-0.03em" }}>Aa</span>
-            <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>SF Pro Display · Heavy</div>
+            <span style={{ fontSize: "26pt", fontFamily: `'${ctx.headFont || "Inter Tight"}', serif`, fontWeight: 600, letterSpacing: "-0.02em" }}>Aa</span>
+            <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>{ctx.headFont || "Inter Tight"}</div>
             <div style={S.small}>{T.headlines}</div>
           </div>
           <div style={{ flex: 1, borderTop: "1px solid var(--bk-line)", paddingTop: "8pt" }}>
-            <span style={{ fontSize: "26pt", fontWeight: 400 }}>Aa</span>
-            <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>SF Pro Text · Regular</div>
+            <span style={{ fontSize: "26pt", fontWeight: 400, fontFamily: ctx.techy ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif" }}>Aa</span>
+            <div style={{ fontSize: "9.5pt", fontWeight: 600, marginTop: "4pt" }}>{ctx.techy ? "JetBrains Mono" : "Inter Tight · Regular"}</div>
             <div style={S.small}>{T.body}</div>
           </div>
         </div>

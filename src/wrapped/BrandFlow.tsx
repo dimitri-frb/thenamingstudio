@@ -27,10 +27,15 @@ export interface FlowCtx {
   kit: WKit | null; deckInput: DeckInput; deckAi: WDeck2 | WDeckSlide[] | null;
   me: { name?: string; email?: string } | null;
   account: string | null;          // the signed-in email the run is saved to (null = not signed in)
+  local?: boolean;                 // a shop, café, salon…: Instagram, Facebook and Google, not LinkedIn and X
   st: FlowState; setSel: (p: PieceId, v: number) => void; setDl: (p: PieceId, f: string) => void;
   bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookHtml: () => Promise<{ html: string; filename: string }>; bookPreview: () => void;
   persBtn: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
 }
+// The cover images each kind of business actually needs.
+const BANNERS = (local?: boolean) => local
+  ? [{ id: "facebook-cover", label: "Facebook", w: 1640, h: 624 }, { id: "google-business-cover", label: "Google Business", w: 1080, h: 608 }]
+  : [{ id: "linkedin-banner", label: "LinkedIn", w: 1584, h: 396 }, { id: "x-banner", label: "X", w: 1500, h: 500 }];
 const LOGO_V = ["Primary", "Reversed", "Mono", "On colour"];
 const BOOK_V = ["Night", "Editorial", "Colour"];
 const DECK_V = [...THEMES];
@@ -163,10 +168,11 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
     const bd = bannerData(c);
     const files = (png: boolean) => [
       { name: `${nm}-profile-1080.${png ? "png" : "svg"}`, svg: avatar(v, c.fd, 1080), h: 1080, png },
-      { name: `${nm}-linkedin-banner-1584x396.${png ? "png" : "svg"}`, svg: banner(v, bd, 1584, 396), h: 396, png },
-      { name: `${nm}-x-banner-1500x500.${png ? "png" : "svg"}`, svg: banner(v, bd, 1500, 500), h: 500, png },
+      ...BANNERS(c.local).map((b) => ({ name: `${nm}-${b.id}-${b.w}x${b.h}.${png ? "png" : "svg"}`, svg: banner(v, bd, b.w, b.h), h: b.h, png })),
     ];
-    const bios = c.kit ? [{ name: "bios.txt", data: enc.encode(`SHORT (Instagram · TikTok · X)\n${c.kit.bioShort}\n\nLONG (LinkedIn)\n${c.kit.bioLong}\n`) }] : [];
+    const bios = c.kit ? [{ name: "bios.txt", data: enc.encode(c.local
+      ? `SHORT (Instagram · TikTok)\n${c.kit.bioShort}\n\nLONG (Facebook · Google Business)\n${c.kit.bioLong}\n`
+      : `SHORT (Instagram · TikTok · X)\n${c.kit.bioShort}\n\nLONG (LinkedIn)\n${c.kit.bioLong}\n`) }] : [];
     const z = async (png: boolean, zn: string) => {
       const out: { name: string; data: Uint8Array }[] = [...bios];
       for (const f of files(png)) { const o = await outlineSvg(f.svg); out.push({ name: f.name, data: png ? await svgToPng(o, f.h) : enc.encode(o) }); }
@@ -307,7 +313,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
   useEffect(() => { c.track("piece_seen", { piece: p }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [p]);
   const vthumb = (k: number): string => {
     if (p === "logo") return logoVariant(c, k, 120);
-    if (p === "socials") return banner(k as Fam, bannerData(c), 1584, 396);
+    if (p === "socials") { const b0 = BANNERS(c.local)[0]; return banner(k as Fam, bannerData(c), b0.w, b0.h); }
     if (p === "mkt") return posts(c, k as Fam)[0];
     if (p === "cards") return cardFront(k as Fam, "A", { ...c.fd, person: c.me?.name || "Your name" });
     if (p === "book") return bookThumb(c, k);
@@ -317,7 +323,7 @@ export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: Piece
   const preview: ReactNode = (() => {
     const f = v as Fam;
     if (p === "logo") return <div className={"pv logo" + (v === 0 || v === 2 ? " wh" : "")}>{sv(logoVariant(c, v, 260))}<p className="fine">Every version comes in the pack, plus the symbol on its own, app icons and a favicon.</p></div>;
-    if (p === "socials") return <div className="pv soc">{sv(banner(f, bannerData(c), 1584, 396))}<div className="avrow"><span className="av">{sv(avatar(f, c.fd, 200))}</span><span><b>Profile picture · LinkedIn and X banners · bios</b><em className="mono">1080 × 1080 · 1584 × 396 · 1500 × 500</em></span></div></div>;
+    if (p === "socials") { const bs = BANNERS(c.local); return <div className="pv soc">{sv(banner(f, bannerData(c), bs[0].w, bs[0].h))}<div className="avrow"><span className="av">{sv(avatar(f, c.fd, 200))}</span><span><b>Profile picture · {bs[0].label} and {bs[1].label} covers · bios</b><em className="mono">1080 × 1080 · {bs.map((b) => `${b.w} × ${b.h}`).join(" · ")}</em></span></div></div>; }
     if (p === "mkt") return <div className="pv mk">{posts(c, f).map((s, k) => <span key={k}>{sv(s)}<em className="mono">Day {[1, 3, 7][k]}</em></span>)}</div>;
     if (p === "cards") { const cd = { ...c.fd, person: c.me?.name || "Your name", email: c.me?.email || c.fd.email }; return <div className="pv cards">{sv(cardFront(f, "A", cd))}{sv(cardBack(f, cd, true))}</div>; }
     if (p === "book") return <div className="pv book">{extra}</div>;
@@ -437,8 +443,7 @@ export async function everythingZip(c: FlowCtx, scope: "so_far" | "all"): Promis
   if (want("socials")) {
     const f = selOf("socials", c) as Fam, bd = bannerData(c);
     await add(`3-socials/${nm}-profile-1080.png`, avatar(f, c.fd, 1080), 1080);
-    await add(`3-socials/${nm}-linkedin-banner.png`, banner(f, bd, 1584, 396), 396);
-    await add(`3-socials/${nm}-x-banner.png`, banner(f, bd, 1500, 500), 500);
+    for (const b of BANNERS(c.local)) await add(`3-socials/${nm}-${b.id}.png`, banner(f, bd, b.w, b.h), b.h);
     if (c.kit) out.push({ name: `${nm}-brand-kit/3-socials/bios.txt`, data: enc.encode(`${c.kit.bioShort}\n\n${c.kit.bioLong}\n`) });
   }
   if (want("mkt")) {

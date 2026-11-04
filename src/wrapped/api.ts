@@ -33,7 +33,14 @@ export function setProcessId(id: string): void { if (id) PROCESS = id; }
 
 /* ── types ── */
 export interface WTerritory { name: string; desc: string }
-export interface WConcept { concept: string; para: string; territories: WTerritory[]; alts?: string[] }
+export interface WMarket { lang?: string; country?: string; city?: string; local?: boolean; sector?: string }
+export interface WConcept { concept: string; para: string; territories: WTerritory[]; alts?: string[]; market?: WMarket; palette?: { name: string; hex: string }[]; paletteNote?: string }
+
+// Where the business operates, read from the brief: a local business gets
+// local domain fallbacks (closcrumb-bordeaux.fr, not tryclos.com).
+let MARKET: WMarket | null = null;
+export function setMarket(m: WMarket | null | undefined): void { MARKET = m || null; }
+const localOf = () => (MARKET?.local ? { city: MARKET.city || "", lang: MARKET.lang || "" } : undefined);
 export interface WWord { w: string; m: string; lang?: string }
 export interface WStyle { name: string; words: WWord[] }
 export interface WNamePart { part: string; note: string }
@@ -142,10 +149,10 @@ async function post<T>(body: Record<string, unknown>): Promise<T | null> {
 // a founder must never mistake Aurova demo content for their own results, so a
 // dead engine surfaces as an honest "try again", not a fake answer. Only ?test
 // mode returns the sample set.
-async function gen<T>(phase: string, payload: unknown, sample: () => T): Promise<T | null> {
+async function gen<T>(phase: string, payload: unknown, sample: () => T, retry = true): Promise<T | null> {
   if (TEST) { await pause(350); return sample(); }
   const first = await post<T>({ phase, payload });
-  if (first) return first;
+  if (first || !retry) return first;
   const second = await post<T>({ phase, payload });
   if (second) return second;
   return null;
@@ -165,7 +172,7 @@ export const wrapApi = {
   // fast-model latency and each column renders the moment it arrives.
   wordStyle: (sentence: string, concept: string, territories: WTerritory[], style: WTerritory, idx: number, prefs?: unknown) =>
     gen<{ styles: WStyle[] }>("wrapwords", { sentence, concept, territories, style, prefs }, () =>
-      ({ styles: [ACTIVE().styles[idx] || ACTIVE().styles[0]] })),
+      ({ styles: [ACTIVE().styles[idx] || ACTIVE().styles[0]] }), false), // the caller owns the (single) retry
 
   namesRaw: (payload: Record<string, unknown>) => gen<{ names: WName[] }>("wrapnames", payload, () =>
     ({ names: (payload.exclude as string[])?.length ? ACTIVE().moreNames : ACTIVE().names })),
@@ -187,6 +194,13 @@ export const wrapApi = {
     ]);
     if (!a?.story || !b?.palette) return null;
     return { ...a, ...b } as WBook;
+  },
+  // A taste change only moves the palette, voice and mood half: the story,
+  // tagline and origin (the half already read, on the costliest model) stay.
+  bookTaste: async (prev: WBook, sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
+    const b = await gen<Partial<WBook>>("wrapbook", { sentence, chips, concept, name, parts, taste, half: "b" }, () => sampleBook(name));
+    if (!b?.palette) return null;
+    return { ...prev, ...b } as WBook;
   },
 };
 
@@ -232,7 +246,7 @@ function extractNames(text: string): WName[] {
 }
 
 export async function fetchFreeDom(name: string, doms?: string[]): Promise<{ dom: WDom | null; alt: WDom | null }> {
-  const r = await post<{ dom: WDom | null; alt: WDom | null }>({ phase: "freedom", payload: { name, doms } });
+  const r = await post<{ dom: WDom | null; alt: WDom | null }>({ phase: "freedom", payload: { name, doms, local: localOf() } });
   return { dom: r?.dom ?? null, alt: r?.alt ?? null };
 }
 
@@ -380,14 +394,14 @@ try {
 /* ── domains ── */
 const boardCache = new Map<string, Promise<DomainBoardData>>();
 export function fetchDomainBoard(name: string, doms?: string[], fresh = false): Promise<DomainBoardData> {
-  const key = (name || "").trim().toLowerCase() + "|" + (doms || []).join(",");
+  const key = (name || "").trim().toLowerCase() + "|" + (doms || []).join(",") + (MARKET?.local ? "|local" : "");
   const empty: DomainBoardData = { name, tlds: [], variants: [], source: "none" };
   if (!(name || "").trim()) return Promise.resolve(empty);
   if (TEST) return Promise.resolve(SAMPLE_BOARD((name || "").trim().toLowerCase()));
   if (fresh) boardCache.delete(key); // the claim screen re-verifies on open — never show a stale "available"
   const hit = boardCache.get(key);
   if (hit) return hit;
-  const p = (async () => (await post<DomainBoardData>({ phase: "domainboard", payload: { name, doms } })) || empty)();
+  const p = (async () => (await post<DomainBoardData>({ phase: "domainboard", payload: { name, doms, local: localOf() } })) || empty)();
   boardCache.set(key, p);
   p.then((r) => { if (!r.tlds.length) boardCache.delete(key); }).catch(() => boardCache.delete(key));
   return p;

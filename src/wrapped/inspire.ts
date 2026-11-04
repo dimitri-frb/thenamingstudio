@@ -65,6 +65,18 @@ export const BRAND_AXES: Record<string, { short: number; evoc: number; warm: num
   Starbucks: { short: 0.5, evoc: 0.7, warm: 0.6, real: 0.6 },
   Runway:  { short: 0.7, evoc: 0.9, warm: 0.5, real: 1.0 },
   "Red Bull": { short: 0.7, evoc: 0.9, warm: 0.3, real: 1.0 },
+  "Poilâne": { short: 0.8, evoc: 0.6, warm: 0.9, real: 0.0 },
+  "Le Pain Quotidien": { short: 0.1, evoc: 0.7, warm: 0.9, real: 1.0 },
+  "Ladurée": { short: 0.6, evoc: 0.6, warm: 0.7, real: 0.0 },
+  "Blue Bottle": { short: 0.5, evoc: 0.8, warm: 0.6, real: 1.0 },
+  "Pret": { short: 1.0, evoc: 0.5, warm: 0.7, real: 0.8 },
+  "Aesop": { short: 0.9, evoc: 0.8, warm: 0.6, real: 0.2 },
+  "Bonne Maman": { short: 0.5, evoc: 0.7, warm: 1.0, real: 1.0 },
+  "Le Labo": { short: 0.9, evoc: 0.6, warm: 0.4, real: 1.0 },
+  "Sézane": { short: 0.8, evoc: 0.5, warm: 0.8, real: 0.0 },
+  "Dishoom": { short: 0.8, evoc: 0.8, warm: 0.8, real: 0.0 },
+  "Soho House": { short: 0.4, evoc: 0.8, warm: 0.7, real: 1.0 },
+  "Equinox": { short: 0.8, evoc: 0.9, warm: 0.3, real: 1.0 },
 };
 
 export const INSPIRE: InspireBrand[] = [
@@ -117,12 +129,25 @@ export const INSPIRE: InspireBrand[] = [
   { name: "Starbucks", style: "person", sector: "Coffee", why: "Moby-Dick's first mate: literature hiding in a coffee cup." },
   { name: "Runway", style: "real word", sector: "AI video", why: "A place where things take off: preparation, speed and show in one picture." },
   { name: "Red Bull", style: "compound", sector: "Energy drinks", why: "Two blunt words fused into pure energy imagery: an animal as a promise." },
+  { name: "Poilâne", style: "person", sector: "Bakery", why: "A family name pressed into the crust: the baker IS the brand." },
+  { name: "Le Pain Quotidien", style: "foreign", sector: "Bakery-café", why: "'Daily bread' said plainly: a ritual, not a product." },
+  { name: "Ladurée", style: "person", sector: "Pâtisserie", why: "A founder's name worn like a silk ribbon: heritage you can taste." },
+  { name: "Blue Bottle", style: "compound", sector: "Coffee", why: "A colour and a vessel: the first coffee house of Vienna, in two words." },
+  { name: "Pret", style: "foreign", sector: "Food to go", why: "'Ready', cut to one syllable: speed with a French accent." },
+  { name: "Aesop", style: "myth", sector: "Skincare", why: "A fabulist's name on an apothecary bottle: wisdom over hype." },
+  { name: "Bonne Maman", style: "foreign", sector: "Preserves", why: "'Granny' in French: the warmest possible promise of home-made." },
+  { name: "Le Labo", style: "foreign", sector: "Fragrance", why: "'The lab', no frills: craft shown, not told." },
+  { name: "Sézane", style: "invented", sector: "Fashion", why: "Two children's names folded into one soft word: personal and Parisian." },
+  { name: "Dishoom", style: "invented", sector: "Restaurants", why: "The sound of a Bollywood punch: a name that's already a party." },
+  { name: "Soho House", style: "place", sector: "Members' clubs", why: "A street and a home: belonging, located." },
+  { name: "Equinox", style: "real word", sector: "Gyms", why: "Day equals night: balance as a training promise." },
 ];
 
 // The swipe pool (02·b): 30 brands spanning every naming move, tilted toward
 // the modern and the daring. Each run DRAWS 8 — returning founders see fresh
 // cards, and every round teaches the taste axes something new.
 const POOL_DOMAINS: Record<string, string> = {
+  "Poilâne": "poilane.com",  "Le Pain Quotidien": "lepainquotidien.com",  "Ladurée": "laduree.com",  "Blue Bottle": "bluebottlecoffee.com",  "Pret": "pret.com",  "Aesop": "aesop.com",  "Bonne Maman": "bonnemaman.com",  "Le Labo": "lelabofragrances.com",  "Sézane": "sezane.com",  "Dishoom": "dishoom.com",  "Soho House": "sohohouse.com",  "Equinox": "equinox.com",
   Stripe: "stripe.com", Notion: "notion.so", Slack: "slack.com", Arc: "arc.net", Calm: "calm.com",
   Superhuman: "superhuman.com", Perplexity: "perplexity.ai", Nothing: "nothing.tech", Runway: "runwayml.com",
   Innocent: "innocentdrinks.co.uk", "Liquid Death": "liquiddeath.com", Oatly: "oatly.com",
@@ -133,6 +158,7 @@ const POOL_DOMAINS: Record<string, string> = {
   Anduril: "anduril.com", Patagonia: "patagonia.com", Starbucks: "starbucks.com",
 };
 const POOL_VIBES: Record<string, string> = {
+  "Poilâne": "artisan, storied",  "Le Pain Quotidien": "communal, honest",  "Ladurée": "elegant, heritage",  "Blue Bottle": "calm, crafted",  "Pret": "quick, friendly",  "Aesop": "literary, quiet",  "Bonne Maman": "homely, tender",  "Le Labo": "raw, crafted",  "Sézane": "chic, personal",  "Dishoom": "joyful, cinematic",  "Soho House": "social, assured",  "Equinox": "bold, aspirational",
   Stripe: "minimal, grounded", Notion: "intellectual, quiet", Slack: "subversive, witty", Arc: "minimal, geometric",
   Calm: "serene, direct", Superhuman: "aspirational, bold", Perplexity: "curious, authoritative", Nothing: "deadpan, confident",
   Runway: "dynamic, cinematic", Innocent: "warm, playful", "Liquid Death": "provocative, unforgettable", Oatly: "friendly, irreverent",
@@ -155,11 +181,22 @@ export const SWIPE_POOL: InspireBrand[] = [
   "Anduril", "Patagonia", "Starbucks",
 ].map((n) => ({ ...INSPIRE.find((b) => b.name === n)!, domain: POOL_DOMAINS[n], vibe: POOL_VIBES[n] }));
 
+// Shops, food, places and consumer goods: the deck a bakery, a salon or a
+// shop swipes through (software and fintech names teach them little).
+export const LOCAL_POOL: InspireBrand[] = [
+  "Poilâne",  "Le Pain Quotidien",  "Ladurée",  "Blue Bottle",  "Pret",  "Aesop",  "Bonne Maman",  "Le Labo",  "Sézane",  "Dishoom",  "Soho House",  "Equinox",
+  "Starbucks", "Innocent", "Oatly", "Häagen-Dazs", "Muji", "Glossier", "Patagonia", "Allbirds", "Lego", "Liquid Death", "Airbnb", "Calm",
+].map((n) => ({ ...INSPIRE.find((b) => b.name === n)!, domain: POOL_DOMAINS[n], vibe: POOL_VIBES[n] }));
+const TECHY = new Set(["tech", "finance", "education", "services", "other"]);
+/** The pool that fits the brief's sector (from the brief analysis). */
+export const poolFor = (sector?: string, local?: boolean): InspireBrand[] =>
+  local || (sector && !TECHY.has(sector)) ? LOCAL_POOL : SWIPE_POOL;
+
 export const DECK_SIZE = 8;
 // A fresh hand: shuffled, but never more than two cards of the same style,
 // so every round still spans genuinely different naming moves.
-export function drawDeck(n: number = DECK_SIZE): InspireBrand[] {
-  const pool = [...SWIPE_POOL].sort(() => Math.random() - 0.5);
+export function drawDeck(n: number = DECK_SIZE, from: InspireBrand[] = SWIPE_POOL): InspireBrand[] {
+  const pool = [...from].sort(() => Math.random() - 0.5);
   const perStyle: Record<string, number> = {};
   const out: InspireBrand[] = [];
   for (const b of pool) {

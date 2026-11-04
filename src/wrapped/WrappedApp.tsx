@@ -6,14 +6,14 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, signinElsewhere, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, signinElsewhere, setMarket, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
 import { FEEL_SHAPE, X_FONTS, X_SYMS, buildLogoPack, shapeOfSym, typeOfFont, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
-import { BRAND_AXES, SWIPE_POOL, brandLogo, drawDeck, styleArticle, type InspireBrand } from "./inspire";
+import { BRAND_AXES, SWIPE_POOL, LOCAL_POOL, brandLogo, drawDeck, poolFor, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
 import { BusinessCards, PitchDeck } from "./Kits2";
@@ -109,7 +109,17 @@ const pathSlug = () => {
 const TEST_PATH = /(?:^|\/)test(?:\/|$)/.test(window.location.pathname);
 
 // The Brand chapter's taste quiz: four picks, then sliders.
-export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number } }
+export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number }; pal?: string[] }
+// The first colour choice: a palette the brief analysis drew from the business itself.
+export const BRIEF_COL = "Made for you";
+// Where the brief says the business is → the language its name must work in,
+// and the domain extension a local customer expects (only ones we can verify).
+const COUNTRY_LANG: Record<string, string> = {
+  FR: "French", BE: "French", CH: "French", LU: "French", MC: "French", ES: "Spanish", MX: "Spanish", AR: "Spanish", CO: "Spanish",
+  DE: "German", AT: "German", IT: "Italian", PT: "Portuguese", BR: "Portuguese", NL: "Dutch",
+  GB: "English", US: "English", IE: "English", AU: "English", CA: "English", NZ: "English",
+};
+const COUNTRY_CC: Record<string, string> = { FR: "fr", ES: "es", GB: "co.uk" };
 const TASTE_DEFAULT: Taste = { feeling: ["Soft & warm"], colours: ["Dawn to night"], type: "Elegant serif", shape: "Round & soft", sliders: { ce: 35, wc: 28, rs: 30, ss: 28, mb: 35 } };
 
 /* ── Personalize (06f·p): the symbol set and the "More fonts" catalogue ── */
@@ -175,7 +185,7 @@ const TASTE_OPTS = {
   ],
 } as const;
 const tastePalette = (t: Taste) => {
-  const pal = (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
+  const pal = t.colours.includes(BRIEF_COL) && t.pal?.length === 4 ? t.pal : (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
   return { dawn: pal[0], haze: pal[1], nova: pal[2], night: pal[3] };
 };
 // Every quiz pick re-seeds the recap sliders, so the sliders (and everything
@@ -184,7 +194,7 @@ const seedSliders = (t: Taste): Taste["sliders"] => {
   const has = (k: string) => t.feeling.includes(k);
   return {
     ce: has("Bold & bright") || has("Playful") ? 72 : has("Calm & minimal") ? 22 : 35,
-    wc: t.colours.includes("Citrus pop") ? 18 : t.colours.includes("Dawn to night") ? 30 : t.colours.includes("Forest & sand") ? 45 : 60,
+    wc: t.colours.includes(BRIEF_COL) ? 40 : t.colours.includes("Citrus pop") ? 18 : t.colours.includes("Dawn to night") ? 30 : t.colours.includes("Forest & sand") ? 45 : 60,
     rs: t.shape === "Round & soft" ? 20 : t.shape === "Organic" ? 35 : t.shape === "Geometric" ? 62 : 82,
     ss: ["Elegant serif", "Modern serif", "Slab serif", "Script"].includes(t.type) ? 22 : t.type === "Technical mono" ? 70 : t.type === "Strong caps" ? 78 : 65,
     mb: has("Bold & bright") ? 72 : has("Calm & minimal") ? 24 : 40,
@@ -345,9 +355,14 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // while the founder is still browsing logos (two screens of cover).
   const refreshBookForTaste = (t: Taste) => {
     if (test || !picked) return;
-    bookPre.current.delete(picked.name);
     const who = picked.name;
-    bookFetch(picked, t).then((b) => {
+    const base = bookPre.current.get(who) || Promise.resolve(bookFor.current === who ? book : null);
+    // Keep the story half (tagline, origin) once written; only the taste half moves.
+    const p = base.then((prev) => prev?.story
+      ? wrapApi.bookTaste(prev, sentence.trim(), chips, concept?.concept || "", who, picked.parts || [], tasteForBook(t)).then((b) => b || prev)
+      : wrapApi.book(sentence.trim(), chips, concept?.concept || "", who, picked.parts || [], tasteForBook(t)));
+    bookPre.current.set(who, p);
+    p.then((b) => {
       if (picked?.name !== who) return;
       if (b?.palette) { setBook(b); bookFor.current = who; persist({ palette: b.palette }); }
     });
@@ -385,6 +400,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         if (snap.concept) conceptFor.current = snap.sentence;
         setChips(snap.chips || []);
         setConcept(snap.concept || null);
+        setMarket(snap.concept?.market);
         setStyles(snap.styles || null);
         setStarred(snap.starred || []);
         setNames(snap.names || null);
@@ -428,6 +444,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     setChips(s.chips || []);
     if (s.concept) conceptFor.current = s.sentence;
     setConcept(s.concept || null);
+    setMarket((s.concept as any)?.market);
     setStarred(s.starred || []);
     if (s.styles?.length) setStyles(s.styles);
     setNames(s.names || null);
@@ -509,6 +526,20 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           conceptFor.current = s;
           recordBriefEta(Date.now() - t0);
           setConcept(c);
+          setMarket(c.market);
+          // The market sets the refine defaults the founder hasn't touched:
+          // a Bordeaux bakery must work in French and wants a .fr.
+          const m = c.market;
+          if (m) setPrefs((cur) => {
+            const untouchedLangs = cur.langs.length === 1 && cur.langs[0] === "English";
+            const local = COUNTRY_LANG[(m.country || "").toUpperCase()];
+            const langs = untouchedLangs ? [...new Set([local, m.lang].filter((x): x is string => !!x))] : cur.langs;
+            const cc = COUNTRY_CC[(m.country || "").toUpperCase()];
+            const doms = !cur.doms.length && m.local && cc ? [cc] : cur.doms;
+            return { ...cur, langs: langs.length ? langs : cur.langs, doms };
+          });
+          // A bakery swipes through bakeries and shops, not fintech.
+          if (m && !prefs.brandsLiked.length && !prefs.brandsDisliked.length) setDeck(drawDeck(undefined, poolFor(m.sector, m.local)));
           setFeelOpts([c.concept, ...(c.alts || [])].filter(Boolean).slice(0, 3));
           fail("concept", false);
         } else {
@@ -551,7 +582,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     wordsBatches.current = 0;
     const slots: (WStyle | null)[] = new Array(6).fill(null);
     let settled = 0;
-    let rescued = false;
     const t0 = Date.now();
     const s = sentence.trim();
     const plan = wordsPlan();
@@ -559,15 +589,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       settled++;
       if (settled < 6 || wordsReq.current !== key) return;
       const got = slots.filter(Boolean) as WStyle[];
-      // Never ship a thin page: under five columns, the missing ones get one
-      // more full round before we render anything.
-      if (got.length < 5 && got.length > 0 && !rescued) {
-        rescued = true;
-        const missing = plan.map((st, i) => [st, i] as const).filter(([, i]) => !slots[i]);
-        settled = 6 - missing.length;
-        missing.forEach(([st, i]) => run(i, st, 0));
-        return;
-      }
       // The six calls run blind to each other: drop any word a previous column already shows.
       const seen = new Set<string>();
       const deduped = got.map((st) => ({ ...st, words: st.words.filter((w) => { const k = w.w.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }) }));
@@ -578,7 +599,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       wrapApi.wordStyle(s, concept!.concept, concept!.territories, st, i, prefs).then((r) => {
         if (wordsReq.current !== key) return; // superseded
         if (r?.styles?.[0]?.words?.length) { slots[i] = r.styles[0]; finish(); }
-        else if (attempt < 2) run(i, st, attempt + 1); // quiet retries so columns never just go missing
+        else if (attempt < 1) run(i, st, attempt + 1); // one quiet retry: at most 2 paid calls per column
         else finish();
       });
     };
@@ -1303,6 +1324,16 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     return t;
   };
 
+  const briefPal = useMemo(() => {
+    const p = concept?.palette;
+    if (!p || p.length !== 4 || !p.every((c) => /^#[0-9a-f]{6}$/i.test(c?.hex || ""))) return null;
+    return { pal: p.map((c) => c.hex.toLowerCase()), note: concept?.paletteNote || p.map((c) => c.name).join(", ") };
+  }, [concept]);
+  useEffect(() => { // the brief's own palette is the default colour pick, until they choose another
+    if (!briefPal || taste.colours.join() !== TASTE_DEFAULT.colours.join()) return;
+    setTaste((t) => ({ ...t, colours: [BRIEF_COL], pal: briefPal.pal, sliders: seedSliders({ ...t, colours: [BRIEF_COL] }) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [briefPal]);
   // Logos always wear the quiz picks directly (never a stale pre-taste book palette).
   const lpal = tastePalette(taste);
   const lshape = tasteShape(taste);
@@ -1341,6 +1372,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     kitLogo: { key: payLogo.key, name: picked.name, pal: lpal, opts: { accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, custom: payLogo.custom } },
     voice: book?.voice?.words?.length ? book.voice.words : tasteVoice(taste),
     brief: sentence.trim(),
+    techy: concept?.market?.sector === "tech" || concept?.market?.sector === "finance",
     headFont: payLogo.custom?.family || (payLogo.key.startsWith("x:") ? X_FONTS[Number(payLogo.key.split(":")[3])]?.f || "Inter Tight" : null) || (payLogo.font === "serif" ? "Newsreader" : payLogo.font === "light" ? "Helvetica Neue Light" : "Helvetica Neue Bold"),
     price,
     fam, setFam: (f) => { setFamPick(f); persist({ fam: f }); }, fd,
@@ -1358,6 +1390,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     book, logoKey: logoSel?.key || "sunrise", logoAccent: logoSel?.accent || "dawn", logoSeed: logoSel?.seed ?? 0, logoFont: logoSel?.font, logoShape: lshape, logoCustom: logoSel?.custom,
     brief: sentence.trim(), founder: user?.name || "",
     theme: ((flowSt.sel.book ?? 0) as 0 | 1 | 2),
+    headFont: payCtx?.headFont, techy: payCtx?.techy,
   } : null;
   // A card for tiller.com should say dimi@tiller.com, not a Gmail address:
   // suggest first-name@the-brand's-domain (editable on the cards page).
@@ -1374,7 +1407,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     name: picked.name, domain: payCtx.domain, pal: lpal, logo: payCtx.kitLogo, fam, fd: { ...cardFd, person: cardFd.person, email: cardFd.email },
     kit, deckAi, deckInput: { name: picked.name, brief: sentence.trim(), concept: concept?.concept || "", tagline: famTagline, voice: payCtx.voice, domain: payCtx.domain, founder: user?.name || "" },
     me: { name: cardFd.person, email: cardFd.email },
-    account: user?.email || null,
+    account: user?.email || null, local: !!concept?.market?.local,
     st: flowSt,
     setSel: (p, v) => { const nx = { ...flowSt, sel: { ...flowSt.sel, [p]: v } }; setFlowSt(nx); persist({ flow: nx }); },
     setDl: (p, f) => setFlowSt((cur) => { const nx = { ...cur, dl: { ...cur.dl, [p]: f } }; persist({ flow: nx }); return nx; }),
@@ -1590,7 +1623,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               <div className="prow">
                 <span className="plbl">Domain</span>
                 <div className="opts">
-                  {["com", "ai", "io", "app"].map((d) => {
+                  {[...new Set([...prefs.doms, ...(COUNTRY_CC[(concept?.market?.country || "").toUpperCase()] ? [COUNTRY_CC[(concept!.market!.country || "").toUpperCase()]] : []), "com", ...(concept?.market?.local ? [] : ["ai", "io", "app"])])].map((d) => {
                     const on = prefs.doms.includes(d);
                     return (
                       <button key={d} className={"wr-opt" + (on ? " on" : "")}
@@ -1658,7 +1691,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             brandsDisliked: p.brandsDisliked.filter((x) => x.toLowerCase() !== name.toLowerCase()),
           }))}
           onWords={() => { track("brandsum", { liked: prefs.brandsLiked.length, disliked: prefs.brandsDisliked.length, axes: prefs.axes || undefined }); toStep("words"); }}
-          onAgain={() => { setDeck(drawDeck()); toStep("brands"); }}
+          onAgain={() => { setDeck(drawDeck(undefined, poolFor(concept?.market?.sector, concept?.market?.local))); toStep("brands"); }}
         />
       )}
 
@@ -1886,7 +1919,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {/* ═══ Brand · taste pickers (Feeling / Colours / Type / Shape) ═══ */}
       {(step === "feel" || step === "tcol" || step === "ttype" || step === "tshape") && picked && (
         <TastePicker
-          step={step} name={picked.name} taste={taste}
+          step={step} name={picked.name} taste={taste} briefPal={briefPal}
           onChange={(t) => setTaste(t)}
           onBack={() => toStep(backTarget[step]!)}
           onNext={() => { if (step === "tcol") { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); } toStep(fwdTarget() || "logo"); }}
@@ -1996,7 +2029,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
               if (x === "x") {
                 const t2: Taste = { ...taste, type: typeOfFont(Number(fi)), shape: sy && X_SYMS[sy] ? shapeOfSym(sy) : taste.shape };
                 const t3 = { ...t2, sliders: seedSliders(t2) };
-                if (t3.type !== taste.type || t3.shape !== taste.shape) { setTaste(t3); refreshBookForTaste(t3); }
+                if (t3.type !== taste.type || t3.shape !== taste.shape) setTaste(t3);
               }
               toStep("snap");
             }}>
@@ -3342,7 +3375,7 @@ function BrandTasteSummary({ liked, disliked, axes, onAxes, onRemoveLiked, onRem
             <p className="grp">Loved · {liked.length}</p>
             <div className="pills">
               {liked.map((n) => {
-                const dom = SWIPE_POOL.find((b) => b.name === n)?.domain;
+                const dom = [...SWIPE_POOL, ...LOCAL_POOL].find((b) => b.name === n)?.domain;
                 return (
                   <button key={n} className="pill on" onClick={() => onRemoveLiked(n)}>
                     {dom && <img className="pf" alt="" src={brandLogo(dom, 64)} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
@@ -3378,23 +3411,24 @@ function BrandTasteSummary({ liked, disliked, axes, onAxes, onRemoveLiked, onRem
 }
 
 /* ── the four taste pickers of the Brand chapter ── */
-function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
+function TastePicker({ step, name, taste, onChange, onBack, onNext, briefPal }: {
   step: "feel" | "tcol" | "ttype" | "tshape"; name: string; taste: Taste;
   onChange: (t: Taste) => void; onBack: () => void; onNext: () => void;
+  briefPal?: { pal: string[]; note: string } | null;
 }) {
   const q = step === "feel" ? `How should ${name} feel?` : step === "tcol" ? "Which colours feel right?" : step === "ttype" ? `How should ${name} be written?` : "Round or sharp?";
-  const opts = TASTE_OPTS[step];
+  const opts: readonly { k: string; d: string }[] = step === "tcol" && briefPal ? [{ k: BRIEF_COL, d: briefPal.note }, ...TASTE_OPTS.tcol] : TASTE_OPTS[step];
   const cur: string[] = step === "feel" ? taste.feeling : step === "tcol" ? taste.colours : step === "ttype" ? [taste.type] : [taste.shape];
   const pickIt = (k: string) => { // one pick per question, everywhere
     const next: Taste =
       step === "feel" ? { ...taste, feeling: [k] } :
-      step === "tcol" ? { ...taste, colours: [k] } :
+      step === "tcol" ? { ...taste, colours: [k], pal: k === BRIEF_COL ? briefPal?.pal : taste.pal } :
       step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k };
     onChange({ ...next, sliders: seedSliders(next) });
   };
   const viz = (k: string) => {
     if (step === "tcol") {
-      const palette = (TASTE_OPTS.tcol.find((o) => o.k === k) || TASTE_OPTS.tcol[0]).pal;
+      const palette = k === BRIEF_COL && briefPal ? briefPal.pal : (TASTE_OPTS.tcol.find((o) => o.k === k) || TASTE_OPTS.tcol[0]).pal;
       return <span className="v cols">{palette.map((c) => <i key={c} style={{ background: c }} />)}</span>;
     }
     if (step === "ttype") {
@@ -3469,7 +3503,7 @@ function TastePicker({ step, name, taste, onChange, onBack, onNext }: {
             {opts.map((o) => {
               const on = cur.includes(o.k);
               return (
-                <button key={o.k} className={"tcard" + (on ? " sel" : "")} onClick={() => pickIt(o.k)}>
+                <button key={o.k} className={"tcard" + (on ? " sel" : "") + (o.k === BRIEF_COL ? " wide" : "")} onClick={() => pickIt(o.k)}>
                   {on && <span className="ck">✓</span>}
                   {viz(o.k)}
                   <span className="tx">

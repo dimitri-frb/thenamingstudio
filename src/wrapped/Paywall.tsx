@@ -17,6 +17,7 @@ export interface PayCtx {
   voice: string[];              // three adjectives
   brief?: string;               // the user's one-line brief (deck cover)
   headFont: string;             // the logo's typeface, as a label
+  techy?: boolean;              // software/finance briefs keep a mono for details
   price: number;
   fam: Fam;                     // the layout family (taste picks it; switchable)
   setFam: (f: Fam) => void;
@@ -47,7 +48,9 @@ export function Snapshot({ c, unlocked, onNext, onPersonalise }: { c: PayCtx; un
         </div>
         <div className="types">
           <div className="t"><span className="aa">Aa</span><b>{c.headFont}</b><span>Headlines</span></div>
-          <div className="t"><span className="aa mono">Aa</span><b>JetBrains Mono</b><span>Details &amp; numbers</span></div>
+          {c.techy
+            ? <div className="t"><span className="aa mono">Aa</span><b>JetBrains Mono</b><span>Details &amp; numbers</span></div>
+            : <div className="t"><span className="aa" style={{ fontFamily: "'Inter Tight', sans-serif", fontWeight: 400 }}>Aa</span><b>Inter Tight</b><span>Body text</span></div>}
         </div>
         <div className="voice">
           <span className="k mono">Voice</span>

@@ -204,7 +204,7 @@ export default {
       // The visitor's country (Cloudflare's geo) adds its own extensions right
       // after .com: a UK founder sees name.com, name.uk, name.co.uk first.
       const country = String((req as any)?.cf?.country || "").toUpperCase();
-      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || [], body?.payload?.doms || [], country), env);
+      return json(await domainBoard(env, body?.payload?.name || "", body?.payload?.geos || [], body?.payload?.doms || [], country, body?.payload?.local), env);
     }
 
     // What's actually on a (taken) domain, plus whether it looks like a real
@@ -538,7 +538,8 @@ export default {
         // Every exact candidate taken? A short variant on the preferred TLD is
         // the guarantee: get<name>, try<name>, <name>app are near-always open.
         if (!alt) {
-          const vars = [`get${slug}`, `try${slug}`, `${slug}app`, `${slug}hq`, `use${slug}`];
+          const loc = body?.payload?.local;
+          const vars = loc ? localVariants(slug, loc.city, loc.lang) : [`get${slug}`, `try${slug}`, `${slug}app`, `${slug}hq`, `use${slug}`];
           const t = cand[0];
           const vs = await Promise.all(vars.map((v) => rdap(v, t)));
           const k = vs.findIndex((st) => st === "available");
@@ -930,7 +931,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
   // territories. On the fast model: this answer gates the whole flow, and the
   // page should feel instant.
-  wrapconcept: (b) => ({ model: MODEL.fast, max: 800, prompt:
+  wrapconcept: (b) => ({ model: MODEL.fast, max: 1100, prompt:
     `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     LANG_LINE + `Distill what their NAME should feel like.\n` +
@@ -938,7 +939,9 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `2) "para": exactly 2 short sentences (16 to 28 words total), speaking directly to the founder as "you". First: recap THEIR idea in fresh, concrete words (e.g. "Founders come to you with only an idea."). Second: what the name must feel like for exactly that business (e.g. "Your name should feel clear, warm and unmistakably yours."). Specific nouns over abstractions; reframe, never parrot their sentence; no filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
     `4) "alts": exactly 2 ALTERNATIVE "concept" candidates (same 2-4 lowercase word format, genuinely different angles).\n` +
-    `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}],"alts":["...","..."]}.` }),
+    `5) "market": facts read from the sentence (never invent): "lang" = the language the sentence is WRITTEN in, as an English word (English, French, Spanish…); "country" = ISO-2 code of where the business operates when the sentence names or clearly implies a place (a city, region or country), else ""; "city" = the city if one is named, else ""; "local" = true when it serves people in one physical place or area (a shop, café, restaurant, bakery, salon, studio, practice, gym, hotel), false for apps, software, online or nationwide products; "sector" = one of food, drink, retail, beauty, health, fitness, home, kids, travel, culture, education, services, finance, tech, other.\n` +
+    `6) "palette": exactly 4 colours drawn from THIS business's own world (its materials, products, place, light, hours), never generic tech blues or purples unless it IS tech. Roles in order: a warm signature accent, a soft light mid, a second accent, a near-black. Each {"name": one evocative word in the brief's language, "hex": "#RRGGBB"}. Plus "paletteNote": 2 to 5 words naming the idea (e.g. "crust, cellar and candlelight"), in the brief's language.\n` +
+    `Return ONLY JSON {"concept":"...","para":"...","territories":[{"name":"...","desc":"..."},{"name":"...","desc":"..."},{"name":"...","desc":"..."}],"alts":["...","..."],"market":{"lang":"English","country":"","city":"","local":false,"sector":"other"},"palette":[{"name":"...","hex":"#000000"},{"name":"...","hex":"#000000"},{"name":"...","hex":"#000000"},{"name":"...","hex":"#000000"}],"paletteNote":"..."}.` }),
 
   // 03 The words: ~190 words across 6 styles (32 per column), generated as SIX parallel one-style
   // calls on the fast model, so the whole field lands in a few seconds and each
@@ -1252,6 +1255,14 @@ async function enrichWrapNames(env: Env, data: any, doms?: unknown): Promise<any
   }));
   data.names = list;
   return data;
+}
+
+// A café or salon wants closcrumb-bordeaux.fr, not tryclos.com: when the brief
+// is a local business, domain fallbacks lean on its city and language.
+function localVariants(slug: string, city: unknown, lang: unknown): string[] {
+  const c = String(city || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const fr = /french|fran/i.test(String(lang || ""));
+  return [...(c ? [`${slug}${c}`, `${slug}-${c}`] : []), ...(fr ? [`maison${slug}`, `chez${slug}`] : [`the${slug}`, `${slug}shop`]), `${slug}-${fr ? "officiel" : "store"}`].filter((v) => v.length <= 40);
 }
 
 // ── Accounts: Google sign-in verified server-side, sessions + saved searches in KV ──
@@ -1600,7 +1611,7 @@ async function godaddyPrice(env: Env, domain: string): Promise<{ price: string }
   finally { clearTimeout(timer); }
 }
 
-async function domainBoard(env: Env, name: string, geos: string[] = [], doms: string[] = [], country = ""): Promise<any> {
+async function domainBoard(env: Env, name: string, geos: string[] = [], doms: string[] = [], country = "", local?: { city?: string; lang?: string }): Promise<any> {
   const slug = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!slug) return { name, tlds: [], variants: [], source: "none" };
   const PRICES = await tldPrices(env);
@@ -1612,7 +1623,7 @@ async function domainBoard(env: Env, name: string, geos: string[] = [], doms: st
   const lead = [...prefTlds, "com", ...ccTlds];
   const BOARD_TLDS = [...new Set([...lead, ...BASE_TLDS_AFTER_COM])];
   const exact = BOARD_TLDS.map((t) => `${slug}.${t}`);
-  const variantSlugs = [
+  const variantSlugs = local ? [...localVariants(slug, local.city, local.lang), `my${slug}`, `hello${slug}`, `${slug}studio`, `${slug}world`] : [
     `try${slug}`, `get${slug}`, `use${slug}`, `join${slug}`,
     `${slug}app`, `${slug}hq`, `${slug}go`, `the${slug}`,
     `${slug}labs`, `my${slug}`, `hello${slug}`, `build${slug}`,
@@ -1622,7 +1633,9 @@ async function domainBoard(env: Env, name: string, geos: string[] = [], doms: st
     `meet${slug}`, `with${slug}`, `hey${slug}`, `run${slug}`,
     `${slug}studio`, `${slug}works`, `${slug}team`, `${slug}world`,
   ];
-  const variants = variantSlugs.map((v) => `${v}.com`);
+  // A local business's variants sit on its own extension (.fr) when it chose one.
+  const vTld = local && prefTlds[0] && RDAP_BASE[prefTlds[0]] ? prefTlds[0] : "com";
+  const variants = variantSlugs.map((v) => `${v}.${vTld}`);
 
   const dr = await fastlyStatus(env, [...exact, ...variants]);
   const source = env.FASTLY_KEY && Object.keys(dr).length ? "fastly" : "rdap";
@@ -1691,8 +1704,8 @@ async function domainBoard(env: Env, name: string, geos: string[] = [], doms: st
       const st = variantStatuses[i];
       return {
         domain: d, status: st.status,
-        price: st.status === "available" ? priceOf("com")[0] : undefined,
-        renewal: st.status === "available" ? priceOf("com")[1] : undefined,
+        price: st.status === "available" ? priceOf(vTld)[0] : undefined,
+        renewal: st.status === "available" ? priceOf(vTld)[1] : undefined,
         offerPrice: st.offerPrice, offerUrl: st.offerUrl,
       };
     })

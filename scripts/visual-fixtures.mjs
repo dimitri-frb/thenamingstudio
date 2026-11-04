@@ -46,6 +46,8 @@ const report = await page.evaluate(async (BRANDS) => {
     for (let f = 0; f < 4; f++) {
       items.push({ id: `${d.name} · banner LinkedIn · ${FAMS[f]}`, svg: K.banner(f, d, 1584, 396), safe: 0.27 });
       items.push({ id: `${d.name} · banner X · ${FAMS[f]}`, svg: K.banner(f, d, 1500, 500), safe: 0.27 });
+      items.push({ id: `${d.name} · banner Facebook · ${FAMS[f]}`, svg: K.banner(f, d, 1640, 624), safe: 0.27 });
+      items.push({ id: `${d.name} · banner Google Business · ${FAMS[f]}`, svg: K.banner(f, d, 1080, 608), safe: 0.27 });
       items.push({ id: `${d.name} · post · ${FAMS[f]}`, svg: K.post(f, d, d.post, "Day 3") });
       items.push({ id: `${d.name} · story · ${FAMS[f]}`, svg: K.post(f, d, d.post, "Day 3", 1080, 1920) });
       items.push({ id: `${d.name} · card A · ${FAMS[f]}`, svg: K.cardFront(f, "A", d) });

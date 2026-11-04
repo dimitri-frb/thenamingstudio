@@ -3283,3 +3283,7 @@ body:has(.wr-testbar) .wr-foot { padding-bottom: 64px; }
 @media (min-width: 900px) { .bf-piece .vers.deckv button { width: auto; } }
 /* sign-in on an address Google won't accept: link to the real site */
 .wr-offsite{display:inline-block;padding:12px 20px;border-radius:999px;background:#fff;color:#111;font-weight:600;text-decoration:none;border:1px solid #dadce0}
+/* the brief's own palette: a full-width first card, kept short so the grid still fits */
+.wr-tpick .tcard.wide { grid-column: 1 / -1; display: flex; align-items: stretch; }
+.wr-tpick .tcard.wide .v { flex: 1.2; height: 96px; border-radius: 17px 0 0 17px; }
+.wr-tpick .tcard.wide .tx { flex: 1; display: flex; flex-direction: column; justify-content: center; }
