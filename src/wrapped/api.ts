@@ -131,12 +131,19 @@ function who(): Record<string, string> {
   } catch { return {}; }
 }
 
+// Every generation after the brief analysis says which language to write in.
+function withLang(body: Record<string, unknown>): Record<string, unknown> {
+  const pl = body.payload;
+  if (!MARKET?.lang || !pl || typeof pl !== "object" || Array.isArray(pl) || (pl as any).lang) return body;
+  return { ...body, payload: { ...(pl as object), lang: MARKET.lang } };
+}
+
 async function post<T>(body: Record<string, unknown>): Promise<T | null> {
   try {
     const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...body, who: who(), process: PROCESS, test: TEST }),
+      body: JSON.stringify({ ...withLang(body), who: who(), process: PROCESS, test: TEST }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -270,7 +277,7 @@ export function coinNames(sentence: string, chips: string[], concept: string, wo
       const res = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phase: "wrapstream", payload, who: who(), process: PROCESS, test: TEST }),
+        body: JSON.stringify({ ...withLang({ phase: "wrapstream", payload }), who: who(), process: PROCESS, test: TEST }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) throw new Error("stream unavailable");

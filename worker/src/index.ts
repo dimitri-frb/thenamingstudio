@@ -773,6 +773,12 @@ const prefLine = (p: any): string => {
 
 // Every generated text mirrors the founder's language (French brief -> French output).
 const LANG_LINE = `IMPORTANT: Write EVERY output text in the language the founder's BRIEF SENTENCE is written in - judge ONLY from that sentence, never from starred words, territories or tags (foreign loanwords in the material do not change the language). An English brief means English output; a French brief means French output. Keep the JSON keys and structure in English.\n`;
+// Once the brief analysis has named the brief's language, every later call
+// carries it explicitly (a French-sounding name must not flip the copy to French).
+const langLine = (b: any): string => {
+  const l = String(b?.payload?.lang || "").replace(/[^A-Za-z \-]/g, "").slice(0, 24);
+  return l ? `IMPORTANT: Write EVERY output text in ${l}, the language of the founder's brief, with its proper accents and punctuation, whatever the language of the name, the starred words or the markets. Keep the JSON keys and structure in English.\n` : LANG_LINE;
+};
 
 // A labelled brief the model can actually reason over (beats dumping raw JSON).
 const briefV1 = (b: any) => [
@@ -922,7 +928,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   wrapchips: (b) => ({ model: MODEL.fast, max: 220, prompt:
     `A founder describes what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}".\n` +
-    LANG_LINE +
+    langLine(b) +
     `Extract 3 to 5 short tags that mirror what the founder ACTUALLY SAID, most specific first:\n` +
     `- the product form, in their words (e.g. "iPad POS", "Budgeting app", "Coffee brand", "AI legal tool")\n` +
     `- the audience, in their words (e.g. "Restaurant owners", "Students", "Law firms")\n` +
@@ -938,7 +944,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   wrapconcept: (b) => ({ model: MODEL.fast, max: 1100, prompt:
     `A founder is naming what they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
     `Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
-    LANG_LINE + `Distill what their NAME should feel like.\n` +
+    langLine(b) + `Distill what their NAME should feel like.\n` +
     `1) "concept": the single feeling the name should carry, 2 to 4 lowercase words (e.g. "a new beginning", "quiet confidence", "earned trust"). Fits the sentence "Your name should feel like ___".\n` +
     `2) "para": exactly 2 short sentences (16 to 28 words total), speaking directly to the founder as "you". First: recap THEIR idea in fresh, concrete words (e.g. "Founders come to you with only an idea."). Second: what the name must feel like for exactly that business (e.g. "Your name should feel clear, warm and unmistakably yours."). Specific nouns over abstractions; reframe, never parrot their sentence; no filler like "your brand" or "your vision".\n` +
     `3) "territories": exactly 3 naming inspiration territories that mine this concept from different angles. Each: "name" = ONE evocative Title Case word (like Light, Ignition, Origin, Craft, North) and "desc" = 3 to 6 lowercase words.\n` +
@@ -953,7 +959,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // kept for clients built before the split.)
   wrapwords: (b) => {
     const common =
-      LANG_LINE +
+      langLine(b) +
       `A founder is collecting raw naming material. What they're building: "${String(b.payload?.sentence || "").slice(0, 300)}". ` +
       `Their name should feel like "${b.payload?.concept || ""}". Inspiration territories: ${JSON.stringify(b.payload?.territories || [])}.\n`;
     const wordSpec =
@@ -982,7 +988,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // with a real free domain per name (RDAP), so "domains checked" is true.
   // payload.count: names per batch (5–9; the picker asks 6 then 5 on phones, 9 then 8 on desktop).
   wrapnames: (b) => { const N = Math.min(9, Math.max(5, Number(b.payload?.count) || 6)); return { model: MODEL.opus, max: 380 * N + 300, prompt:
-    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n` + LANG_LINE + `\n` +
+    `You are the lead namer at a world-class branding studio. Founders come to you because your names feel inevitable.\n` + langLine(b) + `\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}.\n` +
     `THE NAME SHOULD FEEL LIKE: "${b.payload?.concept || ""}".\n` + prefLine(b.payload?.prefs) +
     `WORDS THE FOUNDER STARRED (your primary raw material): ${JSON.stringify((b.payload?.words || []).slice(0, 24))}.\n\n` +
@@ -1058,7 +1064,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // whole book lands in one Sonnet-latency, not two.
   // Paid kit (handoff 19): socials bios + launch posts + ads (the 3-week plan was dropped: too vague).
   wrapkit: (b) => ({ model: MODEL.smart, max: 1800, prompt:
-    `You are the launch strategist at a world-class branding studio.\n` + LANG_LINE +
+    `You are the launch strategist at a world-class branding studio.\n` + langLine(b) +
     `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" — domain ${String(b.payload?.domain || "").slice(0, 60)}.\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". The name should feel like: "${String(b.payload?.concept || "").slice(0, 120)}". Tagline: "${String(b.payload?.tagline || "").slice(0, 160)}". Voice: ${JSON.stringify((b.payload?.voice || []).slice(0, 4))}.\n\n` +
     `Write the launch kit, in that voice, specific to THIS brand (never generic, never mention Name Name). EVERY field, ads included, in the brief's language — a city or country named in the brief does not change it:\n` +
@@ -1074,7 +1080,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
   // The paid pitch deck: a real first draft of all 10 slides from the run.
   // Numbers are never invented: they're [bracketed] for the founder to fill.
   wrapdeck: (b) => ({ model: MODEL.opus, max: 2600, prompt:
-    `You are a seed-stage pitch coach who has helped hundreds of small founders raise their first money and win their first customers.\n` + LANG_LINE +
+    `You are a seed-stage pitch coach who has helped hundreds of small founders raise their first money and win their first customers.\n` + langLine(b) +
     `BRAND: "${String(b.payload?.name || "").slice(0, 40)}" (${String(b.payload?.domain || "").slice(0, 60)}). Founder: "${String(b.payload?.founder || "").slice(0, 60)}".\n` +
     `WHAT THEY'RE BUILDING: "${String(b.payload?.sentence || "").slice(0, 300)}". The name should feel like: "${String(b.payload?.concept || "").slice(0, 120)}". Tagline: "${String(b.payload?.tagline || "").slice(0, 160)}". Voice: ${JSON.stringify((b.payload?.voice || []).slice(0, 4))}.\n` +
     (b.payload?.story ? `Their brand story: "${String(b.payload.story).slice(0, 400)}".\n` : "") +
@@ -1095,7 +1101,7 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
 
   wrapbook: (b) => {
     const intro =
-      LANG_LINE +
+      langLine(b) +
       `Brief: "${String(b.payload?.sentence || "").slice(0, 300)}". Tags: ${JSON.stringify(b.payload?.chips || [])}. ` +
       `The name should feel like "${b.payload?.concept || ""}". Chosen name: "${b.payload?.name || ""}" (origin: ${JSON.stringify(b.payload?.parts || [])}).\n` +
       (b.payload?.taste ? `THE FOUNDER'S TASTE (the brand must wear it): feeling ${JSON.stringify(b.payload.taste.feeling || [])}, colour direction ${JSON.stringify(b.payload.taste.colours || [])}, type ${b.payload.taste.type || ""}, shapes ${b.payload.taste.shape || ""}. The palette MUST follow the colour direction.\n` : "") +
