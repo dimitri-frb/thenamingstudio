@@ -182,7 +182,7 @@ export function deckSlides(x: DeckInput, ai?: AiSlide[] | null): Slide[] {
     return {
       n: t.n, title: a.title || t.title, head: a.head || t.head,
       points: Array.isArray(a.points) && a.points.filter(Boolean).length ? a.points.filter(Boolean).slice(0, 3) : t.points,
-      hint: i === 0 ? "Seed deck · 2026" : i === 9 ? "" : a.hint || t.hint,
+      hint: i === 0 ? `Presentation · ${new Date().getFullYear()}` : i === 9 ? "" : a.hint || t.hint,
     };
   });
 }
@@ -190,7 +190,7 @@ function templateSlides(x: DeckInput): Slide[] {
   const b = x.brief.replace(/\.$/, "");
   const nm = x.name;
   return [
-    { n: 1, title: "Cover", head: b ? b[0].toUpperCase() + b.slice(1) + "." : `${nm}.`, points: [x.tagline || ""], hint: "Seed deck · 2026" },
+    { n: 1, title: "Cover", head: b ? b[0].toUpperCase() + b.slice(1) + "." : `${nm}.`, points: [x.tagline || ""], hint: `Presentation · ${new Date().getFullYear()}` },
     { n: 2, title: "Problem", head: "What's broken today", points: ["Who has the problem, in one line", "What it costs them (time, money, risk)", "Why today's options fall short"], hint: "One painful, specific story beats three statistics." },
     { n: 3, title: "Solution", head: `${nm}: ${x.concept || "the better way"}`, points: [b ? `${nm} is ${b.replace(/^(a|an|the) /i, (m) => m.toLowerCase())}.` : `What ${nm} does, in one sentence`, "The one thing it does better than anyone", "How it feels to use it"], hint: "Say it the way you'd say it to a customer." },
     { n: 4, title: "Market", head: "Who it's for, and how many", points: ["Your first customers: who, where", "TAM · SAM · SOM (add your numbers)", "Why now: what changed"], hint: "Start narrow: the first 1,000 customers." },

@@ -112,7 +112,13 @@ function midVowel(name: string): { ch: string; i: number } {
   return { ch: "", i: -1 };
 }
 
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s);
+// Keep the name's own capitals ("Clos & Crumb", "NetSuite"); only a name
+// typed all in capitals is softened to one capital per word.
+const cap = (s: string) => {
+  if (!s) return s;
+  const t = s.length > 3 && s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s&\-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()) : s;
+  return t[0].toUpperCase() + t.slice(1);
+};
 
 const SERIF = `'Newsreader',Georgia,'Times New Roman',serif`;
 

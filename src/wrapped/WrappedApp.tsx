@@ -319,6 +319,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const conceptFor = useRef("");   // the sentence the current concept was built from
   const wordsReq = useRef("");
   const bookPre = useRef(new Map<string, Promise<WBook | null>>());
+  const bookFor = useRef(""); // the name the current book was written for (a reload keeps it)
   const namesPre = useRef<{ key: string; st: NameStream } | null>(null);
   const morePre = useRef<{ key: string; st: NameStream } | null>(null);
 
@@ -348,7 +349,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     const who = picked.name;
     bookFetch(picked, t).then((b) => {
       if (picked?.name !== who) return;
-      if (b?.palette) { setBook(b); persist({ palette: b.palette }); }
+      if (b?.palette) { setBook(b); bookFor.current = who; persist({ palette: b.palette }); }
     });
   };
   const starKey = (ws: WWord[]) => ws.map((w) => w.w).sort().join("|");
@@ -392,6 +393,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         setLogoSel(snap.logoSel || null);
         setLogoSeed(snap.logoSeed || 0);
         setBook(snap.book || null);
+        bookFor.current = snap.book ? (snap.bookFor || snap.picked?.name || "") : "";
         if (snap.prefs) setPrefs(snap.prefs);
         if (snap.feelOpts) setFeelOpts(snap.feelOpts);
         if (snap.taste) setTaste(snap.taste);
@@ -456,8 +458,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   /* ── persistence (refresh-resume + account) ── */
   useEffect(() => {
     if (test || step === "land") return;
-    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, bought: domBought, unlocked, kit });
-  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, domBought, unlocked, kit]);
+    saveSnap({ step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, bookFor: bookFor.current, prefs, feelOpts, taste, bought: domBought, unlocked, kit, deck: deckAi, fam: famPick, flow: flowSt });
+  }, [test, step, sentence, chips, concept, styles, starred, names, picked, steps, logoSel, logoSeed, book, prefs, feelOpts, taste, domBought, unlocked, kit, deckAi, famPick, flowSt]);
 
   function persist(over: Partial<SavedSearch> = {}) {
     if (test || !sentence.trim()) return;
@@ -670,11 +672,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       fail("board", !b.tlds.length);
     });
     if (test) { setBook(sampleBook(picked.name)); return; }
+    // Restored from a reload with this name's book: keep it (same copy the
+    // founder already saw and downloaded, and no paid rewrite).
+    if (bookFor.current === picked.name) return;
     setBook(null);
+    bookFor.current = "";
     const who = picked.name;
     bookFetch(picked).then((b) => {
       if (picked?.name !== who) return; // superseded by another pick
-      if (b?.palette) { setBook(b); fail("book", false); persist({ palette: b.palette }); } else { bookPre.current.delete(who); fail("book", true); }
+      if (b?.palette) { setBook(b); bookFor.current = who; fail("book", false); persist({ palette: b.palette }); } else { bookPre.current.delete(who); fail("book", true); }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picked, test, retryTick]);
@@ -1709,7 +1715,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
             <button className="wr-btn" style={{ width: "auto", minWidth: 240, padding: "0 26px" }} disabled={!styles} onClick={() => starred.length
               ? continueWithWords([], "manual")
               : continueWithWords(strongestWords(styles || [], 5), "auto")}>
-              {starred.length ? "See my 6 names →" : "Show me names →"} <i className="kbd">⏎</i>
+              {starred.length ? "See my names →" : "Show me names →"} <i className="kbd">⏎</i>
             </button>
             <span className="urow">
               {!test && !wordsMaxed && <button className="wr-link" disabled={moreWordsBusy} onClick={loadMoreWords}>{moreWordsBusy ? "Mining more words…" : "↻ Shuffle words"}</button>}
@@ -1870,7 +1876,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <>
           <div className="wr-stage center" style={{ textAlign: "center", alignItems: "center" }}>
             <h1 className="wr-h pop" style={{ fontSize: 58, marginBottom: 14 }}>Now, your brand.</h1>
-            <p className="wr-lead rise" style={{ marginBottom: 30 }}>A minute of swiping, and we build the rest.</p>
+            <p className="wr-lead rise" style={{ marginBottom: 30 }}>Two quick questions, then pick a logo. We build the rest.</p>
             <button className="wr-btn rise" style={{ maxWidth: 200 }} onClick={() => toStep("feel")}>Start →</button>
             <button className="wr-link rise" style={{ marginTop: 10 }} onClick={() => { track("brandlater", { name: picked.name }); toStep("claim"); }}>Do it later</button>
           </div>
@@ -2671,7 +2677,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
               onContextMenu={(e) => e.preventDefault()}
               onClick={() => { if (longFired.current) { longFired.current = false; return; } onToggle(w); }}
             >
-              {on && "✓ "}{w.w}<i className="lg">{(w.lang || "EN").toUpperCase()}</i>
+              {on && "✓ "}{w.w}{w.lang && <i className="lg">{w.lang.toUpperCase()}</i>}
             </button>
           );
         })}
@@ -2683,7 +2689,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
           ? onContinue([], "manual")
           // nothing starred: the cloud's strongest five (pool order interleaves the six angles)
           : onContinue(strongestWords(styles, 5), "auto")}>
-          {starred.length ? "See my 6 names →" : "Show me names →"}
+          {starred.length ? "See my names →" : "Show me names →"}
         </button>
         <div className="links">
           <button onClick={shuffle}>↻ Shuffle words</button>
@@ -2693,7 +2699,7 @@ function WordsCloudV2({ styles, starred, onToggle, onContinue, onBack }: {
       {sheet && (
         <div className="wr-v2tipwrap">
           <div className="wr-v2tip" style={{ left: sheet.x, top: sheet.y }}>
-            <b>{sheet.w.w}</b> <i className="lg">{LANG_FULL[(sheet.w.lang || "EN").toUpperCase()] || (sheet.w.lang || "EN").toUpperCase()}</i>
+            <b>{sheet.w.w}</b> {sheet.w.lang && <i className="lg">{LANG_FULL[sheet.w.lang.toUpperCase()] || sheet.w.lang.toUpperCase()}</i>}
             <p>{sheet.w.m || "A word from your brief's world."}</p>
           </div>
         </div>

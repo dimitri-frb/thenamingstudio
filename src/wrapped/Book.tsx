@@ -372,7 +372,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div className="bk-page">
           <div style={{ display: "flex", justifyContent: "space-between" }}><div style={S.kick}>{set === "A" ? T.retail : T.service}</div><div style={S.kick}>{T.worldK}</div></div>
           <h2 style={{ ...S.h, fontSize: "24pt", margin: "14pt 0 14pt" }}>{T.inUseT(name)}</h2>
-          <div style={{ marginBottom: "auto" }} dangerouslySetInnerHTML={{ __html: inUseSvg(set, pal, L, N, name, book.tagline || "", ctx.domain, ctx.founder || "").replace(/width="700" height="620"/, 'width="100%" height="auto"') }} />
+          <div style={{ marginBottom: "auto" }} dangerouslySetInnerHTML={{ __html: inUseSvg(set, pal, L, N, name, book.tagline || "", ctx.domain, ctx.founder || "").replace(/width="700" height="620"/, 'width="100%" style="height:auto;display:block"') }} />
           {foot}
         </div>
       );
@@ -390,7 +390,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
         <div className="bk-page">
           <div style={S.kick}>{T.mood}</div>
           <h2 style={{ ...S.h, fontSize: "24pt", margin: "14pt 0 14pt" }}>{T.moodT}</h2>
-          <div dangerouslySetInnerHTML={{ __html: moodSvg(pal, tiles).replace(/width="700" height="560"/, 'width="100%" height="auto"') }} />
+          <div dangerouslySetInnerHTML={{ __html: moodSvg(pal, tiles).replace(/width="700" height="560"/, 'width="100%" style="height:auto;display:block"') }} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10pt", borderTop: "1px solid var(--bk-line)", paddingTop: "10pt", marginTop: "8pt", marginBottom: "auto" }}>
             {rule(true, T.photoThis, m?.yes || "real moments, real people, the place itself.")}
             {rule(true, T.keepIt, m?.warm || `in ${name}'s colours: warm light, honest detail.`)}

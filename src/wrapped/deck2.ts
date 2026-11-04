@@ -88,7 +88,7 @@ export function deckScenes(theme: Theme, b: DeckBrand, c: WDeck2): Scene[] {
   const S: Scene[] = [];
   // 01 cover
   const n = b.name.length;
-  S.push({ bg, label: "Cover", prims: [...coverArt(), ...lock(P, 66, 34), T(W - P - 520, 70, 520, "Seed round · 2026", 24, muted, { font: MONO, align: "r", max: 1 }),
+  S.push({ bg, label: "Cover", prims: [...coverArt(), ...lock(P, 66, 34), T(W - P - 520, 70, 520, `Presentation · ${new Date().getFullYear()}`, 24, muted, { font: MONO, align: "r", max: 1 }),
     T(P, 380, theme === 0 ? 1200 : 860, c.cover.head, n <= 8 ? 96 : 84, fg, { weight: 600, max: 3, lh: 1.02, ls: -3 }),
     T(P, 700, 1000, c.cover.sub, 36, mix(fg, bg, 0.2), { max: 2, lh: 1.3 })] });
   // 02 problem · 03 solution

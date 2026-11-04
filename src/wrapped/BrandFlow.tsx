@@ -49,7 +49,22 @@ const blobBytes = async (b: Blob) => new Uint8Array(await b.arrayBuffer());
 function logoVariant(c: FlowCtx, v: number, h = 220): string {
   const variant = v === 1 ? "night" : v === 2 ? "mono" : v === 3 ? "dawn" : "light";
   // fill the tile with the logo's own ground (no dark frame round a coloured logo)
-  return logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant, height: h }).replace("<svg ", '<svg preserveAspectRatio="xMidYMid slice" ');
+  const svg = logoSvg(c.logo.key, c.name, c.pal, { ...c.logo.opts, variant, height: h });
+  // Fit the whole logo (never crop a long name) and paint the rest of the tile
+  // with the logo's own ground, so there's no dark frame round it.
+  let out = svg, ground = "transparent";
+  const g = svg.match(/<rect width="[^"]+" height="[^"]+"(?: rx="[^"]+")? fill="([^"]+)"\/?>(?:<\/rect>)?/);
+  if (g) {
+    const ref = g[1].match(/^url\(#([^)]+)\)$/);
+    if (!ref) ground = g[1];
+    else {
+      // a gradient ground: the tile carries it in CSS, edge to edge
+      const def = svg.match(new RegExp(`<linearGradient id="${ref[1]}"[\\s\\S]*?<\\/linearGradient>`))?.[0] || "";
+      const stops = [...def.matchAll(/offset="([^"]+)" stop-color="([^"]+)"/g)].map((m) => `${m[2]} ${Math.round(parseFloat(m[1]) * 100)}%`);
+      if (stops.length) { ground = `linear-gradient(135deg, ${stops.join(", ")})`; out = svg.replace(g[0], ""); }
+    }
+  }
+  return out.replace("<svg ", `<svg preserveAspectRatio="xMidYMid meet" style="background:${ground}" `);
 }
 function posts(c: FlowCtx, f: Fam, story = false): string[] {
   const ps = c.kit?.posts?.length ? c.kit.posts : [{ title: `Something new is coming: ${c.name}.`, label: "Day 1" }, { title: `${c.name} is here.`, label: "Day 3" }, { title: c.fd.tagline || `Why we started ${c.name}.`, label: "Day 7" }];
@@ -414,6 +429,11 @@ export async function everythingZip(c: FlowCtx, scope: "so_far" | "all"): Promis
       [{ name: "Dawn", hex: c.pal.dawn }, { name: "Haze", hex: c.pal.haze }, { name: "Nova", hex: c.pal.nova }, { name: "Night", hex: c.pal.night }], c.logo.opts?.font, c.logo.opts?.shape, c.logo.opts?.custom);
     out.push({ name: `${nm}-brand-kit/1-logo/${pack.filename}`, data: await blobBytes(pack.blob) });
   }
+  if (want("book") && c.bookReady) {
+    // The book's document version (opens in a browser, Word or Google Docs);
+    // the designed PDF still downloads from its own page.
+    try { const r = await c.bookHtml(); out.push({ name: `${nm}-brand-kit/2-brand-book/${r.filename}.html`, data: enc.encode(r.html) }); } catch { /* the rest of the kit still ships */ }
+  }
   if (want("socials")) {
     const f = selOf("socials", c) as Fam, bd = bannerData(c);
     await add(`3-socials/${nm}-profile-1080.png`, avatar(f, c.fd, 1080), 1080);
@@ -436,6 +456,6 @@ export async function everythingZip(c: FlowCtx, scope: "so_far" | "all"): Promis
     out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pdf`, data: await blobBytes(await svgPdf(sc.map((s) => sceneSvg(s, 1600)), 297, 167.0625, `${c.name} pitch deck`)) });
     out.push({ name: `${nm}-brand-kit/6-pitch-deck/${c.name} - Pitch deck.pptx`, data: await blobBytes(await deckPptx2(sc, `${c.name} pitch deck`)) });
   }
-  out.push({ name: `${nm}-brand-kit/README.txt`, data: enc.encode(`${c.name} · your brand kit\n\n1-logo: the full logo pack (open the zip)\n3-socials: profile picture, banners, bios\n4-marketing: launch posts and all the copy (Word)\n5-business-cards: print-ready PDF\n6-pitch-deck: PDF and PowerPoint (opens in Keynote and Google Slides)\n\nThe brand book downloads from its own page (PDF or Word).\n`) });
+  out.push({ name: `${nm}-brand-kit/README.txt`, data: enc.encode(`${c.name} · your brand kit\n\n1-logo: the full logo pack (open the zip)\n2-brand-book: the brand book as a document (opens in a browser, Word or Google Docs)\n3-socials: profile picture, banners, bios\n4-marketing: launch posts and all the copy (Word)\n5-business-cards: print-ready PDF\n6-pitch-deck: PDF and PowerPoint (opens in Keynote and Google Slides)\n\nThe designed brand book PDF downloads from its own page.\n`) });
   download(makeZip(out), `${nm}-brand-kit.zip`);
 }
