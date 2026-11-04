@@ -598,7 +598,33 @@ function parseJSON(text: string): any {
   const s = Math.min(...["{", "["].map((c) => { const i = t.indexOf(c); return i < 0 ? Infinity : i; }));
   const e = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
   if (s !== Infinity && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch { /* fall */ } }
+  // The fast model often gets only the closing brackets wrong ("]}]" where
+  // "]}]}" was due). Rebalance them and try once more.
+  if (s !== Infinity) { try { return JSON.parse(balanceJSON(t.slice(s))); } catch { /* fall */ } }
   return null;
+}
+
+// Rebuilds the closers of a JSON text: a closer that doesn't match the open
+// bracket closes the brackets above it first; missing closers are appended.
+// Strings are copied untouched.
+function balanceJSON(t: string): string {
+  const stack: string[] = [];
+  let out = "", inStr = false, esc = false;
+  for (const ch of t) {
+    if (inStr) { out += ch; if (esc) esc = false; else if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') { inStr = true; out += ch; continue; }
+    if (ch === "{" || ch === "[") { stack.push(ch === "{" ? "}" : "]"); out += ch; continue; }
+    if (ch === "}" || ch === "]") {
+      if (!stack.includes(ch)) continue; // a stray closer
+      while (stack.length && stack[stack.length - 1] !== ch) out += stack.pop();
+      out += stack.pop();
+      if (!stack.length) return out;
+      continue;
+    }
+    out += ch;
+  }
+  if (inStr) out += '"';
+  return out.replace(/,\s*$/, "") + stack.reverse().join("");
 }
 
 // ── Central request log (Cloudflare KV) ──
