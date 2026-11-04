@@ -555,7 +555,7 @@ export default {
       const { model, max, prompt } = spec(body);
       const text = await callClaude(env, model, prompt, max);
       let data = parseJSON(text);
-      if (data == null) return json({ error: "parse failed" }, env, 502);
+      if (data == null) return json({ error: "parse failed", ...(body?.test ? { raw: text.slice(0, 4000) } : {}) }, env, 502);
       if (phase === "candidates") data = await enrichCandidates(data);
       if (phase === "wrapnames") data = await enrichWrapNames(env, data, body?.payload?.prefs?.doms);
       if (phase === "wrapkit") data = fitKit(data);
