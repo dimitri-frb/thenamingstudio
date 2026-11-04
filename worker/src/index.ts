@@ -523,7 +523,11 @@ export default {
       const prices = await tldPrices(env);
       const order = domCheckOrder(body?.payload?.doms);
       // Widen the hunt past the preferred order so a free line is near-guaranteed.
-      const cand = [...order, ...["dev", "co", "net", "xyz"].filter((t) => !order.includes(t) && RDAP_BASE[t])];
+      const localBiz = !!body?.payload?.local;
+      // A local business's fallback is its own extension, .com or .net, never .io/.ai/.app.
+      const cand = localBiz
+        ? [...new Set([...order.filter((t) => !["io", "ai", "app"].includes(t)), "com", "net"])].filter((t) => RDAP_BASE[t])
+        : [...order, ...["dev", "co", "net", "xyz"].filter((t) => !order.includes(t) && RDAP_BASE[t])];
       const states = await Promise.all(cand.map((t) => rdap(slug, t)));
       const mk = (t: string, free: boolean) => free
         ? { domain: `${slug}.${t}`, tld: "." + t, price: (prices[t] || BOARD_PRICE[t] || ["$15"])[0], free: true }
@@ -740,7 +744,7 @@ const prefLine = (p: any): string => {
   if (tones.length) lean.push(`tone: ${tones.join(" and ")}`);
   if (stylesPicked.length) lean.push(`name style(s): ${stylesPicked.join(", ")} — cover EACH picked style in the set`);
   if (p.length && p.length !== "Any") lean.push(`length: ${p.length}`);
-  if (Array.isArray(p.langs) && p.langs.length) hard.push(`must read and sound clean in: ${p.langs.join(", ")}`);
+  if (Array.isArray(p.langs) && p.langs.length) hard.push(`the NAMES must read and sound clean in: ${p.langs.join(", ")} (this is about how the names sound to those speakers; every rationale, tagline and note you write stays in the language of the brief sentence, with its proper accents)`);
   if (Array.isArray(p.avoid) && p.avoid.length) hard.push(`never use these words or patterns: ${p.avoid.join(", ")}`);
   let out = "";
   if (lean.length) out += `\nFOUNDER LEANINGS: make the MAJORITY of your output match these, but keep some variety beyond them: ${lean.join("; ")}.`;
