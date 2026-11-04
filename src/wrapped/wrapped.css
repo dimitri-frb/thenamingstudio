@@ -3281,3 +3281,5 @@ body:has(.wr-testbar) .wr-foot { padding-bottom: 64px; }
 .bf-piece .vers:not(.grid) { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
 @media (min-width: 900px) { .bf-piece .vers:not(.grid) { -webkit-mask-image: none; mask-image: none; } }
 @media (min-width: 900px) { .bf-piece .vers.deckv button { width: auto; } }
+/* sign-in on an address Google won't accept: link to the real site */
+.wr-offsite{display:inline-block;padding:12px 20px;border-radius:999px;background:#fff;color:#111;font-weight:600;text-decoration:none;border:1px solid #dadce0}

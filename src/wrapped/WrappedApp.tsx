@@ -6,7 +6,7 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, signinElsewhere, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
@@ -2861,7 +2861,7 @@ function BriefGateModal({ words, brief, onClose, onUser }: { words: string[]; br
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || signinElsewhere()) return;
     const init = () => {
       const w = window as any;
       if (!w.google?.accounts?.id || !host.current) return;
@@ -2893,7 +2893,7 @@ function BriefGateModal({ words, brief, onClose, onUser }: { words: string[]; br
         <span className="wm">NAME NAME</span>
         <h3>Your perfect name.<br />100% free.</h3>
         {brief && <p className="gbrief"><em>BRIEF</em><span>{brief}</span></p>}
-        <div className="gbtn" ref={host} />
+        <div className="gbtn" ref={host}>{signinElsewhere() && <a className="wr-offsite" href={signinElsewhere()!}>Continue on namename.ai to sign in →</a>}</div>
         {err && <p className="fine" style={{ color: "#ff7a6e" }}>{err}</p>}
         <p className="fine">Free. No card. We only use it to save your names.</p>
       </div>
@@ -2910,7 +2910,7 @@ function SignupModal({ onClose, onUser, note }: { onClose: () => void; onUser: (
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || signinElsewhere()) return;
     const init = () => {
       const w = window as any;
       if (!w.google?.accounts?.id || !host.current) return;
@@ -2934,7 +2934,7 @@ function SignupModal({ onClose, onUser, note }: { onClose: () => void; onUser: (
         <span className="tile"><svg width="15" height="15" viewBox="0 0 12 12"><path d="M 2 8.5 A 4 4 0 0 1 10 8.5 Z" fill="#000" /></svg></span>
         <h3>{note ? "Keep it. It's yours." : "Start naming, free."}</h3>
         <p>{note || "Save your names and pick up where you left off."}</p>
-        <div className="gbtn" ref={host} />
+        <div className="gbtn" ref={host}>{signinElsewhere() && <a className="wr-offsite" href={signinElsewhere()!}>Continue on namename.ai to sign in →</a>}</div>
         {err && <p className="small" style={{ color: "#ff7a6e" }}>{err}</p>}
         <p className="small">Have an account? Same button, we'll recognise you.</p>
         <p className="small dim">By continuing you agree to our Terms and Privacy Policy.</p>

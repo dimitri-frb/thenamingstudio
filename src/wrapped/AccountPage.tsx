@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./wrapped.css";
 import {
-  GOOGLE_CLIENT_ID, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, putSearch, registrarUrl, saveSession,
+  GOOGLE_CLIENT_ID, signinElsewhere, adminRoles, authGoogle, fetchMe, loadGsi, loadSession, putSearch, registrarUrl, saveSession,
   searchDel, priceFor, track, type SavedSearch, type WUser,
 } from "./api";
 import { AvatarMenu, BASE, SettingsPane } from "./paper";
@@ -204,7 +204,7 @@ function FlowCard({ s, demo, price, onDeleted, onBought }: { s: SavedSearch; dem
 function SignIn({ onUser, loading }: { onUser: (u: WUser, s: SavedSearch[]) => void; loading: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || signinElsewhere()) return;
     const init = () => {
       const w = window as any;
       if (!w.google?.accounts?.id || !host.current) return;
@@ -224,7 +224,7 @@ function SignIn({ onUser, loading }: { onUser: (u: WUser, s: SavedSearch[]) => v
     <div className="kadm gate">
       <span className="bt">NAME NAME</span>
       <p>{loading ? "Checking your session…" : "Your names live behind your Google account."}</p>
-      <div ref={host} />
+      <div ref={host}>{signinElsewhere() && <a className="wr-offsite" href={signinElsewhere()!}>Continue on namename.ai to sign in →</a>}</div>
       <a href={BASE()}>← Back to the studio</a>
     </div>
   );

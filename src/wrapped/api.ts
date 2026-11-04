@@ -490,6 +490,15 @@ export async function accountDelete(): Promise<boolean> {
 }
 
 /* ── Google Identity Services ── */
+// Google refuses sign-in (origin_mismatch) on any address but the registered
+// one, e.g. a translation proxy or a mirror. There, offer a link to the real
+// site instead of a button that can only fail.
+export function signinElsewhere(): string | null {
+  const h = location.hostname;
+  if (h === "namename.ai" || h === "localhost" || h === "127.0.0.1") return null;
+  return "https://namename.ai" + location.pathname + location.search;
+}
+
 export function loadGsi(onReady: () => void): () => void {
   const w = window as any;
   if (w.google?.accounts?.id) { onReady(); return () => {}; }
