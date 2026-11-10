@@ -717,7 +717,7 @@ async function compactLog(env: Env, budget = 700): Promise<{ wrote: number; pend
     const parts = Math.ceil(names.length / DAY_PART);
     for (let k = idx.prog[day] || 0; k < parts; k++) {
       const slice = names.slice(k * DAY_PART, (k + 1) * DAY_PART);
-      if (wrote + slice.length > budget) { await env.LOG.put("logd:index", JSON.stringify(idx)); return { wrote, pending: byDay.size }; }
+      if (wrote > 0 && wrote + slice.length > budget) { await env.LOG.put("logd:index", JSON.stringify(idx)); return { wrote, pending: byDay.size }; }
       const items = (await Promise.all(slice.map(async (n) => { const v = await env.LOG!.get(n); if (!v) return null; try { return { id: n, ...JSON.parse(v) }; } catch { return null; } }))).filter(Boolean);
       await env.LOG.put(`logd:${day}:${k}`, JSON.stringify(items));
       wrote += slice.length;
