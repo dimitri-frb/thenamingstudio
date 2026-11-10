@@ -873,6 +873,40 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
     return { key, title, accent: ACC[(i + seed) % 3], seed };
   });
 }
+/** Handoff 29 · G·3: nine logos in the ONE typeface the founder picked
+ *  (font = X_FONTS index). batch 0, 1, 2… are appended by "Show 9 more":
+ *  each batch takes the next seven symbols, plus a wordmark and a monogram. */
+export function logoNineX(name: string, brief: string, taste: { font: number; shape?: string }, batch = 0): LogoConcept[] {
+  const pool = symbolPool(name, brief, taste);
+  const per = 7, batches = Math.max(1, Math.floor(pool.length / per));
+  const bi = batch % batches, lap = Math.floor(batch / batches);
+  const syms = pool.slice(bi * per, bi * per + per);
+  const f = X_FONTS[taste.font] ? taste.font : 9;
+  const caps = !!X_FONTS[f].caps;
+  const plan: [string, number][] = [["side", 0], ["stack", 1], ["word", -1], ["emblem", 2], ["pill", 3], ["mono", -1], ["split", 4], ["side", 5], ["icon", 6]];
+  const lays = [...plan.slice(0, 8).map((_, i, a) => a[(i + batch * 3 + lap) % 8]), plan[8]];
+  const ACC: Accent[] = ["dawn", "haze", "nova"];
+  return lays.map(([lay, si], i) => {
+    const sym = si < 0 ? "none" : syms[si % syms.length] || pool[(si + lap) % pool.length];
+    const cs = caps ? "u" : (i + batch) % 5 === 4 ? "l" : "n";
+    const key = `x:${lay}:${sym}:${f}:${cs}`;
+    const title = lay === "word" ? "Name only · Wordmark" : lay === "mono" ? "Initial · Monogram" : `${X_SYMS[sym]?.label || "Mark"} · ${LAYOUT_TITLE[lay]}`;
+    return { key, title, accent: ACC[(i + batch) % 3], seed: batch };
+  });
+}
+/** The symbol family that suits a typeface (no feel question any more). */
+export const shapeOfFont = (fi: number): string => {
+  const t = typeOfFont(fi);
+  return t === "Grotesque" || t === "Strong caps" || t === "Slab serif" ? "Sharp & angular" : t === "Geometric sans" || t === "Technical mono" ? "Geometric" : t === "Rounded" || t === "Script" ? "Organic" : "Round & soft";
+};
+/** The feel a typeface implies (drives the kit's layout family + the book's voice). */
+export const feelOfFont = (fi: number): string => {
+  const t = typeOfFont(fi);
+  return t === "Grotesque" || t === "Strong caps" || t === "Slab serif" ? "Bold & bright" : t === "Rounded" || t === "Script" ? "Playful" : t === "Clean sans" || t === "Geometric sans" || t === "Technical mono" ? "Calm & minimal" : "Soft & warm";
+};
+/** The body face that pairs with a headline face. */
+export const pairOf = (fi: number): string => (X_FONTS[fi]?.serif ? "Inter Tight" : fi === 9 ? "Newsreader" : "Inter Tight");
+
 /** Every symbol, in this brand's order: the sector's marks, then the shape
  *  family's, then the rest (each list rotated by the name, so two brands in
  *  the same sector don't open on the same marks). */

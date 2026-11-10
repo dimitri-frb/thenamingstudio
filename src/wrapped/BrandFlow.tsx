@@ -5,6 +5,7 @@
 // Visuals come from the families engine (handoff 27).
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { ProCard } from "./Freemium";
 import { buildLogoPack, logoSvg, svgToPng, type Palette } from "./logos";
 import { outlineSvg } from "./outline";
 import { svgPdf } from "./pdf";
@@ -31,6 +32,9 @@ export interface FlowCtx {
   st: FlowState; setSel: (p: PieceId, v: number) => void; setDl: (p: PieceId, f: string) => void;
   bookReady: boolean; bookPdf: () => void; bookWord: () => Promise<void>; bookHtml: () => Promise<{ html: string; filename: string }>; bookPreview: () => void;
   persBtn: () => void; track: (ev: string, p?: Record<string, unknown>) => void;
+  // handoff 29 · freemium: preview free, download with Pro (the logo PNG is free)
+  pro: boolean; price: number;
+  openPro: (step: string, o?: { title?: string; lead?: string; cta?: string; then?: () => void }) => void;
 }
 // The cover images each kind of business actually needs.
 const BANNERS = (local?: boolean) => local
@@ -92,6 +96,23 @@ export function thumbOf(p: PieceId, c: FlowCtx): string {
   if (p === "mkt") return posts(c, v)[1] || avatar(v, c.fd, 200);
   if (p === "cards") return cardFront(v, "A", { ...c.fd, person: c.me?.name || "Your name" });
   return sceneSvg(scenesOf(c, v as Theme)[0], 480);
+}
+
+/** G·0 · the collage: their card, a Day 1 post, a pitch slide (Paper, light on dark), the logo tile. */
+export function introArt(c: FlowCtx): { card: string; post: string; slide: string; logo: string } {
+  const f = c.fam;
+  return {
+    card: cardFront(0 as Fam, "A", { ...c.fd, person: c.me?.name || "Your name" }),
+    post: posts(c, f)[0],
+    slide: sceneSvg(scenesOf(c, 1)[0], 480),
+    logo: logoSvg(c.logo.key.startsWith("x:") ? c.logo.key : "appicon", c.name, c.pal, { ...c.logo.opts, variant: "icon", height: 160 }),
+  };
+}
+/** The free download: the primary logo as a 2000 px PNG. */
+export async function logoPng(c: FlowCtx): Promise<void> {
+  const svg = logoVariant(c, 0, 400);
+  download(new Blob([(await svgToPng(await outlineSvg(svg), 2000)) as Uint8Array<ArrayBuffer>], { type: "image/png" }), `${slug(c.name)}-logo.png`);
+  c.track("logo_png_downloaded");
 }
 
 /* ── formats: what each piece downloads as ── */
@@ -216,37 +237,43 @@ export function formatsOf(p: PieceId, c: FlowCtx): Format[] {
   ];
 }
 
-/* ═════ K · the hub ═════ */
-export function KitHub({ c, onOpen, onZip, zipBusy }: { c: FlowCtx; onOpen: (p: PieceId) => void; onZip: () => void; zipBusy: boolean }) {
-  const done = PIECES.filter((p) => c.st.dl[p.id]).length;
-  const next = PIECES.find((p) => !c.st.dl[p.id]) || PIECES[PIECES.length - 1];
-  useEffect(() => { c.track("kit_hub_seen", { done_count: done }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+/* ═════ G·5 · Your kit: preview all six, logo PNG free, the rest with Pro ═════ */
+const DESC: Record<PieceId, string> = { logo: "PNG free", book: "12 pages · PDF", socials: "Profile, banners, bios", mkt: "3 launch posts + stories", cards: "Print PDF", deck: "10 slides · PDF" };
+export function KitHub({ c, onOpen, onZip, zipBusy, onBuy }: { c: FlowCtx; onOpen: (p: PieceId) => void; onZip: () => void; zipBusy: boolean; onBuy: () => void }) {
+  const [pngBusy, setPngBusy] = useState(false);
+  useEffect(() => { c.track("brand_step_seen", { step: "kit" }); c.track("kit_hub_seen", { pro: c.pro }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  const all = () => { c.track("download_clicked", { piece: "kit", format: "zip", is_pro: c.pro }); if (c.pro) onZip(); else c.openPro("kit", { then: onZip }); };
   return (
     <>
-      <div className="wr-stage bf-hub">
+      <div className="wr-stage bf-hub fm-kit">
         <div className="hl">
-          <p className="wr-kicker">Your brand kit</p>
-          <h1 className="wr-h ttl">{c.name}'s brand, piece by piece.</h1>
-          <p className="wr-lead sub">Pick a version of each, then download it in the format you need.</p>
-          <div className="prog"><span><i style={{ width: `${(done / 6) * 100}%` }} /></span><em className="mono">{done} of 6</em></div>
+          <p className="wr-kicker">5 of 5 · Your kit</p>
+          <h1 className="wr-h ttl">{c.name}'s kit is ready.</h1>
         </div>
         <div className="rows">
-          {PIECES.map((p, i) => {
-            const isDone = !!c.st.dl[p.id], isNext = p.id === next.id && !isDone;
-            return (
-              <button key={p.id} className={"row" + (isNext ? " next" : "") + (isDone ? " done" : "")} onClick={() => onOpen(p.id)}>
-                <span className="n mono">{i + 1}</span>
-                <span className={"th" + (p.id === "logo" && (selOf("logo", c) === 0 || selOf("logo", c) === 2) ? " wh" : "")} dangerouslySetInnerHTML={{ __html: thumbOf(p.id, c) }} />
-                <span className="tx"><b>{p.label}</b><em>{`Version ${"ABCD"[selOf(p.id, c)]} · ${versionsOf(p.id)[selOf(p.id, c)]}`}</em></span>
-                {isDone ? <span className="ok">✓</span> : isNext ? <span className="go">Next →</span> : <span className="ch">›</span>}
-              </button>
-            );
-          })}
+          {PIECES.map((p, i) => (
+            <div key={p.id} className="row" role="button" tabIndex={0} onClick={() => onOpen(p.id)} onKeyDown={(e) => { if (e.key === "Enter") onOpen(p.id); }}>
+              <span className="n mono">{String(i + 1).padStart(2, "0")}</span>
+              <span className={"th" + (p.id === "logo" ? " wh" : "")} dangerouslySetInnerHTML={{ __html: thumbOf(p.id, c) }} />
+              <span className="tx"><b>{p.label}</b><em>{DESC[p.id]}</em></span>
+              {p.id === "logo"
+                ? <button className="png mono" disabled={pngBusy} onClick={async (e) => { e.stopPropagation(); setPngBusy(true); try { await logoPng(c); } finally { setPngBusy(false); } }}>{pngBusy ? "…" : "↓ PNG"}</button>
+                : <span className="ch">Preview ›</span>}
+            </div>
+          ))}
+        </div>
+        <div className="hr">
+          <ProCard title={c.pro ? "Download everything" : "Download the whole kit"} sub={c.pro ? "Every piece in its chosen version, in one zip." : `Every file and format, editable. €${c.price} once.`} onSee={all} cta={c.pro ? "↓ Zip" : "See →"}>
+            <span className="fm-chips">{["KEY", "PPTX", "SLIDES", "SVG", "EPS", "PDF"].map((x) => <i key={x} className="mono">{x}</i>)}</span>
+          </ProCard>
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => onOpen(next.id)}>{done >= 6 ? "See it all →" : `Continue: ${next.label} →`}</button>
-        <button className="wr-link" onClick={onZip} disabled={zipBusy}>{zipBusy ? "Preparing…" : "↓ Everything so far (.zip)"}</button>
+        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={all} disabled={zipBusy}>{zipBusy ? "Preparing…" : <>↓ Download my kit {!c.pro && <span className="fm-tag mono">PRO</span>}</>}</button>
+        <span className="urow">
+          <button className="wr-link" onClick={() => onOpen("book")}>Open the pieces →</button>
+          {c.domain && <button className="wr-link" onClick={() => { c.track("domain_buy_clicked", { domain: c.domain, from: "kit" }); onBuy(); }}>Buy {c.domain} ↗</button>}
+        </span>
       </div>
     </>
   );
@@ -275,6 +302,7 @@ function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; for
       if (typeof res === "string" && res) setOpened(res);
       c.setDl(p, cur.id);
       c.track("piece_downloaded", { piece: p, version: versionsOf(p)[v], format: cur.id });
+      if (p === "logo" && cur.id === "png") c.track("logo_png_downloaded");
       if (!cur.help && !(typeof res === "string" && res)) onClose();
     } catch { setErr("That didn't work. Try again, or pick another format."); }
     setBusy(false);
@@ -283,7 +311,8 @@ function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; for
     <div className="bf-sheet" onClick={onClose}>
       <div className="in" onClick={(e) => e.stopPropagation()}>
         <span className="grab" />
-        <h3>Download {PIECES.find((x) => x.id === p)!.label.toLowerCase()}</h3>
+        {c.pro && <p className="fm-unl"><span className="fm-ok">✓</span> Pro unlocked</p>}
+        <h3>Download the {PIECES.find((x) => x.id === p)!.label.toLowerCase()}.</h3>
         <p className="sub">Version {"ABCD"[v]} · {versionsOf(p)[v]}</p>
         <div className="fmts">
           {groupsOf(formats).map(([g, fs]) => [g ? <p key={"g" + g} className="fg mono">{g}</p> : null, ...fs.map((x) => (
@@ -302,86 +331,133 @@ function DownloadSheet({ c, p, formats, onClose }: { c: FlowCtx; p: PieceId; for
     </div>, document.body);
 }
 
-/* ═════ 1–6 · a piece ═════ */
-const KICK: Record<PieceId, string> = { logo: "Pick your main logo.", book: "Choose a style for your book.", socials: "Pick a look for your profiles.", mkt: "Pick a style for your launch.", cards: "Pick a card, add your details.", deck: "Pick a look for your deck." };
+/* ═════ G·6–G·10 · a piece: versions, full preview, one PRO card ═════ */
+const TITLE: Record<PieceId, (n: string) => string> = {
+  logo: () => "Your logo, every version.", book: (n) => `${n}'s brand book.`, socials: (n) => `${n}, ready for every feed.`,
+  mkt: (n) => `Launch ${n}.`, cards: (n) => `Hand out ${n}.`, deck: (n) => `Pitch ${n}.`,
+};
+// What Pro adds on each piece (only what the files really contain).
+const PRO_OF: Record<PieceId, { t: string; s: string; chips: string[] }> = {
+  logo: { t: "Every format + the full pack", s: "SVG, PDF, EPS, app icons, favicon. The PNG is free.", chips: ["SVG", "PDF", "EPS", "ZIP"] },
+  book: { t: "Download + editable files", s: "Preview is free. Pro downloads the PDF and editable Word and Google Docs.", chips: ["PDF", "WORD", "G DOCS"] },
+  socials: { t: "Download the socials kit", s: "Profile picture and covers as PNG and editable SVG, plus bios.", chips: ["PNG", "SVG", "BIOS"] },
+  mkt: { t: "Download + ads & stories", s: "Posts and stories as PNG and SVG, every caption, Google and Meta ad copy.", chips: ["PNG", "SVG", "WORD", "PDF"] },
+  cards: { t: "Print-ready files", s: "Print PDF with bleed and crop marks, SVG and PNG.", chips: ["PDF", "SVG", "PNG"] },
+  deck: { t: "Download + editable slides", s: "PDF, PowerPoint, Keynote and Google Slides.", chips: ["PDF", "PPTX", "KEY", "SLIDES"] },
+};
+const KIT: PieceId[] = ["book", "socials", "mkt", "cards", "deck"];
 export function PiecePage({ c, p, onNext, onHub, extra }: { c: FlowCtx; p: PieceId; onNext: () => void; onHub: () => void; extra?: ReactNode }) {
-  const i = PIECES.findIndex((x) => x.id === p);
+  const ki = KIT.indexOf(p);
   const vs = versionsOf(p);
   const v = selOf(p, c);
   const [sheet, setSheet] = useState(false);
-  const formats = useMemo(() => formatsOf(p, c), [p, c]);
-  useEffect(() => { c.track("piece_seen", { piece: p }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [p]);
-  const vthumb = (k: number): string => {
-    if (p === "logo") return logoVariant(c, k, 120);
-    if (p === "socials") { const b0 = BANNERS(c.local)[0]; return banner(k as Fam, bannerData(c), b0.w, b0.h); }
-    if (p === "mkt") return posts(c, k as Fam)[0];
-    if (p === "cards") return cardFront(k as Fam, "A", { ...c.fd, person: c.me?.name || "Your name" });
-    if (p === "book") return bookThumb(c, k);
-    return sceneSvg(scenesOf(c, k as Theme)[0], 480);
+  const [present, setPresent] = useState(false);
+  const [copied, setCopied] = useState("");
+  const all = useMemo(() => formatsOf(p, c), [p, c]);
+  // Without Pro, the logo's PNG is the free download; everything else opens the Pro sheet.
+  const formats = c.pro ? all : all.filter((f) => p === "logo" && f.id === "png");
+  const label = PIECES.find((x) => x.id === p)!.label;
+  useEffect(() => { c.track("brand_step_seen", { step: "piece", piece: p }); c.track("piece_seen", { piece: p }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [p]);
+  const download = () => {
+    c.track("download_clicked", { piece: p, format: c.st.dl[p] || "", is_pro: c.pro });
+    if (c.pro || p === "logo") { setSheet(true); return; }
+    c.openPro("dl:" + p, { title: `Keep ${c.name}'s ${label.toLowerCase()}.`, lead: "Previewing is free. Downloading comes with Pro.", cta: `Unlock and download · €${c.price}`, then: () => setSheet(true) });
   };
-  const grid = p === "logo" || p === "cards" || p === "book";
   const preview: ReactNode = (() => {
     const f = v as Fam;
     if (p === "logo") return <div className={"pv logo" + (v === 0 || v === 2 ? " wh" : "")}>{sv(logoVariant(c, v, 260))}<p className="fine">Every version comes in the pack, plus the symbol on its own, app icons and a favicon.</p></div>;
-    if (p === "socials") { const bs = BANNERS(c.local); return <div className="pv soc">{sv(banner(f, bannerData(c), bs[0].w, bs[0].h))}<div className="avrow"><span className="av">{sv(avatar(f, c.fd, 200))}</span><span><b>Profile picture · {bs[0].label} and {bs[1].label} covers · bios</b><em className="mono">1080 × 1080 · {bs.map((b) => `${b.w} × ${b.h}`).join(" · ")}</em></span></div></div>; }
-    if (p === "mkt") return <div className="pv mk">{posts(c, f).map((s, k) => <span key={k}>{sv(s)}<em className="mono">Day {[1, 3, 7][k]}</em></span>)}</div>;
+    if (p === "socials") { const bs = BANNERS(c.local); return <div className="pv soc">{sv(banner(f, bannerData(c), bs[0].w, bs[0].h))}<div className="avrow"><span className="av">{sv(avatar(f, c.fd, 200))}</span><span><b>Profile picture · {bs[0].label} and {bs[1].label} covers · bios</b><em className="mono">1080 × 1080 · {bs.map((b) => `${b.w} × ${b.h}`).join(" · ")}</em></span></div>{c.kit && <p className="bio"><b>Bio</b> {c.kit.bioShort}</p>}</div>; }
+    if (p === "mkt") return <div className="pv mk">{posts(c, f).map((s2, k) => <span key={k}>{sv(s2)}<em className="mono">Day {[1, 3, 7][k]}</em></span>)}{c.kit?.posts?.[0]?.caption && <p className="bio"><b>Launch caption</b> {c.kit.posts[0].caption}</p>}</div>;
     if (p === "cards") { const cd = { ...c.fd, person: c.me?.name || "Your name", email: c.me?.email || c.fd.email }; return <div className="pv cards">{sv(cardFront(f, "A", cd))}{sv(cardBack(f, cd, true))}</div>; }
     if (p === "book") return <div className="pv book">{extra}</div>;
-    return <div className="pv deck">{scenesOf(c, v as Theme).map((s, k) => <span key={k}>{sv(sceneSvg(s, k ? 480 : 960))}</span>)}</div>;
+    return <div className="pv deck">{scenesOf(c, v as Theme).map((s2, k) => <span key={k} onClick={() => setPresent(true)}>{sv(sceneSvg(s2, k ? 480 : 960))}</span>)}</div>;
   })();
-  const secondary = p === "logo" ? { l: "✎ Personalise", f: c.persBtn }
-    : p === "book" ? { l: "Preview", f: c.bookPreview }
-    : p === "socials" ? { l: "Copy bios", f: () => { if (c.kit) void navigator.clipboard?.writeText(`${c.kit.bioShort}\n\n${c.kit.bioLong}`); c.track("kit_copy", { block: "bios" }); } }
-    : p === "mkt" ? { l: "Copy captions", f: () => { if (c.kit) void navigator.clipboard?.writeText(c.kit.posts.map((x) => `${x.label}\n${x.caption}`).join("\n\n")); c.track("kit_copy", { block: "captions" }); } }
-    : p === "cards" ? null
-    : { l: "Present now", f: () => { c.track("deck_present"); void formats[0].run(); } };
-  const nextLabel = i < 5 ? `Next: ${PIECES[i + 1].label.toLowerCase()} →` : "Next: all set →";
+  const copy = (text: string, what: string) => { void navigator.clipboard?.writeText(text); setCopied(what); setTimeout(() => setCopied(""), 1800); c.track("kit_copy", { block: what }); };
+  // The free action of each piece.
+  const free = p === "book" ? { l: "Open the preview", f: () => { c.track("piece_preview_opened", { piece: p }); c.bookPreview(); } }
+    : p === "socials" && c.kit ? { l: copied === "bios" ? "✓ Copied" : "Copy bios", f: () => copy(`${c.kit!.bioShort}\n\n${c.kit!.bioLong}`, "bios") }
+    : p === "mkt" && c.kit ? { l: copied === "captions" ? "✓ Copied" : "Copy captions", f: () => copy(c.kit!.posts.map((x) => `${x.label}\n${x.caption}`).join("\n\n"), "captions") }
+    : p === "deck" ? { l: "▶ Present now", f: () => { c.track("deck_present"); c.track("piece_preview_opened", { piece: p }); setPresent(true); } }
+    : p === "logo" ? { l: c.pro ? "✎ Personalise" : "✎ Personalise · PRO", f: () => (c.pro ? c.persBtn() : c.openPro("logo")) }
+    : null;
+  const pro = PRO_OF[p];
+  const nextLabel = ki >= 0 && ki < 4 ? `Next: ${PIECES.find((x) => x.id === KIT[ki + 1])!.label.toLowerCase()} →` : p === "deck" ? "Next: all set →" : "Your kit →";
+  const dlLabel = <>↓ Download {label.toLowerCase()} {!c.pro && p !== "logo" && <span className="fm-tag mono">PRO</span>}</>;
   return (
     <>
-      <div className="wr-stage bf-piece">
+      <div className="wr-stage bf-piece fm-piece">
         <div className="pl">
-          <p className="wr-kicker">{i + 1} of 6 · {PIECES[i].label}</p>
-          <h1 className="wr-h ttl">{KICK[p]}</h1>
-          <p className="lbl mono">Versions</p>
-          <div className={"vers" + (grid ? " grid" : "") + (p === "socials" ? " wide" : "") + (p === "deck" ? " deckv" : "")}>
-            {vs.map((label, k) => (
-              <button key={label} className={k === v ? "on" : ""} onClick={() => { if (k !== v) { c.setSel(p, k); c.track("version_selected", { piece: p, version: label, was_default: false }); } }}>
-                <span className={"vt" + (p === "logo" && (k === 0 || k === 2) ? " wh" : "")} dangerouslySetInnerHTML={{ __html: vthumb(k) }} />
-                {k === v && <span className="ck">✓</span>}
-                <em>{"ABCD"[k]} · {label}</em>
-              </button>
-            ))}
-          </div>
-          {vs.length === 1 && <p className="fine soon">More styles for this piece are on the way.</p>}
+          <p className="wr-kicker">{ki >= 0 ? `${ki + 1} of 5 · ${label}` : label}</p>
+          <h1 className="wr-h ttl">{TITLE[p](c.name)}</h1>
+          {p === "logo" ? (
+            <div className="vers grid">
+              {vs.map((lab, k) => (
+                <button key={lab} className={k === v ? "on" : ""} onClick={() => { if (k !== v) { c.setSel(p, k); c.track("version_selected", { piece: p, version: lab, was_default: false }); } }}>
+                  <span className={"vt" + (k === 0 || k === 2 ? " wh" : "")} dangerouslySetInnerHTML={{ __html: logoVariant(c, k, 120) }} />
+                  {k === v && <span className="ck">✓</span>}
+                  <em>{"ABCD"[k]} · {lab}</em>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-vchips">
+              {vs.map((lab, k) => <button key={lab} className={k === v ? "on" : ""} onClick={() => { if (k !== v) { c.setSel(p, k); c.track("version_selected", { piece: p, version: lab, was_default: false }); } }}>{lab}</button>)}
+            </div>
+          )}
           {p === "cards" && <div className="cardfields">{extra}</div>}
         </div>
-        <div className="pm">
-          <p className="lbl mono">Version {"ABCD"[v]} · what you get</p>
-          {preview}
-        </div>
+        <div className="pm">{preview}</div>
         <div className="pr">
-          <p className="lbl mono">Formats</p>
-          {groupsOf(formats).map(([g, fs]) => (
-            <div key={g || "all"} className="fgroup">
-              {g && <p className="fg mono">{g}</p>}
+          {c.pro ? (
+            <div className="fm-pro on">
+              <div className="h"><span className="fm-ok">✓</span><b>Pro · every format</b></div>
               <div className="chips">
-                {fs.map((x) => <button key={x.id} className={c.st.dl[p] === x.id ? "on" : ""} onClick={() => setSheet(true)}>{x.label.split(" · ")[0]}{x.editable && <i className="mono">EDIT</i>}</button>)}
+                {all.map((x) => <button key={x.id} className={c.st.dl[p] === x.id ? "on" : ""} onClick={() => setSheet(true)}>{x.label.split(" · ")[0]}{x.editable && <i className="mono">EDIT</i>}</button>)}
               </div>
             </div>
-          ))}
+          ) : (
+            <ProCard title={pro.t} sub={pro.s} onSee={() => c.openPro("piece:" + p, { then: () => setSheet(true) })}>
+              <span className="fm-chips">{pro.chips.map((x) => <i key={x} className="mono">{x}</i>)}</span>
+            </ProCard>
+          )}
         </div>
       </div>
       <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 340 }} onClick={() => setSheet(true)}>↓ Download {PIECES[i].label.toLowerCase()}</button>
+        {p === "book"
+          ? <button className="wr-btn" style={{ maxWidth: 340 }} onClick={free!.f}>Open the preview →</button>
+          : <button className="wr-btn" style={{ maxWidth: 340 }} onClick={download}>{p === "logo" && !c.pro ? "↓ Download PNG" : dlLabel}</button>}
         <span className="urow">
-          <button className="wr-link" onClick={onHub}>← Your kit</button>
-          {secondary && <button className="wr-link" onClick={secondary.f}>{secondary.l}</button>}
-          <button className="wr-link" onClick={onNext}>{nextLabel}</button>
+          {p === "logo" && <button className="wr-link" onClick={onHub}>← Your kit</button>}
+          {p === "book" && <button className="wr-link" onClick={download}>↓ Download{!c.pro && " · PRO"}</button>}
+          {free && p !== "book" && <button className="wr-link" onClick={free.f}>{free.l}</button>}
+          <button className="wr-link" onClick={p === "logo" ? onHub : onNext}>{nextLabel}</button>
         </span>
       </div>
-      {sheet && <DownloadSheet c={c} p={p} formats={formats} onClose={() => setSheet(false)} />}
+      {sheet && <DownloadSheet c={c} p={p} formats={formats.length ? formats : all} onClose={() => setSheet(false)} />}
+      {present && <Present c={c} onClose={() => setPresent(false)} onDownload={() => { setPresent(false); download(); }} />}
     </>
   );
+}
+
+/** ▶ Present now: the deck full screen, free (arrows / swipe / tap). */
+function Present({ c, onClose, onDownload }: { c: FlowCtx; onClose: () => void; onDownload: () => void }) {
+  const sc = useMemo(() => scenesOf(c, selOf("deck", c) as Theme), [c]);
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); if (e.key === "ArrowRight" || e.key === " ") setI((x) => Math.min(sc.length - 1, x + 1)); if (e.key === "ArrowLeft") setI((x) => Math.max(0, x - 1)); };
+    window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
+  }, [sc.length, onClose]);
+  let x0 = 0;
+  return createPortal(
+    <div className="fm-present" onTouchStart={(e) => { x0 = e.touches[0].clientX; }} onTouchEnd={(e) => { const d = e.changedTouches[0].clientX - x0; if (d < -40) setI((x) => Math.min(sc.length - 1, x + 1)); if (d > 40) setI((x) => Math.max(0, x - 1)); }}>
+      <div className="bar"><button onClick={onClose} aria-label="Close">✕</button><span>{c.name} · Pitch deck</span><span className="mono">{i + 1} / {sc.length}</span></div>
+      <div className="sl" onClick={() => setI((x) => Math.min(sc.length - 1, x + 1))}>{sv(sceneSvg(sc[i], 1280))}</div>
+      <div className="ft">
+        <button className="wr-link" onClick={() => setI((x) => Math.max(0, x - 1))} disabled={!i}>‹ Back</button>
+        <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onDownload}>↓ Download deck {!c.pro && <span className="fm-tag mono">PRO</span>}</button>
+        <button className="wr-link" onClick={() => setI((x) => Math.min(sc.length - 1, x + 1))} disabled={i >= sc.length - 1}>Next ›</button>
+      </div>
+    </div>, document.body);
 }
 
 /* ═════ 7 · All set ═════ */

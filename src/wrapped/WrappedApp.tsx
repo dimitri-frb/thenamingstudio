@@ -12,14 +12,15 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
-import { FEEL_SHAPE, X_FONTS, X_SYMS, buildLogoPack, shapeOfSym, typeOfFont, ensureFonts, iconKey, logoBatches, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { X_FONTS, X_SYMS, buildLogoPack, feelOfFont, logoNineX, pairOf, shapeOfFont, typeOfFont, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { ColoursStep, IntroStep, ProCard, ProSheet, ProToast, TypeStep } from "./Freemium";
 import { BRAND_AXES, SWIPE_POOL, LOCAL_POOL, brandLogo, drawDeck, poolFor, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
 import type { BookCtx } from "./Book";
 import { BusinessCards, PitchDeck } from "./Kits2";
 import { PersX, layoutTitle } from "./PersX";
-import { famData, famFromTaste, type Fam, type FamData } from "./families";
-import { AllSet, KitHub, PiecePage, everythingZip, type FlowCtx, type FlowState, type PieceId } from "./BrandFlow";
+import { famData, famFromTaste, post, type Fam, type FamData } from "./families";
+import { AllSet, KitHub, PiecePage, everythingZip, introArt, type FlowCtx, type FlowState, type PieceId } from "./BrandFlow";
 import { Early, Locked, MarketingKit, Snapshot, SocialsKit, Unlock, WhyNot, type LockKind, type PayCtx } from "./Paywall";
 
 // The brand book (pages, print CSS, the Word export) is its own chunk: it only
@@ -39,20 +40,21 @@ type Step =
 // chapter; the thin bar under it, that chapter's steps.
 const C1 = "Chapter 1 · Name", C2 = "Chapter 2 · Brand", C3 = "Chapter 3 · Domain";
 const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number }>> = {
-  brief:  { label: C1, segs: 6, idx: 0 },
-  refine: { label: C1, segs: 6, idx: 1 },
-  brands: { label: C1, segs: 6, idx: 2 },
-  brandsum: { label: C1, segs: 6, idx: 2 },
-  words:  { label: C1, segs: 6, idx: 3 },
-  names:  { label: C1, segs: 6, idx: 4 },
-  reveal: { label: C1, segs: 6, idx: 5 },
+  brief:  { label: C1, segs: 5, idx: 0 },
+  refine: { label: C1, segs: 5, idx: 1 },
+  brands: { label: C1, segs: 5, idx: 2 },
+  brandsum: { label: C1, segs: 5, idx: 2 },
+  words:  { label: C1, segs: 5, idx: 3 },
+  names:  { label: C1, segs: 5, idx: 4 },
+  // handoff 29 · the freemium brand flow: What we'll make · Colours · Type · Logo · Kit
+  reveal: { label: C2, segs: 5, idx: 0 },
   brand:  { label: C2, segs: 0, idx: 0 },
   feel:   { label: C2, segs: 6, idx: 0 },
-  tcol:   { label: C2, segs: 6, idx: 1 },
-  ttype:  { label: C2, segs: 6, idx: 1 },   // older runs only: type and shape now come from the logo pick
+  tcol:   { label: C2, segs: 5, idx: 1 },
+  ttype:  { label: C2, segs: 5, idx: 2 },
   tshape: { label: C2, segs: 6, idx: 1 },
   taste:  { label: C2, segs: 6, idx: 1 },
-  logo:   { label: C2, segs: 6, idx: 2 },
+  logo:   { label: C2, segs: 5, idx: 3 },
   snap:   { label: C2, segs: 6, idx: 3 },
   unlock: { label: C2, segs: 6, idx: 3 },
   early:  { label: C2, segs: 6, idx: 3 },
@@ -66,18 +68,19 @@ const CHAPTERS: Partial<Record<Step, { label: string; segs: number; idx: number 
   deck:   { label: C2, segs: 6, idx: 5 },
   // handoff 28 · the brand flow after unlock: one segment per piece, so
   // "2 of 6" lights two; the hub lights none, All set lights all six.
-  hub:    { label: C2, segs: 6, idx: -1 },
-  plogo:  { label: C2, segs: 6, idx: 0 },
-  pbook:  { label: C2, segs: 6, idx: 1 },
-  psocials: { label: C2, segs: 6, idx: 2 },
-  pmkt:   { label: C2, segs: 6, idx: 3 },
-  pcards: { label: C2, segs: 6, idx: 4 },
-  pdeck:  { label: C2, segs: 6, idx: 5 },
-  allset: { label: "All set", segs: 6, idx: 5 },
+  hub:    { label: C2, segs: 5, idx: 4 },
+  // the kit's five pieces (the logo lives on the kit page, PNG free)
+  plogo:  { label: "Your kit", segs: 5, idx: -1 },
+  pbook:  { label: "Your kit", segs: 5, idx: 0 },
+  psocials: { label: "Your kit", segs: 5, idx: 1 },
+  pmkt:   { label: "Your kit", segs: 5, idx: 2 },
+  pcards: { label: "Your kit", segs: 5, idx: 3 },
+  pdeck:  { label: "Your kit", segs: 5, idx: 4 },
+  allset: { label: "All set", segs: 5, idx: 4 },
   claim:  { label: C3, segs: 2, idx: 0 },
   done:   { label: "All set", segs: 1, idx: 0 },
 };
-const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "brand", "feel", "tcol", "ttype", "tshape", "taste", "logo", "snap", "unlock", "early", "logodone", "pers", "book", "socials", "kit", "mkt", "cards", "deck", "hub", "plogo", "pbook", "psocials", "pmkt", "pcards", "pdeck", "allset", "claim", "done"];
+const STEPS_ALL: Step[] = ["land", "brief", "refine", "brands", "brandsum", "words", "names", "reveal", "tcol", "ttype", "logo", "pers", "hub", "plogo", "pbook", "psocials", "pmkt", "pcards", "pdeck", "allset", "claim", "done"];
 
 // The URL mirrors the step (/2-concept, /4-names…), so the nav shows where you
 // are and the browser's back/forward walk the flow.
@@ -109,7 +112,7 @@ const pathSlug = () => {
 const TEST_PATH = /(?:^|\/)test(?:\/|$)/.test(window.location.pathname);
 
 // The Brand chapter's taste quiz: four picks, then sliders.
-export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number }; pal?: string[] }
+export interface Taste { feeling: string[]; colours: string[]; type: string; shape: string; sliders: { ce: number; wc: number; rs: number; ss: number; mb: number }; pal?: string[]; font?: number }
 // The first colour choice: a palette the brief analysis drew from the business itself.
 export const BRIEF_COL = "Made for you";
 // Where the brief says the business is → the language its name must work in,
@@ -185,7 +188,7 @@ const TASTE_OPTS = {
   ],
 } as const;
 const tastePalette = (t: Taste) => {
-  const pal = t.colours.includes(BRIEF_COL) && t.pal?.length === 4 ? t.pal : (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
+  const pal = t.pal?.length === 4 && !TASTE_OPTS.tcol.some((o) => t.colours.includes(o.k)) ? t.pal : (TASTE_OPTS.tcol.find((o) => t.colours.includes(o.k)) || TASTE_OPTS.tcol[0]).pal;
   return { dawn: pal[0], haze: pal[1], nova: pal[2], night: pal[3] };
 };
 // Every quiz pick re-seeds the recap sliders, so the sliders (and everything
@@ -263,7 +266,6 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [boardAt, setBoardAt] = useState(0); // when availability was really checked
   const [domSel, setDomSel] = useState<DomainCard | null>(null);
   const [logoSeed, setLogoSeed] = useState(0);
-  const [logoBumps, setLogoBumps] = useState<Record<number, number>>({}); // per-tile "↻ More"
   const [famPick, setFamPick] = useState<Fam | null>(null);
   const [flowSt, setFlowSt] = useState<FlowState>({ sel: {}, dl: {} });   // handoff 28: version + format per piece
   const [cardDet, setCardDet] = useState<{ name?: string; role: string; email?: string; phone: string; web?: string }>({ role: "Founder", phone: "" });
@@ -315,7 +317,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // before the paywall existed (grandfathered).
   // (/test/…?locked previews the locked states.)
   const [lockPreview] = useState(() => test && /[?&]locked\b/.test(window.location.search));
-  const brandOpen = (test && !lockPreview) || unlocked || !!steps.book || !!steps.socials;
+  // Handoff 29 · everything is open (preview free); Pro unlocks downloads,
+  // personalisation and the extra palettes/typefaces. ?locked previews non-Pro.
+  const brandOpen = true;
+  const pro = (test && !lockPreview) || unlocked;
+  const [proSheet, setProSheet] = useState<null | { step: string; title?: string; lead?: string; cta?: string; then?: () => void }>(null);
+  const [proToast, setProToast] = useState(false);
+  const openPro = (step: string, o: { title?: string; lead?: string; cta?: string; then?: () => void } = {}) => { track("pro_card_tapped", { step }); setProSheet({ step, ...o }); };
+  // Stand-in until checkout is live: Pro is granted free (early access).
+  const grantPro = () => {
+    const then = proSheet?.then;
+    setUnlocked(true);
+    persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
+    track("early_access_granted", { price, name: picked?.name, step: proSheet?.step });
+    setProSheet(null); setProToast(true);
+    if (then) setTimeout(then, 50);
+  };
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
   const [resumeAuth, setResumeAuth] = useState<string | null>(null); // ?resume= opened signed-out
@@ -855,6 +872,24 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // Each page entry is tracked: generation now pre-charges ahead of the gate,
   // so only these events prove the founder actually SAW a step.
   const afterGate = useRef<Step | null>(null);
+  // Handoff 29 retired the taste quiz, the snapshot/paywall pages and the old
+  // kit pages: old links, emails and saved runs land on their new home.
+  const RETIRED: Partial<Record<Step, Step>> = {
+    brand: "tcol", feel: "tcol", tshape: "ttype", taste: "ttype", snap: "hub", unlock: "hub", early: "hub",
+    logodone: "plogo", book: "pbook", socials: "psocials", kit: "psocials", mkt: "pmkt", cards: "pcards", deck: "pdeck",
+  };
+  useEffect(() => {
+    const r = RETIRED[step];
+    if (r) { setStep(r); pushUrl(r, true); return; }
+    // Personalising the logo is Pro: without it, the Pro sheet opens on the logo page.
+    if (step === "pers" && !pro) { setStep("logo"); pushUrl("logo", true); openPro("logo"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, pro]);
+  useEffect(() => {
+    if (step === "reveal") track("brand_intro_seen", { name: picked?.name });
+    else if (step === "tcol" || step === "ttype" || step === "logo") track("brand_step_seen", { step: step === "tcol" ? "colours" : step === "ttype" ? "type" : "logo" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   function toStep(s: Step) {
     // The sign-up gate (00·s) fires right after the brief (02), before the
     // deep-dive: the position that converted ~30% on 17–19 Oct. (The words-gate
@@ -1285,11 +1320,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
   const backTarget: Partial<Record<Step, Step>> = {
     brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
-    claim: brandOpen ? "deck" : "snap",
-    brand: "reveal", feel: "brand", tcol: "feel", ttype: "tcol", tshape: "ttype", taste: "tshape",
-    logo: "tcol", snap: "logo", unlock: "snap", early: "unlock", logodone: "logo", pers: "logodone", book: "logodone", socials: "book",
-    kit: "socials", mkt: "kit", cards: "mkt", deck: "cards",
-    hub: "snap", plogo: "hub", pbook: "plogo", psocials: "pbook", pmkt: "psocials", pcards: "pmkt", pdeck: "pcards", allset: "hub",
+    claim: "allset",
+    tcol: "reveal", ttype: "tcol", logo: "ttype", pers: "logo",
+    hub: "logo", plogo: "hub", pbook: "hub", psocials: "pbook", pmkt: "psocials", pcards: "pmkt", pdeck: "pcards", allset: "pdeck",
   };
   // Forward mirrors back, but only where the run's data already allows the step.
   const fwdTarget = (): Step | null => {
@@ -1301,25 +1334,12 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       step === "words" ? (names?.length ? "names" : null) :
       step === "names" ? (picked ? "reveal" : null) :
       step === "claim" ? (steps.domain ? "done" : null) :
-      step === "reveal" ? "brand" :
-      step === "brand" ? "feel" :
-      step === "feel" ? "tcol" :
-      step === "tcol" ? "logo" :
-      step === "ttype" ? "tshape" :
-      step === "tshape" ? "taste" :
-      step === "taste" ? "logo" :
-      step === "logo" ? (logoSel ? "snap" : null) :
-      step === "snap" ? (brandOpen ? "logodone" : "unlock") :
-      step === "early" ? "hub" :
-      step === "pers" ? "book" :
-      step === "logodone" ? "book" :
-      step === "book" ? "socials" :
-      step === "socials" ? "kit" :
-      step === "kit" ? "mkt" :
-      step === "mkt" ? "cards" :
-      step === "cards" ? "deck" :
-      step === "deck" ? "claim" :
-      step === "hub" ? "plogo" : step === "plogo" ? "pbook" : step === "pbook" ? "psocials" : step === "psocials" ? "pmkt" :
+      step === "reveal" ? "tcol" :
+      step === "tcol" ? "ttype" :
+      step === "ttype" ? "logo" :
+      step === "logo" ? (logoSel ? "hub" : null) :
+      step === "pers" ? "hub" :
+      step === "hub" ? "pbook" : step === "plogo" ? "hub" : step === "pbook" ? "psocials" : step === "psocials" ? "pmkt" :
       step === "pmkt" ? "pcards" : step === "pcards" ? "pdeck" : step === "pdeck" ? "allset" : null;
     return t;
   };
@@ -1351,8 +1371,15 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // Two taste questions (feel + colours): the 12 logos carry the type and the
   // shape choice, so they're generated from the feel alone (picking one then
   // records its type and shape in the taste).
-  const logoTaste = { feeling: taste.feeling, shape: FEEL_SHAPE[taste.feeling[0]] || "Round & soft" };
-  const logoTiles = picked ? logoConceptsX(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, logoTaste, logoSeed, logoBumps) : [];
+  // G·3: nine logos per batch in the chosen typeface; "Show 9 more" appends.
+  const logoFont = taste.font ?? 2;
+  const logoTiles = useMemo(() => {
+    if (!picked) return [] as LogoConcept[];
+    const brief = `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`;
+    const lt = { font: logoFont, shape: shapeOfFont(logoFont) };
+    return Array.from({ length: logoSeed + 1 }, (_, b) => logoNineX(picked.name, brief, lt, b)).flat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked?.name, sentence, concept?.concept, chips.join(" "), logoFont, logoSeed]);
   const payLogo = logoSel || (picked ? logoTiles[0] : null);
   // Handoff 27 · the kit's layout family: the taste picks it, the founder can switch.
   const fam: Fam = famPick ?? famFromTaste(taste);
@@ -1418,6 +1445,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
     bookPreview: () => setBookOpen(true),
     persBtn: () => toStep("pers"),
     track: (ev, p) => track(ev, { name: picked.name, ...p }),
+    pro, price, openPro,
   } : null;
 
   return (
@@ -1443,7 +1471,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       </div>}
 
       {chapter && chapter.segs > 0 && step !== "brand" && (
-        <div className="wr-prog">{Array.from({ length: chapter.segs }, (_, i) => <span key={i} className={i <= chapter.idx ? "on" : ""} />)}</div>
+        <div className={"wr-prog" + (["tcol", "ttype", "logo", "hub"].includes(step) ? " lbl4" : "")}>{Array.from({ length: chapter.segs }, (_, i) => <span key={i} className={i <= chapter.idx ? "on" : ""} />)}
+          {/* desktop: four labelled segments for the brand steps (handoff 29) */}
+          {["tcol", "ttype", "logo", "hub"].includes(step) && <span className="l4">{["Colours", "Type", "Logo", "Kit"].map((l, i) => <em key={l} className={i + 1 === chapter.idx ? "cur" : i + 1 < chapter.idx ? "done" : ""}>{l}</em>)}</span>}
+        </div>
       )}
 
       {/* ═══ 00 landing ═══ */}
@@ -1876,54 +1907,43 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
 
       {/* ═══ D·1 · "{Name} is yours" — end of chapter 1. No domain question:
            the best domain is found silently and kept for chapter 3. ═══ */}
-      {step === "reveal" && picked && (
-        <>
-          <div className="wr-stage wr-d1">
-            <div className="d1hero">
-              <span className="okball g pop">✓</span>
-              <p className="kick mono rise">It's yours</p>
-              <h1 className="nm pop">{picked.name}</h1>
-              <p className="story rise">
-                {picked.parts?.[0] ? <>{picked.parts[0].part[0].toUpperCase() + picked.parts[0].part.slice(1)}, {picked.parts[0].note}{picked.parts[1] ? <>, fused with <i>{picked.parts[1].part}</i>, {picked.parts[1].note}.</> : "."}</> : picked.tagline}
-              </p>
-            </div>
-            <div className="d1next rise">
-              <p className="k mono">Next · give it a look</p>
-              <div className="tiles">
-                <span className="t"><span className="aa">✶</span><b>Feel</b></span>
-                <span className="t"><span className="dots">{[lpal.dawn, lpal.haze, lpal.nova].map((c) => <i key={c} style={{ background: c }} />)}</span><b>Colours</b></span>
-                <span className="t"><span className="aa">{picked.name[0]?.toUpperCase()}</span><b>Logo</b></span>
-              </div>
-              <p className="note">Its domain comes at the end, once the brand is ready.</p>
-            </div>
-          </div>
-          <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btnor cbig" onClick={() => { track("name_kept", { name: picked.name }); toStep("brand"); }}>Now, your brand →</button>
-            <button className="wr-link" onClick={() => toStep("names")}>← Names</button>
-          </div>
-        </>
+      {/* ═══ handoff 29 · G·0 What we'll make ═══ */}
+      {step === "reveal" && picked && flowCtx && (
+        <IntroStep name={picked.name} art={introArt(flowCtx)}
+          onBuild={() => { track("name_kept", { name: picked.name }); toStep("tcol"); }}
+          onLater={() => { track("brandlater", { name: picked.name }); toStep("claim"); }} />
       )}
 
-      {/* ═══ Chapter 3 · Brand — opener ═══ */}
-      {step === "brand" && picked && (
-        <>
-          <div className="wr-stage center" style={{ textAlign: "center", alignItems: "center" }}>
-            <h1 className="wr-h pop" style={{ fontSize: 58, marginBottom: 14 }}>Now, your brand.</h1>
-            <p className="wr-lead rise" style={{ marginBottom: 30 }}>Two quick questions, then pick a logo. We build the rest.</p>
-            <button className="wr-btn rise" style={{ maxWidth: 200 }} onClick={() => toStep("feel")}>Start →</button>
-            <button className="wr-link rise" style={{ marginTop: 10 }} onClick={() => { track("brandlater", { name: picked.name }); toStep("claim"); }}>Do it later</button>
-          </div>
-        </>
+      {/* ═══ G·1 Colours ═══ */}
+      {step === "tcol" && picked && (
+        <ColoursStep name={picked.name} pro={pro}
+          cur={{ k: taste.colours[0] === "Dawn to night" ? "Dawn" : taste.colours[0], pal: [lpal.dawn, lpal.haze, lpal.nova, lpal.night] }}
+          brief={briefPal ? { k: BRIEF_COL, d: briefPal.note, pal: briefPal.pal as [string, string, string, string] } : null}
+          preview={payLogo ? <>
+            <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg(payLogo.key, picked.name, lpal, { variant: "light", accent: payLogo.accent, seed: payLogo.seed, font: payLogo.font, shape: lshape, height: 70 }) }} />
+            <span className="ps" dangerouslySetInnerHTML={{ __html: post(fam, fd, famTagline || `${picked.name} is here.`, "Day 1") }} />
+          </> : null}
+          onPick={(k, pal) => {
+            const t = { ...taste, colours: [k], pal: [...pal] };
+            setTaste({ ...t, sliders: seedSliders(t) });
+            track("choice_selected", { step: "colours", option: k, was_default: false });
+          }}
+          onPro={() => openPro("colours")}
+          onNext={() => toStep("ttype")} onBack={() => toStep("reveal")} />
       )}
 
-      {/* ═══ Brand · taste pickers (Feeling / Colours / Type / Shape) ═══ */}
-      {(step === "feel" || step === "tcol" || step === "ttype" || step === "tshape") && picked && (
-        <TastePicker
-          step={step} name={picked.name} taste={taste} briefPal={briefPal}
-          onChange={(t) => setTaste(t)}
-          onBack={() => toStep(backTarget[step]!)}
-          onNext={() => { if (step === "tcol") { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); } toStep(fwdTarget() || "logo"); }}
-        />
+      {/* ═══ G·2 Typeface ═══ */}
+      {step === "ttype" && picked && (
+        <TypeStep name={picked.name} pro={pro} cur={taste.font ?? 2} pairOf={pairOf}
+          onPick={(fi) => {
+            const t: Taste = { ...taste, font: fi, type: typeOfFont(fi), shape: shapeOfFont(fi), feeling: [feelOfFont(fi)] };
+            setTaste({ ...t, sliders: seedSliders(t) });
+            setLogoSel(null); setLogoSeed(0);
+            track("choice_selected", { step: "type", option: X_FONTS[fi]?.f, was_default: false });
+          }}
+          onPro={() => openPro("type")}
+          onNext={() => { track("taste", { name: picked.name, ...taste }); refreshBookForTaste(taste); toStep("logo"); }}
+          onBack={() => toStep("tcol")} />
       )}
 
       {/* ═══ Brand · your taste (recap + sliders) ═══ */}
@@ -1960,85 +1980,44 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         </>
       )}
 
-      {/* ═══ Brand · logos (twelve, made from the taste) ═══ */}
+      {/* ═══ G·3 Logos: nine in the chosen typeface, "Show 9 more" appends ═══ */}
       {step === "logo" && picked && (
         <>
-          <div className="wr-stage" style={{ paddingTop: 20 }}>
-            <div className="wr-lwrap l12">
-              <div className="lhead">
-                <div>
-                  <p className="wr-kicker" style={{ marginBottom: 8 }}>Made from your taste</p>
-                  <h1 className="wr-h" style={{ fontSize: 34, margin: 0 }}>Twelve logos, made for {picked.name}.</h1>
-                  <p className="lsub">Tap one to use it. ↻ on a logo shows another take on it.</p>
-                </div>
+          <div className="wr-stage fm-step fm-logos">
+            <div className="fl">
+              <p className="wr-kicker">4 of 5 · Logo</p>
+              <h1 className="wr-h ttl">{logoTiles.length > 9 ? `${logoTiles.length} logos` : "Nine logos"} for {picked.name}.</h1>
+              <div className="fm-lgrid">
+                {logoTiles.map((c, i) => {
+                  const on = logoSel?.key === c.key && logoSel?.seed === c.seed;
+                  return (
+                    <button key={i + c.key} className={"fm-lt" + (on ? " on" : "")} onClick={() => { setLogoSel(on ? null : { ...c, shape: lshape }); if (!on) track("choice_selected", { step: "logo", option: c.title, was_default: i === 0 }); }} aria-label={c.title}>
+                      {on && <span className="ck">✓</span>}
+                      <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key.startsWith("x:icon") ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
+                    </button>
+                  );
+                })}
+                <button className="fm-lt more" onClick={() => { const b = logoSeed + 1; setLogoSeed(b); track("logos_more", { batch: b + 1, name: picked.name }); }}>↻ Show 9 more</button>
               </div>
-              <div className="lbody">
-              <div className="wr-lgrid">
-                {logoTiles.map((c) => ({ ...c, shape: lshape }))
-                  .map((c, i) => {
-                    const on = logoSel?.key === c.key && logoSel?.seed === c.seed && logoSel?.accent === c.accent;
-                    return (
-                      <button key={i + c.key + c.seed + c.accent} className={"wr-ltile" + (on ? " sel" : "")} onClick={() => setLogoSel(on ? null : c)}>
-                        {on && <span className="ck">✓</span>}
-                        <span className="more" role="button" aria-label="More like this" title="More like this"
-                          onClick={(e) => { e.stopPropagation(); setLogoBumps((b) => ({ ...b, [i]: (b[i] || 0) + 1 })); track("logo_more", { name: picked.name, tile: i, layout: c.key.split(":")[1] }); }}>↻</span>
-                        <span className="lt" dangerouslySetInnerHTML={{ __html: logoSvg(c.key, picked.name, lpal, { variant: c.key === "appicon" || c.key.startsWith("x:icon") ? "icon" : "tile", accent: c.accent, seed: c.seed, font: c.font, shape: lshape, height: 96 }) }} />
-                        <span className="ln">{c.title}</span>
-                      </button>
-                    );
-                  })}
-              </div>
-              {(() => {
-                const total = logoBatches(picked.name, `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`, taste);
-                const seenAll = logoSeed + 1 >= total;
-                return (
-                  <p className="lmorerow">
-                    {seenAll && <span className="mono lseen">You've seen all {total * 12} · </span>}
-                    <button className="wr-link lmore" onClick={() => { const b = logoSeed + 1; setLogoSeed(b); setLogoBumps({}); track("logo_batch_more", { name: picked.name, batch: b + 1 }); }}>{seenAll ? "↻ Mix them again" : `↻ Show twelve more · ${logoSeed + 1}/${total}`}</button>
-                  </p>
-                );
-              })()}
-              </div>
-              {logoSel && (
-                <div className="wr-lctx rise">
-                  <p className="wr-kicker" style={{ margin: "0 0 8px" }}>In use</p>
-                  <div className="row">
-                    <span className="m card">
-                      <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: "light", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 40 }) }} />
-                      <i /><i className="s" />
-                      <em>Business card</em>
-                    </span>
-                    <span className="m app" style={{ background: `linear-gradient(160deg, ${lpal.haze}, ${lpal.nova})` }}>
-                      <span className="ic" dangerouslySetInnerHTML={{ __html: logoSvg(iconKey(logoSel.key), picked.name, lpal, { variant: "icon", accent: logoSel.accent, seed: logoSel.seed, shape: lshape, height: 54 }) }} />
-                      <b>{picked.name}</b>
-                      <em>App icon</em>
-                    </span>
-                    <span className="m sign" style={{ background: lpal.night }}>
-                      <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg(logoSel.key, picked.name, lpal, { variant: "night", accent: logoSel.accent, seed: logoSel.seed, font: logoSel.font, shape: lshape, height: 46 }) }} />
-                      <em>Shopfront</em>
-                    </span>
-                  </div>
-                </div>
-              )}
+            </div>
+            <div className="fr">
+              <ProCard title="Personalise your logo" sub="Change the symbol, colour, type and layout."
+                onSee={() => { if (pro) { if (!logoSel) setLogoSel({ ...logoTiles[0], shape: lshape }); setPersDraft(draftFromSel()); toStep("pers"); } else openPro("logo"); }}
+                cta={pro ? "Open →" : "See →"}>
+                <span className="fm-mini">
+                  <span className="lg" dangerouslySetInnerHTML={{ __html: logoSvg((logoSel || logoTiles[0]).key, picked.name, lpal, { variant: "light", accent: (logoSel || logoTiles[0]).accent, seed: (logoSel || logoTiles[0]).seed, shape: lshape, height: 40 }) }} />
+                  <span className="tabs">{["Symbol", "Colour", "Type", "Layout"].map((t, k) => <i key={t} className={k === 1 ? "on" : ""}>{t}</i>)}</span>
+                  <span className="dots">{[lpal.dawn, lpal.haze, lpal.nova, "#3ecf8e", "#f6c445"].map((c) => <i key={c} style={{ background: c }} />)}</span>
+                </span>
+              </ProCard>
             </div>
           </div>
           <div className="wr-foot col" style={{ gap: 8, alignItems: "center" }}>
-            <button className="wr-btn" style={{ maxWidth: 260 }} disabled={!logoSel} onClick={() => {
+            <button className="wr-btn" style={{ maxWidth: 340 }} disabled={!logoSel} onClick={() => {
               track("logo", { name: picked.name, concept: logoSel?.title });
-              const [x, , sy, fi] = (logoSel?.key || "").split(":");
-              if (x === "x") {
-                const t2: Taste = { ...taste, type: typeOfFont(Number(fi)), shape: sy && X_SYMS[sy] ? shapeOfSym(sy) : taste.shape };
-                const t3 = { ...t2, sliders: seedSliders(t2) };
-                if (t3.type !== taste.type || t3.shape !== taste.shape) setTaste(t3);
-              }
-              toStep("snap");
-            }}>
-              Use {logoSel?.title?.replace(/ \d+$/, "") || "this"} →
-            </button>
-            <span className="urow">
-              <button className="wr-link" onClick={() => toStep("tcol")}>← Colours</button>
-              <button className="wr-link" onClick={() => { setLogoSel(logoSel || { ...logoTiles[0], shape: lshape }); toStep("snap"); }}>Skip the logo</button>
-            </span>
+              toStep("hub");
+            }}>Use this logo →</button>
+            <button className="wr-link" onClick={() => toStep("ttype")}>← Type</button>
           </div>
         </>
       )}
@@ -2110,11 +2089,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
         <PersX name={picked.name} pal={lpal} shape={lshape} brief={`${sentence} ${concept?.concept || ""} ${chips.join(" ")}`} taste={taste}
           baseKey={(logoSel || logoTiles[0]).key} baseHex={(logoSel || logoTiles[0]).custom?.accentHex}
           track={(ev, p) => track(ev, { name: picked.name, ...p })}
-          onBack={() => toStep("plogo")}
+          onBack={() => toStep("logo")}
           onSave={(key, hex) => {
             const cur = logoSel || logoTiles[0];
             setLogoSel({ ...cur, key, shape: lshape, title: `${X_SYMS[key.split(":")[2]]?.label && !["word", "mono"].includes(key.split(":")[1]) ? X_SYMS[key.split(":")[2]].label + " · " : ""}${layoutTitle(key.split(":")[1])}`, custom: hex ? { symbol: "none", layout: "side", accentHex: hex } : undefined });
-            toStep("plogo");
+            toStep("logo");
           }} />
       )}
       {step === "pers" && picked && persDraft && brandOpen && !(logoSel || logoTiles[0])?.key.startsWith("x:") && (
@@ -2357,8 +2336,8 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {/* ═══ handoff 28 · brand flow: hub → six pieces → all set ═══ */}
       {flowCtx && brandOpen && step === "hub" && (
-        <KitHub c={flowCtx} zipBusy={zipBusy} onOpen={(p) => toStep(PIECE_STEP[p])}
-          onZip={async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "so_far", name: picked?.name }); try { await everythingZip(flowCtx, "so_far"); } finally { setZipBusy(false); } }} />
+        <KitHub c={flowCtx} zipBusy={zipBusy} onOpen={(p) => toStep(PIECE_STEP[p])} onBuy={() => flowCtx.domain && (window.open(registrarUrl(flowCtx.domain), "_blank", "noopener"), track("godaddy", { domain: flowCtx.domain, from: "kit" }))}
+          onZip={async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "all", name: picked?.name }); try { await everythingZip(flowCtx, "all"); } finally { setZipBusy(false); } }} />
       )}
       {flowCtx && brandOpen && STEP_PIECE[step] && (() => {
         const p = STEP_PIECE[step]!;
@@ -2384,7 +2363,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {flowCtx && brandOpen && step === "allset" && (
         <AllSet c={flowCtx} zipBusy={zipBusy} onAgain={(p) => toStep(PIECE_STEP[p])}
           onBuy={() => { if (flowCtx.domain) { window.open(registrarUrl(flowCtx.domain), "_blank", "noopener"); track("godaddy", { domain: flowCtx.domain, from: "allset" }); } }}
-          onZip={async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "all", name: picked?.name }); try { await everythingZip(flowCtx, "all"); } finally { setZipBusy(false); } }}
+          onZip={() => {
+            const zip = async () => { setZipBusy(true); track("kit_zip_downloaded", { scope: "all", name: picked?.name }); try { await everythingZip(flowCtx, "all"); } finally { setZipBusy(false); } };
+            track("download_clicked", { piece: "kit", format: "zip", is_pro: pro });
+            if (pro) void zip(); else openPro("allset", { then: () => void zip() });
+          }}
           onAccount={gotoAccount} onChangeDomain={() => toStep("claim")} />
       )}
 
@@ -2468,6 +2451,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           onSend={(reasons, note) => { track("feedback", { variant: poll, reasons, note, step }); setPoll(null); }}
         />
       )}
+      {proSheet && picked && (
+        <ProSheet name={picked.name} price={price} step={proSheet.step} title={proSheet.title} lead={proSheet.lead} cta={proSheet.cta}
+          early track={(ev, p) => track(ev, { name: picked.name, ...p })} onGet={grantPro} onClose={() => setProSheet(null)} />
+      )}
+      {proToast && <ProToast onDone={() => setProToast(false)} />}
       {briefGate && (
         <BriefGateModal
           words={(styles || []).flatMap((st) => st.words.map((w) => w.w))}
@@ -2505,7 +2493,13 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           }}
         />
       )}
-      {bookOpen && bookCtx && <Suspense fallback={null}><BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share} /></Suspense>}
+      {bookOpen && bookCtx && <Suspense fallback={null}><BookPreview ctx={bookCtx} onClose={() => setBookOpen(false)} onShare={share}
+        dlLabel={<>↓ Download brand book{!pro && <> · <span className="fm-tag mono">PRO</span></>}</>}
+        onDownload={() => {
+          track("download_clicked", { piece: "book", format: "pdf", is_pro: pro, name: picked?.name });
+          const run = () => { setBookOpen(false); void import("./Book").then((m) => m.printBook(`${picked?.name} - Brand book`)); };
+          if (pro) run(); else openPro("dl:book", { title: `Keep ${picked?.name}'s brand book.`, lead: "Previewing is free. Downloading comes with Pro.", cta: `Unlock and download · €${price}`, then: run });
+        }} /></Suspense>}
       {bookCtx && <Suspense fallback={null}><BookPrint ctx={bookCtx} /></Suspense>}
 
       {/* test jump bar */}
@@ -3410,124 +3404,6 @@ function BrandTasteSummary({ liked, disliked, axes, onAxes, onRemoveLiked, onRem
   );
 }
 
-/* ── the four taste pickers of the Brand chapter ── */
-function TastePicker({ step, name, taste, onChange, onBack, onNext, briefPal }: {
-  step: "feel" | "tcol" | "ttype" | "tshape"; name: string; taste: Taste;
-  onChange: (t: Taste) => void; onBack: () => void; onNext: () => void;
-  briefPal?: { pal: string[]; note: string } | null;
-}) {
-  const q = step === "feel" ? `How should ${name} feel?` : step === "tcol" ? "Which colours feel right?" : step === "ttype" ? `How should ${name} be written?` : "Round or sharp?";
-  const opts: readonly { k: string; d: string }[] = step === "tcol" && briefPal ? [{ k: BRIEF_COL, d: briefPal.note }, ...TASTE_OPTS.tcol] : TASTE_OPTS[step];
-  const cur: string[] = step === "feel" ? taste.feeling : step === "tcol" ? taste.colours : step === "ttype" ? [taste.type] : [taste.shape];
-  const pickIt = (k: string) => { // one pick per question, everywhere
-    const next: Taste =
-      step === "feel" ? { ...taste, feeling: [k] } :
-      step === "tcol" ? { ...taste, colours: [k], pal: k === BRIEF_COL ? briefPal?.pal : taste.pal } :
-      step === "ttype" ? { ...taste, type: k } : { ...taste, shape: k };
-    onChange({ ...next, sliders: seedSliders(next) });
-  };
-  const viz = (k: string) => {
-    if (step === "tcol") {
-      const palette = k === BRIEF_COL && briefPal ? briefPal.pal : (TASTE_OPTS.tcol.find((o) => o.k === k) || TASTE_OPTS.tcol[0]).pal;
-      return <span className="v cols">{palette.map((c) => <i key={c} style={{ background: c }} />)}</span>;
-    }
-    if (step === "ttype") {
-      const faces: Record<string, React.CSSProperties> = {
-        "Elegant serif": { fontFamily: "var(--bookserif)", fontWeight: 500 },
-        "Modern serif": { fontFamily: "Didot, 'Bodoni MT', 'Playfair Display', serif", fontWeight: 500, letterSpacing: "0.01em" },
-        "Slab serif": { fontFamily: "Rockwell, 'Roboto Slab', 'Courier New', serif", fontWeight: 700 },
-        "Clean sans": { fontWeight: 600 },
-        "Geometric sans": { fontFamily: "Futura, 'Century Gothic', sans-serif", fontWeight: 500, letterSpacing: "0.02em" },
-        "Grotesque": { fontFamily: "'Helvetica Neue', Arial, sans-serif", fontWeight: 700, letterSpacing: "-0.03em" },
-        "Strong caps": { fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 26 },
-        "Rounded": { fontFamily: "'Arial Rounded MT Bold', 'Varela Round', sans-serif", fontWeight: 600 },
-        "Technical mono": { fontFamily: "var(--mono)", fontWeight: 500, textTransform: "lowercase" },
-        "Script": { fontFamily: "'Snell Roundhand', 'Savoye LET', 'Brush Script MT', cursive", fontWeight: 500, fontSize: 32 },
-      };
-      return <span className="v type" style={faces[k] || { fontWeight: 600 }}>{k === "Technical mono" ? name.toLowerCase() : name}</span>;
-    }
-    if (step === "tshape") {
-      const night = { background: "#141127" };
-      if (k === "Round & soft") return (
-        <span className="v shape" style={{ ...night, gap: 16 }}>
-          <i style={{ width: 74, height: 37, borderRadius: "74px 74px 0 0", background: "var(--dawn)" }} />
-          <i style={{ width: 56, height: 56, borderRadius: "50%", background: "#fff" }} />
-        </span>
-      );
-      if (k === "Sharp & angular") return (
-        <span className="v shape" style={{ ...night, gap: 16 }}>
-          <i style={{ width: 62, height: 56, clipPath: "polygon(50% 0, 100% 100%, 0 100%)", background: "var(--nova)", borderRadius: 0 }} />
-          <i style={{ width: 48, height: 48, background: "#fff", borderRadius: 4, transform: "rotate(45deg)" }} />
-        </span>
-      );
-      if (k === "Organic") return (
-        <span className="v shape" style={night}>
-          <i style={{ width: 92, height: 74, borderRadius: "58% 42% 55% 45% / 52% 58% 42% 48%", background: "var(--haze)" }} />
-        </span>
-      );
-      return (
-        <span className="v shape" style={{ ...night, flexDirection: "column", gap: 9 }}>
-          <span style={{ display: "flex", gap: 9 }}>
-            {[0, 1, 2].map((i) => <i key={i} style={{ width: 22, height: 22, background: "#fff", borderRadius: 3, display: "inline-block" }} />)}
-          </span>
-          <span style={{ display: "flex", gap: 9 }}>
-            {[0, 1, 2].map((i) => <i key={i} style={{ width: 22, height: 22, background: "var(--dawn)", borderRadius: "50%", display: "inline-block" }} />)}
-          </span>
-        </span>
-      );
-    }
-    // Full-bleed moodcards, matching the design frames.
-    if (k === "Playful") {
-      return (
-        <span className="v feel" style={{ background: "linear-gradient(135deg, #8f97f8, #b9a7f5)", gap: 10 }}>
-          <i style={{ width: 34, height: 34, borderRadius: "50%", background: "#f6d34c", display: "inline-block" }} />
-          <i style={{ width: 34, height: 34, borderRadius: 12, background: "#f07a4e", display: "inline-block", transform: "rotate(8deg)" }} />
-          <i style={{ width: 34, height: 34, borderRadius: "50%", background: "#ffffff", display: "inline-block" }} />
-        </span>
-      );
-    }
-    const st = k === "Soft & warm" ? { fontFamily: "var(--bookserif)", fontStyle: "italic" as const, background: "linear-gradient(160deg, #fbe3d4, #f0b49a)", color: "#3c241a" }
-      : k === "Bold & bright" ? { fontWeight: 800, textTransform: "uppercase" as const, background: "linear-gradient(160deg, #e8445a, #f5a03c)", color: "#fff" }
-      : { fontWeight: 400, letterSpacing: "0.22em", background: "#f4f2ee", color: "#17151a", fontFamily: "var(--mono)" };
-    return <span className="v feel" style={st}>{k === "Bold & bright" ? "BOLD" : k === "Calm & minimal" ? "calm" : "Soft"}</span>;
-  };
-  return (
-    <>
-      <div className="wr-stage center">
-        <div className="wr-tpick">
-          <div className="qrow">
-            <h1 className="wr-h" style={{ fontSize: 38, margin: 0 }}>{q}</h1>
-            <span className="wr-hint">Pick one</span>
-          </div>
-          <div className="cards">
-            {opts.map((o) => {
-              const on = cur.includes(o.k);
-              return (
-                <button key={o.k} className={"tcard" + (on ? " sel" : "") + (o.k === BRIEF_COL ? " wide" : "")} onClick={() => pickIt(o.k)}>
-                  {on && <span className="ck">✓</span>}
-                  {viz(o.k)}
-                  <span className="tx">
-                    <b>{o.k}</b>
-                    <small>{o.d}</small>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="wr-foot col wr-tfoot" style={{ gap: 8, alignItems: "center" }}>
-        <button className="wr-btn" style={{ maxWidth: 300 }} onClick={onNext}>{step === "feel" ? "Next: colours →" : step === "tcol" ? "Show me my logos →" : "Next →"}</button>
-        <span className="urow">
-          <button className="wr-link" onClick={onBack}>← Back</button>
-          <button className="wr-link" onClick={onNext}>Skip</button>
-        </span>
-      </div>
-    </>
-  );
-}
-
-/* small input for the refine page's Avoid list */
 function AvoidAdd({ onAdd, label }: { onAdd: (w: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
   if (!open) return <button className="wr-opt add" onClick={() => setOpen(true)}>{label || "＋ word to avoid"}</button>;

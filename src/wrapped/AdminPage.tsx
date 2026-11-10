@@ -55,7 +55,9 @@ interface Flow {
   dive: boolean;                  // opened the deep-dive (02·r)
   buy: boolean;                   // clicked out to buy the domain
   logo: boolean;                  // picked a logo → the free brand snapshot (P·1)
-  paywall: boolean;               // saw P·2 Unlock (handoff 19)
+  paywall: boolean;               // saw P·2 Unlock (handoff 19) or the Pro sheet (handoff 29)
+  kit: boolean;                   // saw "Your kit" (handoff 29 · G·5)
+  paid: boolean;                  // Pro paid (real checkout; early access grants don't count)
   unlock: boolean;                // tapped Unlock (paywall, locked page or account)
   saved: boolean;                 // saved the name at 05 (with a domain or "pick later")
   later: boolean;                 // saved it with "Pick a domain later"
@@ -85,7 +87,7 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
     const f: Flow = {
       id, first: evs[0].at, last: evs[evs.length - 1].at, step: 0, status: "stopped",
       email: "", uname: "", brief: "", name: "", shortlist: [], words: [], domain: "", dive: false, buy: false,
-      logo: false, paywall: false, unlock: false, price: 0, why: "", saved: false, later: false, teaser: false, autoWords: false, reactions: 0, reactFails: 0,
+      logo: false, paywall: false, kit: false, paid: false, unlock: false, price: 0, why: "", saved: false, later: false, teaser: false, autoWords: false, reactions: 0, reactFails: 0,
       source: "", campaign: "", content: "", term: "", device: "", lang: "", country: "", feedback: "", timeline: [],
     };
     // pass 1: identity + content (the email can arrive on any event)
@@ -116,8 +118,10 @@ function buildFlows(items: LogItem[]): { flows: Flow[]; gated: number[] } {
       if (e.phase === "godaddy") f.buy = true; // historic event name for the buy click
       if (e.phase === "page" && String(p.to || "") === "refine") f.dive = true;
       if (e.phase === "logo" || (e.phase === "page" && ["snap", "logodone"].includes(String(p.to || "")))) f.logo = true;
-      if (e.phase === "paywall_seen") { f.paywall = true; f.price = Number(p.price) || f.price; }
-      if (e.phase === "unlock_clicked") { f.unlock = true; f.price = Number(p.price) || f.price; }
+      if (e.phase === "paywall_seen" || e.phase === "pro_sheet_seen") { f.paywall = true; f.price = Number(p.price) || f.price; }
+      if (e.phase === "unlock_clicked" || e.phase === "pro_purchase_clicked") { f.unlock = true; f.price = Number(p.price) || f.price; }
+      if (e.phase === "kit_hub_seen" || (e.phase === "page" && String(p.to || "") === "hub")) f.kit = true;
+      if (e.phase === "pro_paid") f.paid = true;
       if (e.phase === "why_not" && p.reason) f.why = String(p.reason);
       if (e.phase === "claim_saved") { f.saved = true; if (!p.domain) f.later = true; }
       if (e.phase === "domain" || (e.phase === "page" && String(p.to || "") === "reveal" && e.at < CUT_D)) f.saved = true;
@@ -250,7 +254,7 @@ const SEED_UPDATES: Update[] = [
 ];
 
 // The numbers every view shares, for one window.
-interface Stats { briefs: number; signed: number; words: number; names: number; chosen: number; brandStart: number; brand: number; paywall: number; unlock: number; domain: number; spend: number }
+interface Stats { briefs: number; signed: number; words: number; names: number; chosen: number; brandStart: number; brand: number; kit: number; paywall: number; unlock: number; paid: number; domain: number; spend: number }
 function statsFor(flows: Flow[], gated: number[], ads: AdsDay[] | null, from: number, to: number, chan?: string): Stats {
   const fl = flows.filter((f) => f.first >= from && f.first < to && (!chan || (f.source || "Direct") === chan));
   const s = fl.filter((f) => f.email);
@@ -266,8 +270,10 @@ function statsFor(flows: Flow[], gated: number[], ads: AdsDay[] | null, from: nu
     brandStart: s.filter((f) => f.step >= 7).length,
     brand: s.filter((f) => f.logo || f.step >= 8).length,
     domain: s.filter((f) => !!f.domain && f.last >= CUT_D).length,
+    kit: fl.filter((f) => f.kit).length,
     paywall: fl.filter((f) => f.paywall).length,
     unlock: fl.filter((f) => f.unlock).length,
+    paid: fl.filter((f) => f.paid).length,
     spend,
   };
 }
@@ -491,7 +497,7 @@ function Overview({ flows, gated, ads, from, to, len, updates, loading, partial 
     ["Briefs", cur.briefs, prev.briefs, cur.briefs.toLocaleString("en-US")],
     ["Sign-ups", cur.signed, prev.signed, cur.signed.toLocaleString("en-US")],
     ["Names chosen", cur.chosen, prev.chosen, cur.chosen.toLocaleString("en-US")],
-    ["Paywall unlocked", cur.unlock, prev.unlock, String(cur.unlock)],
+    ["Get Pro tapped", cur.unlock, prev.unlock, String(cur.unlock)],
   ];
   // daily series for the chart
   const days: number[] = [];
@@ -503,11 +509,12 @@ function Overview({ flows, gated, ads, from, to, len, updates, loading, partial 
   const conv3 = (a: number, b: number) => { const s = statsFor(flows, gated, ads, a, b); return s.briefs ? (s.chosen / s.briefs) * 100 : NaN; };
   const funnel: [string, number][] = [
     ["Brief typed", cur.briefs], ["Signed up", cur.signed], ["Words", cur.words], ["Names", cur.names],
-    ["Name chosen", cur.chosen], ["Brand started", cur.brandStart], ["Paywall seen", cur.paywall], ["Unlocked", cur.unlock],
+    ["Name chosen", cur.chosen], ["Brand started", cur.brandStart], ["Logo picked", cur.brand], ["Kit seen", cur.kit],
+    ["Pro sheet seen", cur.paywall], ["Get Pro tapped", cur.unlock], ["Pro paid", cur.paid],
     ["Domain kept", cur.domain],
   ];
   const steps = funnel.map(([, n], i) => (i === 0 ? NaN : funnel[i - 1][1] ? (n / funnel[i - 1][1]) * 100 : NaN));
-  const drops = steps.map((p, i) => ({ i, p })).filter((x) => x.i > 0 && x.i < 7 && isFinite(x.p) && funnel[x.i - 1][1] >= 5).sort((a, b) => a.p - b.p).slice(0, 2).map((x) => x.i);
+  const drops = steps.map((p, i) => ({ i, p })).filter((x) => x.i > 0 && x.i < 10 && isFinite(x.p) && funnel[x.i - 1][1] >= 5).sort((a, b) => a.p - b.p).slice(0, 2).map((x) => x.i);
   const chans = new Map<string, { spend: number; signed: number; names: number }>();
   for (const f of flows) if (f.first >= from && f.first < to) {
     const k = f.source || "Direct";
@@ -920,10 +927,10 @@ const AROWS: { k: keyof WeekMet; t: string; s: string; d: string; main?: boolean
   { k: "swiped", t: "Swiped brands", s: "Swipe", d: "into the brand swipe and taste (step % of Sign-ups: the deep-dive is optional)", base: "signed" },
   { k: "words", t: "Words starred", s: "Words", d: "starred words and moved on" },
   { k: "name", t: "Name chosen", s: "Name chosen", d: "continued with a name (“{Name} is yours”)", main: true },
-  { k: "brandStart", t: "Brand started", s: "Brand", d: "into chapter 2: the taste quiz (the key step since 1 Nov)" },
-  { k: "brand", t: "Logo picked", s: "Logo", d: "picked a logo, saw the free brand snapshot" },
-  { k: "paywall", t: "Paywall seen", s: "Paywall", d: "reached P·2 Unlock (€29)" },
-  { k: "unlock", t: "Unlock clicked", s: "Unlock", d: "tapped Unlock: the number this test measures" },
+  { k: "brandStart", t: "Brand started", s: "Brand", d: "tapped Build my brand: into colours (freemium flow since 10 Nov)" },
+  { k: "brand", t: "Logo picked", s: "Logo", d: "picked a logo (then lands on Your kit)" },
+  { k: "paywall", t: "Pro sheet seen", s: "Pro sheet", d: "opened the Pro sheet (€29), from any PRO card or a download" },
+  { k: "unlock", t: "Get Pro tapped", s: "Get Pro", d: "tapped Get Pro: the number this test measures (free early access until checkout is live)" },
   { k: "chose", t: "Domain kept", s: "Domain", d: "kept a domain in chapter 3 (step % of Brand started)", base: "brandStart" },
   { k: "buy", t: "Buy click", s: "Buy click", d: "clicked to buy the domain (step % of Domain kept)", base: "chose" },
 ];

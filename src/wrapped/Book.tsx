@@ -555,7 +555,7 @@ export function printBook(title?: string): void {
 }
 
 /* ── 07b preview overlay ── */
-export function BookPreview({ ctx, onClose, onShare }: { ctx: BookCtx; onClose: () => void; onShare?: () => void }) {
+export function BookPreview({ ctx, onClose, onShare, onDownload, dlLabel }: { ctx: BookCtx; onClose: () => void; onShare?: () => void; onDownload?: () => void; dlLabel?: React.ReactNode }) {
   const [page, setPage] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(360);
@@ -593,8 +593,12 @@ export function BookPreview({ ctx, onClose, onShare }: { ctx: BookCtx; onClose: 
         <span className="t"><em className="bnm">{ctx.name} · </em>Brand book</span>
         <span className="pg"><em className="pw">Page </em>{page + 1} of 10</span>
         <div className="dacts">
-          <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
-          <button className="wr-btn2" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
+          {onDownload
+            ? <button className="wr-btn2" onClick={onDownload}>{dlLabel || "↓ Download"}</button>
+            : <>
+              <button className="wr-btn2" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
+              <button className="wr-btn2" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
+            </>}
         </div>
       </div>
       <div className="main">
@@ -622,8 +626,12 @@ export function BookPreview({ ctx, onClose, onShare }: { ctx: BookCtx; onClose: 
       <div className="wr-dots">{PAGE_TITLES.map((_, i) => <i key={i} className={i === page ? "on" : ""} />)}</div>
       <p className="swipecap">{PAGE_TITLES[page]}{page < PAGE_TITLES.length - 1 && <> · swipe for {PAGE_TITLES[page + 1]} →</>}</p>
       <div className="macts">
-        <button className="mpdf" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
-        <button className="mword" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
+        {onDownload
+          ? <button className="mpdf wide" onClick={onDownload}>{dlLabel || "↓ Download"}</button>
+          : <>
+            <button className="mpdf" onClick={() => printBook(`${ctx.name} - Brand book`)}>↓ PDF</button>
+            <button className="mword" onClick={() => { void exportBookWord(ctx); }}>↓ Word</button>
+          </>}
         {onShare && <button className="mshare" onClick={onShare} aria-label="Share">↗</button>}
       </div>
       <div className="wr-khint" style={{ justifyContent: "center", padding: "0 0 14px" }}>
