@@ -40,6 +40,7 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;     // Pro checkout (sk_test_… or sk_live_…); unset = free early access
   STRIPE_WEBHOOK_SECRET?: string; // whsec_… of the endpoint POST /stripe
   SITE_URL?: string;              // where Checkout returns (default https://namename.ai)
+  STRIPE_MANAGED_PAYMENTS?: string; // "1": Stripe is merchant of record (tax/VAT worldwide); enable it in the Stripe Dashboard first
 }
 
 const MODEL = {
@@ -1398,7 +1399,8 @@ function stripeFor(env: Env, body: any): boolean {
 async function stripeApi(env: Env, path: string, form?: Record<string, string>): Promise<any> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: form ? "POST" : "GET",
-    headers: { authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, ...(form ? { "content-type": "application/x-www-form-urlencoded" } : {}) },
+    // Pinned API version (Stripe go-live checklist; Managed Payments needs basil or later).
+    headers: { authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, "stripe-version": "2025-03-31.basil", ...(form ? { "content-type": "application/x-www-form-urlencoded" } : {}) },
     body: form ? new URLSearchParams(form).toString() : undefined,
   });
   const d: any = await res.json().catch(() => ({}));
@@ -1433,6 +1435,12 @@ async function proCheckout(env: Env, body: any): Promise<any> {
     "metadata[process]": process, "metadata[email]": email, "metadata[name]": name, "metadata[price]": String(price), "metadata[step]": String(p.step || "").slice(0, 40),
     allow_promotion_codes: "true",
   };
+  // Managed Payments: Stripe sells as merchant of record and handles VAT/GST
+  // (needs a digital-product tax code; Stripe then controls tax + payment methods).
+  if (env.STRIPE_MANAGED_PAYMENTS === "1") {
+    form["managed_payments[enabled]"] = "true";
+    form["line_items[0][price_data][product_data][tax_code]"] = "txcd_10000000"; // electronically supplied services
+  }
   if (email) form.customer_email = email;
   try {
     const s = await stripeApi(env, "checkout/sessions", form);
@@ -1452,6 +1460,11 @@ async function proStatus(env: Env, body: any): Promise<any> {
       const s = await stripeApi(env, `checkout/sessions/${session}`);
       if (s.payment_status === "paid" && cleanProc(s.metadata?.process) === process) {
         const info = { amount: (s.amount_total || 0) / 100, currency: s.currency, session: s.id, price_variant: s.metadata?.price };
+        // the webhook hasn't landed: fulfil here, once per session
+        if (env.LOG && !(await env.LOG.get(`pro:session:${s.id}`))) {
+          await env.LOG.put(`pro:session:${s.id}`, process);
+          await writeLog(env, "pro_paid", process, { payload: { ...info, email: s.metadata?.email || "", name: s.metadata?.name, via: "return" } }, info);
+        }
         await markPro(env, process, String(s.metadata?.email || ""), info);
         return { pro: true, ...info };
       }
@@ -1477,8 +1490,13 @@ async function stripeWebhook(req: Request, env: Env): Promise<Response> {
     if (s.payment_status === "paid") {
       const process = cleanProc(s.metadata?.process || s.client_reference_id);
       const info = { amount: (s.amount_total || 0) / 100, currency: s.currency, session: s.id, price_variant: s.metadata?.price };
-      await markPro(env, process, String(s.metadata?.email || s.customer_details?.email || ""), info);
-      await writeLog(env, "pro_paid", process, { payload: { ...info, email: s.metadata?.email || s.customer_details?.email || "", name: s.metadata?.name } }, info);
+      // Fulfil once per payment: Stripe may deliver the event more than once.
+      const seen = env.LOG ? await env.LOG.get(`pro:session:${s.id}`) : null;
+      if (!seen) {
+        if (env.LOG) await env.LOG.put(`pro:session:${s.id}`, process);
+        await markPro(env, process, String(s.metadata?.email || s.customer_details?.email || ""), info);
+        await writeLog(env, "pro_paid", process, { payload: { ...info, email: s.metadata?.email || s.customer_details?.email || "", name: s.metadata?.name } }, info);
+      }
     }
   }
   return new Response("ok");

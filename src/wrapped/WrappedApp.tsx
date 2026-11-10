@@ -327,6 +327,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // Real checkout once the server has Stripe keys; until then Pro is granted free (early access).
   const [stripeLive, setStripeLive] = useState(false);
   const [payBusy, setPayBusy] = useState(false);
+  const [payErr, setPayErr] = useState("");
   useEffect(() => { if (!test) void proConfig().then((c) => setStripeLive(!!c.stripe)); }, [test]);
   useEffect(() => { // back from Checkout: confirm with the server, then Pro is on
     if (test) return;
@@ -340,7 +341,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       if (r.pro) {
         setUnlocked(true); setProToast(true);
         persist({ brandUnlocked: true, unlockSource: "stripe", priceVariant: price });
-        track("pro_paid", { amount: r.amount, price_variant: r.price_variant || `eur${price}` });
+        track("pro_unlocked_after_checkout", { amount: r.amount, price_variant: r.price_variant || `eur${price}` });
       } else if (++n < 6) setTimeout(check, 2000);
     });
     setTimeout(check, 600);
@@ -352,7 +353,11 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       setPayBusy(true);
       const url = await proCheckout({ name: picked?.name || "", price, step: proSheet?.step || "" });
       if (url) { window.location.href = url; return; }
-      setPayBusy(false); // checkout unreachable: fall back to early access rather than a dead button
+      // Never hand out Pro when real checkout fails: say so, let them retry.
+      setPayBusy(false);
+      setPayErr("Checkout didn't open. Check your connection and try again.");
+      track("pro_checkout_failed", { step: proSheet?.step });
+      return;
     }
     setUnlocked(true);
     persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
@@ -2480,7 +2485,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {proSheet && picked && (
         <ProSheet name={picked.name} price={price} step={proSheet.step} title={proSheet.title} lead={proSheet.lead} cta={proSheet.cta}
-          early={!stripeLive} busy={payBusy} track={(ev, p) => track(ev, { name: picked.name, ...p })} onGet={() => void grantPro()} onClose={() => setProSheet(null)} />
+          early={!stripeLive} busy={payBusy} error={payErr} track={(ev, p) => track(ev, { name: picked.name, ...p })} onGet={() => { setPayErr(""); void grantPro(); }} onClose={() => { setPayErr(""); setProSheet(null); }} />
       )}
       {proToast && <ProToast onDone={() => setProToast(false)} />}
       {briefGate && (
