@@ -270,8 +270,22 @@ export default {
       // One Worker request may touch at most ~1000 KV keys, but the log now
       // keeps the whole history: the page returns a cursor and the admin
       // keeps calling until it has everything.
+      if (body?.fast) return json(await logItemsFast(env, typeof body?.cursor === "string" ? body.cursor : undefined), env);
       const r = await logItems(env, Math.min(900, Math.max(1, Number(body?.limit) || 900)), typeof body?.cursor === "string" ? body.cursor : undefined);
       return json(r, env);
+    }
+    if (phase === "adminlogpart") {
+      const u = await adminUser(env, body?.token);
+      if (!u) return json({ error: "not allowed" }, env, 403);
+      const k = String(body?.key || "");
+      if (!/^logd:\d{4}-\d{2}-\d{2}:\d+$/.test(k) || !env.LOG) return json({ items: [] }, env);
+      const v = await env.LOG.get(k);
+      return new Response(`{"items":${v || "[]"}}`, { headers: { "content-type": "application/json", ...cors(env) } });
+    }
+    if (phase === "admincompact") {
+      const u = await adminUser(env, body?.token);
+      if (!u) return json({ error: "not allowed" }, env, 403);
+      return json(await compactLog(env), env);
     }
 
     // Email previews: W + S·1–S·4 with sample data, to an OWNER address only
@@ -668,6 +682,75 @@ async function logItems(env: Env, limit: number, cursor?: string): Promise<{ ite
   return { items, cursor: page.list_complete ? null : page.cursor };
 }
 
+
+/* ── Admin log, fast: each closed UTC day is bundled into "logd:<day>:<part>"
+   blocks (≤ 800 events each), so the admin fetches ~1 key per 800 events
+   instead of one per event. The originals stay untouched (the log is the
+   company's history); a bundle is only ever written once its day is over.
+   "logd:index" = { days: {day: {parts, count}}, prog: {day: partsDone} }. */
+const DAY_PART = 800;
+const keyDay = (name: string) => new Date(1e15 - Number(name.split(":")[1] || 0)).toISOString().slice(0, 10);
+async function logIndex(env: Env): Promise<{ days: Record<string, { parts: number; count: number }>; prog: Record<string, number> }> {
+  try { return { days: {}, prog: {}, ...JSON.parse((await env.LOG!.get("logd:index")) || "{}") }; } catch { return { days: {}, prog: {} }; }
+}
+async function allLogKeys(env: Env): Promise<string[]> {
+  const out: string[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < 200; i++) {
+    const page = await env.LOG!.list({ prefix: "log:", limit: 1000, cursor });
+    for (const k of page.keys) out.push(k.name);
+    if (page.list_complete) break;
+    cursor = page.cursor;
+  }
+  return out;
+}
+/** Bundles up to `budget` events of closed days; call again until pending is 0. */
+async function compactLog(env: Env, budget = 700): Promise<{ wrote: number; pending: number }> {
+  if (!env.LOG) return { wrote: 0, pending: 0 };
+  const idx = await logIndex(env);
+  // a day is closed 15 minutes after UTC midnight (late waitUntil writes land)
+  const closed = new Date(Date.now() - 15 * 60000).toISOString().slice(0, 10);
+  const byDay = new Map<string, string[]>();
+  for (const n of await allLogKeys(env)) { const d = keyDay(n); if (d < closed && !idx.days[d]) (byDay.get(d) || byDay.set(d, []).get(d)!).push(n); }
+  let wrote = 0;
+  for (const [day, names] of [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const parts = Math.ceil(names.length / DAY_PART);
+    for (let k = idx.prog[day] || 0; k < parts; k++) {
+      const slice = names.slice(k * DAY_PART, (k + 1) * DAY_PART);
+      if (wrote + slice.length > budget) { await env.LOG.put("logd:index", JSON.stringify(idx)); return { wrote, pending: byDay.size }; }
+      const items = (await Promise.all(slice.map(async (n) => { const v = await env.LOG!.get(n); if (!v) return null; try { return { id: n, ...JSON.parse(v) }; } catch { return null; } }))).filter(Boolean);
+      await env.LOG.put(`logd:${day}:${k}`, JSON.stringify(items));
+      wrote += slice.length;
+      idx.prog[day] = k + 1;
+    }
+    idx.days[day] = { parts, count: names.length };
+    delete idx.prog[day];
+    byDay.delete(day);
+  }
+  await env.LOG.put("logd:index", JSON.stringify(idx));
+  return { wrote, pending: byDay.size };
+}
+/** The admin's read: events of days not bundled yet (paged), plus the bundle keys. */
+async function logItemsFast(env: Env, cursor?: string): Promise<{ items: unknown[]; cursor: string | null; parts?: string[] }> {
+  if (!env.LOG) return { items: [], cursor: null };
+  const idx = await logIndex(env);
+  const items: unknown[] = [];
+  let cur = cursor, gets = 0;
+  for (let i = 0; i < 30; i++) {
+    const page = await env.LOG.list({ prefix: "log:", limit: 800, cursor: cur }); // ≤ 800 gets + lists stay under the 1000-subrequest cap
+    const need = page.keys.map((k) => k.name).filter((n) => !idx.days[keyDay(n)]);
+    if (gets + need.length > 900 && gets > 0) return { items, cursor: cur || null, parts: cursor ? undefined : partsOf(idx) };
+    const got = await Promise.all(need.map(async (n) => { const v = await env.LOG!.get(n); if (!v) return null; try { return { id: n, ...JSON.parse(v) }; } catch { return null; } }));
+    for (const g of got) if (g) items.push(g);
+    gets += need.length;
+    if (page.list_complete) return { items, cursor: null, parts: cursor ? undefined : partsOf(idx) };
+    cur = page.cursor;
+  }
+  return { items, cursor: cur || null, parts: cursor ? undefined : partsOf(idx) };
+}
+const partsOf = (idx: { days: Record<string, { parts: number }> }) =>
+  Object.entries(idx.days).sort((a, b) => (a[0] < b[0] ? 1 : -1)).flatMap(([d, v]) => Array.from({ length: v.parts }, (_, k) => `logd:${d}:${k}`));
+
 async function readLog(env: Env, url: URL): Promise<Response> {
   if (!env.LOG) return json({ items: [], note: "no KV namespace bound (LOG)" }, env);
   // The funnel is personal data (emails, briefs): the raw GET endpoint is only
@@ -681,6 +764,10 @@ async function readLog(env: Env, url: URL): Promise<Response> {
     }))).filter(Boolean);
     return json({ days }, env);
   }
+  if (url.searchParams.has("compact")) return json(await compactLog(env), env);
+  if (url.searchParams.has("fast")) return json(await logItemsFast(env, url.searchParams.get("cursor") || undefined), env);
+  const part = url.searchParams.get("part") || "";
+  if (/^logd:\d{4}-\d{2}-\d{2}:\d+$/.test(part)) return new Response(`{"items":${(await env.LOG.get(part)) || "[]"}}`, { headers: { "content-type": "application/json", ...cors(env) } });
   // Paged like "adminlog": pass the returned cursor back until it is null.
   const r = await logItems(env, Math.min(900, Math.max(1, Number(url.searchParams.get("limit")) || 150)), url.searchParams.get("cursor") || undefined);
   return json(r, env);

@@ -325,18 +325,30 @@ export function AdminPage() {
     // page through with the cursor, painting as the pages land (newest first).
     let dead = false;
     (async () => {
+      // Fast path: events of days not bundled yet (today, mostly), paged, plus
+      // the closed days' bundles fetched six at a time. Newest first.
       const all: LogItem[] = [];
+      const paint = () => { if (!dead) setItems([...all].sort((a: any, b: any) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))); };
       let cursor: string | undefined;
-      for (let i = 0; i < 40 && !dead; i++) {
-        const d = await call({ phase: "adminlog", limit: 900, cursor });
+      let parts: string[] = [];
+      for (let i = 0; i < 60 && !dead; i++) {
+        const d = await call({ phase: "adminlog", fast: true, cursor });
         if (dead) return;
         if (d.error) { setErr(String(d.error)); return; }
+        if (Array.isArray(d.parts)) parts = d.parts;
         all.push(...(d.items || []));
-        setItems([...all]);
+        paint();
         if (!d.cursor) break;
         cursor = d.cursor;
       }
+      for (let i = 0; i < parts.length && !dead; i += 6) {
+        const got = await Promise.all(parts.slice(i, i + 6).map((key) => call({ phase: "adminlogpart", key }).catch(() => ({ items: [] }))));
+        for (const g of got) all.push(...(g.items || []));
+        paint();
+      }
       if (!dead) setLogDone(true);
+      // bundle any closed day that isn't yet (a few calls at most; cheap once done)
+      for (let i = 0; i < 4 && !dead; i++) { const c = await call({ phase: "admincompact" }).catch(() => null); if (!c || !c.pending) break; }
     })().catch((e) => { if (!dead) setErr(String(e)); });
     call({ phase: "adminads" }).then((d) => { if (!dead && !d.error) setAds((d.days || []).sort((a: AdsDay, b: AdsDay) => (a.date < b.date ? 1 : -1))); }).catch(() => {});
     call({ phase: "admin-updates" }).then((d) => {
