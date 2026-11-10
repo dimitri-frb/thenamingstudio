@@ -406,7 +406,7 @@ export function AdminPage() {
           onRole={async (email, role) => { if (await roleSet(email, role)) setRoles((r) => r && { ...r, admins: role === "admin" ? [...r.admins, email] : r.admins.filter((x) => x !== email) }); }}
           loading={!items} done={logDone} />
       )}
-      {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!logDone} />}
+      {tab === "analysis" && <AnalysisView flows={flows} ads={ads} loading={!logDone} to={to} />}
       {tab === "feedback" && (
         <FeedbackView items={items || []} flows={flows} from={from} to={to} loading={!items} q=""
           onOpenFlow={(id) => { setRange({ kind: "all" }); setSelPerson(id); setTab("people"); }} />
@@ -1078,15 +1078,18 @@ function Breakdown({ flows, chan, by, title, empty }: { flows: Flow[]; chan: str
   );
 }
 
-function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean }) {
+function AnalysisView({ flows, ads, loading, to }: { flows: Flow[]; ads: AdsDay[] | null; loading: boolean; to: number }) {
   const [chan, setChan] = useState("Google Ads");
   const [wk, setWk] = useState(0);
   // Week columns by default; the toggle narrows every column to one day.
   const [gran, setGran] = useState<"week" | "day">("week");
   const paid = chan === "All channels" || PAID.has(chan);
   const SPAN = gran === "week" ? WMS : 864e5;
-  const day0 = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
-  const p0 = gran === "week" ? mondayOf(Date.now()) : day0;
+  // The columns end at the date range's end (today for 7d / 30d / All).
+  const end = Math.min(Date.now(), to - 1);
+  const day0 = (() => { const d = new Date(end); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const p0 = gran === "week" ? mondayOf(end) : day0;
+  const live = (t: number) => Date.now() < t + SPAN; // the column still running
   const weeks = useMemo(() => Array.from({ length: 10 }, (_, i) => p0 - i * SPAN), [p0, SPAN]);
   const met: WeekMet[] = useMemo(() => weeks.map((t) => {
     let spend = 0, adClicks = 0;
@@ -1149,7 +1152,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
     <div className="wrap ana">
       <div className="anahead">
         <h2>Channel performance</h2>
-        <span className="mono sub">{chan} · last 5 {gran}s vs the 5 before</span>
+        <span className="mono sub">{chan} · 5 {gran}s to {new Date(end).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} vs the 5 before</span>
         <span className="gsel">
           <button className={gran === "week" ? "on" : ""} onClick={() => { setGran("week"); setWk(0); }}>By week</button>
           <button className={gran === "day" ? "on" : ""} onClick={() => { setGran("day"); setWk(0); }}>By day</button>
@@ -1162,7 +1165,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
         <div className="akpi"><span>Spend</span><b className="mono">{eur(spend5)}</b><Delta cur={spend5} was={spendP} /><em className="was mono">was {eur(spendP)}</em></div>
         <div className="akpi"><span>Sign-ups</span><b className="mono">{sign5.toLocaleString("en-US")}</b><Delta cur={sign5} was={signP} /><em className="was mono">was {signP}</em></div>
         <div className="akpi"><span>Names chosen</span><b className="mono">{name5.toLocaleString("en-US")}</b><Delta cur={name5} was={nameP} /><em className="was mono">was {nameP}</em></div>
-        <div className="akpi"><span>Paywall unlocked</span><b className="mono">{sum(l5, "unlock")}</b><Delta cur={sum(l5, "unlock")} was={sum(p5, "unlock")} /><em className="was mono">was {sum(p5, "unlock")}</em></div>
+        <div className="akpi"><span>Get Pro tapped</span><b className="mono">{sum(l5, "unlock")}</b><Delta cur={sum(l5, "unlock")} was={sum(p5, "unlock")} /><em className="was mono">was {sum(p5, "unlock")}</em></div>
         <div className="akpi"><span>Cost per sign-up</span><b className="mono">{sign5 && paid ? eur(cps) : "—"}</b><Delta cur={cps} was={cpsP} costly /><em className="was mono">was {signP && paid ? eur(cpsP) : "—"}</em></div>
         <div className="akpi main"><span>Cost per name <i className="maintag">MAIN</i></span><b className="mono">{name5 && paid ? eur(cpn) : "—"}</b><Delta cur={cpn} was={cpnP} costly /><em className="was mono">was {nameP && paid ? eur(cpnP) : "—"}</em></div>
       </div>
@@ -1178,7 +1181,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
       <div className="wksel">
         {weeks.slice(0, 5).map((t, i) => (
           <button key={t} className={wk === i ? "on" : ""} onClick={() => setWk(i)}>
-            <b>{pTitle(t)}</b><span>{i === 0 ? "so far" : pSub(t)}</span>
+            <b>{pTitle(t)}</b><span>{i === 0 && live(t) ? "so far" : pSub(t)}</span>
           </button>
         ))}
       </div>
@@ -1190,7 +1193,7 @@ function AnalysisView({ flows, ads, loading }: { flows: Flow[]; ads: AdsDay[] | 
               <th className="stp" />
               {weeks.slice(0, 5).map((t, i) => (
                 <th key={t} colSpan={4} className={"wkh" + (i === wk ? " sel" : "")}>
-                  <b>{pTitle(t)}</b> <span>{pSub(t)}{i === 0 ? " · so far" : ""}</span>
+                  <b>{pTitle(t)}</b> <span>{pSub(t)}{i === 0 && live(t) ? " · so far" : ""}</span>
                   {paid && <em className="mono">{eur(met[i].spend)}</em>}
                 </th>
               ))}

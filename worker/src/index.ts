@@ -181,8 +181,8 @@ export default {
     const skipLog = !!body?.test;
 
     // ── Pro (handoff 29): €29 once, through Stripe Checkout ──
-    if (phase === "pro-config") return json({ stripe: !!env.STRIPE_SECRET_KEY }, env);
-    if (phase === "pro-checkout") return json(await proCheckout(env, body), env);
+    if (phase === "pro-config") return json({ stripe: stripeFor(env, body), test: stripeFor(env, body) && isTestKey(env) }, env);
+    if (phase === "pro-checkout") return json(stripeFor(env, body) ? await proCheckout(env, body) : { error: "checkout not configured" }, env);
     if (phase === "pro-status") return json(await proStatus(env, body), env);
 
     // Domain availability for ONE name (its own request => its own subrequest
@@ -1293,6 +1293,16 @@ function localVariants(slug: string, city: unknown, lang: unknown): string[] {
    logged. pro-status answers whether a run is Pro, checking the session with
    Stripe directly when the webhook hasn't landed yet. */
 const PRO_PRICES = [29, 39, 49];
+// Test keys (sk_test_) only switch checkout on for the admins, so real
+// visitors never land on a test checkout; live keys switch it on for everyone.
+const isTestKey = (env: Env) => /^sk_test_/.test(env.STRIPE_SECRET_KEY || "") || /^rk_test_/.test(env.STRIPE_SECRET_KEY || "");
+function stripeFor(env: Env, body: any): boolean {
+  if (!env.STRIPE_SECRET_KEY) return false;
+  if (!isTestKey(env)) return true;
+  const me = String(body?.who?.email || "").toLowerCase();
+  const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean);
+  return !!me && (admins.includes(me) || me === "josef@bingin.fr");
+}
 async function stripeApi(env: Env, path: string, form?: Record<string, string>): Promise<any> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: form ? "POST" : "GET",
