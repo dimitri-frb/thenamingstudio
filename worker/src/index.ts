@@ -40,7 +40,7 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;     // Pro checkout (sk_test_… or sk_live_…); unset = free early access
   STRIPE_WEBHOOK_SECRET?: string; // whsec_… of the endpoint POST /stripe
   SITE_URL?: string;              // where Checkout returns (default https://namename.ai)
-  STRIPE_MANAGED_PAYMENTS?: string; // "1": Stripe is merchant of record (tax/VAT worldwide); enable it in the Stripe Dashboard first
+  STRIPE_MANAGED_PAYMENTS?: string; // "1" / "0" force Managed Payments on / off; unset = the account's default
 }
 
 const MODEL = {
@@ -1437,10 +1437,10 @@ async function proCheckout(env: Env, body: any): Promise<any> {
   };
   // Managed Payments: Stripe sells as merchant of record and handles VAT/GST
   // (needs a digital-product tax code; Stripe then controls tax + payment methods).
-  if (env.STRIPE_MANAGED_PAYMENTS === "1") {
-    form["managed_payments[enabled]"] = "true";
-    form["line_items[0][price_data][product_data][tax_code]"] = "txcd_10000000"; // electronically supplied services
-  }
+  // The tax code is always sent (Managed Payments needs it; plain Stripe Tax uses it too).
+  form["line_items[0][price_data][product_data][tax_code]"] = "txcd_10000000"; // electronically supplied services
+  if (env.STRIPE_MANAGED_PAYMENTS === "1") form["managed_payments[enabled]"] = "true";
+  if (env.STRIPE_MANAGED_PAYMENTS === "0") form["managed_payments[enabled]"] = "false";
   if (email) form.customer_email = email;
   try {
     const s = await stripeApi(env, "checkout/sessions", form);
