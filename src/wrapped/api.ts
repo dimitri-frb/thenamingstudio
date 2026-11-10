@@ -510,6 +510,20 @@ export async function accountDelete(): Promise<boolean> {
   return !!r?.ok;
 }
 
+/* ── Pro (handoff 29): Stripe Checkout when the server has keys, else early access ── */
+export async function proConfig(): Promise<{ stripe: boolean }> {
+  if (TEST) return { stripe: false };
+  return (await post<{ stripe: boolean }>({ phase: "pro-config" })) || { stripe: false };
+}
+export async function proCheckout(payload: { name: string; price: number; step: string }): Promise<string | null> {
+  const r = await post<{ url?: string }>({ phase: "pro-checkout", payload });
+  return r?.url || null;
+}
+export async function proStatus(session?: string): Promise<{ pro: boolean; amount?: number; price_variant?: string }> {
+  if (TEST) return { pro: false };
+  return (await post<{ pro: boolean; amount?: number; price_variant?: string }>({ phase: "pro-status", payload: { session: session || "" } })) || { pro: false };
+}
+
 /* ── Google Identity Services ── */
 // Google refuses sign-in (origin_mismatch) on any address but the registered
 // one, e.g. a translation proxy or a mirror. There, offer a link to the real

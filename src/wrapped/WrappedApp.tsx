@@ -6,7 +6,7 @@ import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 import "./wrapped.css";
 import {
-  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, signinElsewhere, setMarket, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
+  ACTIVE, ACTIVE_BRIEF, GOOGLE_CLIENT_ID, signinElsewhere, setMarket, proCheckout, proConfig, proStatus, attrib, authGoogle, clearSnap, coinNames, fetchDomainBoard, fetchMe, resumeLink,
   loadGsi, loadSession, loadSnap, newProcess, processId, putSearch, priceFor, registrarUrl, sampleBook, sampleKit,
   loadBriefEta, loadEta, loadWordsEta, logoTweak, recordBriefEta, recordEta, recordWordsEta, saveSnap, setProcessId, setTestMode, sharePut, track, wrapApi, type NameStream,
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
@@ -324,9 +324,36 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const [proSheet, setProSheet] = useState<null | { step: string; title?: string; lead?: string; cta?: string; then?: () => void }>(null);
   const [proToast, setProToast] = useState(false);
   const openPro = (step: string, o: { title?: string; lead?: string; cta?: string; then?: () => void } = {}) => { track("pro_card_tapped", { step }); setProSheet({ step, ...o }); };
-  // Stand-in until checkout is live: Pro is granted free (early access).
-  const grantPro = () => {
+  // Real checkout once the server has Stripe keys; until then Pro is granted free (early access).
+  const [stripeLive, setStripeLive] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
+  useEffect(() => { if (!test) void proConfig().then((c) => setStripeLive(!!c.stripe)); }, [test]);
+  useEffect(() => { // back from Checkout: confirm with the server, then Pro is on
+    if (test) return;
+    const q = new URLSearchParams(window.location.search);
+    const sess = q.get("pro_session");
+    if (q.has("pro_cancel")) { track("pro_checkout_cancelled", {}); window.history.replaceState(null, "", window.location.pathname); }
+    if (!sess) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    let n = 0;
+    const check = () => proStatus(sess).then((r) => {
+      if (r.pro) {
+        setUnlocked(true); setProToast(true);
+        persist({ brandUnlocked: true, unlockSource: "stripe", priceVariant: price });
+        track("pro_paid", { amount: r.amount, price_variant: r.price_variant || `eur${price}` });
+      } else if (++n < 6) setTimeout(check, 2000);
+    });
+    setTimeout(check, 600);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const grantPro = async () => {
     const then = proSheet?.then;
+    if (stripeLive) {
+      setPayBusy(true);
+      const url = await proCheckout({ name: picked?.name || "", price, step: proSheet?.step || "" });
+      if (url) { window.location.href = url; return; }
+      setPayBusy(false); // checkout unreachable: fall back to early access rather than a dead button
+    }
     setUnlocked(true);
     persist({ brandUnlocked: true, unlockSource: "early_access", priceVariant: price });
     track("early_access_granted", { price, name: picked?.name, step: proSheet?.step });
@@ -2453,7 +2480,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       )}
       {proSheet && picked && (
         <ProSheet name={picked.name} price={price} step={proSheet.step} title={proSheet.title} lead={proSheet.lead} cta={proSheet.cta}
-          early track={(ev, p) => track(ev, { name: picked.name, ...p })} onGet={grantPro} onClose={() => setProSheet(null)} />
+          early={!stripeLive} busy={payBusy} track={(ev, p) => track(ev, { name: picked.name, ...p })} onGet={() => void grantPro()} onClose={() => setProSheet(null)} />
       )}
       {proToast && <ProToast onDone={() => setProToast(false)} />}
       {briefGate && (

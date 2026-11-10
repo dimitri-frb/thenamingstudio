@@ -21,9 +21,9 @@ export function ProCard({ title, sub, onSee, children, cta = "See →" }: { titl
 }
 
 /** G·4 · the Pro sheet (mobile) / dialog (desktop). */
-export function ProSheet({ name, price, step, title, lead, cta, onGet, onClose, track, early }: {
+export function ProSheet({ name, price, step, title, lead, cta, onGet, onClose, track, early, busy }: {
   name: string; price: number; step: string; title?: string; lead?: string; cta?: string;
-  onGet: () => void; onClose: () => void; track: (ev: string, p?: Record<string, unknown>) => void; early?: boolean;
+  onGet: () => void; onClose: () => void; track: (ev: string, p?: Record<string, unknown>) => void; early?: boolean; busy?: boolean;
 }) {
   useEffect(() => { track("pro_sheet_seen", { step, price }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
@@ -41,8 +41,9 @@ export function ProSheet({ name, price, step, title, lead, cta, onGet, onClose, 
           <li>Ad copy, story formats and print-ready cards</li>
         </ul>
         <p className="price"><b className="mono">€{price}</b><span>once · yours forever</span></p>
-        <button className="wr-btnor fm-get" onClick={() => { track("pro_purchase_clicked", { step, price }); onGet(); }}>{cta || `Get ${name} Pro · €${price}`}</button>
-        {early && <p className="early">Payments open soon: Pro is free while we're in early access.</p>}
+        <button className="wr-btnor fm-get" disabled={busy} onClick={() => { track("pro_purchase_clicked", { step, price }); onGet(); }}>{busy ? "Opening secure checkout…" : cta || `Get ${name} Pro · €${price}`}</button>
+        {early ? <p className="early">Payments open soon: Pro is free while we're in early access.</p>
+          : <p className="early">Secure payment by Stripe · card, Apple Pay, Google Pay</p>}
         <button className="wr-link" onClick={onClose}>{step.startsWith("dl:") ? "Keep previewing" : "Not now"}</button>
       </div>
     </div>, document.body);

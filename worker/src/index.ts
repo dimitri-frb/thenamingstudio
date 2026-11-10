@@ -37,6 +37,9 @@ export interface Env {
   ADS_KEY?: string;        // optional: shared secret the Google Ads Script sends with daily spend
   EMAIL?: { send(msg: any): Promise<{ messageId: string }> }; // Cloudflare Email Sending binding
   POSTAL_ADDRESS?: string; // email-footer postal address (omitted until set)
+  STRIPE_SECRET_KEY?: string;     // Pro checkout (sk_test_… or sk_live_…); unset = free early access
+  STRIPE_WEBHOOK_SECRET?: string; // whsec_… of the endpoint POST /stripe
+  SITE_URL?: string;              // where Checkout returns (default https://namename.ai)
 }
 
 const MODEL = {
@@ -132,6 +135,8 @@ export default {
     // Central request log read endpoint: GET ?log=1[&key=ADMIN_KEY][&limit=N].
     // One-click unsubscribe from the mail client itself (RFC 8058 POST)
     if (req.method === "POST" && new URL(req.url).pathname === "/unsub") return handleUnsub(env, new URL(req.url));
+    // Stripe → us: a paid Checkout marks the run (and the account) Pro.
+    if (req.method === "POST" && new URL(req.url).pathname === "/stripe") return stripeWebhook(req, env);
 
     if (req.method === "GET") {
       const url = new URL(req.url);
@@ -174,6 +179,11 @@ export default {
 
     // Requests from the sample/test flow are flagged and never logged centrally.
     const skipLog = !!body?.test;
+
+    // ── Pro (handoff 29): €29 once, through Stripe Checkout ──
+    if (phase === "pro-config") return json({ stripe: !!env.STRIPE_SECRET_KEY }, env);
+    if (phase === "pro-checkout") return json(await proCheckout(env, body), env);
+    if (phase === "pro-status") return json(await proStatus(env, body), env);
 
     // Domain availability for ONE name (its own request => its own subrequest
     // budget => fast + thorough). No Claude call. Called per-name in parallel by
@@ -1273,6 +1283,103 @@ function localVariants(slug: string, city: unknown, lang: unknown): string[] {
   const c = String(city || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
   const fr = /french|fran/i.test(String(lang || ""));
   return [...(c ? [`${slug}${c}`, `${slug}-${c}`] : []), ...(fr ? [`maison${slug}`, `chez${slug}`] : [`the${slug}`, `${slug}shop`]), `${slug}-${fr ? "officiel" : "store"}`].filter((v) => v.length <= 40);
+}
+
+
+/* ── Pro checkout (Stripe) ──
+   pro-checkout makes a Checkout Session for one run (metadata: process,
+   email) and returns its URL. Stripe calls POST /stripe when it's paid; the
+   run is marked under pro:<process> (and pro:email:<email>) and pro_paid is
+   logged. pro-status answers whether a run is Pro, checking the session with
+   Stripe directly when the webhook hasn't landed yet. */
+const PRO_PRICES = [29, 39, 49];
+async function stripeApi(env: Env, path: string, form?: Record<string, string>): Promise<any> {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: form ? "POST" : "GET",
+    headers: { authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, ...(form ? { "content-type": "application/x-www-form-urlencoded" } : {}) },
+    body: form ? new URLSearchParams(form).toString() : undefined,
+  });
+  const d: any = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d?.error?.message || `stripe ${res.status}`);
+  return d;
+}
+const cleanProc = (x: unknown) => String(x || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
+async function markPro(env: Env, process: string, email: string, info: Record<string, unknown>): Promise<void> {
+  if (!env.LOG || !process) return;
+  const rec = JSON.stringify({ ...info, paid_at: Date.now() });
+  await env.LOG.put(`pro:${process}`, rec);
+  if (email) await env.LOG.put(`pro:email:${email.toLowerCase()}`, rec);
+}
+async function proCheckout(env: Env, body: any): Promise<any> {
+  if (!env.STRIPE_SECRET_KEY) return { error: "checkout not configured" };
+  const p = body?.payload || {};
+  const process = cleanProc(body?.process);
+  const price = PRO_PRICES.includes(Number(p.price)) ? Number(p.price) : 29;
+  const name = String(p.name || "Your brand").slice(0, 60);
+  const email = String(body?.who?.email || p.email || "").slice(0, 120);
+  const site = (env.SITE_URL || "https://namename.ai").replace(/\/$/, "");
+  const form: Record<string, string> = {
+    mode: "payment",
+    "line_items[0][quantity]": "1",
+    "line_items[0][price_data][currency]": "eur",
+    "line_items[0][price_data][unit_amount]": String(price * 100),
+    "line_items[0][price_data][product_data][name]": `${name} Pro`,
+    "line_items[0][price_data][product_data][description]": "The full brand kit: every file and format, logo personalisation, every palette and typeface. Once, yours forever.",
+    success_url: `${site}/9-your-kit?pro_session={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${site}/9-your-kit?pro_cancel=1`,
+    client_reference_id: process,
+    "metadata[process]": process, "metadata[email]": email, "metadata[name]": name, "metadata[price]": String(price), "metadata[step]": String(p.step || "").slice(0, 40),
+    allow_promotion_codes: "true",
+  };
+  if (email) form.customer_email = email;
+  try {
+    const s = await stripeApi(env, "checkout/sessions", form);
+    if (!body?.test) await writeLog(env, "pro_checkout_started", process, { payload: { price, step: p.step, who: body?.who } }, { session: s.id });
+    return { url: s.url, id: s.id };
+  } catch (e: any) { return { error: String(e?.message || e) }; }
+}
+async function proStatus(env: Env, body: any): Promise<any> {
+  const process = cleanProc(body?.process);
+  const session = String(body?.payload?.session || "").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 120);
+  if (env.LOG && process) {
+    const hit = await env.LOG.get(`pro:${process}`);
+    if (hit) return { pro: true, ...JSON.parse(hit) };
+  }
+  if (session && env.STRIPE_SECRET_KEY) {
+    try {
+      const s = await stripeApi(env, `checkout/sessions/${session}`);
+      if (s.payment_status === "paid" && cleanProc(s.metadata?.process) === process) {
+        const info = { amount: (s.amount_total || 0) / 100, currency: s.currency, session: s.id, price_variant: s.metadata?.price };
+        await markPro(env, process, String(s.metadata?.email || ""), info);
+        return { pro: true, ...info };
+      }
+    } catch { /* fall through */ }
+  }
+  return { pro: false };
+}
+async function stripeWebhook(req: Request, env: Env): Promise<Response> {
+  const raw = await req.text();
+  const sig = req.headers.get("stripe-signature") || "";
+  if (!env.STRIPE_WEBHOOK_SECRET) return new Response("not configured", { status: 503 });
+  const parts = Object.fromEntries(sig.split(",").map((kv) => kv.split("=") as [string, string]));
+  const t = parts.t, v1 = sig.split(",").filter((kv) => kv.startsWith("v1=")).map((kv) => kv.slice(3));
+  if (!t || !v1.length || Math.abs(Date.now() / 1000 - Number(t)) > 300) return new Response("bad signature", { status: 400 });
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${t}.${raw}`));
+  const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (!v1.includes(hex)) return new Response("bad signature", { status: 400 });
+  let ev: any;
+  try { ev = JSON.parse(raw); } catch { return new Response("bad json", { status: 400 }); }
+  if (ev?.type === "checkout.session.completed" || ev?.type === "checkout.session.async_payment_succeeded") {
+    const s = ev.data?.object || {};
+    if (s.payment_status === "paid") {
+      const process = cleanProc(s.metadata?.process || s.client_reference_id);
+      const info = { amount: (s.amount_total || 0) / 100, currency: s.currency, session: s.id, price_variant: s.metadata?.price };
+      await markPro(env, process, String(s.metadata?.email || s.customer_details?.email || ""), info);
+      await writeLog(env, "pro_paid", process, { payload: { ...info, email: s.metadata?.email || s.customer_details?.email || "", name: s.metadata?.name } }, info);
+    }
+  }
+  return new Response("ok");
 }
 
 // ── Accounts: Google sign-in verified server-side, sessions + saved searches in KV ──
