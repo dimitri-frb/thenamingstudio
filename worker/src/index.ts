@@ -1427,6 +1427,8 @@ async function proCheckout(env: Env, body: any): Promise<any> {
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "eur",
     "line_items[0][price_data][unit_amount]": String(price * 100),
+    // €29 is what they pay: VAT included (the account default is exclusive)
+    "line_items[0][price_data][tax_behavior]": "inclusive",
     "line_items[0][price_data][product_data][name]": `${name} Pro`,
     "line_items[0][price_data][product_data][description]": "The full brand kit: every file and format, logo personalisation, every palette and typeface. Once, yours forever.",
     success_url: `${site}/9-your-kit?pro_session={CHECKOUT_SESSION_ID}`,
