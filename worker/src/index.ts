@@ -690,7 +690,7 @@ async function logItems(env: Env, limit: number, cursor?: string): Promise<{ ite
    "logd:index" = { days: {day: {parts, count}}, prog: {day: partsDone} }. */
 const DAY_PART = 800;
 const keyDay = (name: string) => new Date(1e15 - Number(name.split(":")[1] || 0)).toISOString().slice(0, 10);
-async function logIndex(env: Env): Promise<{ days: Record<string, { parts: number; count: number }>; prog: Record<string, number> }> {
+async function logIndex(env: Env): Promise<{ days: Record<string, { parts: number; count: number }>; prog: Record<string, number>; floor?: string }> {
   try { return { days: {}, prog: {}, ...JSON.parse((await env.LOG!.get("logd:index")) || "{}") }; } catch { return { days: {}, prog: {} }; }
 }
 async function allLogKeys(env: Env): Promise<string[]> {
@@ -727,6 +727,8 @@ async function compactLog(env: Env, budget = 700): Promise<{ wrote: number; pend
     delete idx.prog[day];
     byDay.delete(day);
   }
+  // Every closed day is bundled: older keys never need listing again.
+  idx.floor = Object.keys(idx.days).sort().pop();
   await env.LOG.put("logd:index", JSON.stringify(idx));
   return { wrote, pending: byDay.size };
 }
@@ -743,6 +745,9 @@ async function logItemsFast(env: Env, cursor?: string): Promise<{ items: unknown
     const got = await Promise.all(need.map(async (n) => { const v = await env.LOG!.get(n); if (!v) return null; try { return { id: n, ...JSON.parse(v) }; } catch { return null; } }));
     for (const g of got) if (g) items.push(g);
     gets += need.length;
+    // past the bundled floor: everything older is in the bundles
+    const last = page.keys[page.keys.length - 1]?.name;
+    if (idx.floor && last && keyDay(last) <= idx.floor && !Object.keys(idx.prog).length) return { items, cursor: null, parts: cursor ? undefined : partsOf(idx) };
     if (page.list_complete) return { items, cursor: null, parts: cursor ? undefined : partsOf(idx) };
     cur = page.cursor;
   }
