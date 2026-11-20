@@ -118,6 +118,7 @@ export default {
           starred: latest.starred, names: latest.names, picked: latest.picked,
           domain: latest.domain, domPrice: latest.domPrice, domStatus: latest.domStatus,
           steps: latest.steps, logo: latest.logo,
+          checkout: !!(await env.LOG.get(`checkout:${latest.id}`)) && !(await env.LOG.get(`pro:${latest.id}`)),
         } as StopCandidate, async (domain: string) => {
           const dot = domain.indexOf(".");
           return (await rdap(domain.slice(0, dot), domain.slice(dot + 1))) === "available";
@@ -1446,7 +1447,11 @@ async function proCheckout(env: Env, body: any): Promise<any> {
   if (email) form.customer_email = email;
   try {
     const s = await stripeApi(env, "checkout/sessions", form);
-    if (!body?.test) await writeLog(env, "pro_checkout_started", process, { payload: { price, step: p.step, who: body?.who } }, { session: s.id });
+    if (!body?.test) {
+      await writeLog(env, "pro_checkout_started", process, { payload: { price, step: p.step, who: body?.who } }, { session: s.id });
+      // the hourly mailer sends "your kit is still here" if this run doesn't pay
+      if (env.LOG && process) await env.LOG.put(`checkout:${process}`, String(Date.now()), { expirationTtl: 60 * 60 * 24 * 30 });
+    }
     return { url: s.url, id: s.id };
   } catch (e: any) { return { error: String(e?.message || e) }; }
 }

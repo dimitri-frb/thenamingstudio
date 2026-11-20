@@ -40,7 +40,8 @@ export function ProSheet({ name, price, step, title, lead, cta, onGet, onClose, 
           <li>Every file, editable ones included: brand book, deck, cards, posts</li>
           <li>Ad copy, story formats and print-ready cards</li>
         </ul>
-        <p className="price"><b className="mono">€{price}</b><span>once · yours forever</span></p>
+        <p className="price"><b className="mono">€{price}</b><span>once</span></p>
+        <p className="sure">Instant download, yours forever</p>
         <button className="wr-btnor fm-get" disabled={busy} onClick={() => { track("pro_purchase_clicked", { step, price }); onGet(); }}>{busy ? "Opening secure checkout…" : cta || `Get ${name} Pro · €${price}`}</button>
         {error && <p className="early" style={{ color: "#c2410c" }}>{error}</p>}
         {early ? <p className="early">Payments open soon: Pro is free while we're in early access.</p>

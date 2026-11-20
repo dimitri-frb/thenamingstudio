@@ -125,13 +125,16 @@ export interface StopCandidate {
   domain?: string; domPrice?: string; domStatus?: string;
   steps?: { domain?: string; logo?: string; book?: string };
   logo?: unknown;
+  checkout?: boolean;      // opened the €29 checkout and didn't pay (handoff 29)
 }
 
-type Stage = "S1" | "S2" | "S3" | "S4" | null;
+type Stage = "S1" | "S2" | "S3" | "S4" | "SC" | null;
 export function stageFor(c: StopCandidate): Stage {
   // Brand first, domain last (concept D, 1 Nov): a picked name with no brand
   // yet → S4 "{name} needs a face"; the brand done but no domain kept → S3
   // "Don't lose {domain}" (the domain auto-kept in the background).
+  // Opened the €29 checkout and left: the kit email, instead of any other.
+  if (c.checkout && c.picked) return "SC";
   const brandDone = c.steps?.book === "done" || c.steps?.logo === "done" || !!c.logo;
   const domChosen = c.domStatus === "chosen" || c.domStatus === "bought" || c.steps?.domain === "done";
   if (c.picked && !brandDone) return "S4";
@@ -194,6 +197,20 @@ export async function sendStop(
       cta_url: resume("domain"),
     });
     return (await deliver(env, c.email, `Don’t lose ${dom.domain}`, withPixel(html, "S3", c.flowId), LU)) ? "S3" : null;
+  }
+
+  if (stage === "SC") {
+    // the S4 layout, re-worded: their kit is ready, checkout was left open
+    const nm = c.picked?.name || "Your brand";
+    const tpl = T.S4
+      .replace("<title>{{picked_name}} needs a face</title>", "<title>{{picked_name}}’s kit is still here</title>")
+      .replace("Your logo, colours and brand book are one step away.", "Your logo, brand book and launch kit are ready to download.")
+      .replace("Your brand, logo and more, minutes away.", "{{picked_name}}’s kit is still here.")
+      .replace("Your name and domain are saved. Your logo, colours and brand book are one step away.", "Your logo, brand book, socials, launch posts, business cards and pitch deck are ready. Finish checkout and download every file. Instant download, yours forever.")
+      .replace("Logo · Colours · Brand book", "Logo · Brand book · Socials · Deck")
+      .split("Build my brand →").join("Get my kit →");
+    const html = merge(tpl, { ...base, picked_name: esc(nm), cta_url: resume("unlock") });
+    return (await deliver(env, c.email, `Your ${nm} kit is still here`, withPixel(html, "SC", c.flowId), LU)) ? "SC" : null;
   }
 
   // S4

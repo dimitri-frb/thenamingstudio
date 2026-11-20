@@ -3479,3 +3479,4 @@ body:has(.wr-testbar) .wr-foot { padding-bottom: 64px; }
   .fm-kit .row .png, .fm-kit .row .ch { align-self: flex-start; }
 }
 .wr-prog .l4 { height: auto; background: none; border-radius: 0; }
+.fm-sheet .sure { margin: -8px 0 2px; text-align: center; font-size: 13px; font-weight: 600; color: #333; }

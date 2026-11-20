@@ -820,6 +820,7 @@ const MAILS: [string, string, string][] = [
   ["S2", "Stopped at the names", "24 h after leaving"],
   ["S3", "Stopped at the domain", "24 h after leaving"],
   ["S4", "Stopped at the brand", "24 h after leaving"],
+  ["SC", "Left the €29 checkout", "1–6 h after leaving"],
   ["S5", "Logo done · what's next", "not sent yet"],
 ];
 function Emails({ items, from, to, len, unsub, loading, partial }: { items: LogItem[]; flows: Flow[]; from: number; to: number; len: number; unsub: number | null; loading: boolean; partial: boolean }) {
