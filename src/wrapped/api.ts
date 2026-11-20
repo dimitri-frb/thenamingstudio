@@ -209,7 +209,7 @@ export const wrapApi = {
     const r = await gen<{ syms?: unknown; letter?: unknown }>("wraplogosyms", { name, brief, concept, syms }, () => ({ syms: [] }), false);
     if (!r || !Array.isArray(r.syms)) return null;
     const ok = new Set(syms.map((x) => x.k));
-    return { syms: r.syms.map(String).filter((k) => ok.has(k)).slice(0, 3), letter: typeof r.letter === "string" ? r.letter : undefined };
+    return { syms: r.syms.map(String).filter((k) => ok.has(k)).slice(0, 3), letter: typeof r.letter === "string" ? "L_" + r.letter.replace(/^[A-Za-z]_/, "").toLowerCase() : undefined }; // "T_knock" → "L_knock"
   },
   bookTaste: async (prev: WBook, sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
     const b = await gen<Partial<WBook>>("wrapbook", { sentence, chips, concept, name, parts, taste, half: "b" }, () => sampleBook(name));
