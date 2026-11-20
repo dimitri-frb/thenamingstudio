@@ -3,7 +3,7 @@
 // (Download PDF = the browser's print-to-PDF on #bk-print).
 import React, { useEffect, useRef, useState } from "react";
 import type { WBook } from "./api";
-import { X_FONTS, X_SYMS, iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
+import { NO_SYM_LAYS, X_FONTS, X_SYMS, iconKey, logoSvg, toPalette, type CustomLogo, type LogoFont, type LogoShape, type Palette } from "./logos";
 import { MOOD_DEFAULT, inUseSet, inUseSvg, moodSvg } from "./bookArt";
 import { on } from "./families";
 
@@ -107,7 +107,7 @@ export function BookPage({ i, ctx }: { i: number; ctx: BookCtx }) {
       const [, lay, sym, fi] = (ctx.logoKey || "").split(":");
       // A wordmark / monogram has no symbol: the cover shows the initial in the
       // logo's font, never an invented mark.
-      const noSym = (ctx.logoKey || "").startsWith("x:") && (lay === "word" || lay === "mono");
+      const noSym = (ctx.logoKey || "").startsWith("x:") && NO_SYM_LAYS.has(lay);
       const symK = sym && X_SYMS[sym] ? sym : "rise";
       const xf = X_FONTS[Number(fi)] || null;
       const art = noSym

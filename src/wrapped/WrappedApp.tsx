@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
-import { X_FONTS, X_SYMS, buildLogoPack, feelOfFont, logoNineX, pairOf, shapeOfFont, typeOfFont, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { NO_SYM_LAYS, X_FONTS, X_SYMS, buildLogoPack, feelOfFont, logoNineX, pairOf, shapeOfFont, typeOfFont, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { ColoursStep, IntroStep, ProCard, ProSheet, ProToast, TypeStep } from "./Freemium";
 import { BRAND_AXES, SWIPE_POOL, LOCAL_POOL, brandLogo, drawDeck, poolFor, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
@@ -2144,7 +2144,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           onBack={() => toStep("logo")}
           onSave={(key, hex) => {
             const cur = logoSel || logoTiles[0];
-            setLogoSel({ ...cur, key, shape: lshape, title: `${X_SYMS[key.split(":")[2]]?.label && !["word", "mono"].includes(key.split(":")[1]) ? X_SYMS[key.split(":")[2]].label + " · " : ""}${layoutTitle(key.split(":")[1])}`, custom: hex ? { symbol: "none", layout: "side", accentHex: hex } : undefined });
+            setLogoSel({ ...cur, key, shape: lshape, title: `${X_SYMS[key.split(":")[2]]?.label && !NO_SYM_LAYS.has(key.split(":")[1]) ? X_SYMS[key.split(":")[2]].label + " · " : ""}${layoutTitle(key.split(":")[1])}`, custom: hex ? { symbol: "none", layout: "side", accentHex: hex } : undefined });
             toStep("logo");
           }} />
       )}

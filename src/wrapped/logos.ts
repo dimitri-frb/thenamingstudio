@@ -821,7 +821,10 @@ const FAM_ORDER: Record<string, SymFamily[]> = {
 };
 const hashStr = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
+/** Layouts with no symbol: the name (and initials) carry the logo. */
+export const NO_SYM_LAYS = new Set(["word", "mono", "dot", "acc", "caps", "tile"]);
 export const LAYOUT_TITLE: Record<string, string> = {
+  dot: "Full stop", acc: "Accent", caps: "Capitals", tile: "Tile & name",
   side: "Mark & name", stack: "Stacked", word: "Wordmark", emblem: "Emblem", mono: "Monogram",
   swap: "Letter mark", pill: "Badge", split: "Lockup", icon: "App icon",
 };
@@ -878,19 +881,23 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
  *  each batch takes the next seven symbols, plus a wordmark and a monogram. */
 export function logoNineX(name: string, brief: string, taste: { font: number; shape?: string }, batch = 0): LogoConcept[] {
   const pool = symbolPool(name, brief, taste);
-  const per = 7, batches = Math.max(1, Math.floor(pool.length / per));
+  // Three symbol logos per batch (the brief's best-fitting marks first), the
+  // rest typographic: finished wordmarks, initials, a tile, the app icon.
+  const per = 4, batches = Math.max(1, Math.floor(pool.length / per));
   const bi = batch % batches, lap = Math.floor(batch / batches);
   const syms = pool.slice(bi * per, bi * per + per);
   const f = X_FONTS[taste.font] ? taste.font : 9;
   const caps = !!X_FONTS[f].caps;
-  const plan: [string, number][] = [["side", 0], ["stack", 1], ["word", -1], ["emblem", 2], ["pill", 3], ["mono", -1], ["split", 4], ["side", 5], ["icon", 6]];
-  const lays = [...plan.slice(0, 8).map((_, i, a) => a[(i + batch * 3 + lap) % 8]), plan[8]];
-  const ACC: Accent[] = ["dawn", "haze", "nova"];
+  // the app icon reuses the batch's lead mark, so the icon and the logo belong together
+  const plan: [string, number][] = [["side", 0], ["dot", -1], ["stack", 1], ["acc", -1], ["mono", -1], ["split", 2], ["caps", -1], ["tile", -1], ["icon", 0]];
+  const lays = batch === 0 ? plan : [...plan.slice(0, 8).map((_, i, a) => a[(i + batch * 3 + lap) % 8]), plan[8]];
+  const ACC: Accent[] = ["dawn", "nova", "haze"];
   return lays.map(([lay, si], i) => {
     const sym = si < 0 ? "none" : syms[si % syms.length] || pool[(si + lap) % pool.length];
-    const cs = caps ? "u" : (i + batch) % 5 === 4 ? "l" : "n";
+    // lowercase suits a modern sans full stop ("vouch."); serifs and caps faces keep their case
+    const cs = caps || lay === "caps" ? "u" : lay === "dot" && !X_FONTS[f].serif && (batch + i) % 2 === 1 ? "l" : "n";
     const key = `x:${lay}:${sym}:${f}:${cs}`;
-    const title = lay === "word" ? "Name only · Wordmark" : lay === "mono" ? "Initial · Monogram" : `${X_SYMS[sym]?.label || "Mark"} · ${LAYOUT_TITLE[lay]}`;
+    const title = NO_SYM_LAYS.has(lay) ? `${lay === "mono" || lay === "tile" ? "Initials" : "Name only"} · ${LAYOUT_TITLE[lay]}` : `${X_SYMS[sym]?.label || "Mark"} · ${LAYOUT_TITLE[lay]}`;
     return { key, title, accent: ACC[(i + batch) % 3], seed: batch };
   });
 }
@@ -979,7 +986,8 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
   const ff = `'${fam}',${fallback}`;
   const fs = 46;
   // personalisation: letter spacing in % of the size (key part 7, e.g. "-3")
-  const sp = ((f.sp || (cs === "u" ? 0.06 : -0.015)) + Math.max(-0.08, Math.min(0.2, (Number(spS) || 0) / 100))) * fs;
+  // display tracking: tight for sans, a touch tight for serifs, open for capitals
+  const sp = ((f.sp || (cs === "u" ? 0.06 : f.serif ? -0.012 : -0.032)) + Math.max(-0.08, Math.min(0.2, (Number(spS) || 0) / 100))) * fs;
   const wf = o.famOverride ? 0.6 : f.wf * (cs === "u" ? 1.12 : 1);
   const fw = o.famOverride ? o.famWeight || 600 : f.w;
   const tw = (t: string, size: number, space = sp) => Math.max(size * 0.5, measureText(t, fam, fw, size, space * (size / fs), wf));
@@ -1003,14 +1011,77 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
       : `<text x="${S0 / 2}" y="${S0 * 0.64}" text-anchor="middle" font-family="${ff}" font-size="${S0 * 0.44}" font-weight="${f.w}" fill="${markC}">${esc((name0[0] || "A").toUpperCase())}</text>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S0} ${S0}" width="${o.H}" height="${o.H}">${defs}<rect width="${S0}" height="${S0}" rx="${n2(S0 * rxf)}" fill="${tileBg}"${v === "mono" ? ` stroke="rgba(0,0,0,.12)" stroke-width="2"` : ""}/>${inner}</svg>`;
   }
+  // Several runs of text set side by side (each its own <text>, so exports can
+  // outline them): an accent full stop, an italic "&", a second word in italic.
+  type Run = { t: string; color?: string; italic?: boolean; family?: string; weight?: number; serif?: boolean };
+  const runs = (parts: Run[], x: number, y: number, size: number, anchor: "start" | "middle" = "start", space = sp) => {
+    const ws = parts.map((r) => r.family
+      ? measureText(r.t, r.family, r.weight || 400, size, space * (size / fs), 0.5)
+      : tw(r.t, size, space));
+    const total = ws.reduce((a, b) => a + b, 0);
+    let cx = anchor === "middle" ? x - total / 2 : x;
+    const svg = parts.map((r, i) => {
+      const fam2 = r.family ? `'${r.family}',${r.serif ? SERIF : FONT}` : ff;
+      const out = `<text x="${n2(cx)}" y="${n2(y)}" font-family="${fam2}" font-size="${n2(size)}" font-weight="${r.weight || fw}" letter-spacing="${n2(space * (size / fs))}"${r.italic || (!r.family && f.italic) ? ` font-style="italic"` : ""} fill="${r.color || fg}">${esc(r.t)}</text>`;
+      cx += ws[i];
+      return out;
+    }).join("");
+    return { svg, w: total };
+  };
+  // initials: two words → their first letters (skipping "&"), else the first letter
+  const initials = (() => {
+    const ws = name0.split(/\s+/).filter((w) => w && w !== "&" && /\p{L}/u.test(w));
+    return (ws.length >= 2 ? ws[0][0] + ws[1][0] : (ws[0] || "A")[0]).toUpperCase();
+  })();
+  const accentRuns = (): Run[] => {
+    const m = text.match(/^(.*?)\s*&\s*(.*)$/);
+    if (m && m[1] && m[2]) { // "Clos & Crumb": the & in an italic serif, in the accent
+      ensureFonts([{ family: "Newsreader", weight: 400 }]);
+      return [{ t: m[1] + " " }, { t: "&", color: acc, italic: true, family: "Newsreader", weight: 400, serif: true }, { t: " " + m[2] }];
+    }
+    const ws = text.split(" ");
+    if (ws.length >= 2) return [{ t: ws[0] + " " }, { t: ws.slice(1).join(" "), color: acc, italic: !!f.serif }];
+    return [{ t: text.slice(0, 1), color: acc }, { t: text.slice(1) }];
+  };
+
   switch (lay) {
+    case "dot": { // the name, closed with an accent full stop
+      const r = runs([{ t: text }, { t: ".", color: acc }], 0, 0, fs * 1.08);
+      const w = r.w + pad * 2;
+      return wrap(w, 130, runs([{ t: text }, { t: ".", color: acc }], pad, 65 + fs * 1.08 * 0.34, fs * 1.08).svg);
+    }
+    case "acc": { // one detail in the accent: the &, the second word, or the initial
+      const parts = accentRuns();
+      const r = runs(parts, 0, 0, fs * 1.08);
+      const w = r.w + pad * 2;
+      return wrap(w, 130, runs(parts, pad, 65 + fs * 1.08 * 0.34, fs * 1.08).svg);
+    }
+    case "caps": { // spaced capitals, quiet and finished
+      const size = fs * 0.78, space = 0.16 * fs;
+      const T = name0.toUpperCase();
+      const r = runs([{ t: T }], 0, 0, size, "start", space);
+      const w = r.w - space * (size / fs) + pad * 2;
+      return wrap(w, 120, runs([{ t: T }], pad, 60 + size * 0.35, size, "start", space).svg);
+    }
+    case "tile": { // an initials tile, then the name
+      const T0 = 76, rxT = n2(T0 * Math.max(rxf, 0.18));
+      const onAcc = v === "mono" ? "#ffffff" : isDark ? pal.night : "#ffffff";
+      const tileC = v === "mono" ? pal.night : acc;
+      const ls = initials.length > 1 ? 40 : 50;
+      const tw0 = tw(text, fs);
+      const w = pad + T0 + 20 + tw0 + pad;
+      return wrap(w, 130,
+        `<rect x="${pad}" y="${65 - T0 / 2}" width="${T0}" height="${T0}" rx="${rxT}" fill="${tileC}"/>` +
+        `<text x="${n2(pad + T0 / 2)}" y="${n2(65 + ls * 0.35)}" text-anchor="middle" font-family="${ff}" font-size="${ls}" font-weight="${fw}" letter-spacing="${initials.length > 1 ? -2 : 0}" fill="${onAcc}">${esc(initials)}</text>` +
+        word(pad + T0 + 20, 65 + fs * 0.34, fs));
+    }
     case "stack": {
       const w = Math.max(tw(text, fs), 120) + pad * 2, cx = w / 2;
       return wrap(w, 196, mark(cx, 58, 30) + word(cx, 158, fs, { anchor: "middle" }));
     }
     case "word": {
       const w = tw(text, fs * 1.1) + pad * 2;
-      return wrap(w, 130, word(w / 2, 82, fs * 1.1, { anchor: "middle" }) + `<rect x="${n2(w / 2 - 14)}" y="102" width="28" height="4" rx="2" fill="${acc}"/>`);
+      return wrap(w, 130, word(w / 2, 65 + fs * 1.1 * 0.34, fs * 1.1, { anchor: "middle" }));
     }
     case "emblem": {
       const S0 = 220, cx = S0 / 2;
@@ -1020,12 +1091,12 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
     }
     case "mono": {
       const S0 = 190, cx = S0 / 2;
-      const L0 = (name0[0] || "A").toUpperCase();
+      const L0 = initials;
       const shapeD = o.shape === "sharp" || o.shape === "geometric"
         ? `<rect x="${cx - 74}" y="${cx - 74}" width="148" height="148" rx="${n2(148 * rxf)}" fill="${acc}"/>`
         : `<circle cx="${cx}" cy="${cx}" r="76" fill="${acc}"/>`;
       return wrap(S0, S0, shapeD +
-        `<text x="${cx}" y="${cx + 30}" text-anchor="middle" font-family="${ff}" font-size="86" font-weight="${fw}" fill="${v === "mono" ? "#ffffff" : pal.night}">${esc(L0)}</text>`);
+        `<text x="${cx}" y="${n2(cx + (L0.length > 1 ? 24 : 30))}" text-anchor="middle" font-family="${ff}" font-size="${L0.length > 1 ? 68 : 86}" font-weight="${fw}" letter-spacing="${L0.length > 1 ? -3 : 0}" fill="${v === "mono" ? "#ffffff" : pal.night}">${esc(L0)}</text>`);
     }
     case "swap": {
       // the mark replaces one inner letter (a vowel if possible)

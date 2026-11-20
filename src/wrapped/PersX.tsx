@@ -4,7 +4,7 @@
 // change…" redraws, then Keep / Undo. The logo is its key,
 // "x:layout:symbol:font:case:size:spacing", plus a colour.
 import { useMemo, useState } from "react";
-import { LAYOUT_TITLE, X_FONTS, X_SYMS, ensureFonts, logoSvg, symbolPool, type Palette, type LogoShape } from "./logos";
+import { LAYOUT_TITLE, NO_SYM_LAYS, X_FONTS, X_SYMS, ensureFonts, logoSvg, symbolPool, type Palette, type LogoShape } from "./logos";
 import { logoTweakX } from "./api";
 
 export interface XDraft { lay: string; sym: string; font: number; cs: string; size: number; sp: number; hex?: string }
@@ -18,8 +18,8 @@ export const keyOfX = (d: XDraft) => {
 };
 
 const LAYOUTS: [string, string][] = [
-  ["side", "Side by side"], ["stack", "Stacked"], ["word", "Name only"], ["split", "Lockup"],
-  ["pill", "Badge"], ["emblem", "Emblem"], ["mono", "Initial"], ["icon", "Symbol only"],
+  ["side", "Side by side"], ["stack", "Stacked"], ["split", "Lockup"], ["dot", "Name + full stop"],
+  ["acc", "Name + accent"], ["caps", "Capitals"], ["tile", "Tile + name"], ["mono", "Initials"], ["word", "Name only"], ["icon", "Symbol only"],
 ];
 const FONT_GROUPS: [string, number[]][] = [
   ["Serif", [2, 3, 0, 1, 4, 5]], ["Sans", [9, 11, 15, 10, 12, 13, 16, 21]], ["Display", [17, 18, 19, 20, 14, 27]],
@@ -50,7 +50,7 @@ export function PersX({ name, pal, shape, brief, taste, baseKey, baseHex, onSave
   const custom = d.hex ? { symbol: "none" as const, layout: "side" as const, accentHex: d.hex } : undefined;
   const svg = (variant: "light" | "night" | "dawn" | "icon", h: number, k = key) => logoSvg(k, name, pal, { variant, height: h, shape, custom });
   const fields = (["lay", "sym", "font", "cs", "size", "sp", "hex"] as const).filter((k) => (d as any)[k] !== (base as any)[k]);
-  const noSym = d.lay === "word" || d.lay === "mono";
+  const noSym = NO_SYM_LAYS.has(d.lay);
   const iconK = `x:icon:${d.sym}:${d.font}:${d.cs}`;
   const what = (() => { let o = ""; for (const w of (brief || "").split(/[.,;]/)[0].trim().toLowerCase().split(/\s+/)) { if ((o + " " + w).trim().length > 28) break; o = (o + " " + w).trim(); } return o; })();
 
@@ -75,7 +75,7 @@ export function PersX({ name, pal, shape, brief, taste, baseKey, baseHex, onSave
       size: Math.min(1.35, Math.max(0.65, Number(r.size) || d.size)),
       hex: /^#[0-9a-fA-F]{6}$/.test(String(r.colour)) && String(r.colour).toLowerCase() !== (d.hex || pal.dawn).toLowerCase() ? String(r.colour) : d.hex,
     };
-    if (nx.sym === "none" && !["word", "mono"].includes(nx.lay)) nx.lay = "word";
+    if (nx.sym === "none" && !NO_SYM_LAYS.has(nx.lay)) nx.lay = "word";
     setPending({ before: d, note: String(r.note || "Redrawn"), text: q });
     setD(nx); setAsk("");
   };
@@ -151,7 +151,7 @@ export function PersX({ name, pal, shape, brief, taste, baseKey, baseHex, onSave
                 <p className="plab">Layout</p>
                 <div className="laygrid">
                   {LAYOUTS.map(([k, l]) => (
-                    <button key={k} className={d.lay === k ? "on" : ""} onClick={() => set({ lay: k, sym: k === "word" || k === "mono" ? d.sym : d.sym === "none" ? pool[0] : d.sym }, "layout")}>
+                    <button key={k} className={d.lay === k ? "on" : ""} onClick={() => set({ lay: k, sym: NO_SYM_LAYS.has(k) ? d.sym : d.sym === "none" ? pool[0] : d.sym }, "layout")}>
                       <span dangerouslySetInnerHTML={{ __html: logoSvg(`x:${k}:${d.sym === "none" ? pool[0] : d.sym}:${d.font}:${d.cs}`, name, pal, { variant: k === "icon" ? "icon" : "light", height: 40, shape, custom }) }} />
                       <em>{l}</em>
                     </button>

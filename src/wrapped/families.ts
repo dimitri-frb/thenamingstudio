@@ -5,7 +5,7 @@
 // guard, text-length steps, long-name shrink, banner safe zone. Output is
 // SVG (previewed inline, exported to PNG/PDF through the outliner).
 import qrcode from "qrcode-generator";
-import { X_FONTS, X_SYMS, ensureFonts } from "./logos";
+import { NO_SYM_LAYS, X_FONTS, X_SYMS, ensureFonts } from "./logos";
 
 /* ── colour roles + contrast guard (README R·1–R·3) ── */
 const hex6 = (h: string) => { const x = (h || "#000000").replace("#", ""); return "#" + (x.length === 3 ? x.split("").map((c) => c + c).join("") : x.slice(0, 6)).toLowerCase(); };
@@ -59,7 +59,7 @@ export function famData(key: string, name: string, pal: { dawn: string; haze: st
   const [x, lay, sym, f] = (key || "").split(":");
   // Wordmarks and monograms have no symbol: the kit then never invents one
   // (sym "" = the name alone, and the first letter wherever a mark is drawn).
-  const symOk = x === "x" && (lay === "word" || lay === "mono") ? "" : sym && X_SYMS[sym] ? sym : "rise";
+  const symOk = x === "x" && NO_SYM_LAYS.has(lay) ? "" : sym && X_SYMS[sym] ? sym : "rise";
   return { name, sym: symOk, font: Number(f) || 9, pal: [pal.night, pal.nova, pal.dawn, pal.haze], tagline: "", ...more };
 }
 
