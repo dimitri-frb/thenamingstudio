@@ -204,6 +204,13 @@ export const wrapApi = {
   },
   // A taste change only moves the palette, voice and mood half: the story,
   // tagline and origin (the half already read, on the costliest model) stay.
+  // Logo symbols picked for what the name means (one small call per brand).
+  logoSyms: async (name: string, brief: string, concept: string, syms: { k: string; m: string }[]): Promise<{ syms: string[]; letter?: string } | null> => {
+    const r = await gen<{ syms?: unknown; letter?: unknown }>("wraplogosyms", { name, brief, concept, syms }, () => ({ syms: [] }), false);
+    if (!r || !Array.isArray(r.syms)) return null;
+    const ok = new Set(syms.map((x) => x.k));
+    return { syms: r.syms.map(String).filter((k) => ok.has(k)).slice(0, 3), letter: typeof r.letter === "string" ? r.letter : undefined };
+  },
   bookTaste: async (prev: WBook, sentence: string, chips: string[], concept: string, name: string, parts: WNamePart[], taste?: unknown): Promise<WBook | null> => {
     const b = await gen<Partial<WBook>>("wrapbook", { sentence, chips, concept, name, parts, taste, half: "b" }, () => sampleBook(name));
     if (!b?.palette) return null;

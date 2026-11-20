@@ -792,35 +792,107 @@ export const X_SYMS: Record<string, XSym> = {
 
 // The brief's sector → the marks that speak it (first match wins a head start).
 const SECTOR_SYMS: [RegExp, string[]][] = [
-  [/verif|trust|certif|compliance|legal|law|notar|audit|attest|insur|secur|safe|guard|protect/i, ["seal", "shield", "keyhole", "prism", "frame", "eye"]],
-  [/bank|financ|pay|fintech|invest|account|money|wealth|capital|fund|crypto|tax/i, ["bars", "split", "stairs", "shield", "dial", "hex"]],
-  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital|\bpos\b|point of sale|ipad|tool/i, ["node", "spark", "grid", "pulse", "orbit", "pixel", "hex", "cloud"]],
-  [/restaurant|food|caf[eé]|coffee|bak|kitchen|chef|dining|bistro|bar\b|wine|brew|cater|pizza|seafood|deli/i, ["cup", "vessel", "flame", "leaf", "sunburst", "pebble"]],
+  [/verif|trust|certif|compliance|legal|law|notar|audit|attest|insur|secur|safe|guard|protect/i, ["seal", "shield", "scales", "column", "lock", "keyhole", "prism", "frame", "eye", "tick"]],
+  [/bank|financ|pay|fintech|invest|account|money|wealth|capital|fund|crypto|tax/i, ["bars", "coin", "column", "split", "stairs", "key", "shield", "dial", "hex"]],
+  [/\bai\b|software|saas|app\b|tech|data|cloud|platform|automat|code|dev|api|digital|\bpos\b|point of sale|ipad|tool/i, ["node", "spark", "grid", "pulse", "orbit", "gear", "bulb", "pixel", "hex", "cloud", "globe"]],
+  [/restaurant|food|caf[eé]|coffee|bak|kitchen|chef|dining|bistro|bar\b|wine|brew|cater|pizza|seafood|deli/i, ["cup", "wheat", "loaf", "glass", "grape", "vessel", "flame", "leaf", "sunburst", "pebble"]],
   [/ceramic|pottery|craft|handmade|studio|atelier|maker|design|art|furniture/i, ["vessel", "pebble", "arch", "spiral", "hand", "frame"]],
-  [/health|care|clinic|wellness|therapy|medic|fitness|yoga|mental|nutrition|spa/i, ["plus", "pulse", "heart", "hand", "leaf", "drop", "bloom"]],
-  [/beauty|skin|cosmet|fashion|jewel|salon|perfume|luxury/i, ["gem", "bloom", "diamond", "drop", "crescent", "feather", "crown"]],
-  [/eco|green|garden|plant|farm|organic|sustain|nature|climate|solar/i, ["leaf", "sprout", "pine", "sunburst", "rise", "drop"]],
+  [/health|care|clinic|wellness|therapy|medic|fitness|yoga|mental|nutrition|spa/i, ["plus", "pulse", "heart", "hand", "leaf", "drop", "bloom", "dumbbell"]],
+  [/beauty|skin|cosmet|fashion|jewel|salon|perfume|luxury/i, ["gem", "bloom", "flower", "diamond", "drop", "crescent", "feather", "crown", "moon"]],
+  [/eco|green|garden|plant|farm|organic|sustain|nature|climate|solar/i, ["leaf", "sprout", "flower", "wheat", "bird", "pine", "sunburst", "rise", "drop"]],
   [/energy|power|electric|battery|charge|fast|speed/i, ["bolt", "sunburst", "spark", "ascent", "pulse", "rise"]],
-  [/travel|tour|trip|hotel|holiday|outdoor|adventure|hike|mountain|surf/i, ["peak", "north", "pin", "kite", "wave", "pine", "orbit"]],
-  [/sea|ocean|water|marine|boat|sail|beach|swim|fish/i, ["wave", "anchor", "drop", "spiral", "crescent", "rise"]],
-  [/home|house|real estate|property|interior|architect|build|construct/i, ["house", "keyhole", "window", "arch", "frame", "blocks", "cube"]],
-  [/learn|school|educat|course|tutor|teach|book|publish|library/i, ["book", "stairs", "feather", "spark", "bubble", "star"]],
+  [/travel|tour|trip|hotel|holiday|outdoor|adventure|hike|mountain|surf/i, ["compass", "peak", "north", "sail", "globe", "pin", "kite", "wave", "pine", "orbit"]],
+  [/sea|ocean|water|marine|boat|sail|beach|swim|fish/i, ["wave", "sail", "helm", "lighthouse", "fish", "anchor", "drop", "spiral", "crescent", "rise"]],
+  [/home|house|real estate|property|interior|architect|build|construct/i, ["house", "key", "keyhole", "window", "arch", "column", "frame", "blocks", "cube"]],
+  [/learn|school|educat|course|tutor|teach|book|publish|library/i, ["book", "quill", "bulb", "stairs", "feather", "spark", "bubble", "star"]],
   [/community|social|dating|friend|network|event|club|meet/i, ["trio", "venn", "bubble", "bridge", "heart", "loop"]],
-  [/logistic|deliver|ship|transport|move|courier|supply/i, ["chevron", "arrow", "cube", "ascent", "north", "loop"]],
-  [/market|agency|brand|media|creative|content|ads|growth/i, ["target", "play", "star", "spark", "chevron", "ascent", "eye"]],
-  [/film|cinema|video|music|audio|stream|podcast|media|photo|camera|studio/i, ["play", "eye", "star", "wave", "dial"]],
+  [/logistic|deliver|ship|transport|move|courier|supply/i, ["chevron", "arrow", "compass", "cube", "ascent", "north", "loop"]],
+  [/market|agency|brand|media|creative|content|ads|growth/i, ["target", "bulb", "play", "star", "spark", "chevron", "ascent", "eye"]],
+  [/film|cinema|video|music|audio|stream|podcast|media|photo|camera|studio/i, ["note", "play", "eye", "star", "wave", "dial"]],
   [/clean|wash|laundry|soap|bath|candle|hygien/i, ["drop", "wave", "sunburst", "bloom", "cloud", "spiral"]],
   [/hair|barber|lash|nail|brow/i, ["feather", "gem", "crown", "bloom", "crescent"]],
+  [/\bpets?\b|dog|cat\b|puppy|vet\b|veterin|animal|groom/i, ["paw", "heart", "bird", "fish", "bloom"]],
+  [/flor|flower|bouquet|wedding/i, ["flower", "bloom", "heart", "leaf", "crescent"]],
+  [/write|writing|author|poet|journal|copy|translat|editor/i, ["quill", "book", "feather", "bubble"]],
+  [/wine|vin\b|vineyard|winery|cellar|sommelier/i, ["grape", "glass", "vessel", "leaf"]],
+  [/gym|sport|fitness|train|coach|athlet/i, ["dumbbell", "bolt", "ascent", "pulse", "target"]],
+  [/consult|advis|strateg|lead|navig|guide|direction/i, ["compass", "helm", "north", "lighthouse", "bridge", "key"]],
   [/kid|child|toy|game|play/i, ["star", "bloom", "kite", "pixel", "sprout", "bubble"]],
 ];
 // Symbols that picture a real object: shown only when the brief is in their sector.
-const LITERAL = new Set(["cup", "vessel", "flame", "leaf", "sprout", "pine", "house", "window", "keyhole", "book", "anchor", "crown", "gem", "plus", "heart", "drop", "feather", "hand", "pin", "play", "cloud", "bolt", "shield", "seal"]);
+const LITERAL = new Set(["helm", "sail", "wheat", "grape", "loaf", "glass", "key", "column", "scales", "quill", "gear", "flower", "paw", "note", "bird", "fish", "coin", "lock", "dumbbell", "lighthouse", "cup", "vessel", "flame", "leaf", "sprout", "pine", "house", "window", "keyhole", "book", "anchor", "crown", "gem", "plus", "heart", "drop", "feather", "hand", "pin", "play", "cloud", "bolt", "shield", "seal"]);
 const FAM_ORDER: Record<string, SymFamily[]> = {
   round: ["round", "organic", "geometric", "sharp"], sharp: ["sharp", "geometric", "round", "organic"],
   geometric: ["geometric", "sharp", "round", "organic"], organic: ["organic", "round", "geometric", "sharp"],
 };
 const hashStr = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
+
+/* ── Meaning symbols (Nov): concrete things names often carry — steering,
+   light, harvest, sound… Drawn in a 0–100 box (centre 50,50), placed and
+   scaled to (x, y, r). C = colour, B = the ground behind the mark. ── */
+const N100 = (inner: (C: string, B: string) => string) => (x: number, y: number, r: number, c: string, bg: string) =>
+  `<g transform="translate(${n2(x - r)} ${n2(y - r)}) scale(${Math.round((r / 50) * 10000) / 10000})">${inner(c, bg)}</g>`;
+const st = (d: string, C: string, w = 8) => `<path d="${d}" fill="none" stroke="${C}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const fl = (d: string, C: string, extra = "") => `<path d="${d}" fill="${C}"${extra}/>`;
+const MEANING_SYMS: Record<string, XSym> = {
+  helm: { fam: "round", label: "Helm", why: "a ship's wheel: steering, a steady hand", draw: N100((C) => `<circle cx="50" cy="50" r="27" fill="none" stroke="${C}" stroke-width="8"/><circle cx="50" cy="50" r="9" fill="${C}"/>` + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => { const t = (a * Math.PI) / 180, x1 = 50 + Math.cos(t) * 9, y1 = 50 + Math.sin(t) * 9, x2 = 50 + Math.cos(t) * 42, y2 = 50 + Math.sin(t) * 42; return `<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="${C}" stroke-width="6" stroke-linecap="round"/><circle cx="${n2(50 + Math.cos(t) * 44)}" cy="${n2(50 + Math.sin(t) * 44)}" r="5.5" fill="${C}"/>`; }).join("")) },
+  compass: { fam: "sharp", label: "Compass", why: "a compass needle: direction, finding the way", draw: N100((C) => `<circle cx="50" cy="50" r="42" fill="none" stroke="${C}" stroke-width="7"/>` + fl("M50 14L60 50H40Z", C) + fl("M50 86L60 50H40Z", C, ` opacity=".4"`)) },
+  sail: { fam: "sharp", label: "Sail", why: "a sail: setting out, carried by the wind", draw: N100((C) => fl("M50 10V72H18Z", C) + fl("M56 22V72H82Z", C, ` opacity=".55"`) + fl("M24 78H78L70 90H32Z", C)) },
+  wheat: { fam: "organic", label: "Wheat", why: "an ear of wheat: harvest, bread, plenty", draw: N100((C) => st("M50 92V22", C, 5) + [[40, 70, -32], [60, 70, 32], [40, 54, -32], [60, 54, 32], [40, 38, -32], [60, 38, 32]].map(([x, y, a]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="12" transform="rotate(${a} ${x} ${y})" fill="${C}"/>`).join("") + `<ellipse cx="50" cy="20" rx="6.5" ry="12" fill="${C}"/>`) },
+  grape: { fam: "organic", label: "Grapes", why: "a bunch of grapes: the vine, the harvest", draw: N100((C) => [[37, 42], [50, 42], [63, 42], [43, 56], [57, 56], [50, 70]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8.5" fill="${C}"/>`).join("") + st("M50 33Q52 20 64 15", C, 4) + `<ellipse cx="64" cy="22" rx="9" ry="5" transform="rotate(-25 64 22)" fill="${C}" opacity=".6"/>`) },
+  loaf: { fam: "organic", label: "Loaf", why: "a scored loaf: craft, the daily bake", draw: N100((C, B) => fl("M14 64C14 40 32 30 50 30C68 30 86 40 86 64C86 72 80 76 72 76H28C20 76 14 72 14 64Z", C) + st("M32 50L40 42M46 48L54 40M60 50L68 42", B, 5)) },
+  glass: { fam: "round", label: "Glass", why: "a wine glass: an evening, a toast", draw: N100((C) => fl("M30 14H70C70 40 62 52 50 52C38 52 30 40 30 14Z", C) + st("M50 52V82M36 86H64", C, 6)) },
+  key: { fam: "round", label: "Key", why: "a key: access, the answer that opens", draw: N100((C) => `<circle cx="32" cy="50" r="16" fill="none" stroke="${C}" stroke-width="8"/>` + st("M48 50H88M74 50V64M84 50V60", C, 8)) },
+  column: { fam: "geometric", label: "Column", why: "a column: law, institutions, solid ground", draw: N100((C) => `<rect x="22" y="16" width="56" height="9" rx="2" fill="${C}"/>` + [30, 46, 62].map((x) => `<rect x="${x}" y="30" width="8" height="44" rx="2" fill="${C}"/>`).join("") + `<rect x="18" y="78" width="64" height="9" rx="2" fill="${C}"/>`) },
+  scales: { fam: "geometric", label: "Scales", why: "scales: balance, fairness, justice", draw: N100((C) => `<rect x="47" y="20" width="6" height="62" rx="2" fill="${C}"/><rect x="16" y="27" width="68" height="5" rx="2.5" fill="${C}"/>` + fl("M14 56A14 14 0 0 0 42 56Z", C) + fl("M58 56A14 14 0 0 0 86 56Z", C) + st("M28 31L16 56M28 31L40 56M72 31L60 56M72 31L84 56", C, 2) + `<circle cx="50" cy="15" r="6" fill="${C}"/><rect x="34" y="82" width="32" height="6" rx="3" fill="${C}"/>`) },
+  quill: { fam: "organic", label: "Quill", why: "a quill: writing, the craft of words", draw: N100((C) => fl("M80 10C52 16 30 42 26 78L34 74C40 50 56 30 80 10Z", C) + st("M26 78L16 92", C, 5)) },
+  moon: { fam: "round", label: "Moon", why: "a crescent moon: night, calm, dreaming", draw: N100((C, B) => `<circle cx="48" cy="52" r="36" fill="${C}"/><circle cx="64" cy="40" r="30" fill="${B}"/>`) },
+  bulb: { fam: "round", label: "Idea", why: "a light bulb: ideas, clarity, light", draw: N100((C, B) => `<circle cx="50" cy="40" r="25" fill="${C}"/><rect x="39" y="62" width="22" height="9" rx="3" fill="${C}"/><rect x="42" y="74" width="16" height="7" rx="3" fill="${C}"/>` + st("M43 42L50 51L57 42", B, 4)) },
+  globe: { fam: "round", label: "Globe", why: "a globe: the world, reach, openness", draw: N100((C) => `<circle cx="50" cy="50" r="38" fill="none" stroke="${C}" stroke-width="6"/><ellipse cx="50" cy="50" rx="16" ry="38" fill="none" stroke="${C}" stroke-width="5"/>` + st("M12 50H88M18 32H82M18 68H82", C, 4)) },
+  gear: { fam: "geometric", label: "Gear", why: "a gear: making, engineering, things that work", draw: N100((C, B) => [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<rect x="44" y="8" width="12" height="18" rx="2" fill="${C}" transform="rotate(${a} 50 50)"/>`).join("") + `<circle cx="50" cy="50" r="30" fill="${C}"/><circle cx="50" cy="50" r="12" fill="${B}"/>`) },
+  flower: { fam: "organic", label: "Flower", why: "a flower in bloom: beauty, care, growth", draw: N100((C, B) => [0, 72, 144, 216, 288].map((a) => `<ellipse cx="50" cy="28" rx="12" ry="20" fill="${C}" transform="rotate(${a} 50 50)"/>`).join("") + `<circle cx="50" cy="50" r="11" fill="${B}"/><circle cx="50" cy="50" r="6" fill="${C}"/>`) },
+  paw: { fam: "organic", label: "Paw", why: "a paw: pets, companionship, play", draw: N100((C) => `<ellipse cx="50" cy="66" rx="20" ry="16" fill="${C}"/>` + [[29, 44], [42, 32], [58, 32], [71, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8.5" fill="${C}"/>`).join("")) },
+  note: { fam: "round", label: "Note", why: "a musical note: sound, rhythm, voice", draw: N100((C) => `<ellipse cx="36" cy="74" rx="14" ry="10" transform="rotate(-20 36 74)" fill="${C}"/><rect x="45" y="18" width="7" height="58" fill="${C}"/>` + fl("M52 18C64 24 74 34 72 50C67 41 60 37 52 35Z", C)) },
+  bird: { fam: "organic", label: "Bird", why: "a bird in flight: freedom, lightness, rising", draw: N100((C) => fl("M10 52C28 36 44 40 52 52C60 38 76 32 92 36C78 42 68 52 62 64C54 76 36 76 28 66C24 60 18 55 10 52Z", C)) },
+  fish: { fam: "organic", label: "Fish", why: "a fish: the sea, fresh catch, flow", draw: N100((C, B) => fl("M14 50C28 30 60 30 74 50C60 70 28 70 14 50Z", C) + fl("M72 50L90 34V66Z", C) + `<circle cx="32" cy="46" r="4" fill="${B}"/>`) },
+  coin: { fam: "round", label: "Coin", why: "a coin: value, payment, earning", draw: N100((C, B) => `<circle cx="50" cy="50" r="38" fill="${C}"/><circle cx="50" cy="50" r="27" fill="none" stroke="${B}" stroke-width="4"/>` + st("M50 36V64M41 43H57M41 57H57", B, 5)) },
+  tick: { fam: "sharp", label: "Tick", why: "a tick: done, approved, trusted", draw: N100((C) => st("M20 52L42 74L82 26", C, 13)) },
+  lock: { fam: "geometric", label: "Lock", why: "a lock: safe, private, protected", draw: N100((C, B) => st("M34 46V34A16 16 0 0 1 66 34V46", C, 8) + `<rect x="24" y="46" width="52" height="40" rx="9" fill="${C}"/><circle cx="50" cy="62" r="5.5" fill="${B}"/><rect x="47.5" y="64" width="5" height="11" rx="2" fill="${B}"/>`) },
+  dumbbell: { fam: "geometric", label: "Weights", why: "a dumbbell: strength, training, effort", draw: N100((C) => `<rect x="28" y="46" width="44" height="8" rx="3" fill="${C}"/><rect x="12" y="30" width="11" height="40" rx="4" fill="${C}"/><rect x="24" y="37" width="8" height="26" rx="3" fill="${C}"/><rect x="77" y="30" width="11" height="40" rx="4" fill="${C}"/><rect x="68" y="37" width="8" height="26" rx="3" fill="${C}"/>`) },
+  lighthouse: { fam: "sharp", label: "Lighthouse", why: "a lighthouse: guidance, safe passage", draw: N100((C, B) => fl("M40 86L44 34H56L60 86Z", C) + `<rect x="42" y="23" width="16" height="10" fill="${C}"/>` + fl("M39 23L50 11L61 23Z", C) + `<rect x="41" y="56" width="18" height="6" fill="${B}"/>` + st("M64 28H84M64 20L80 12", C, 4)) },
+};
+Object.assign(X_SYMS, MEANING_SYMS);
+
+/* ── Letter marks (Nov): the mark is built from the brand's own initial(s), in
+   its own typeface. X_SYMS draws take no name or font, so the current brand's
+   letters ride on a small context that renderX (and the app) keeps up to date;
+   every caller (kit, deck, book, editor) then draws the same letter mark. ── */
+const LETTER_CTX = { one: "A", two: "AB", ff: `'Inter Tight',${"system-ui,sans-serif"}`, fw: 700 };
+export function setMarkLetters(name: string, ff?: string, fw?: number) {
+  const ws = (name || "").split(/\s+/).filter((w) => w && w !== "&" && /\p{L}/u.test(w));
+  const first = (ws[0] || "A")[0].toUpperCase();
+  LETTER_CTX.one = first;
+  LETTER_CTX.two = ws.length >= 2 && ws[1][0].toUpperCase() !== first ? first + ws[1][0].toUpperCase() : ""; // "CC" overlapped reads as a smudge
+  if (ff) LETTER_CTX.ff = ff;
+  if (fw) LETTER_CTX.fw = fw;
+}
+const letterAt = (x: number, y: number, size: number, c: string, t = LETTER_CTX.one, extra = "") =>
+  `<text x="${n2(x)}" y="${n2(y + size * 0.355)}" text-anchor="middle" font-family="${LETTER_CTX.ff.replace(/"/g, "'")}" font-size="${n2(size)}" font-weight="${LETTER_CTX.fw}" fill="${c}"${extra}>${esc(t)}</text>`;
+const LETTER_SYMS: Record<string, XSym> = {
+  L_knock: { fam: "round", label: "Initial disc", why: "your initial cut out of a solid disc: simple, ownable", draw: (x, y, r, c, bg) => `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r)}" fill="${c}"/>` + letterAt(x, y, r * 1.2, bg) },
+  L_out: { fam: "geometric", label: "Outline initial", why: "your initial drawn as an outline: light and precise", draw: (x, y, r, c) => letterAt(x, y, r * 1.95, "none", LETTER_CTX.one, ` stroke="${c}" stroke-width="${n2(r * 0.075)}" stroke-linejoin="round"`) },
+  L_dot: { fam: "round", label: "Initial & dot", why: "your initial with an accent dot: a full stop on the brand", draw: (x, y, r, c) => letterAt(x - r * 0.12, y, r * 1.85, c) + `<circle cx="${n2(x + r * 0.78)}" cy="${n2(y + r * 0.56)}" r="${n2(r * 0.17)}" fill="${c}"/>` },
+  L_cut: { fam: "sharp", label: "Cut initial", why: "your initial with one clean diagonal cut: decisive, modern", draw: (x, y, r, c, bg) => letterAt(x, y, r * 1.9, c) + `<rect x="${n2(x - r * 1.2)}" y="${n2(y - r * 0.05)}" width="${n2(r * 2.4)}" height="${n2(r * 0.13)}" fill="${bg}" transform="rotate(-32 ${n2(x)} ${n2(y)})"/>` },
+  L_arch: { fam: "round", label: "Arched initial", why: "your initial under an arch: a place, a welcome", draw: (x, y, r, c) => `<path d="M${n2(x - r * 0.86)} ${n2(y + r)}V${n2(y - r * 0.14)}A${n2(r * 0.86)} ${n2(r * 0.86)} 0 0 1 ${n2(x + r * 0.86)} ${n2(y - r * 0.14)}V${n2(y + r)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.11)}" stroke-linecap="round"/>` + letterAt(x, y + r * 0.22, r * 1.15, c) },
+  L_frame: { fam: "geometric", label: "Framed initial", why: "your initial set in a square frame: a stamp, a seal", draw: (x, y, r, c) => `<rect x="${n2(x - r * 0.9)}" y="${n2(y - r * 0.9)}" width="${n2(r * 1.8)}" height="${n2(r * 1.8)}" rx="${n2(r * 0.2)}" fill="none" stroke="${c}" stroke-width="${n2(r * 0.1)}"/>` + letterAt(x, y, r * 1.2, c) },
+  L_pair: { fam: "geometric", label: "Paired initials", why: "your two initials set together: a partnership", draw: (x, y, r, c, bg) => LETTER_CTX.two
+    ? letterAt(x - r * 0.36, y, r * 1.6, c, LETTER_CTX.two[0]) + letterAt(x + r * 0.4, y, r * 1.6, bg, LETTER_CTX.two[1], ` stroke="${bg}" stroke-width="${n2(r * 0.16)}" paint-order="stroke"`) + letterAt(x + r * 0.4, y, r * 1.6, c, LETTER_CTX.two[1], ` opacity=".6"`)
+    : `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r)}" fill="${c}"/>` + letterAt(x, y, r * 1.2, bg) },
+};
+export const LETTER_KEYS = Object.keys(LETTER_SYMS);
+export const isLetterMark = (k: string) => k.startsWith("L_");
+Object.assign(X_SYMS, LETTER_SYMS);
 /** Layouts with no symbol: the name (and initials) carry the logo. */
 export const NO_SYM_LAYS = new Set(["word", "mono", "dot", "acc", "caps", "tile"]);
 export const LAYOUT_TITLE: Record<string, string> = {
@@ -879,21 +951,27 @@ export function logoConceptsX(name: string, brief: string, taste: { type?: strin
 /** Handoff 29 · G·3: nine logos in the ONE typeface the founder picked
  *  (font = X_FONTS index). batch 0, 1, 2… are appended by "Show 9 more":
  *  each batch takes the next seven symbols, plus a wordmark and a monogram. */
-export function logoNineX(name: string, brief: string, taste: { font: number; shape?: string }, batch = 0): LogoConcept[] {
-  const pool = symbolPool(name, brief, taste);
-  // Three symbol logos per batch (the brief's best-fitting marks first), the
-  // rest typographic: finished wordmarks, initials, a tile, the app icon.
-  const per = 4, batches = Math.max(1, Math.floor(pool.length / per));
+export function logoNineX(name: string, brief: string, taste: { font: number; shape?: string; prefer?: string[]; letter?: string }, batch = 0): LogoConcept[] {
+  const pool = symbolPool(name, brief, taste, taste.prefer || []);
+  // Three symbol logos per batch (picked for what the name means first), one
+  // mark built from the brand's own initial, the rest typographic: finished
+  // wordmarks, initials, a tile, the app icon.
+  const per = 3, batches = Math.max(1, Math.floor(pool.length / per));
   const bi = batch % batches, lap = Math.floor(batch / batches);
   const syms = pool.slice(bi * per, bi * per + per);
   const f = X_FONTS[taste.font] ? taste.font : 9;
   const caps = !!X_FONTS[f].caps;
-  // the app icon reuses the batch's lead mark, so the icon and the logo belong together
-  const plan: [string, number][] = [["side", 0], ["dot", -1], ["stack", 1], ["acc", -1], ["mono", -1], ["split", 2], ["caps", -1], ["tile", -1], ["icon", 0]];
+  const wds = name.split(/\s+/).filter((w) => w && w !== "&" && /\p{L}/u.test(w));
+  const two = wds.length >= 2 && wds[0][0].toUpperCase() !== wds[1][0].toUpperCase();
+  const letters = LETTER_KEYS.filter((k) => k !== "L_pair" || two);
+  const lead = taste.letter && letters.includes(taste.letter) ? taste.letter : two ? "L_pair" : "L_knock";
+  const letterK = [lead, ...letters.filter((k) => k !== lead)][batch % letters.length];
+  // slot -2 = the letter mark; the app icon reuses the batch's lead mark, so icon and logo belong together
+  const plan: [string, number][] = [["side", 0], ["dot", -1], ["stack", -2], ["acc", -1], ["split", 1], ["caps", -1], ["tile", -1], ["stack", 2], ["icon", 0]];
   const lays = batch === 0 ? plan : [...plan.slice(0, 8).map((_, i, a) => a[(i + batch * 3 + lap) % 8]), plan[8]];
   const ACC: Accent[] = ["dawn", "nova", "haze"];
   return lays.map(([lay, si], i) => {
-    const sym = si < 0 ? "none" : syms[si % syms.length] || pool[(si + lap) % pool.length];
+    const sym = si === -2 ? letterK : si < 0 ? "none" : syms[si % syms.length] || pool[(si + lap) % pool.length];
     // lowercase suits a modern sans full stop ("vouch."); serifs and caps faces keep their case
     const cs = caps || lay === "caps" ? "u" : lay === "dot" && !X_FONTS[f].serif && (batch + i) % 2 === 1 ? "l" : "n";
     const key = `x:${lay}:${sym}:${f}:${cs}`;
@@ -901,6 +979,8 @@ export function logoNineX(name: string, brief: string, taste: { font: number; sh
     return { key, title, accent: ACC[(i + batch) % 3], seed: batch };
   });
 }
+/** The symbol library as the AI picker reads it (key: what it means). */
+export const symbolLibrary = () => Object.keys(X_SYMS).filter((k) => !isLetterMark(k)).map((k) => ({ k, m: X_SYMS[k].why }));
 /** The symbol family that suits a typeface (no feel question any more). */
 export const shapeOfFont = (fi: number): string => {
   const t = typeOfFont(fi);
@@ -917,7 +997,7 @@ export const pairOf = (fi: number): string => (X_FONTS[fi]?.serif ? "Inter Tight
 /** Every symbol, in this brand's order: the sector's marks, then the shape
  *  family's, then the rest (each list rotated by the name, so two brands in
  *  the same sector don't open on the same marks). */
-export function symbolPool(name: string, brief: string, taste: { shape?: string }): string[] {
+export function symbolPool(name: string, brief: string, taste: { shape?: string }, prefer: string[] = []): string[] {
   const h = hashStr((name || "") + "|" + (brief || "").slice(0, 40));
   const fam = (taste.shape === "Sharp & angular" ? "sharp" : taste.shape === "Organic" ? "organic" : taste.shape === "Geometric" ? "geometric" : "round") as SymFamily;
   const hits = SECTOR_SYMS.filter(([re]) => re.test(brief || ""));
@@ -929,8 +1009,9 @@ export function symbolPool(name: string, brief: string, taste: { shape?: string 
   const sector = own;
   const rot = <T,>(arr: T[], k: number): T[] => arr.map((_, i) => arr[(i + k) % arr.length]);
   // Literal objects only ever appear for a brief in their own sector.
-  const byFam = FAM_ORDER[fam].map((f) => { const l = Object.keys(X_SYMS).filter((k) => X_SYMS[k].fam === f && (!LITERAL.has(k) || allowed.has(k))); return rot(l, h % Math.max(1, l.length)); });
-  return [...new Set([...rot(sector, h % Math.max(1, sector.length)), ...byFam[0], ...byFam[1], ...byFam[2], ...byFam[3]])];
+  const byFam = FAM_ORDER[fam].map((f) => { const l = Object.keys(X_SYMS).filter((k) => !isLetterMark(k) && X_SYMS[k].fam === f && (!LITERAL.has(k) || allowed.has(k))); return rot(l, h % Math.max(1, l.length)); });
+  const pre = prefer.filter((k) => X_SYMS[k] && !isLetterMark(k));
+  return [...new Set([...pre, ...rot(sector, h % Math.max(1, sector.length)), ...byFam[0], ...byFam[1], ...byFam[2], ...byFam[3]])];
 }
 /** How many fresh batches of twelve this brand has before they repeat. */
 export function logoBatches(name: string, brief: string, taste: { shape?: string }): number {
@@ -969,6 +1050,7 @@ function measureText(t: string, fam: string, weight: number, size: number, spaci
 }
 const TILE_BG = "#010203"; // stands for the tile's own background (a CSS variable) in the app
 
+const weighStrokes = (svg: string, k: number) => k === 1 ? svg : svg.replace(/stroke-width="([\d.]+)"/g, (_, w) => `stroke-width="${Math.round(Number(w) * k * 100) / 100}"`);
 function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVariant; accent: string; H: number; shape: LogoShape; famOverride?: string; famWeight?: number }): string {
   const [, lay, symK, fiS, cs, scS, spS] = key.split(":");
   const symScale = Math.min(1.35, Math.max(0.65, Number(scS) || 1)); // personalisation: symbol size
@@ -998,7 +1080,10 @@ function renderX(key: string, name0: string, pal: Palette, o: { variant: LogoVar
   const wrap = (w: number, h: number, inner: string) => tileFix(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(w)} ${n2(h)}" width="${n2((w / h) * o.H)}" height="${o.H}">${defs}` +
     (v === "night" ? `<rect width="${n2(w)}" height="${n2(h)}" fill="${pal.night}"/>` : v === "dawn" ? `<rect width="${n2(w)}" height="${n2(h)}" rx="18" fill="url(#dg)"/>` : "") + inner + `</svg>`);
-  const mark = (cx: number, cy: number, r: number, c = acc, bg = bgCol) => (sym ? sym.draw(cx, cy, r * symScale, c, bg) : "");
+  setMarkLetters(name0, ff, fw);
+  // the mark's line weight follows the typeface: light faces, lighter strokes
+  const wk = fw <= 400 ? 0.82 : fw >= 700 ? 1.18 : 1;
+  const mark = (cx: number, cy: number, r: number, c = acc, bg = bgCol) => (sym ? weighStrokes(sym.draw(cx, cy, r * symScale, c, bg), wk) : "");
   const pad = 30;
   const rxf = o.shape === "sharp" ? 0.08 : o.shape === "geometric" ? 0.14 : o.shape === "organic" ? 0.32 : 0.24;
 

@@ -1042,6 +1042,20 @@ const PROMPTS: Record<string, (body: any) => { model: string; max: number; promp
     `RULES: 1-3 words each (hard cap, never join two with "and": pick the primary one), Title Case. Every tag must be grounded in the sentence; never pad with inventions or vague fillers like "Global", "Tech" or "Innovative". Precision beats coverage: 3 exact tags beat 5 loose ones. Tags describe the BUSINESS, never the description itself (nothing like "Incomplete Description", "Vague" or "Product"); if the sentence is thin, return fewer, sharper tags.\n` +
     `Return ONLY JSON {"chips":["...","..."]}.` }),
 
+  // Logo symbols picked for what the NAME means (not just the sector): the
+  // client sends its symbol library; we return the three best keys + a
+  // letter-mark style. Small and fast: one call per brand.
+  wraplogosyms: (b) => {
+    const lib = Array.isArray(b.payload?.syms) ? b.payload.syms.slice(0, 120) : [];
+    return { model: MODEL.fast, max: 220, prompt:
+      `A brand is called "${String(b.payload?.name || "").slice(0, 60)}". What it is: "${String(b.payload?.brief || "").slice(0, 300)}". ` +
+      (b.payload?.concept ? `It should feel like "${String(b.payload.concept).slice(0, 60)}". ` : "") +
+      `Pick logo symbols from this library (key: meaning):\n${lib.map((x: any) => `${String(x.k)}: ${String(x.m).slice(0, 70)}`).join("\n")}\n` +
+      `Choose the 3 symbols that best tell what the NAME itself means or evokes (its words, roots, imagery), then what the business does. A name about steering → helm or compass; bread → wheat or loaf; a law firm → column or scales. Prefer a concrete image the name suggests over a generic shape. Never pick a symbol that contradicts the business.\n` +
+      `Also pick ONE letter-mark style for its initial: "L_knock" (letter cut out of a disc), "L_out" (outlined letter), "L_dot" (letter + accent dot), "L_cut" (letter with a diagonal cut), "L_arch" (letter under an arch), "L_frame" (letter in a frame), "L_pair" (two interlocked initials, only if the name has two words).\n` +
+      `Return ONLY JSON {"syms":["key","key","key"],"letter":"L_..."}.` };
+  },
+
   // 02 Your brief, wrapped: the concept + one paragraph + three inspiration
   // territories. On the fast model: this answer gates the whole flow, and the
   // page should feel instant.

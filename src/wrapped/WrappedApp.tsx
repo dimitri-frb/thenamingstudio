@@ -12,7 +12,7 @@ import {
   type DomainBoardData, type DomainCard, type SavedSearch, type WBook, type WConcept, type WKit,
   type WName, type WStyle, type WTerritory, type WUser, type WWord, type WDeckSlide, type WDeck2,
 } from "./api";
-import { NO_SYM_LAYS, X_FONTS, X_SYMS, buildLogoPack, feelOfFont, logoNineX, pairOf, shapeOfFont, typeOfFont, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
+import { NO_SYM_LAYS, X_FONTS, X_SYMS, buildLogoPack, feelOfFont, logoNineX, symbolLibrary, pairOf, shapeOfFont, typeOfFont, ensureFonts, iconKey, logoConcepts, logoConceptsX, logoSvg, whyItWorks, whyItWorksX, type CustomSymbol, type LogoConcept, type LogoFont, type LogoShape } from "./logos";
 import { ColoursStep, IntroStep, ProCard, ProSheet, ProToast, TypeStep } from "./Freemium";
 import { BRAND_AXES, SWIPE_POOL, LOCAL_POOL, brandLogo, drawDeck, poolFor, styleArticle, type InspireBrand } from "./inspire";
 import { download } from "./zip";
@@ -1425,13 +1425,30 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // records its type and shape in the taste).
   // G·3: nine logos per batch in the chosen typeface; "Show 9 more" appends.
   const logoFont = taste.font ?? 2;
+  // The symbols that tell what THIS name means, asked once per name (cached).
+  const [symPick, setSymPick] = useState<{ name: string; syms: string[]; letter?: string } | null>(null);
+  useEffect(() => {
+    const nm = picked?.name;
+    if (!nm || symPick?.name === nm) return;
+    const ck = "nn_syms:" + nm.toLowerCase();
+    try { const c = JSON.parse(localStorage.getItem(ck) || "null"); if (c && Array.isArray(c.syms)) { setSymPick({ name: nm, ...c }); return; } } catch { /* no cache */ }
+    let live = true;
+    wrapApi.logoSyms(nm, `${sentence} ${chips.join(" ")}`.trim(), concept?.concept || "", symbolLibrary()).then((r) => {
+      if (!live || !r) return;
+      setSymPick({ name: nm, ...r });
+      try { localStorage.setItem(ck, JSON.stringify(r)); } catch { /* private mode */ }
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked?.name]);
+  const symPrefer = symPick && symPick.name === picked?.name ? symPick : null;
   const logoTiles = useMemo(() => {
     if (!picked) return [] as LogoConcept[];
     const brief = `${sentence} ${concept?.concept || ""} ${chips.join(" ")}`;
-    const lt = { font: logoFont, shape: shapeOfFont(logoFont) };
+    const lt = { font: logoFont, shape: shapeOfFont(logoFont), prefer: symPrefer?.syms, letter: symPrefer?.letter };
     return Array.from({ length: logoSeed + 1 }, (_, b) => logoNineX(picked.name, brief, lt, b)).flat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked?.name, sentence, concept?.concept, chips.join(" "), logoFont, logoSeed]);
+  }, [picked?.name, sentence, concept?.concept, chips.join(" "), logoFont, logoSeed, symPrefer?.syms.join(","), symPrefer?.letter]);
   const payLogo = logoSel || (picked ? logoTiles[0] : null);
   // Handoff 27 · the kit's layout family: the taste picks it, the founder can switch.
   const fam: Fam = famPick ?? famFromTaste(taste);
