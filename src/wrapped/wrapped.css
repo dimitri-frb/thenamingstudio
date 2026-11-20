@@ -3480,3 +3480,15 @@ body:has(.wr-testbar) .wr-foot { padding-bottom: 64px; }
 }
 .wr-prog .l4 { height: auto; background: none; border-radius: 0; }
 .fm-sheet .sure { margin: -8px 0 2px; text-align: center; font-size: 13px; font-weight: 600; color: #333; }
+/* "Already have a name?" entry (landing) + its form */
+.ka-own { display: block; margin: 12px auto 0; font: inherit; font-size: 14px; font-weight: 600; color: #111; background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; position: relative; z-index: 3; }
+.wr-own label { display: block; text-align: left; margin: 10px 0 0; }
+.wr-own label span { display: block; font-size: 12px; font-weight: 600; color: var(--text3, #888); margin-bottom: 5px; }
+.wr-own input { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: inherit; outline: none; }
+.wr-own .wr-btnor { margin-top: 16px; width: 100%; }
+.wr-own .wr-btnor:disabled { opacity: .45; }
+.ka-land .ka-own-d { display: none; }
+@media (min-width: 900px) {
+  .ka-land .ka-own { display: none; }
+  .ka-land .ka-own-d { display: inline; }
+}

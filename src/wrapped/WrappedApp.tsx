@@ -367,6 +367,10 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   };
   const [bookOpen, setBookOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  // "I already have a name": skip naming, straight to the brand flow
+  const [ownOpen, setOwnOpen] = useState(false);
+  const [ownGate, setOwnGate] = useState(false);
+  const ownRun = useRef(false);
   const [resumeAuth, setResumeAuth] = useState<string | null>(null); // ?resume= opened signed-out
   const [briefGate, setBriefGate] = useState(false); // 00·s: sign up right after Name it
   const [shareMsg, setShareMsg] = useState("");
@@ -624,7 +628,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   useEffect(() => { // words: SIX one-style calls in parallel the instant the concept lands.
     // The page renders once, with every column at the same time — the calls fire
     // during the concept page, so by the time the founder arrives it's instant.
-    if (test || !conceptReady || styles) return;
+    if (test || !conceptReady || styles || ownRun.current) return;
     const key = wordsKey();
     if (wordsReq.current === key) return;
     wordsReq.current = key;
@@ -823,6 +827,22 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   // one-tap sign-up only appears when they ask for the words.
   function startFromLanding() {
     enterFlow();
+  }
+  // "I already have a name": the brief is what it does, the pick is their name.
+  function startOwnName(name: string, what: string) {
+    const nm = name.trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!nm) return;
+    ownRun.current = true;
+    if (!test) { newProcess(); startedAt.current = Date.now(); }
+    setSentence(what.trim());
+    setChips([]); setNames(null); setStyles(null); setStarred([]);
+    setLogoSel(null); setLogoSeed(0);
+    const n: WName = { name: nm, roots: "", parts: [], tagline: "", score: 0 };
+    setPicked(n);
+    track("own_name", { name: nm, sentence: what.trim().slice(0, 300) });
+    setOwnOpen(false);
+    if (!test && !loadSession()?.user) { setOwnGate(true); return; }
+    toStep("reveal");
   }
   function enterFlow() {
     // The landing pre-charges the concept (and the words) under the page's
@@ -1351,7 +1371,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
   const chapter = CHAPTERS[step];
 
   const backTarget: Partial<Record<Step, Step>> = {
-    brief: "land", refine: "brief", brands: "refine", brandsum: "brands", words: "brandsum", names: "words", reveal: "names",
+    brief: "land", refine: "brief", reveal: names?.length ? "names" : "land", brands: "refine", brandsum: "brands", words: "brandsum", names: "words",
     claim: "allset",
     tcol: "reveal", ttype: "tcol", logo: "ttype", pers: "logo",
     hub: "logo", plogo: "hub", pbook: "hub", psocials: "pbook", pmkt: "psocials", pcards: "pmkt", pdeck: "pcards", allset: "pdeck",
@@ -1513,7 +1533,7 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
       {step === "land" && (
         <LandingKA
           sentence={sentence} setSentence={setSentence}
-          onSubmit={startFromLanding}
+          onSubmit={startFromLanding} onOwn={() => setOwnOpen(true)}
           onHow={() => toStep("how")}
           onLogin={() => (user ? gotoAccount() : setSignupOpen(true))}
           loggedIn={!!user}
@@ -2510,6 +2530,9 @@ export function WrappedApp({ test, resume, go }: { test: boolean; resume?: strin
           onSkip={() => { setWhyNot(false); toStep("claim"); }}
         />
       )}
+      {ownOpen && <OwnNameModal onClose={() => setOwnOpen(false)} onGo={startOwnName} />}
+      {ownGate && <SignupModal note="Sign in to keep your brand: free, and your kit stays in your account." onClose={() => setOwnGate(false)}
+        onUser={(u) => { setUser(u); setOwnGate(false); track("signup", {}); toStep("reveal"); }} />}
       {signupOpen && <SignupModal onClose={() => setSignupOpen(false)} onUser={(u) => { setUser(u); setSignupOpen(false); gotoAccount(); }} />}
       {resumeAuth && (
         <SignupModal
@@ -2966,6 +2989,25 @@ function BriefGateModal({ words, brief, onClose, onUser }: { words: string[]; br
   );
 }
 
+function OwnNameModal({ onClose, onGo }: { onClose: () => void; onGo: (name: string, what: string) => void }) {
+  const [nm, setNm] = useState("");
+  const [what, setWhat] = useState("");
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
+  const ok = nm.trim().length >= 2 && what.trim().length >= 12; // 12+: enough for the brief analysis (palette, market)
+  return (
+    <div className="wr-sumodal" onClick={onClose}>
+      <form className="panel wr-own" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (ok) onGo(nm, what); }}>
+        <button type="button" className="x" onClick={onClose} aria-label="Close">✕</button>
+        <h3>Build your brand.</h3>
+        <p>Your logo, colours, brand book and launch kit, made for the name you have.</p>
+        <label><span>Your name</span><input autoFocus value={nm} maxLength={40} placeholder="e.g. Clos & Crumb" onChange={(e) => setNm(e.target.value)} /></label>
+        <label><span>What it does</span><input value={what} maxLength={200} placeholder="e.g. A sourdough bakery in Bordeaux" onChange={(e) => setWhat(e.target.value)} /></label>
+        <button type="submit" className="wr-btnor cbig" disabled={!ok}>Build my brand →</button>
+      </form>
+    </div>
+  );
+}
+
 function SignupModal({ onClose, onUser, note }: { onClose: () => void; onUser: (u: WUser) => void; note?: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState("");
@@ -3121,9 +3163,9 @@ function WordsLoader({ concept }: { concept: string }) {
 
 /* ── The Name Name landing (handoff 4b "The Wordmark"): white page, giant
    edge-to-edge wordmark, ink blobs in difference blend, brief input up top ── */
-function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }: {
+function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn, onOwn }: {
   sentence: string; setSentence: (s: string) => void;
-  onSubmit: () => void; onHow: () => void; onLogin: () => void; loggedIn: boolean;
+  onSubmit: () => void; onHow: () => void; onLogin: () => void; loggedIn: boolean; onOwn: () => void;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const wmRef = useRef<HTMLSpanElement>(null);
@@ -3203,9 +3245,12 @@ function LandingKA({ sentence, setSentence, onSubmit, onHow, onLogin, loggedIn }
           value={sentence} onChange={(e) => setSentence(e.target.value)} />
         <button type="submit">Name it <span className="arr">→</span></button>
       </form>
+      <button className="ka-own" onClick={onOwn}>Already have a name? Build its brand →</button>
       <div className="bbar">
         <span className="line">Name, domain &amp; brand in minutes</span>
         <span className="links">
+          <button className="ka-own-d" onClick={onOwn}>Have a name? Brand it</button>
+          <i className="ka-own-d">/</i>
           <button onClick={onHow}>How it works</button>
           <i>/</i>
           <button onClick={onLogin}>{loggedIn ? "My account" : "Log in"}</button>
