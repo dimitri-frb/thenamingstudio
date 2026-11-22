@@ -785,7 +785,7 @@ function People({ flows, items, from, to, sel, setSel, roles, onRole, loading, d
             {selF.status !== "done" && <p className="stopline">{selF.status === "live" ? `Live at ${STEPS[selF.step]}` : `Stopped at ${STEPS[selF.step]}`}{selF.step === 5 && selF.shortlist.length ? ` · saw ${selF.shortlist.length}+, picked none` : ""}</p>}
           </div>
           {(selF.name || selF.domain || selF.later) && <p className="pkv"><em>Name</em><b>{selF.name || "—"}</b> <span className="mono">{selF.domain || (selF.later ? "domain later" : "")}</span></p>}
-          {selF.paywall && <p className="pkv"><em>Paywall · €{selF.price || 29}</em>{selF.unlock ? "Unlocked (early access)" : "Kept the free preview"}{selF.why ? ` · why not: ${selF.why}` : ""}</p>}
+          {selF.paywall && <p className="pkv"><em>Paywall · €{selF.price || 29}</em>{selF.paid ? "✓ Paid" : selF.unlock ? "Tapped Get Pro, didn't pay" : "Saw the Pro offer, didn't tap Get Pro"}{selF.why ? ` · why not: ${selF.why}` : ""}</p>}
           {(selF.feedback || selF.why) && (
             <div className="pfb"><em>THEIR FEEDBACK</em>
               {selF.feedback && <p>{selF.feedback.split(" — ")[0].split(" · ").filter(Boolean).map((r) => <i key={r}>{r}</i>)}</p>}
