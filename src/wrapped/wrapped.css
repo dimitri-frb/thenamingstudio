@@ -2764,6 +2764,7 @@
 .kv2 .pfb p { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .kv2 .pfb p i { font-style: normal; border: 1px solid #000; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
 .kv2 .pfb p.q { font-size: 14px; }
+.kv2 .ppanel > * { flex-shrink: 0; } /* the panel scrolls; its blocks (the journey box above all) must keep their height */
 .kv2 .pjourney { border: 1px solid #ececec; border-radius: 12px; padding: 10px 12px; max-height: 260px; overflow-y: auto; }
 .kv2 .pjourney p { margin: 0; display: grid; grid-template-columns: 112px 1fr; gap: 2px 8px; font-size: 12px; padding: 3px 0; }
 .kv2 .pjourney p em { grid-column: 2; font-style: normal; color: #8a8880; }
